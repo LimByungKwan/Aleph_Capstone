@@ -1,0 +1,47 @@
+{
+  "ground": { "size": [70, 50], "color": "#c9c3b4" },
+  "playerStart": [-20, 0],
+
+  "zones": [
+    { "id": "zoneA", "name": "A. 골목 입구",   "xRange": [-22, -11], "zRange": [-4.5, 4.5],  "color": "#9fd3ff" },
+    { "id": "zoneB", "name": "B. 정류장 거리", "xRange": [-11, 0],   "zRange": [-4.5, 4.5],  "color": "#b8f0a8" },
+    { "id": "zoneC", "name": "C. 벽화 골목",   "xRange": [0, 11],    "zRange": [-14.5, 4.5], "color": "#f7b2d9" },
+    { "id": "zoneD", "name": "D. 카페 거리",   "xRange": [11, 22],   "zRange": [-4.5, 4.5],  "color": "#ffd59e" }
+  ],
+
+  "roads": [
+    { "id": "road_main",       "position": [0, 0],     "size": [44, 0.02, 6],  "rotationDeg": 0, "color": "#6b6b6b", "model": null },
+    { "id": "sidewalk_north",  "position": [0, -3.75], "size": [44, 0.15, 1.5], "rotationDeg": 0, "color": "#b5aea0", "model": null },
+    { "id": "sidewalk_south",  "position": [0, 3.75],  "size": [44, 0.15, 1.5], "rotationDeg": 0, "color": "#b5aea0", "model": null },
+    { "id": "road_deadend",    "position": [4, -9.5],  "size": [4, 0.02, 10],  "rotationDeg": 0, "color": "#7a7570", "model": null }
+  ],
+
+  "buildings": [
+    { "id": "b_n1",    "zone": "zoneA", "position": [-18.5, -8.5], "size": [7, 9, 8],   "rotationDeg": 0, "color": "#f8c8c8", "model": null },
+    { "id": "b_n2",    "zone": "zoneA", "position": [-11.5, -8.5], "size": [7, 6, 8],   "rotationDeg": 0, "color": "#c8e6f8", "model": null },
+    { "id": "b_n3",    "zone": "zoneB", "position": [-5, -8.5],    "size": [6, 11, 8],  "rotationDeg": 0, "color": "#fbe7b5", "model": null },
+    { "id": "b_n4",    "zone": "zoneC", "position": [0, -9.5],     "size": [4, 8, 10],  "rotationDeg": 0, "color": "#d6c8f5", "model": null },
+    { "id": "b_n5",    "zone": "zoneC", "position": [8.5, -9.5],   "size": [5, 7, 10],  "rotationDeg": 0, "color": "#c8f5dc", "model": null },
+    { "id": "b_n6",    "zone": "zoneD", "position": [16.5, -8.5],  "size": [11, 12, 8], "rotationDeg": 0, "color": "#f5d0e6", "model": null },
+    { "id": "b_mural", "zone": "zoneC", "position": [4, -17.5],    "size": [8, 7, 6],   "rotationDeg": 0, "color": "#f6f0d8", "model": null },
+
+    { "id": "b_s1",    "zone": "zoneA", "position": [-18, 8.5],    "size": [8, 7, 8],   "rotationDeg": 0, "color": "#d0ecd0", "model": null },
+    { "id": "b_s2",    "zone": "zoneB", "position": [-10, 8.5],    "size": [8, 10, 8],  "rotationDeg": 0, "color": "#f8dcc0", "model": null },
+    { "id": "b_s3",    "zone": "zoneB", "position": [-1, 8.5],     "size": [10, 8, 8],  "rotationDeg": 0, "color": "#c0d8f8", "model": null },
+    { "id": "b_s4",    "zone": "zoneC", "position": [8.5, 10],     "size": [9, 6, 7],   "rotationDeg": 0, "color": "#f0c8f0", "model": null },
+    { "id": "b_s5",    "zone": "zoneD", "position": [17.5, 8.5],   "size": [9, 9, 8],   "rotationDeg": 0, "color": "#fff0b0", "model": null },
+    { "id": "b_cafe",  "zone": "zoneD", "position": [25.5, 0],     "size": [7, 7, 9],   "rotationDeg": 0, "color": "#e3c9a8", "model": null }
+  ],
+
+  "props": [
+    { "id": "lamp_1",        "zone": "zoneA", "position": [-18, -4.2], "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
+    { "id": "lamp_2",        "zone": "zoneB", "position": [-6, 4.2],   "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
+    { "id": "lamp_3",        "zone": "zoneC", "position": [1, -4.2],   "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
+    { "id": "lamp_4",        "zone": "zoneC", "position": [12, 4.2],   "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
+    { "id": "lamp_5",        "zone": "zoneD", "position": [18, -4.2],  "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
+    { "id": "bus_sign",      "zone": "zoneB", "position": [-9.8, 4.1], "size": [0.15, 2.8, 0.15], "rotationDeg": 0, "color": "#2f6fd6", "model": null },
+    { "id": "bus_bench",     "zone": "zoneB", "position": [-8.2, 4.1], "size": [1.8, 0.5, 0.5], "rotationDeg": 0, "color": "#8a6a4a", "model": null },
+    { "id": "vending",       "zone": "zoneB", "position": [-3.5, 4.0], "size": [1, 1.9, 0.8],   "rotationDeg": 0, "color": "#e04848", "model": null },
+    { "id": "wall_photo",    "zone": "zoneC", "position": [8.5, 5.2],  "size": [8, 2.5, 0.4],   "rotationDeg": 0, "color": "#d9cfc0", "model": null }
+  ]
+}
