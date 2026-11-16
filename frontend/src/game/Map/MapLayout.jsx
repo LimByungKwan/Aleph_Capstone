@@ -2,8 +2,9 @@ import layout from '../data/buildings.json'
 import Ground from './Ground.jsx'
 import Zones from './Zones.jsx'
 import Prop from './Prop.jsx'
+import { Markings, Road } from './Roads.jsx'
 
-// buildings.json 하나를 읽어서 바닥, 구역, 길, 건물, 소품, 시작 지점을 배치
+// buildings.json 하나를 읽어서 바닥, 구역, 길, 도로 표시, 건물, 소품, 시작 지점을 배치
 export default function MapLayout({ showStartMarker = true }) {
   const [startX, startZ] = layout.playerStart
 
@@ -13,8 +14,10 @@ export default function MapLayout({ showStartMarker = true }) {
       <Zones zones={layout.zones} />
 
       {layout.roads.map((road) => (
-        <Prop key={road.id} item={road} castShadow={false} />
+        <Road key={road.id} item={road} />
       ))}
+      <Markings markings={layout.markings} />
+
       {layout.buildings.map((building) => (
         <Prop key={building.id} item={building} />
       ))}

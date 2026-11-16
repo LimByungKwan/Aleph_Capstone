@@ -10,8 +10,8 @@ export const FREE_CAMERA = true
 export const CAMERA_VIEW = 'third'
 
 // ── 레벨 디자인 도우미 ───────────────────────
-export const SHOW_GRID = true // 1m 격자
-export const SHOW_ZONES = true // 구역(A~D) 바닥 색 띠와 이름표
+export const SHOW_GRID = false // 1m 격자 (레벨 디자인할 때 true)
+export const SHOW_ZONES = false // 구역(A~D) 바닥 색 띠와 이름표 (레벨 디자인할 때 true)
 export const SHOW_PLACE_LABELS = true // 상호작용 지점 이름표
 export const PHYSICS_DEBUG = false // 충돌 박스·센서를 선으로 보기
 

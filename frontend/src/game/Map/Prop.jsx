@@ -1,31 +1,56 @@
-import { Component, Suspense, useMemo } from 'react'
+import { Component, Suspense, useLayoutEffect, useMemo, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { STYLES } from './styles/index.js'
 
-// 맵의 모든 물체(길, 건물, 소품)를 그리는 공통 컴포넌트.
-// item = { id, position: [x, z], size: [가로, 높이, 깊이], rotationDeg, color, model }
-// - model이 null이면 색 박스
-// - model이 "/models/xxx.glb"면 GLB 모델 (로딩 중이거나 파일이 없으면 박스)
+// 맵의 건물·소품을 그리는 공통 컴포넌트.
+// item = { id, position: [x, z], size: [가로, 높이, 깊이], rotationDeg, color, style, model }
+// 우선순위: model(GLB) > style(코드로 그린 모양) > 색 박스
+// - model이 "/models/xxx.glb"면 GLB 모델 (로딩 중이거나 파일이 없으면 style 모양 또는 박스)
+// - style이 "hanok", "tree" 같은 이름이면 styles/ 폴더의 모양으로 그림
 export default function Prop({ item, castShadow = true }) {
   const [x, z] = item.position
   const [w, h, d] = item.size
   const rotationY = THREE.MathUtils.degToRad(item.rotationDeg ?? 0)
 
-  const box = <BoxShape size={item.size} color={item.color} castShadow={castShadow} />
+  const Styled = item.style ? STYLES[item.style] : null
+  if (item.style && !Styled) console.warn(`[Prop] 알 수 없는 style "${item.style}" (${item.id}) → 박스로 표시`)
+
+  const fallback = Styled ? (
+    <ShadowGroup castShadow={castShadow}>
+      <Styled item={item} />
+    </ShadowGroup>
+  ) : (
+    <BoxShape size={item.size} color={item.color} castShadow={castShadow} />
+  )
 
   return (
     <group position={[x, 0, z]} rotation={[0, rotationY, 0]} name={item.id}>
       {item.model ? (
-        <ModelErrorBoundary fallback={box} url={item.model}>
-          <Suspense fallback={box}>
+        <ModelErrorBoundary fallback={fallback} url={item.model}>
+          <Suspense fallback={fallback}>
             <GlbModel url={item.model} size={[w, h, d]} />
           </Suspense>
         </ModelErrorBoundary>
       ) : (
-        box
+        fallback
       )}
     </group>
   )
+}
+
+// 안에 든 모든 메시가 그림자를 만들고 받도록 한 번에 설정
+function ShadowGroup({ castShadow, children }) {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    ref.current?.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = castShadow && !child.material.transparent
+        child.receiveShadow = true
+      }
+    })
+  }, [castShadow])
+  return <group ref={ref}>{children}</group>
 }
 
 function BoxShape({ size, color, castShadow }) {

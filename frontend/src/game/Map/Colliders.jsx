@@ -41,9 +41,14 @@ export default function Colliders() {
   )
 }
 
+// item.collider로 충돌 박스를 따로 정할 수 있어요.
+// - 없으면: size 그대로
+// - [가로, 높이, 깊이]: 그 크기로 (예: 나무는 줄기만 막기)
+// - false: 충돌 없음 (예: 정자·쉘터처럼 안으로 들어갈 수 있는 것)
 function BoxCollider({ item, blocksCamera = false }) {
+  if (item.collider === false) return null
   const [x, z] = item.position
-  const [w, h, d] = item.size
+  const [w, h, d] = item.collider ?? item.size
   const rotationY = THREE.MathUtils.degToRad(item.rotationDeg ?? 0)
 
   return (

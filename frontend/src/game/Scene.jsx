@@ -125,7 +125,7 @@ function HelpPanel({ playing, onStart, onStop }) {
         pointerEvents: 'none',
       }}
     >
-      <strong>SceneWalk AI · 골목 맵 (블록아웃)</strong>
+      <strong>SceneWalk AI · 골목 맵</strong>
       <br />
       {playing
         ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
