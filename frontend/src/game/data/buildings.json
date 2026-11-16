@@ -1,5 +1,5 @@
 {
-  "ground": { "size": [70, 50], "color": "#c9c3b4" },
+  "ground": { "size": [70, 50], "color": "#b9b4a8" },
   "playerStart": [-20, 0],
 
   "zones": [
@@ -10,38 +10,76 @@
   ],
 
   "roads": [
-    { "id": "road_main",       "position": [0, 0],     "size": [44, 0.02, 6],  "rotationDeg": 0, "color": "#6b6b6b", "model": null },
-    { "id": "sidewalk_north",  "position": [0, -3.75], "size": [44, 0.15, 1.5], "rotationDeg": 0, "color": "#b5aea0", "model": null },
-    { "id": "sidewalk_south",  "position": [0, 3.75],  "size": [44, 0.15, 1.5], "rotationDeg": 0, "color": "#b5aea0", "model": null },
-    { "id": "road_deadend",    "position": [4, -9.5],  "size": [4, 0.02, 10],  "rotationDeg": 0, "color": "#7a7570", "model": null }
+    { "id": "road_main",      "style": "asphalt", "position": [0, 0],     "size": [44, 0.02, 6],   "rotationDeg": 0, "color": "#4b4f55" },
+    { "id": "sidewalk_north", "style": "brick",   "position": [0, -3.75], "size": [44, 0.15, 1.5], "rotationDeg": 0, "color": "#b5654f" },
+    { "id": "sidewalk_south", "style": "brick",   "position": [0, 3.75],  "size": [44, 0.15, 1.5], "rotationDeg": 0, "color": "#b5654f" },
+    { "id": "road_deadend",   "style": "brick",   "position": [4, -9.5],  "size": [4, 0.15, 10],   "rotationDeg": 0, "color": "#a85f4b" },
+    { "id": "plaza_d",        "style": "tile",    "position": [17.5, 8.5], "size": [9, 0.12, 8],   "rotationDeg": 0, "color": "#6f9e86" }
+  ],
+
+  "markings": [
+    { "type": "line", "from": [-22, 0], "to": [-14.6, 0], "color": "#f2c14e", "width": 0.1, "double": true },
+    { "type": "line", "from": [-11.4, 0], "to": [10.4, 0], "color": "#f2c14e", "width": 0.1, "double": true },
+    { "type": "line", "from": [13.6, 0], "to": [22, 0], "color": "#f2c14e", "width": 0.1, "double": true },
+    { "type": "line", "from": [-22, -2.8], "to": [22, -2.8], "width": 0.12 },
+    { "type": "line", "from": [-22, 2.8], "to": [22, 2.8], "width": 0.12 },
+    { "type": "crosswalk", "position": [-13, 0], "size": [3, 6] },
+    { "type": "crosswalk", "position": [12, 0], "size": [3, 6] },
+    { "type": "text", "text": "천천히", "position": [-18, 1.4], "size": [2.6, 1.3], "rotationDeg": -90 },
+    { "type": "text", "text": "천천히", "position": [16, -1.4], "size": [2.6, 1.3], "rotationDeg": 90 }
   ],
 
   "buildings": [
-    { "id": "b_n1",    "zone": "zoneA", "position": [-18.5, -8.5], "size": [7, 9, 8],   "rotationDeg": 0, "color": "#f8c8c8", "model": null },
-    { "id": "b_n2",    "zone": "zoneA", "position": [-11.5, -8.5], "size": [7, 6, 8],   "rotationDeg": 0, "color": "#c8e6f8", "model": null },
-    { "id": "b_n3",    "zone": "zoneB", "position": [-5, -8.5],    "size": [6, 11, 8],  "rotationDeg": 0, "color": "#fbe7b5", "model": null },
-    { "id": "b_n4",    "zone": "zoneC", "position": [0, -9.5],     "size": [4, 8, 10],  "rotationDeg": 0, "color": "#d6c8f5", "model": null },
-    { "id": "b_n5",    "zone": "zoneC", "position": [8.5, -9.5],   "size": [5, 7, 10],  "rotationDeg": 0, "color": "#c8f5dc", "model": null },
-    { "id": "b_n6",    "zone": "zoneD", "position": [16.5, -8.5],  "size": [11, 12, 8], "rotationDeg": 0, "color": "#f5d0e6", "model": null },
-    { "id": "b_mural", "zone": "zoneC", "position": [4, -17.5],    "size": [8, 7, 6],   "rotationDeg": 0, "color": "#f6f0d8", "model": null },
+    { "id": "b_n1",    "zone": "zoneA", "style": "hanok",  "position": [-18.5, -8.5], "size": [7, 7, 8],   "rotationDeg": 0,   "color": "#f2ece0", "model": null },
+    { "id": "b_n2",    "zone": "zoneA", "style": "hanok",  "position": [-11.5, -8.5], "size": [7, 6, 8],   "rotationDeg": 0,   "color": "#efe6d6", "model": null },
+    { "id": "b_n3",    "zone": "zoneB", "style": "modern", "position": [-5, -8.5],    "size": [6, 11, 8],  "rotationDeg": 0,   "color": "#c9c6c0", "model": null,
+      "signs": [{ "text": "골목 문구사", "bg": "#fff7d6", "fg": "#1e3a8a", "awning": "#2563eb" }] },
+    { "id": "b_n4",    "zone": "zoneC", "style": "hanok",  "position": [0, -9.5],     "size": [4, 6, 10],  "rotationDeg": 0,   "color": "#f2ece0", "model": null },
+    { "id": "b_n5",    "zone": "zoneC", "style": "hanok",  "position": [8.5, -9.5],   "size": [5, 6, 10],  "rotationDeg": 0,   "color": "#efe6d6", "model": null },
+    { "id": "b_n6",    "zone": "zoneD", "style": "modern", "position": [16.5, -8.5],  "size": [11, 12, 8], "rotationDeg": 0,   "color": "#6b6e72", "model": null,
+      "signs": [
+        { "text": "골목 한옥빵", "bg": "#f6e7c8", "fg": "#c2185b", "awning": "#e9d3a6" },
+        { "text": "수제 과자점", "bg": "#2f6b4f", "fg": "#ffffff", "awning": "#2f7d5b" }
+      ] },
+    { "id": "b_mural", "zone": "zoneC", "style": "mural",  "position": [4, -17.5],    "size": [8, 7, 6],   "rotationDeg": 0,   "color": "#f6f0d8", "model": null },
 
-    { "id": "b_s1",    "zone": "zoneA", "position": [-18, 8.5],    "size": [8, 7, 8],   "rotationDeg": 0, "color": "#d0ecd0", "model": null },
-    { "id": "b_s2",    "zone": "zoneB", "position": [-10, 8.5],    "size": [8, 10, 8],  "rotationDeg": 0, "color": "#f8dcc0", "model": null },
-    { "id": "b_s3",    "zone": "zoneB", "position": [-1, 8.5],     "size": [10, 8, 8],  "rotationDeg": 0, "color": "#c0d8f8", "model": null },
-    { "id": "b_s4",    "zone": "zoneC", "position": [8.5, 10],     "size": [9, 6, 7],   "rotationDeg": 0, "color": "#f0c8f0", "model": null },
-    { "id": "b_s5",    "zone": "zoneD", "position": [17.5, 8.5],   "size": [9, 9, 8],   "rotationDeg": 0, "color": "#fff0b0", "model": null },
-    { "id": "b_cafe",  "zone": "zoneD", "position": [25.5, 0],     "size": [7, 7, 9],   "rotationDeg": 0, "color": "#e3c9a8", "model": null }
+    { "id": "b_s1",    "zone": "zoneA", "style": "hanok",  "position": [-18, 8.5],    "size": [8, 7, 8],   "rotationDeg": 180, "color": "#f2ece0", "model": null },
+    { "id": "b_s2",    "zone": "zoneB", "style": "modern", "position": [-10, 8.5],    "size": [8, 10, 8],  "rotationDeg": 180, "color": "#e8dcc8", "model": null,
+      "signs": [{ "text": "정류장 분식", "bg": "#ffedd5", "fg": "#c2410c", "awning": "#ea580c" }] },
+    { "id": "b_s3",    "zone": "zoneB", "style": "modern", "position": [-1, 8.5],     "size": [10, 8, 8],  "rotationDeg": 180, "color": "#d7e3ea", "model": null,
+      "signs": [
+        { "text": "여름 서점", "bg": "#e0f2fe", "fg": "#075985", "awning": "#0369a1" },
+        { "text": "골목 사진관", "bg": "#fdf2f8", "fg": "#9d174d", "awning": "#db2777" }
+      ] },
+    { "id": "b_s4",    "zone": "zoneC", "style": "hanok",  "position": [8.5, 10],     "size": [9, 6, 7],   "rotationDeg": 180, "color": "#f2ece0", "model": null },
+    { "id": "b_cafe",  "zone": "zoneD", "style": "cafe",   "position": [25.5, 0],     "size": [9, 7, 7],   "rotationDeg": -90, "color": "#f4f1ea", "model": null,
+      "signs": [{ "text": "소란 커피", "bg": "#3b2a20", "fg": "#f5e6c8" }], "umbrella": "#6a5acd" }
   ],
 
   "props": [
-    { "id": "lamp_1",        "zone": "zoneA", "position": [-18, -4.2], "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
-    { "id": "lamp_2",        "zone": "zoneB", "position": [-6, 4.2],   "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
-    { "id": "lamp_3",        "zone": "zoneC", "position": [1, -4.2],   "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
-    { "id": "lamp_4",        "zone": "zoneC", "position": [12, 4.2],   "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
-    { "id": "lamp_5",        "zone": "zoneD", "position": [18, -4.2],  "size": [0.3, 4.5, 0.3], "rotationDeg": 0, "color": "#444a52", "model": null },
-    { "id": "bus_sign",      "zone": "zoneB", "position": [-9.8, 4.1], "size": [0.15, 2.8, 0.15], "rotationDeg": 0, "color": "#2f6fd6", "model": null },
-    { "id": "bus_bench",     "zone": "zoneB", "position": [-8.2, 4.1], "size": [1.8, 0.5, 0.5], "rotationDeg": 0, "color": "#8a6a4a", "model": null },
-    { "id": "vending",       "zone": "zoneB", "position": [-3.5, 4.0], "size": [1, 1.9, 0.8],   "rotationDeg": 0, "color": "#e04848", "model": null },
-    { "id": "wall_photo",    "zone": "zoneC", "position": [8.5, 5.2],  "size": [8, 2.5, 0.4],   "rotationDeg": 0, "color": "#d9cfc0", "model": null }
+    { "id": "lamp_1",       "zone": "zoneA", "style": "lamp",       "position": [-18, -4.2],  "size": [0.3, 4.5, 0.3], "rotationDeg": -90, "color": "#444a52", "model": null },
+    { "id": "lamp_2",       "zone": "zoneB", "style": "lamp",       "position": [-6, 4.2],    "size": [0.3, 4.5, 0.3], "rotationDeg": 90,  "color": "#444a52", "model": null },
+    { "id": "lamp_3",       "zone": "zoneC", "style": "lamp",       "position": [1, -4.2],    "size": [0.3, 4.5, 0.3], "rotationDeg": -90, "color": "#444a52", "model": null },
+    { "id": "lamp_4",       "zone": "zoneC", "style": "lamp",       "position": [12, 4.2],    "size": [0.3, 4.5, 0.3], "rotationDeg": 90,  "color": "#444a52", "model": null },
+    { "id": "lamp_5",       "zone": "zoneD", "style": "lamp",       "position": [18, -4.2],   "size": [0.3, 4.5, 0.3], "rotationDeg": -90, "color": "#444a52", "model": null },
+
+    { "id": "tree_1",       "zone": "zoneA", "style": "tree",       "position": [-21, -4.0],  "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0, "model": null },
+    { "id": "tree_2",       "zone": "zoneA", "style": "tree",       "position": [-16.5, 4.0], "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0, "model": null },
+    { "id": "tree_3",       "zone": "zoneB", "style": "tree",       "position": [-7.5, -4.0], "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0, "model": null },
+    { "id": "tree_4",       "zone": "zoneD", "style": "tree",       "position": [14.5, -4.0], "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0, "model": null },
+    { "id": "tree_5",       "zone": "zoneD", "style": "tree",       "position": [14.2, 6.6],  "size": [3.4, 6.5, 3.4], "collider": [0.5, 3, 0.5], "rotationDeg": 0, "model": null },
+    { "id": "tree_6",       "zone": "zoneD", "style": "tree",       "position": [21, 11.6],   "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0, "model": null },
+
+    { "id": "bus_shelter",  "zone": "zoneB", "style": "busShelter", "position": [-8.6, 3.95], "size": [3.2, 2.6, 1.2], "collider": false, "rotationDeg": 180, "model": null,
+      "signs": [{ "text": "여름 정류장", "bg": "#1d4ed8", "fg": "#ffffff" }] },
+    { "id": "bus_sign",     "zone": "zoneB", "style": "signPost",   "position": [-10.6, 3.3], "size": [0.15, 2.8, 0.15], "rotationDeg": 180, "color": "#2f6fd6", "model": null },
+    { "id": "bus_bench",    "zone": "zoneB", "style": "bench",      "position": [-8.6, 4.1],  "size": [1.8, 0.5, 0.5], "rotationDeg": 180, "color": "#8a6a4a", "model": null },
+    { "id": "vending",      "zone": "zoneB", "style": "vending",    "position": [-3.5, 4.0],  "size": [1, 1.9, 0.8],   "rotationDeg": 180, "color": "#e04848", "model": null },
+    { "id": "wall_photo",   "zone": "zoneC", "style": "stoneWall",  "position": [8.5, 5.2],   "size": [8, 2.5, 0.4],   "rotationDeg": 0,   "color": "#d9cfc0", "model": null },
+
+    { "id": "pavilion",     "zone": "zoneD", "style": "pavilion",   "position": [18, 9],      "size": [4.2, 4.6, 4.2], "collider": false, "rotationDeg": 0, "model": null },
+    { "id": "plaza_bench",  "zone": "zoneD", "style": "bench",      "position": [21, 6.4],    "size": [1.8, 0.5, 0.5], "rotationDeg": 180, "model": null },
+    { "id": "plaza_bins",   "zone": "zoneD", "style": "bins",       "position": [14.6, 11.6], "size": [1.8, 1.1, 0.6], "rotationDeg": 0,   "model": null },
+    { "id": "plaza_fence",  "zone": "zoneD", "style": "fence",      "position": [19.5, 4.75], "size": [4, 0.9, 0.1],   "rotationDeg": 0,   "model": null }
   ]
 }
