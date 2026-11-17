@@ -1,5 +1,6 @@
 import { Cafe, Hanok, Modern, Mural, StoneWall } from './buildings.jsx'
 import { Bench, Bins, BusShelter, Fence, Lamp, Pavilion, SignPost, Tree, Vending } from './props.jsx'
+import { JM_STYLES } from './jm_japanese.jsx'
 import {
   Bollard,
   CherryTree,
@@ -37,6 +38,8 @@ export const STYLES = {
   signPost: SignPost,
   fence: Fence,
   vending: Vending,
+  // 애니메이션 구역(JM) 일본풍: jmTorii, jmMachiya, jmShrine, jmLantern
+  ...JM_STYLES,
   // 데이트 코스 (BK)
   hanokShop: HanokShop,
   hanokCafe: HanokCafe,
