@@ -1,0 +1,305 @@
+import * as THREE from 'three'
+
+// [3. 개발 > 기초개발/서비스] 혜진(HJ) 영화·드라마 구역 전용 텍스처
+// 이미지 파일 없이 캔버스로 그려요. 한 번 만든 건 캐시해서 재사용.
+// 등장하는 작품·포스터는 모두 가상이에요 (실제 작품·배우·로고 X).
+
+const cache = new Map()
+const SERIF = '"Noto Serif KR", "Nanum Myeongjo", "Batang", serif'
+
+function seeded(seed) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function canvasTexture(key, width, height, draw, { repeat = false } = {}) {
+  if (cache.has(key)) return cache.get(key)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null // 캔버스를 못 쓰는 환경이면 단색으로 표시
+  draw(ctx, width, height)
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.anisotropy = 8
+  if (repeat) texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+  cache.set(key, texture)
+  return texture
+}
+
+// 붉은 벽돌 (반장 엇갈림, 낡은 얼룩). 한 장 = 가로 1m × 세로 1m
+export function getRedBrickTexture() {
+  return canvasTexture(
+    'hj-red-brick',
+    256,
+    256,
+    (ctx, w, h) => {
+      const rand = seeded(42)
+      ctx.fillStyle = '#d9cbb8' // 줄눈
+      ctx.fillRect(0, 0, w, h)
+      const rows = 14
+      const bh = h / rows
+      const bw = w / 4
+      for (let r = 0; r < rows; r += 1) {
+        const offset = r % 2 ? bw / 2 : 0
+        for (let c = -1; c < 5; c += 1) {
+          const base = new THREE.Color('#a94a35').offsetHSL((rand() - 0.5) * 0.02, 0, (rand() - 0.5) * 0.12)
+          ctx.fillStyle = `#${base.getHexString()}`
+          ctx.fillRect(c * bw + offset + 2, r * bh + 2, bw - 4, bh - 3)
+        }
+      }
+      // 세월 얼룩
+      for (let i = 0; i < 30; i += 1) {
+        ctx.fillStyle = `rgba(60, 30, 20, ${0.04 + rand() * 0.06})`
+        ctx.beginPath()
+        ctx.arc(rand() * w, rand() * h, 6 + rand() * 18, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    },
+    { repeat: true },
+  )
+}
+
+// 가상 영화 포스터 「여름의 기억」 (정류장 뒷벽)
+export function getSummerPosterTexture() {
+  return canvasTexture('hj-poster-summer', 512, 720, (ctx, w, h) => {
+    const sky = ctx.createLinearGradient(0, 0, 0, h)
+    sky.addColorStop(0, '#8fd3e8')
+    sky.addColorStop(0.55, '#fde7c4')
+    sky.addColorStop(1, '#f2b48c')
+    ctx.fillStyle = sky
+    ctx.fillRect(0, 0, w, h)
+
+    // 해
+    const sun = ctx.createRadialGradient(w * 0.7, h * 0.32, 10, w * 0.7, h * 0.32, 120)
+    sun.addColorStop(0, 'rgba(255, 246, 214, 1)')
+    sun.addColorStop(1, 'rgba(255, 246, 214, 0)')
+    ctx.fillStyle = sun
+    ctx.fillRect(0, 0, w, h)
+
+    // 언덕 + 정류장 실루엣
+    ctx.fillStyle = '#7fae8a'
+    ctx.beginPath()
+    ctx.moveTo(0, h * 0.72)
+    ctx.quadraticCurveTo(w * 0.4, h * 0.62, w, h * 0.7)
+    ctx.lineTo(w, h)
+    ctx.lineTo(0, h)
+    ctx.fill()
+    ctx.fillStyle = '#3f5a4e'
+    ctx.fillRect(w * 0.18, h * 0.58, 8, h * 0.14) // 기둥
+    ctx.fillRect(w * 0.42, h * 0.58, 8, h * 0.14)
+    ctx.fillRect(w * 0.15, h * 0.56, w * 0.32, 10) // 지붕
+
+    // 우산을 같이 쓴 두 사람 실루엣
+    ctx.fillStyle = '#2c2a29'
+    ;[0.62, 0.72].forEach((x) => {
+      ctx.beginPath()
+      ctx.arc(w * x, h * 0.6, 14, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillRect(w * x - 12, h * 0.62, 24, 70)
+    })
+    ctx.fillStyle = '#c86d51'
+    ctx.beginPath()
+    ctx.arc(w * 0.67, h * 0.585, 70, Math.PI, 0)
+    ctx.fill()
+
+    // 제목 (명조)
+    ctx.fillStyle = '#2c2a29'
+    ctx.textAlign = 'center'
+    ctx.font = `900 64px ${SERIF}`
+    ctx.fillText('여름의 기억', w / 2, h * 0.16)
+    ctx.font = `500 22px ${SERIF}`
+    ctx.fillText('그 정류장에서, 우리는 처음 만났다', w / 2, h * 0.22)
+    ctx.font = `600 18px ${SERIF}`
+    ctx.fillStyle = '#4a4542'
+    ctx.fillText('가상 영화 · SceneWalk 시네마 제작', w / 2, h * 0.94)
+
+    // 종이 테두리
+    ctx.strokeStyle = '#fffdf9'
+    ctx.lineWidth = 14
+    ctx.strokeRect(7, 7, w - 14, h - 14)
+  })
+}
+
+// 포털 바닥 소용돌이 (가운데가 밝은 나선)
+export function getSwirlTexture() {
+  return canvasTexture('hj-swirl', 512, 512, (ctx, w, h) => {
+    const cx = w / 2
+    const cy = h / 2
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, w / 2)
+    glow.addColorStop(0, 'rgba(255, 236, 196, 0.95)')
+    glow.addColorStop(0.45, 'rgba(232, 160, 110, 0.55)')
+    glow.addColorStop(1, 'rgba(200, 109, 81, 0)')
+    ctx.fillStyle = glow
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = 'rgba(255, 250, 235, 0.7)'
+    ctx.lineCap = 'round'
+    for (let arm = 0; arm < 4; arm += 1) {
+      ctx.lineWidth = 6
+      ctx.beginPath()
+      for (let t = 0; t < 1; t += 0.01) {
+        const angle = arm * (Math.PI / 2) + t * Math.PI * 3
+        const r = t * (w / 2 - 20)
+        const x = cx + Math.cos(angle) * r
+        const y = cy + Math.sin(angle) * r
+        if (t === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+  })
+}
+
+// 빈티지 골목 벽화 "SEOUL 1988" (가상 레트로 그래피티 — 실제 작품 로고 아님)
+export function getRetroMuralTexture() {
+  return canvasTexture('hj-mural-1988', 512, 640, (ctx, w, h) => {
+    ctx.fillStyle = '#d9cdb8'
+    ctx.fillRect(0, 0, w, h)
+    // 낡은 페인트 얼룩
+    const rand = seeded(1988)
+    for (let i = 0; i < 40; i += 1) {
+      ctx.fillStyle = `rgba(${120 + rand() * 60}, ${100 + rand() * 40}, 90, ${0.08 + rand() * 0.1})`
+      ctx.beginPath()
+      ctx.arc(rand() * w, rand() * h, 10 + rand() * 40, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // 노을 원
+    const sun = ctx.createLinearGradient(0, h * 0.2, 0, h * 0.6)
+    sun.addColorStop(0, '#f6b26b')
+    sun.addColorStop(1, '#e06c5a')
+    ctx.fillStyle = sun
+    ctx.beginPath()
+    ctx.arc(w / 2, h * 0.42, w * 0.36, 0, Math.PI * 2)
+    ctx.fill()
+    // 큰 글씨 (테두리 있는 레트로 문자)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineJoin = 'round'
+    const shout = (text, y, size, fill) => {
+      ctx.font = `900 ${size}px Impact, "Arial Black", sans-serif`
+      ctx.lineWidth = size * 0.16
+      ctx.strokeStyle = '#2c2a29'
+      ctx.strokeText(text, w / 2, y)
+      ctx.fillStyle = fill
+      ctx.fillText(text, w / 2, y)
+    }
+    ctx.save()
+    ctx.translate(w / 2, h * 0.42)
+    ctx.rotate(-0.12)
+    ctx.translate(-w / 2, -h * 0.42)
+    shout('SEOUL', h * 0.32, 120, '#fff4e0')
+    shout('1988', h * 0.5, 150, '#f2c14e')
+    ctx.restore()
+    ctx.font = `700 34px ${SERIF}`
+    ctx.fillStyle = '#7a2e2e'
+    ctx.fillText('VINTAGE ALLEY', w / 2, h * 0.74)
+    // 아래쪽 줄무늬 띠
+    ;['#2f6b4f', '#f2c14e', '#c86d51'].forEach((c, i) => {
+      ctx.fillStyle = c
+      ctx.fillRect(0, h * 0.84 + i * 22, w, 16)
+    })
+  })
+}
+
+// A형 입간판 글씨 (세로쓰기, 나무판)
+export function getAFrameTexture(text) {
+  const lines = String(text).split('\n')
+  return canvasTexture(`hj-aframe-${text}`, 256, 384, (ctx, w, h) => {
+    const wood = ctx.createLinearGradient(0, 0, w, 0)
+    wood.addColorStop(0, '#6b4a33')
+    wood.addColorStop(0.5, '#7d5a3e')
+    wood.addColorStop(1, '#6b4a33')
+    ctx.fillStyle = wood
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#4a3324'
+    ctx.lineWidth = 12
+    ctx.strokeRect(6, 6, w - 12, h - 12)
+    ctx.fillStyle = '#f9f1df'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const size = lines.length > 2 ? 52 : 60
+    ctx.font = `900 ${size}px ${SERIF}`
+    const total = lines.length * size * 1.25
+    lines.forEach((line, i) => ctx.fillText(line, w / 2, h / 2 - total / 2 + size * 0.62 + i * size * 1.25))
+  })
+}
+
+// 가로로 긴 나무 현판 (입구 게이트용). 위에 작은 부제, 아래 큰 제목
+export function getWoodSignTexture(title, subtitle = '') {
+  return canvasTexture(`hj-woodsign-${title}-${subtitle}`, 768, 220, (ctx, w, h) => {
+    const wood = ctx.createLinearGradient(0, 0, 0, h)
+    wood.addColorStop(0, '#8a5f3f')
+    wood.addColorStop(0.5, '#a0714c')
+    wood.addColorStop(1, '#7a5236')
+    ctx.fillStyle = wood
+    ctx.fillRect(0, 0, w, h)
+    // 나뭇결
+    const rand = seeded(5)
+    ctx.strokeStyle = 'rgba(60, 35, 20, 0.18)'
+    for (let i = 0; i < 14; i += 1) {
+      ctx.lineWidth = 1 + rand() * 2
+      ctx.beginPath()
+      const y = rand() * h
+      ctx.moveTo(0, y)
+      ctx.bezierCurveTo(w * 0.3, y + 8, w * 0.6, y - 8, w, y + 4)
+      ctx.stroke()
+    }
+    ctx.strokeStyle = '#4a3324'
+    ctx.lineWidth = 14
+    ctx.strokeRect(7, 7, w - 14, h - 14)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    if (subtitle) {
+      ctx.font = `700 34px ${SERIF}`
+      ctx.fillStyle = '#f6d9b8'
+      ctx.fillText(subtitle, w / 2, h * 0.3)
+    }
+    ctx.font = `900 ${subtitle ? 84 : 96}px ${SERIF}`
+    ctx.fillStyle = '#fff6e6'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
+    ctx.shadowBlur = 6
+    ctx.fillText(title, w / 2, subtitle ? h * 0.64 : h / 2)
+  })
+}
+
+// 줄무늬 차양
+export function getStripeTexture(a, b) {
+  return canvasTexture(`hj-stripe-${a}-${b}`, 128, 16, (ctx, w, h) => {
+    for (let i = 0; i < 8; i += 1) {
+      ctx.fillStyle = i % 2 ? b : a
+      ctx.fillRect((i * w) / 8, 0, w / 8, h)
+    }
+  })
+}
+
+// 필름 스트립 (가장자리 구멍 + 프레임 칸)
+export function getFilmStripTexture() {
+  return canvasTexture(
+    'hj-filmstrip',
+    512,
+    64,
+    (ctx, w, h) => {
+      ctx.fillStyle = '#1f1b18'
+      ctx.fillRect(0, 0, w, h)
+      ctx.fillStyle = '#f9f6ee'
+      for (let x = 6; x < w; x += 22) {
+        ctx.fillRect(x, 5, 11, 8)
+        ctx.fillRect(x, h - 13, 11, 8)
+      }
+      const frames = ['#f2b48c', '#8fd3e8', '#fde7c4', '#c86d51']
+      for (let i = 0; i < 4; i += 1) {
+        ctx.fillStyle = frames[i]
+        ctx.globalAlpha = 0.85
+        ctx.fillRect(i * (w / 4) + 8, 18, w / 4 - 16, h - 36)
+      }
+      ctx.globalAlpha = 1
+    },
+    { repeat: true },
+  )
+}
