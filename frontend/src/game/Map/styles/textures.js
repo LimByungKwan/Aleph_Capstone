@@ -39,7 +39,7 @@ function makeCanvasTexture(key, width, height, draw, repeat = true) {
 
 // ── 바닥 무늬 (반복용) ─────────────────────────
 // 각 무늬 한 장이 실제로 몇 m인지 (반복 횟수 계산에 사용)
-export const TILE_METERS = { brick: 1, asphalt: 4, tile: 1, stone: 2 }
+export const TILE_METERS = { brick: 1, asphalt: 4, tile: 1, stone: 2, paver: 2 }
 
 const PATTERNS = {
   // 붉은 보도블록 (어긋나게 쌓기)
@@ -86,6 +86,30 @@ const PATTERNS = {
         for (let x = 0; x < n; x++) {
           ctx.fillStyle = vary('#6d9c85', random, 0.1)
           ctx.fillRect(x * s + 3, y * s + 3, s - 6, s - 6)
+        }
+      }
+    }),
+
+  // 카페 거리용 분홍빛 돌 포장 (가끔 문양 돌)
+  paver: () =>
+    makeCanvasTexture('paver', 256, 256, (ctx, w, h) => {
+      const random = seededRandom(41)
+      ctx.fillStyle = '#b9a59c'
+      ctx.fillRect(0, 0, w, h)
+      const rows = 4
+      const rh = h / rows
+      for (let r = 0; r < rows; r++) {
+        let x = r % 2 ? -32 : 0
+        while (x < w) {
+          const sw = 48 + Math.floor(random() * 3) * 16
+          ctx.fillStyle = vary('#dcc8bf', random, 0.06)
+          ctx.fillRect(x + 3, r * rh + 3, sw - 6, rh - 6)
+          if (random() < 0.12) {
+            ctx.strokeStyle = 'rgba(150,120,110,0.6)'
+            ctx.lineWidth = 3
+            ctx.strokeRect(x + 14, r * rh + 14, sw - 28, rh - 28)
+          }
+          x += sw
         }
       }
     }),
@@ -214,6 +238,91 @@ export function getSignTexture(text, bg = '#ffffff', fg = '#222222') {
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(text, w / 2, h / 2 + 4)
+    },
+    false,
+  )
+}
+
+// 줄무늬 차양 (색 + 흰색)
+export function getStripeTexture(color) {
+  return makeCanvasTexture(
+    `stripe:${color}`,
+    128,
+    32,
+    (ctx, w, h) => {
+      const n = 8
+      for (let i = 0; i < n; i++) {
+        ctx.fillStyle = i % 2 ? '#fffaf5' : color
+        ctx.fillRect((i * w) / n, 0, w / n, h)
+      }
+    },
+    false,
+  )
+}
+
+// 원형 광장 바닥 (동심원 + 방사선 + 초록 띠)
+export function getCirclePlazaTexture() {
+  return makeCanvasTexture(
+    'circle-plaza',
+    512,
+    512,
+    (ctx, w) => {
+      const c = w / 2
+      const rings = [
+        [1.0, '#d9ccc2'],
+        [0.86, '#cbbdb2'],
+        [0.74, '#a9cf95'],
+        [0.64, '#e3d8ce'],
+        [0.5, '#cfc1b6'],
+        [0.36, '#e6dcd3'],
+      ]
+      for (const [r, color] of rings) {
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.arc(c, c, r * c, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.strokeStyle = 'rgba(140,120,110,0.45)'
+      ctx.lineWidth = 3
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2
+        ctx.beginPath()
+        ctx.moveTo(c + Math.cos(a) * c * 0.36, c + Math.sin(a) * c * 0.36)
+        ctx.lineTo(c + Math.cos(a) * c * 0.64, c + Math.sin(a) * c * 0.64)
+        ctx.moveTo(c + Math.cos(a) * c * 0.74, c + Math.sin(a) * c * 0.74)
+        ctx.lineTo(c + Math.cos(a) * c, c + Math.sin(a) * c)
+        ctx.stroke()
+      }
+    },
+    false,
+  )
+}
+
+// 빛나는 네온 날개 (배경 투명)
+export function getNeonWingsTexture() {
+  return makeCanvasTexture(
+    'neon-wings',
+    512,
+    256,
+    (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h)
+      const cx = w / 2
+      const cy = h * 0.55
+      ctx.lineCap = 'round'
+      for (const side of [-1, 1]) {
+        for (let k = 0; k < 6; k++) {
+          const len = 200 - k * 26
+          const lift = 70 - k * 8
+          ctx.shadowColor = '#ff7eb6'
+          ctx.shadowBlur = 18
+          ctx.strokeStyle = k % 2 ? '#ffc2dc' : '#fff4fa'
+          ctx.lineWidth = 7
+          ctx.beginPath()
+          ctx.moveTo(cx + side * 14, cy - 10 + k * 12)
+          ctx.quadraticCurveTo(cx + side * len * 0.55, cy - lift - k * 6, cx + side * len, cy - 40 + k * 22)
+          ctx.stroke()
+        }
+      }
     },
     false,
   )

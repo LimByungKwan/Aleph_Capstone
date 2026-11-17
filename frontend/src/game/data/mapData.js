@@ -1,4 +1,5 @@
 import hub from './hub.json'
+import { terrainHeightAt } from '../Map/terrain.js'
 
 // 맵 데이터를 한곳에 모아 주는 파일.
 // - hub.json (중앙 광장 + 길)
@@ -40,13 +41,39 @@ function placeMarkings(markings = [], zone) {
   }))
 }
 
+// 지형(언덕·데크): 중심·점 좌표를 절대 좌표로
+function placeTerrain(terrain = [], zone) {
+  const [ox, oz] = zone.origin
+  return terrain.map((item) => ({
+    ...item,
+    id: `${zone.zoneId}/${item.id}`,
+    ...(item.center && { center: offsetPoint(item.center, zone.origin) }),
+    ...(item.position && { position: offsetPoint(item.position, zone.origin) }),
+    ...(item.points && { points: item.points.map(([x, z, h]) => [x + ox, z + oz, h]) }),
+    ...(item.from && { from: [item.from[0] + ox, item.from[1] + oz, item.from[2]] }),
+    ...(item.to && { to: [item.to[0] + ox, item.to[1] + oz, item.to[2]] }),
+  }))
+}
+
+const terrain = [...(hub.terrain ?? []), ...zones.flatMap((zone) => placeTerrain(zone.terrain, zone))]
+
+// "onTerrain": true인 건물·소품은 언덕 높이만큼 자동으로 올려 줌 (elevation은 거기에 더하는 값)
+function settle(items) {
+  return items.map((item) =>
+    item.onTerrain
+      ? { ...item, elevation: terrainHeightAt(terrain, item.position[0], item.position[1]) + (item.elevation ?? 0) }
+      : item,
+  )
+}
+
 // 맵 전체 (모든 좌표가 절대 좌표)
 export const layout = {
   ground: hub.ground,
   playerStart: hub.playerStart,
   playerStartYawDeg: hub.playerStartYawDeg ?? 0,
+  terrain,
   roads: [...hub.roads, ...zones.flatMap((zone) => placeItems(zone.roads, zone))],
   markings: [...(hub.markings ?? []), ...zones.flatMap((zone) => placeMarkings(zone.markings, zone))],
-  buildings: [...hub.buildings, ...zones.flatMap((zone) => placeItems(zone.buildings, zone))],
-  props: [...hub.props, ...zones.flatMap((zone) => placeItems(zone.props, zone))],
+  buildings: settle([...hub.buildings, ...zones.flatMap((zone) => placeItems(zone.buildings, zone))]),
+  props: settle([...hub.props, ...zones.flatMap((zone) => placeItems(zone.props, zone))]),
 }
