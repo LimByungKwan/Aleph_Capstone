@@ -1,4 +1,5 @@
-import { CuboidCollider, RigidBody } from '@react-three/rapier'
+import { CuboidCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
+import { beachBounds, seabed } from './seabed.js'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { TerrainColliders } from './Terrain.jsx'
@@ -22,7 +23,12 @@ export default function Colliders() {
     <group name="colliders">
       {/* 바닥: 윗면이 y=0이 되도록 두께 1m 박스를 아래로 내림 */}
       <RigidBody type="fixed" colliders={false} name="ground">
-        <CuboidCollider args={[halfW, 0.5, halfD]} position={[cx, -0.5, cz]} />
+        {[
+          [cx-halfW,cx+halfW,cz-halfD,beachBounds[2]],
+          [beachBounds[1],cx+halfW,beachBounds[2],cz+halfD],
+        ].map(([x0,x1,z0,z1]) =>
+          <CuboidCollider key={z0} args={[(x1-x0)/2,.5,(z1-z0)/2]} position={[(x0+x1)/2,-.5,(z0+z1)/2]} />)}
+        <TrimeshCollider args={seabed} />
       </RigidBody>
 
       {/* 바닥 가장자리 보이지 않는 벽 4면 */}

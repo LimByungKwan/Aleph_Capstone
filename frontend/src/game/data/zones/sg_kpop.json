@@ -9,16 +9,80 @@
   "entrance": { "position": [40, 0], "rotationDeg": 90, "width": 6 },
 
   "roads": [
-    { "id": "sg_entry", "style": "asphalt", "position": [30, 0], "size": [20, 0.02, 6], "rotationDeg": 0 }
+    {"id": "sg_market_rose", "style": "brick", "position": [-1, -16], "size": [27, 0.065, 3.8]},
+    {"id": "sg_market_link_rose", "style": "tile", "position": [3, -12.6], "size": [3, 0.055, 3.3]},
+    {"id": "sg_market_tide", "style": "brick", "position": [-1, 16], "size": [27, 0.065, 3.8]},
+    {"id": "sg_market_link_tide", "style": "tile", "position": [3, 12.6], "size": [3, 0.055, 3.3]},
+    {"id": "sg_fan_walk", "style": "stone", "position": [8, 26], "size": [3.4, 0.04, 34]},
+    {"id": "sg_alley_walk", "style": "brick", "position": [17, 7], "size": [18, 0.055, 2]},
+    {"id": "sg_backstage_walk", "style": "stone", "position": [-16, 0], "size": [3, 0.04, 48]},
+    {"id": "sg_studio_walk", "style": "stone", "position": [-21, 18.5], "size": [11, 0.055, 2.4]},
+    {"id": "sg_residence_walk", "style": "stone", "position": [-21, -20.5], "size": [11, 0.055, 2.4]},
+    {"id": "sg_seaside_link", "style": "stone", "position": [-16, 34], "size": [3, 0.04, 20]},
+    {"id": "sg_cafe_walk", "style": "brick", "position": [18, -5], "size": [19, 0.04, 2]},
+    { "id": "sg_entry", "style": "asphalt", "position": [30, 0], "size": [20, 0.02, 6], "rotationDeg": 0 },
+    { "id": "sg_audience", "style": "tile", "position": [5.5, 0], "size": [15, 0.02, 22], "rotationDeg": 0 },
+    { "id": "sg_alley_floor", "style": "brick", "position": [26, 19.5], "size": [5, 0.02, 33], "rotationDeg": 0 }
   ],
 
   "markings": [],
 
   "buildings": [
-    { "id": "sg_box_1", "position": [-3, -8], "size": [8, 8, 8],  "rotationDeg": 0, "color": "#9a9a9a", "model": null },
-    { "id": "sg_box_2", "position": [-8, 7],  "size": [6, 10, 6], "rotationDeg": 0, "color": "#9a9a9a", "model": null },
-    { "id": "sg_box_3", "position": [6, 9],   "size": [7, 6, 7],  "rotationDeg": 0, "color": "#9a9a9a", "model": null }
+    { "id": "sg_stage", "style": "stage", "position": [-7.5, 0], "size": [22, 10, 11], "rotationDeg": 90, "model": null },
+    { "id": "sg_ent", "style": "agencyLobby", "position": [-27, 0], "size": [20, 12, 14], "rotationDeg": 90, "color": "#d6cee0", "model": null, "signs": [{ "text": "SUNGRAY 엔터테인먼트", "bg": "#30223b", "awning": "#845879", "fg": "#f4daf7" }] },
+    { "id": "sg_dorm", "style": "artistLounge", "position": [-26, -27], "size": [16, 10, 10], "rotationDeg": 0, "color": "#e2d6c9", "model": null, "signs": [{ "text": "아티스트 레지던스", "bg": "#4e4748", "awning": "#8ba99c", "fg": "#fff0ce" }] },
+    { "id": "sg_studio", "style": "soundStudio", "position": [-26, 27], "size": [16, 8, 10], "rotationDeg": 180, "color": "#c8d9d7", "model": null, "signs": [{ "text": "물결 레코딩 스튜디오", "bg": "#214951", "awning": "#41646c", "fg": "#ddfff6" }] },
+    { "id": "sg_goods", "style": "popupStore", "position": [31, -12], "size": [10, 8, 8], "rotationDeg": 0, "color": "#e9d5ff", "model": null,
+      "signs": [{ "text": "SUNGRAY 공식 팝업스토어", "bg": "#2b1d42", "fg": "#f0abfc", "awning": "#9b5cff" }] },
+    { "id": "sg_bdaycafe", "style": "bdayCafe", "position": [19, -12], "size": [10, 7, 8], "rotationDeg": 0, "color": "#fff1f7", "umbrella": "#f472b6", "model": null,
+      "signs": [{ "text": "카페 물비늘", "bg": "#fff1f5", "fg": "#db2777" }] },
+
+    { "id": "sg_alley_w1", "style": "practiceRoom", "position": [20.5, 13], "size": [8, 7, 6], "rotationDeg": 90, "color": "#d8d0e8", "model": null,
+      "signs": [{ "text": "24시 별밤 연습실", "bg": "#1e1b4b", "fg": "#a5b4fc", "awning": "#6366f1" }] },
+    { "id": "sg_alley_w2", "style": "videoShop", "position": [20.5, 22], "size": [8, 9, 6], "rotationDeg": 90, "color": "#c9c2d6", "model": null,
+      "signs": [{ "text": "레트로 비디오", "bg": "#111827", "fg": "#f472b6", "awning": "#db2777" }] },
+    { "id": "sg_alley_w3", "style": "snackBar", "position": [20.5, 31], "size": [8, 8, 6], "rotationDeg": 90, "color": "#e4dccf", "model": null,
+      "signs": [{ "text": "골목 분식", "bg": "#fff7ed", "fg": "#ea580c", "awning": "#f97316" }] },
+    { "id": "sg_alley_e1", "style": "coinKaraoke", "position": [31.5, 13], "size": [8, 8, 6], "rotationDeg": -90, "color": "#cfd6e4", "model": null,
+      "signs": [{ "text": "네온 코인노래방", "bg": "#0f172a", "fg": "#22d3ee", "awning": "#0891b2" }] },
+    { "id": "sg_alley_e2", "style": "recordShop", "position": [31.5, 22], "size": [8, 6.5, 6], "rotationDeg": -90, "color": "#e8d5e4", "model": null,
+      "signs": [{ "text": "한밤 레코드", "bg": "#1c1917", "fg": "#fbbf24", "awning": "#b45309" }] },
+    { "id": "sg_alley_e3", "style": "photoStudio", "position": [31.5, 31], "size": [8, 10, 6], "rotationDeg": -90, "color": "#d5dde8", "model": null,
+      "signs": [{ "text": "구름 사진관", "bg": "#f0f9ff", "fg": "#0369a1", "awning": "#38bdf8" }] },
+    { "id": "sg_alley_end", "position": [26, 36], "size": [5, 6, 0.6], "rotationDeg": 180, "color": "#4c1d95", "model": null }
   ],
 
-  "props": []
+  "props": [
+    {"id": "sg_cart_rose0", "style": "festivalCart", "position": [-10.0, -19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "grill", "signs": [{"text": "숯불 닭꼬치", "bg": "#ab5056", "fg": "#fff0d9"}]},
+    {"id": "sg_cart_rose1", "style": "festivalCart", "position": [-3.5999999999999996, -19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "cakes", "signs": [{"text": "별빛 미니케이크", "bg": "#ac6588", "fg": "#fff0d9"}]},
+    {"id": "sg_cart_rose2", "style": "festivalCart", "position": [2.8000000000000007, -19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "fan", "signs": [{"text": "응원봉 공방", "bg": "#786197", "fg": "#fff0d9"}]},
+    {"id": "sg_market_bench_rose0", "style": "bench", "position": [-7, -13.25], "size": [2, 0.9, 0.7], "rotationDeg": 180},
+    {"id": "sg_market_bench_rose1", "style": "bench", "position": [0, -13.25], "size": [2, 0.9, 0.7], "rotationDeg": 180},
+    {"id": "sg_cart_tide0", "style": "festivalCart", "position": [-10.0, 19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "fish", "signs": [{"text": "부산 어묵", "bg": "#af7053", "fg": "#fff0d9"}]},
+    {"id": "sg_cart_tide1", "style": "festivalCart", "position": [-3.5999999999999996, 19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "drink", "signs": [{"text": "물비늘 에이드", "bg": "#428783", "fg": "#fff0d9"}]},
+    {"id": "sg_cart_tide2", "style": "festivalCart", "position": [2.8000000000000007, 19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "cakes", "signs": [{"text": "파도 디저트", "bg": "#6084a8", "fg": "#fff0d9"}]},
+    {"id": "sg_market_bench_tide0", "style": "bench", "position": [-7, 13.25], "size": [2, 0.9, 0.7], "rotationDeg": 0},
+    {"id": "sg_market_bench_tide1", "style": "bench", "position": [0, 13.25], "size": [2, 0.9, 0.7], "rotationDeg": 0},
+    {"id": "sg_coast", "style": "sungrayBeach", "position": [0, 0], "size": [1, 1, 1], "rotationDeg": 0, "collider": false},
+    {"id": "sg_beach_seat0", "style": "bench", "position": [-31, 42.8], "size": [2, 0.9, 0.76], "rotationDeg": 0},
+    {"id": "sg_beach_seat1", "style": "bench", "position": [-22, 42.8], "size": [2, 0.9, 0.76], "rotationDeg": 0},
+    {"id": "sg_beach_seat2", "style": "bench", "position": [-9, 42.8], "size": [2, 0.9, 0.76], "rotationDeg": 0},
+    {"id": "sg_beach_seat3", "style": "bench", "position": [2, 42.8], "size": [2, 0.9, 0.76], "rotationDeg": 0},
+    {"id": "sg_fan_lamp0", "style": "lamp", "position": [5.7, 13], "size": [0.35, 3.7, 0.35], "rotationDeg": 0},
+    {"id": "sg_fan_cherry0", "style": "cherryTree", "position": [11.8, 13], "size": [3.2, 4.3, 3.2], "rotationDeg": 0, "collider": [0.45, 3, 0.45]},
+    {"id": "sg_fan_lamp1", "style": "lamp", "position": [5.7, 24], "size": [0.35, 3.7, 0.35], "rotationDeg": 0},
+    {"id": "sg_fan_cherry1", "style": "cherryTree", "position": [11.8, 24], "size": [3.2, 4.3, 3.2], "rotationDeg": 0, "collider": [0.45, 3, 0.45]},
+    {"id": "sg_fan_lamp2", "style": "lamp", "position": [5.7, 35], "size": [0.35, 3.7, 0.35], "rotationDeg": 0},
+    {"id": "sg_fan_cherry2", "style": "cherryTree", "position": [11.8, 35], "size": [3.2, 4.3, 3.2], "rotationDeg": 0, "collider": [0.45, 3, 0.45]},
+    {"id": "sg_backstage_tree0", "style": "tree", "position": [-13.2, -13], "size": [3.5, 4.8, 3.5], "rotationDeg": 0, "collider": [0.5, 4, 0.5]},
+    {"id": "sg_backstage_tree1", "style": "tree", "position": [-13.2, 8], "size": [3.5, 4.8, 3.5], "rotationDeg": 0, "collider": [0.5, 4, 0.5]},
+    {"id": "sg_backstage_tree2", "style": "tree", "position": [-13.2, 30], "size": [3.5, 4.8, 3.5], "rotationDeg": 0, "collider": [0.5, 4, 0.5]},
+    {"id": "sg_walk_sign0", "style": "signPost", "position": [11, 10], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "촬영 골목 · 해변 산책로", "bg": "#365762", "fg": "#fff2da"}]},
+    {"id": "sg_walk_sign1", "style": "signPost", "position": [4.8, 40], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "물비늘 해수욕장", "bg": "#365762", "fg": "#fff2da"}]},
+    {"id": "sg_walk_sign2", "style": "signPost", "position": [-19, 40], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "SUNGRAY 선셋 데크", "bg": "#365762", "fg": "#fff2da"}]},
+    { "id": "sg_alley_lamp1", "style": "lamp", "position": [23.8, 17.5], "size": [0.3, 4.5, 0.3], "rotationDeg": 90 },
+    { "id": "sg_alley_lamp2", "style": "lamp", "position": [28.2, 26.5], "size": [0.3, 4.5, 0.3], "rotationDeg": -90 },
+    { "id": "sg_alley_vending", "style": "vending", "position": [24.1, 33], "size": [1, 1.9, 0.8], "rotationDeg": 90, "color": "#9b5cff" },
+    { "id": "sg_alley_bins", "style": "bins", "position": [28.3, 10], "size": [1.8, 1.1, 0.6], "rotationDeg": -90 }
+  ]
 }

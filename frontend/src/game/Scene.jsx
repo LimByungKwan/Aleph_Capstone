@@ -12,6 +12,7 @@ import Player, { KEYBOARD_MAP } from './Player/Player.jsx'
 import FirstPersonCamera from './Player/FirstPersonCamera.jsx'
 import FollowCamera from './Player/FollowCamera.jsx'
 import PlaceSensors from './Interaction/PlaceSensors.jsx'
+import FootSplashes from './Player/FootSplashes.jsx'
 import InteractionKeys from './Interaction/InteractionKeys.jsx'
 import { useGameStore } from '../store/gameStore.js'
 import {
@@ -73,6 +74,7 @@ export default function Scene() {
               {playing && (
                 <>
                   <Player playerRef={playerRef} showModel={!firstPerson} />
+                  <FootSplashes playerRef={playerRef} />
                   <PlaceSensors playerRef={playerRef} />
                   {firstPerson ? <FirstPersonCamera playerRef={playerRef} /> : <FollowCamera playerRef={playerRef} />}
                 </>

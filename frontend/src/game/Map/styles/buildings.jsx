@@ -148,7 +148,7 @@ export function Modern({ item }) {
             {shop.text && (
               <mesh position={[cx, 3.6, d / 2 + 0.05]}>
                 <planeGeometry args={[shopW - 0.6, 0.62]} />
-                <meshStandardMaterial map={getSignTexture(shop.text, shop.bg, shop.fg)} />
+                <meshStandardMaterial map={getSignTexture(shop.text, shop.bg, shop.fg, (shopW - 0.6) / 0.62)} />
               </mesh>
             )}
             {i > 0 && (
@@ -230,7 +230,7 @@ export function Cafe({ item }) {
       {sign && (
         <mesh position={[0, 4.15, d / 2 + 0.04]}>
           <planeGeometry args={[w * 0.55, 0.6]} />
-          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg)} />
+          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg, (w * 0.55) / 0.6)} />
         </mesh>
       )}
       {/* 옥상 데크 + 난간 */}
