@@ -35,8 +35,24 @@ export const CAMERA_START = [0, 200, 170] // 광장 남쪽 위에서 맵 전체�
 export const CAMERA_TARGET = [0, 0, 0]
 export const CAMERA_MAX_ZOOM_OUT = 380
 
-// 태양 방향 (하늘 색과 그림자 방향이 같이 바뀜)
+// 태양 방향 (하늘 빛번짐과 그림자 방향이 같이 바뀜)
 export const SUN_POSITION = [90, 160, 60]
+
+// ── 하늘 (파스텔) ────────────────────────────
+export const SKY_COLORS = {
+  top: '#4f9de8', // 머리 위 하늘
+  middle: '#9ccdf8', // 중간
+  horizon: '#ffd7c8', // 지평선 (복숭아빛)
+  sun: '#fff1c7', // 태양 빛번짐
+  fog: '#f3d9d2', // 멀리 있는 것이 섞여 드는 색 (지평선과 비슷하게)
+  outerGround: '#c9dcb0', // 맵 바깥 풀밭
+  cloudGlow: '#ffd9e4', // 구름에 살짝 도는 분홍빛
+}
+export const FOG_NEAR = 360 // 이 거리부터 안개가 시작 (m) — 맵 안은 선명하게, 바깥만 흐리게
+export const FOG_FAR = 900 // 이 거리에서 완전히 지평선 색
+export const SHOW_CLOUDS = true
+export const CLOUDS_DRIFT = true // 구름이 천천히 흘러감
+export const SHOW_MOUNTAINS = true // 맵 둘레 먼 산
 export const SHADOW_AREA = 150 // 그림자가 생기는 범위 (중심에서 ±m)
 
 // 상호작용 지점 타입별 색

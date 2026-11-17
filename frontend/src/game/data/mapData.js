@@ -52,6 +52,13 @@ function placeTerrain(terrain = [], zone) {
     ...(item.points && { points: item.points.map(([x, z, h]) => [x + ox, z + oz, h]) }),
     ...(item.from && { from: [item.from[0] + ox, item.from[1] + oz, item.from[2]] }),
     ...(item.to && { to: [item.to[0] + ox, item.to[1] + oz, item.to[2]] }),
+    ...(item.rect && { rect: [item.rect[0] + ox, item.rect[1] + oz, item.rect[2] + ox, item.rect[3] + oz] }),
+    ...(item.rails && {
+      rails: item.rails.map((rail) => {
+        const shift = rail.edge === 'north' || rail.edge === 'south' ? ox : oz
+        return { ...rail, gaps: (rail.gaps ?? []).map(([a, b]) => [a + shift, b + shift]) }
+      }),
+    }),
   }))
 }
 

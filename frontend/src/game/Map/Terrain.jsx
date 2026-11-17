@@ -3,8 +3,9 @@ import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
-import { buildDeck, buildHill, buildStairs, ringPieces, terrainHeightAt, TOWER, towerColliderPieces } from './terrain.js'
-import { Ball, Cyl, GEO, Instances, mat } from './styles/kit.jsx'
+import { buildDeck, buildHill, buildPlatform, buildStairs, ringPieces, terrainHeightAt, TOWER, towerColliderPieces } from './terrain.js'
+import { Ball, Cyl, GEO, Instances, mat, texMat } from './styles/kit.jsx'
+import { getTiledTexture } from './styles/textures.js'
 
 // 구역 파일의 "terrain" 항목을 그림: 언덕(hill), 데크 산책로(deck), 계단(stairs), 들어갈 수 있는 전망 타워(tower)
 // 화면용(<Terrain />), 충돌용(<TerrainColliders />), 움직이는 엘리베이터(<Elevators />)가 같은 계산 결과를 써요.
@@ -29,8 +30,35 @@ export default function Terrain() {
     if (item.type === 'deck') return <DeckMesh key={item.id} deck={item} />
     if (item.type === 'stairs') return <StairsMesh key={item.id} stairs={item} />
     if (item.type === 'tower') return <TowerMesh key={item.id} tower={item} />
+    if (item.type === 'platform') return <PlatformMesh key={item.id} platform={item} />
     return null
   })
+}
+
+// ── 테라스 단: 돌 옹벽 몸통 + 위 포장 바닥 + 난간 + 줄 전구 ──
+const RAIL_MAT = mat('#3b3633')
+const BULB = mat('#fff6d8', { emissive: '#ffd27a', emissiveIntensity: 1.6 })
+
+function PlatformMesh({ platform }) {
+  const { body, rails, railPosts, bulbs, lightPosts } = buildPlatform(platform)
+  const [w, h, d] = body.s
+  const materials = useMemo(
+    () => ({
+      wall: texMat(getTiledTexture('stone', Math.max(w, d) / 2, h / 2)),
+      top: texMat(getTiledTexture(platform.surface ?? 'paver', w / 2, d / 2)),
+    }),
+    [w, h, d, platform.surface],
+  )
+  return (
+    <group name={platform.id}>
+      <mesh geometry={GEO.box} material={materials.wall} position={body.p} scale={body.s} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={materials.top} position={[body.p[0], h + 0.02, body.p[2]]} scale={[w, 0.04, d]} receiveShadow />
+      <Instances geometry={GEO.box} material={RAIL_MAT} items={rails} />
+      <Instances geometry={GEO.box} material={RAIL_MAT} items={railPosts} />
+      <Instances geometry={GEO.box} material={RAIL_MAT} items={lightPosts} />
+      <Instances geometry={GEO.sphere} material={BULB} items={bulbs} />
+    </group>
+  )
 }
 
 function HillMesh({ hill }) {
@@ -127,44 +155,65 @@ function TowerMesh({ tower }) {
 }
 
 // ── 충돌 ─────────────────────────────────────
+// 데크·계단·테라스 단의 충돌 박스는 고정 몸체 하나에 모두 담음 (물리 계산 절약)
+// 언덕(삼각형 메시)과 타워(회전된 묶음)만 따로
 export function TerrainColliders() {
-  return layout.terrain.map((item) => {
-    if (item.type === 'hill') {
-      const { vertices, indices } = buildHill(item)
-      return (
-        <RigidBody key={item.id} type="fixed" colliders={false} name={`collider-${item.id}`}>
-          <TrimeshCollider args={[vertices, indices]} />
-        </RigidBody>
-      )
-    }
-    if (item.type === 'deck') {
-      const { boards, railBlocks } = buildDeck(item, layout.terrain)
-      return <BoxSet key={item.id} name={item.id} boxes={[...boards, ...railBlocks]} />
-    }
-    if (item.type === 'stairs') {
-      const { ramp, walls } = buildStairs(item)
-      return <BoxSet key={item.id} name={item.id} boxes={[ramp, ...walls]} />
-    }
-    if (item.type === 'tower') {
-      return (
-        <BoxSet
-          key={item.id}
-          name={item.id}
-          boxes={towerColliderPieces()}
-          position={[item.position[0], towerBaseY(item), item.position[1]]}
-          rotation={[0, yawOf(item), 0]}
-        />
-      )
-    }
-    return null
-  })
+  const staticBoxes = useMemo(
+    () =>
+      layout.terrain.flatMap((item) => {
+        if (item.type === 'deck') {
+          const { boards, railBlocks } = buildDeck(item, layout.terrain)
+          return [...boards, ...railBlocks]
+        }
+        if (item.type === 'stairs') {
+          const { ramp, walls } = buildStairs(item)
+          return [ramp, ...walls]
+        }
+        if (item.type === 'platform') {
+          const { body, railBlocks } = buildPlatform(item)
+          return [body, ...railBlocks]
+        }
+        return []
+      }),
+    [],
+  )
+
+  return (
+    <>
+      <BoxSet name="terrain-static" boxes={staticBoxes} />
+      {layout.terrain.map((item) => {
+        if (item.type === 'hill') {
+          const { vertices, indices } = buildHill(item)
+          return (
+            <RigidBody key={item.id} type="fixed" colliders={false} name={`collider-${item.id}`}>
+              <TrimeshCollider args={[vertices, indices]} />
+            </RigidBody>
+          )
+        }
+        if (item.type === 'tower') {
+          return (
+            <BoxSet
+              key={item.id}
+              name={item.id}
+              boxes={towerColliderPieces()}
+              position={[item.position[0], towerBaseY(item), item.position[1]]}
+              rotation={[0, yawOf(item), 0]}
+            />
+          )
+        }
+        return null
+      })}
+    </>
+  )
 }
+
+const NO_ROTATION = [0, 0, 0]
 
 function BoxSet({ name, boxes, position, rotation }) {
   return (
     <RigidBody type="fixed" colliders={false} name={`collider-${name}`} position={position} rotation={rotation}>
       {boxes.map((box, i) => (
-        <CuboidCollider key={i} args={[box.s[0] / 2, box.s[1] / 2, box.s[2] / 2]} position={box.p} rotation={box.r} />
+        <CuboidCollider key={i} args={[box.s[0] / 2, box.s[1] / 2, box.s[2] / 2]} position={box.p} rotation={box.r ?? NO_ROTATION} />
       ))}
     </RigidBody>
   )
