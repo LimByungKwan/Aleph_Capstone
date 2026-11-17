@@ -1,9 +1,15 @@
 import { Cafe, Hanok, Modern, Mural, StoneWall } from './buildings.jsx'
 import { Bench, Bins, BusShelter, Fence, Lamp, Pavilion, SignPost, Tree, Vending } from './props.jsx'
+import { HJ_STYLES } from './hj/index.js'
+import { JM_STYLES } from './jm_japanese.jsx'
 import {
   Bollard,
   CherryTree,
+  ContainerPopup,
+  CubeGallery,
   FlowerBed,
+  GlassCafe,
+  GreenhouseCafe,
   Fountain,
   HanokCafe,
   HanokShop,
@@ -41,6 +47,10 @@ export const STYLES = {
   signPost: SignPost,
   fence: Fence,
   vending: Vending,
+  // 영화·드라마 구역(HJ) 전용: 고백 담벼락·여름 정류장·영화 포털·hj* 모양들
+  ...HJ_STYLES,
+  // 애니메이션 구역(JM) 일본풍: jmTorii, jmMachiya, jmShrine, jmLantern
+  ...JM_STYLES,
   // 데이트 코스 (BK)
   hanokShop: HanokShop,
   hanokCafe: HanokCafe,
@@ -57,6 +67,11 @@ export const STYLES = {
   flowerBed: FlowerBed,
   rock: Rock,
   terrace: Terrace,
+  // 데이트 코스 현대 건물 (BK)
+  glassCafe: GlassCafe,
+  cubeGallery: CubeGallery,
+  containerPopup: ContainerPopup,
+  greenhouseCafe: GreenhouseCafe,
   // K-POP (SG)
   stage: Stage,
   sungrayBeach: SungrayBeach,

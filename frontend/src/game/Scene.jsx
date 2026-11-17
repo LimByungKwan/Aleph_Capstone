@@ -1,12 +1,13 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { KeyboardControls, OrbitControls, Sky } from '@react-three/drei'
+import { KeyboardControls, OrbitControls } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import MapLayout from './Map/MapLayout.jsx'
 import PlaceMarkers from './Map/PlaceMarkers.jsx'
 import Colliders from './Map/Colliders.jsx'
 import { Elevators } from './Map/Terrain.jsx'
+import PastelSky from './Map/PastelSky.jsx'
 import Player, { KEYBOARD_MAP } from './Player/Player.jsx'
 import FirstPersonCamera from './Player/FirstPersonCamera.jsx'
 import FollowCamera from './Player/FollowCamera.jsx'
@@ -55,10 +56,11 @@ export default function Scene() {
     <KeyboardControls map={KEYBOARD_MAP}>
       <div ref={labelLayer} style={{ position: 'relative', width: '100%', height: '100%' }}>
         <Canvas shadows="percentage" camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
-          <Sky sunPosition={SUN_POSITION} turbidity={6} rayleigh={1.5} />
+          {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
+          <PastelSky />
 
-          {/* 약한 전체 조명 + 그림자 있는 태양광 1개 (그림자는 보고 있는 곳 주변만) */}
-          <hemisphereLight args={['#ffffff', '#b9a98f', 0.6]} />
+          {/* 따뜻한 전체 조명 + 그림자 있는 태양광 1개 (그림자는 보고 있는 곳 주변만) */}
+          <hemisphereLight args={['#fff0f5', '#c2ae98', 0.65]} />
           <SunLight />
 
           <MapLayout showStartMarker={!playing} />
@@ -126,6 +128,7 @@ function SunLight() {
     <directionalLight
       ref={lightRef}
       intensity={1.6}
+      color="#fff4e6"
       castShadow
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-SHADOW_AREA}

@@ -510,9 +510,20 @@ export function RooftopRestaurant({ item }) {
       {/* 줄조명 */}
       <Instances geometry={GEO.box} material={mat(DARK)} items={parts.lightPosts} />
       <Instances geometry={GEO.sphere} material={BULB} items={parts.bulbs} />
+      {/* 옥상 영화관 스크린 (item.screen) */}
+      {item.screen && (
+        <group position={[0, bodyH + 0.15, -front + 0.5]}>
+          <Box p={[0, 2.1, 0]} s={[w * 0.6, 2.6, 0.12]} m={SCREEN} userData={NO_SHADOW} />
+          {[-1, 1].map((side) => (
+            <Box key={side} p={[side * w * 0.31, 1.7, 0]} s={[0.12, 3.4, 0.12]} c={DARK} />
+          ))}
+        </group>
+      )}
     </group>
   )
 }
+
+const SCREEN = mat('#f8fafc', { emissive: '#dbe4ff', emissiveIntensity: 0.6 })
 
 // ── 날개 벽화 벽 (빛나는 네온 날개) ────────────
 export function NeonWings({ item }) {
@@ -548,6 +559,154 @@ export function NeonWings({ item }) {
       ))}
       <Instances geometry={GEO.ico} material={TINTABLE} items={flowers} />
       <Instances geometry={GEO.box} material={mat('#6aa857', { flat: true })} items={vines} />
+    </group>
+  )
+}
+
+// ════════════════════════════════════════════
+// 현대 건물 (평지붕, 유리, 노출 콘크리트, 철골)
+// ════════════════════════════════════════════
+const CONCRETE = '#c4c0b9'
+const DARK_CONCRETE = '#4a4441'
+const STEEL = '#3a3f45'
+const GREENHOUSE_GLASS = mat('#e8fff4', { transparent: true, opacity: 0.28, roughness: 0.1, emissive: '#fff3d6', emissiveIntensity: 0.15, double: true })
+
+function SignPlate({ sign, width, p }) {
+  if (!sign) return null
+  return (
+    <mesh position={p} userData={NO_SHADOW}>
+      <planeGeometry args={[width, width / 4]} />
+      <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg)} />
+    </mesh>
+  )
+}
+
+// ── 통유리 2층 카페 (노출 콘크리트 + 우드 루버) ── item.palette: "dark"면 어두운 콘크리트(와인바 등)
+export function GlassCafe({ item }) {
+  const [w, h, d] = item.size
+  const dark = item.palette === 'dark'
+  const concrete = dark ? DARK_CONCRETE : CONCRETE
+  const wood = dark ? '#7a4b32' : '#b07a4f'
+  const floorH = (h - 0.3) / 2
+  const front = d / 2
+  const louvers = useMemo(() => {
+    const n = Math.floor((w * 0.4) / 0.35)
+    return range(n).map((i) => ({ p: [-w / 2 + 0.6 + i * 0.35, floorH * 1.5 + 0.15, front - 0.1], s: [0.09, floorH - 0.5, 0.14] }))
+  }, [w, floorH, front])
+  const columns = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ p: [sx * (w / 2 - 0.2), h / 2, sz * (d / 2 - 0.2)], s: [0.35, h, 0.35] })))
+  return (
+    <group>
+      <Box p={[0, (h - 0.3) / 2, -0.5]} s={[w - 0.7, h - 0.3, d - 1.6]} c={concrete} />
+      {[0, floorH, floorH * 2].map((y) => (
+        <Box key={y} p={[0, y + 0.15, 0]} s={[w, 0.3, d]} c={concrete} />
+      ))}
+      <Instances geometry={GEO.box} material={mat(concrete)} items={columns} castShadow />
+      {[0, 1].map((f) => (
+        <Box key={f} p={[0, floorH * f + 0.3 + (floorH - 0.3) / 2, front - 0.35]} s={[w - 0.7, floorH - 0.3, 0.08]} m={WARM_GLASS} userData={NO_SHADOW} />
+      ))}
+      <Instances geometry={GEO.box} material={mat(wood)} items={louvers} />
+      <Box p={[0, floorH * 2 + 0.6, d / 2 - 0.6]} s={[w * 0.35, 0.5, 0.6]} c="#5f9e4f" />
+      <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.5, 4.2)} p={[w * 0.18, floorH + 0.15, front + 0.01]} />
+    </group>
+  )
+}
+
+// ── 하얀 큐브 갤러리 ─────────────────────────
+export function CubeGallery({ item }) {
+  const [w, h, d] = item.size
+  const front = d / 2
+  return (
+    <group>
+      <Box p={[0, h / 2, 0]} s={[w, h, d]} c="#f7f6f2" />
+      <Box p={[-w * 0.16, h * 0.34, front + 0.02]} s={[w * 0.46, h * 0.5, 0.06]} m={WARM_GLASS} userData={NO_SHADOW} />
+      <Box p={[w * 0.3, 1.2, front + 0.03]} s={[1.1, 2.4, 0.06]} c={DARK} />
+      <Box p={[0, h - 0.5, front + 0.03]} s={[w, 0.12, 0.08]} c={PINK} />
+      <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.4, 3)} p={[w * 0.2, h * 0.72, front + 0.02]} />
+      {/* 입구 앞 작은 조각 (분홍 구) */}
+      <Box p={[-w * 0.36, 0.45, front + 0.7]} s={[0.7, 0.9, 0.7]} c="#e7e5e4" />
+      <Ball p={[-w * 0.36, 1.35, front + 0.7]} rad={0.45} m={mat(PINK, { flat: true })} />
+    </group>
+  )
+}
+
+// ── 컨테이너 2단 팝업 스토어 ──────────────────
+export function ContainerPopup({ item }) {
+  const [w, h, d] = item.size
+  const ch = h / 2
+  const cd = Math.min(d * 0.5, 3)
+  const front = d / 2
+  const lowerZ = front - cd / 2
+  const upperZ = front - cd / 2 - 1.2
+  const ribs = useMemo(() => {
+    const list = []
+    const n = Math.floor(w / 0.4)
+    for (let i = 0; i <= n; i++) {
+      const x = -w / 2 + (w * i) / n
+      list.push({ p: [x, ch / 2, lowerZ + cd / 2 + 0.03], s: [0.06, ch - 0.25, 0.05] })
+      list.push({ p: [x * 0.9 + w * 0.05, ch * 1.5, upperZ + cd / 2 + 0.03], s: [0.06, ch - 0.25, 0.05] })
+    }
+    return list
+  }, [w, ch, cd, lowerZ, upperZ])
+  return (
+    <group>
+      <Box p={[0, ch / 2, lowerZ]} s={[w, ch, cd]} c={item.color ?? '#ff8a7a'} />
+      <Box p={[w * 0.05, ch * 1.5, upperZ]} s={[w * 0.9, ch, cd]} c={item.accent ?? '#7dd3c0'} />
+      <Instances geometry={GEO.box} material={mat('#ffffff', { roughness: 0.6 })} items={ribs} />
+      <Box p={[-w * 0.1, ch * 0.5, front + 0.06]} s={[w * 0.55, ch - 0.7, 0.06]} m={WARM_GLASS} userData={NO_SHADOW} />
+      <Box p={[w * 0.05, ch * 1.45, upperZ + cd / 2 + 0.07]} s={[w * 0.45, ch - 0.9, 0.06]} m={WARM_GLASS} userData={NO_SHADOW} />
+      {/* 위층으로 가는 철제 계단 (장식) */}
+      <Box p={[w / 2 - 0.6, ch * 0.75, front - 0.2]} s={[0.9, 0.08, ch * 1.6]} r={[0.75, 0, 0]} c={STEEL} />
+      <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.45, 3.6)} p={[w * 0.05, ch * 1.9, upperZ + cd / 2 + 0.08]} />
+    </group>
+  )
+}
+
+// ── 유리 온실 식물 카페 (철골 + 유리 + 안쪽 식물) ──
+export function GreenhouseCafe({ item }) {
+  const [w, h, d] = item.size
+  const wallH = h * 0.62
+  const roofH = h - wallH
+  const slope = Math.atan2(roofH, d / 2)
+  const slopeLen = Math.hypot(d / 2, roofH)
+  const { frame, plants, pots } = useMemo(() => {
+    const random = seeded(hashString(item.id))
+    const frame = []
+    const nx = Math.max(2, Math.round(w / 1.5))
+    const nz = Math.max(2, Math.round(d / 1.5))
+    for (let i = 0; i <= nx; i++) {
+      const x = -w / 2 + (w * i) / nx
+      for (const z of [d / 2, -d / 2]) frame.push({ p: [x, wallH / 2, z], s: [0.08, wallH, 0.08] })
+      frame.push({ p: [x, wallH + roofH / 2, d / 4], r: [slope, 0, 0], s: [0.07, 0.07, slopeLen] })
+      frame.push({ p: [x, wallH + roofH / 2, -d / 4], r: [-slope, 0, 0], s: [0.07, 0.07, slopeLen] })
+    }
+    for (let i = 1; i < nz; i++) {
+      const z = -d / 2 + (d * i) / nz
+      for (const x of [w / 2, -w / 2]) frame.push({ p: [x, wallH / 2, z], s: [0.08, wallH, 0.08] })
+    }
+    for (const z of [d / 2, -d / 2]) frame.push({ p: [0, wallH, z], s: [w, 0.1, 0.1] })
+    frame.push({ p: [0, h, 0], s: [w, 0.12, 0.12] })
+    const plants = []
+    const pots = []
+    for (let i = 0; i < 18; i++) {
+      const x = (random() - 0.5) * (w - 1.5)
+      const z = (random() - 0.5) * (d - 1.5)
+      const s = 0.4 + random() * 0.5
+      pots.push({ p: [x, 0.25, z], s: [0.35, 0.5, 0.35] })
+      plants.push({ p: [x, 0.5 + s, z], s: [s, s * 1.2, s], c: ['#4f8f45', '#5fa24f', '#7bbf5c', '#3f7a3a'][Math.floor(random() * 4)] })
+    }
+    return { frame, plants, pots }
+  }, [item.id, w, d, h, wallH, roofH, slope, slopeLen])
+  return (
+    <group>
+      <Box p={[0, 0.1, 0]} s={[w + 0.2, 0.2, d + 0.2]} c="#a8a29e" />
+      <Box p={[0, wallH / 2, 0]} s={[w, wallH, d]} m={GREENHOUSE_GLASS} />
+      <Box p={[0, wallH + roofH / 2, d / 4]} s={[w, 0.05, slopeLen]} r={[slope, 0, 0]} m={GREENHOUSE_GLASS} />
+      <Box p={[0, wallH + roofH / 2, -d / 4]} s={[w, 0.05, slopeLen]} r={[-slope, 0, 0]} m={GREENHOUSE_GLASS} />
+      <Instances geometry={GEO.box} material={mat(STEEL)} items={frame} />
+      <Instances geometry={GEO.ico} material={TINTABLE} items={plants} />
+      <Instances geometry={GEO.cyl8} material={mat('#c2703d')} items={pots} />
+      <Box p={[0, 0.55, -d / 2 + 0.8]} s={[w * 0.5, 1.1, 0.7]} c="#b07a4f" />
+      <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.45, 3.4)} p={[0, wallH - 0.6, d / 2 + 0.06]} />
     </group>
   )
 }
