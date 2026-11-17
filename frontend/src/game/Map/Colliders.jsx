@@ -1,6 +1,6 @@
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
-import layout from '../data/buildings.json'
+import { layout } from '../data/mapData.js'
 
 // 눈에 보이는 모델과 별개인 "충돌 전용" 박스들.
 // - JSON의 size 그대로 만들어서, 나중에 건물이 GLB로 바뀌어도 충돌 범위는 그대로예요.
@@ -10,22 +10,25 @@ const WALL_THICKNESS = 1
 
 export default function Colliders() {
   const [groundW, groundD] = layout.ground.size
+  const [cx, cz] = layout.ground.center ?? [0, 0]
   const halfW = groundW / 2
   const halfD = groundD / 2
+  const wallY = WALL_HEIGHT / 2
+  const t = WALL_THICKNESS / 2
 
   return (
     <group name="colliders">
       {/* 바닥: 윗면이 y=0이 되도록 두께 1m 박스를 아래로 내림 */}
       <RigidBody type="fixed" colliders={false} name="ground">
-        <CuboidCollider args={[halfW, 0.5, halfD]} position={[0, -0.5, 0]} />
+        <CuboidCollider args={[halfW, 0.5, halfD]} position={[cx, -0.5, cz]} />
       </RigidBody>
 
       {/* 바닥 가장자리 보이지 않는 벽 4면 */}
       <RigidBody type="fixed" colliders={false} name="boundary">
-        <CuboidCollider args={[halfW, WALL_HEIGHT / 2, WALL_THICKNESS / 2]} position={[0, WALL_HEIGHT / 2, -halfD - WALL_THICKNESS / 2]} />
-        <CuboidCollider args={[halfW, WALL_HEIGHT / 2, WALL_THICKNESS / 2]} position={[0, WALL_HEIGHT / 2, halfD + WALL_THICKNESS / 2]} />
-        <CuboidCollider args={[WALL_THICKNESS / 2, WALL_HEIGHT / 2, halfD]} position={[-halfW - WALL_THICKNESS / 2, WALL_HEIGHT / 2, 0]} />
-        <CuboidCollider args={[WALL_THICKNESS / 2, WALL_HEIGHT / 2, halfD]} position={[halfW + WALL_THICKNESS / 2, WALL_HEIGHT / 2, 0]} />
+        <CuboidCollider args={[halfW, wallY, t]} position={[cx, wallY, cz - halfD - t]} />
+        <CuboidCollider args={[halfW, wallY, t]} position={[cx, wallY, cz + halfD + t]} />
+        <CuboidCollider args={[t, wallY, halfD]} position={[cx - halfW - t, wallY, cz]} />
+        <CuboidCollider args={[t, wallY, halfD]} position={[cx + halfW + t, wallY, cz]} />
       </RigidBody>
 
       {/* 건물: 충돌 박스 + 카메라가 벽을 뚫지 않게 막아 주는 투명 박스 */}

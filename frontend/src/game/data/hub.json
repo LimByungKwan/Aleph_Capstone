@@ -1,0 +1,64 @@
+{
+  "ground": { "size": [260, 260], "center": [0, 0], "color": "#b9b4a8" },
+  "playerStart": [0, 14],
+  "playerStartYawDeg": 0,
+
+  "roads": [
+    { "id": "hub_plaza",    "style": "tile",    "position": [0, 0],       "size": [50, 0.12, 50],  "rotationDeg": 0 },
+
+    { "id": "road_to_jm",   "style": "asphalt", "position": [0, -35],     "size": [6, 0.02, 20],   "rotationDeg": 0 },
+    { "id": "walk_to_jm_w", "style": "brick",   "position": [-3.75, -35], "size": [1.5, 0.15, 20], "rotationDeg": 0 },
+    { "id": "walk_to_jm_e", "style": "brick",   "position": [3.75, -35],  "size": [1.5, 0.15, 20], "rotationDeg": 0 },
+
+    { "id": "road_to_bk",   "style": "asphalt", "position": [35, 0],      "size": [20, 0.02, 6],   "rotationDeg": 0 },
+    { "id": "walk_to_bk_n", "style": "brick",   "position": [35, -3.75],  "size": [20, 0.15, 1.5], "rotationDeg": 0 },
+    { "id": "walk_to_bk_s", "style": "brick",   "position": [35, 3.75],   "size": [20, 0.15, 1.5], "rotationDeg": 0 },
+
+    { "id": "road_to_hj",   "style": "asphalt", "position": [0, 35],      "size": [6, 0.02, 20],   "rotationDeg": 0 },
+    { "id": "walk_to_hj_w", "style": "brick",   "position": [-3.75, 35],  "size": [1.5, 0.15, 20], "rotationDeg": 0 },
+    { "id": "walk_to_hj_e", "style": "brick",   "position": [3.75, 35],   "size": [1.5, 0.15, 20], "rotationDeg": 0 },
+
+    { "id": "road_to_sg",   "style": "asphalt", "position": [-35, 0],     "size": [20, 0.02, 6],   "rotationDeg": 0 },
+    { "id": "walk_to_sg_n", "style": "brick",   "position": [-35, -3.75], "size": [20, 0.15, 1.5], "rotationDeg": 0 },
+    { "id": "walk_to_sg_s", "style": "brick",   "position": [-35, 3.75],  "size": [20, 0.15, 1.5], "rotationDeg": 0 }
+  ],
+
+  "markings": [
+    { "type": "line", "from": [0, -45], "to": [0, -28.6], "color": "#f2c14e", "width": 0.1, "double": true },
+    { "type": "line", "from": [28.6, 0], "to": [45, 0],   "color": "#f2c14e", "width": 0.1, "double": true },
+    { "type": "line", "from": [0, 28.6], "to": [0, 45],   "color": "#f2c14e", "width": 0.1, "double": true },
+    { "type": "line", "from": [-45, 0], "to": [-28.6, 0], "color": "#f2c14e", "width": 0.1, "double": true },
+    { "type": "crosswalk", "position": [0, -27], "size": [3, 6], "rotationDeg": 90 },
+    { "type": "crosswalk", "position": [27, 0],  "size": [3, 6], "rotationDeg": 0 },
+    { "type": "crosswalk", "position": [0, 27],  "size": [3, 6], "rotationDeg": 90 },
+    { "type": "crosswalk", "position": [-27, 0], "size": [3, 6], "rotationDeg": 0 }
+  ],
+
+  "buildings": [],
+
+  "props": [
+    { "id": "hub_tree_1", "zone": "HUB", "style": "tree",  "position": [-15, -15], "size": [3.4, 6.5, 3.4], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+    { "id": "hub_tree_2", "zone": "HUB", "style": "tree",  "position": [15, -15],  "size": [3.4, 6.5, 3.4], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+    { "id": "hub_tree_3", "zone": "HUB", "style": "tree",  "position": [-15, 15],  "size": [3.4, 6.5, 3.4], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+    { "id": "hub_tree_4", "zone": "HUB", "style": "tree",  "position": [15, 15],   "size": [3.4, 6.5, 3.4], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+    { "id": "hub_tree_5", "zone": "HUB", "style": "tree",  "position": [-20, -20], "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+    { "id": "hub_tree_6", "zone": "HUB", "style": "tree",  "position": [20, -20],  "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+    { "id": "hub_tree_7", "zone": "HUB", "style": "tree",  "position": [-20, 20],  "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+    { "id": "hub_tree_8", "zone": "HUB", "style": "tree",  "position": [20, 20],   "size": [3, 6, 3], "collider": [0.5, 3, 0.5], "rotationDeg": 0 },
+
+    { "id": "hub_lamp_n1", "zone": "HUB", "style": "lamp", "position": [-6, -24.3], "size": [0.3, 4.5, 0.3], "rotationDeg": -90 },
+    { "id": "hub_lamp_n2", "zone": "HUB", "style": "lamp", "position": [6, -24.3],  "size": [0.3, 4.5, 0.3], "rotationDeg": -90 },
+    { "id": "hub_lamp_e1", "zone": "HUB", "style": "lamp", "position": [24.3, -6],  "size": [0.3, 4.5, 0.3], "rotationDeg": 180 },
+    { "id": "hub_lamp_e2", "zone": "HUB", "style": "lamp", "position": [24.3, 6],   "size": [0.3, 4.5, 0.3], "rotationDeg": 180 },
+    { "id": "hub_lamp_s1", "zone": "HUB", "style": "lamp", "position": [-6, 24.3],  "size": [0.3, 4.5, 0.3], "rotationDeg": 90 },
+    { "id": "hub_lamp_s2", "zone": "HUB", "style": "lamp", "position": [6, 24.3],   "size": [0.3, 4.5, 0.3], "rotationDeg": 90 },
+    { "id": "hub_lamp_w1", "zone": "HUB", "style": "lamp", "position": [-24.3, -6], "size": [0.3, 4.5, 0.3], "rotationDeg": 0 },
+    { "id": "hub_lamp_w2", "zone": "HUB", "style": "lamp", "position": [-24.3, 6],  "size": [0.3, 4.5, 0.3], "rotationDeg": 0 },
+
+    { "id": "hub_bench_1", "zone": "HUB", "style": "bench", "position": [-12, 21], "size": [1.8, 0.5, 0.5], "rotationDeg": 180 },
+    { "id": "hub_bench_2", "zone": "HUB", "style": "bench", "position": [12, 21],  "size": [1.8, 0.5, 0.5], "rotationDeg": 180 },
+    { "id": "hub_bench_3", "zone": "HUB", "style": "bench", "position": [-12, -21], "size": [1.8, 0.5, 0.5], "rotationDeg": 0 },
+    { "id": "hub_bench_4", "zone": "HUB", "style": "bench", "position": [12, -21], "size": [1.8, 0.5, 0.5], "rotationDeg": 0 },
+    { "id": "hub_bins",    "zone": "HUB", "style": "bins",  "position": [21, 12],  "size": [1.8, 1.1, 0.6], "rotationDeg": -90 }
+  ]
+}

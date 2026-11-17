@@ -1,0 +1,46 @@
+{
+  "zoneId": "BK",
+  "owner": "병관",
+  "name": "데이트 코스",
+  "origin": [85,0],
+  "size": [80,80],
+  "color": "#ff8fb8",
+  "colorName": "분홍",
+  "entrance": {"position": [-40,0], "rotationDeg": 90, "width": 6},
+
+  "roads": [
+    {"id": "bk_entry", "style": "asphalt", "position": [-27.5,0], "size": [6,0.02,25], "rotationDeg": -90},
+    {"id": "bk_entry_w", "style": "brick", "position": [-27.5,-3.75], "size": [1.5,0.15,25], "rotationDeg": -90},
+    {"id": "bk_entry_e", "style": "brick", "position": [-27.5,3.75], "size": [1.5,0.15,25], "rotationDeg": -90},
+    {"id": "bk_path", "style": "brick", "position": [-7,0], "size": [6,0.15,16], "rotationDeg": -90},
+    {"id": "bk_alley", "style": "brick", "position": [5.25,0], "size": [4,0.15,8.5], "rotationDeg": -90},
+    {"id": "bk_cafe_walk", "style": "brick", "position": [-1,9], "size": [12,0.15,3], "rotationDeg": -90},
+    {"id": "bk_plaza", "style": "tile", "position": [7.5,11], "size": [8,0.12,13], "rotationDeg": -90}
+  ],
+
+  "markings": [
+    {"type": "line", "from": [-40,0], "to": [-15,0], "color": "#f2c14e", "width": 0.1, "double": true}
+  ],
+
+  "buildings": [
+    {"id": "b_mural", "style": "mural", "position": [12,0], "size": [8,6,5], "rotationDeg": -90, "color": "#f6f0d8", "model": null},
+    {"id": "b_alley_w", "style": "hanok", "position": [5,-4.5], "size": [9,6,4], "rotationDeg": 0, "color": "#f2ece0", "model": null},
+    {"id": "b_alley_e", "style": "hanok", "position": [5,4.5], "size": [9,6,4], "rotationDeg": 180, "color": "#efe6d6", "model": null},
+    {"id": "b_hanok", "style": "hanok", "position": [4,-10.5], "size": [8,7,7], "rotationDeg": 0, "color": "#f2ece0", "model": null},
+    {"id": "b_bakery", "style": "modern", "position": [-8,-9.5], "size": [11,12,8], "rotationDeg": 0, "color": "#6b6e72", "model": null, "signs": [{"text": "골목 한옥빵", "bg": "#f6e7c8", "fg": "#c2185b", "awning": "#e9d3a6"},{"text": "수제 과자점", "bg": "#2f6b4f", "fg": "#ffffff", "awning": "#2f7d5b"}]},
+    {"id": "b_cafe", "style": "cafe", "position": [-7,9], "size": [9,7,7], "rotationDeg": 180, "color": "#f4f1ea", "model": null, "signs": [{"text": "소란 커피", "bg": "#3b2a20", "fg": "#f5e6c8"}], "umbrella": "#6a5acd"}
+  ],
+
+  "props": [
+    {"id": "pavilion", "style": "pavilion", "position": [8,11], "size": [4.2,4.6,4.2], "collider": false, "rotationDeg": -90},
+    {"id": "plaza_bench", "style": "bench", "position": [3,13.5], "size": [1.8,0.5,0.5], "rotationDeg": 90},
+    {"id": "plaza_bins", "style": "bins", "position": [13.4,8.6], "size": [1.8,1.1,0.6], "rotationDeg": -90},
+    {"id": "tree_1", "style": "tree", "position": [13,14], "size": [3,6,3], "collider": [0.5,3,0.5], "rotationDeg": -90},
+    {"id": "tree_2", "style": "tree", "position": [2.5,8.5], "size": [3,6,3], "collider": [0.5,3,0.5], "rotationDeg": -90},
+    {"id": "tree_3", "style": "tree", "position": [-13.5,3.8], "size": [3,6,3], "collider": [0.5,3,0.5], "rotationDeg": -90},
+    {"id": "tree_4", "style": "tree", "position": [-7,-3.8], "size": [3,6,3], "collider": [0.5,3,0.5], "rotationDeg": -90},
+    {"id": "lamp_1", "style": "lamp", "position": [-12,-3.7], "size": [0.3,4.5,0.3], "rotationDeg": -90},
+    {"id": "lamp_2", "style": "lamp", "position": [-6,3.7], "size": [0.3,4.5,0.3], "rotationDeg": 90},
+    {"id": "lamp_3", "style": "lamp", "position": [-2,-3.7], "size": [0.3,4.5,0.3], "rotationDeg": -90}
+  ]
+}

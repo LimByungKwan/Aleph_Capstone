@@ -1,7 +1,8 @@
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { Ecctrl } from 'ecctrl'
-import layout from '../data/buildings.json'
+import * as THREE from 'three'
+import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 
@@ -9,9 +10,14 @@ import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } fro
 const CAPSULE_RADIUS = 0.3
 const CAPSULE_HALF_HEIGHT = 0.5
 
-// buildings.json의 playerStart [x, z] 위, 1.5m 높이에서 떨어지며 시작
+// hub.json의 playerStart [x, z] 위, 1.5m 높이에서 떨어지며 시작
 const [START_X, START_Z] = layout.playerStart
 export const PLAYER_SPAWN = [START_X, 1.5, START_Z]
+
+// 시작할 때 바라보는 방향 (hub.json의 playerStartYawDeg)
+// 0 = 북쪽(-z), 90 = 서쪽(-x), -90 = 동쪽(+x), 180 = 남쪽(+z)
+export const PLAYER_START_YAW = THREE.MathUtils.degToRad(layout.playerStartYawDeg)
+export const PLAYER_START_FORWARD = [-Math.sin(PLAYER_START_YAW), -Math.cos(PLAYER_START_YAW)] // [x, z]
 
 // 키 이름 ↔ 실제 키보드 키 (Scene.jsx의 KeyboardControls가 사용)
 export const KEYBOARD_MAP = [

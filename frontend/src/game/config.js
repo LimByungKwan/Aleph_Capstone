@@ -11,7 +11,8 @@ export const CAMERA_VIEW = 'third'
 
 // ── 레벨 디자인 도우미 ───────────────────────
 export const SHOW_GRID = false // 1m 격자 (레벨 디자인할 때 true)
-export const SHOW_ZONES = false // 구역(A~D) 바닥 색 띠와 이름표 (레벨 디자인할 때 true)
+export const SHOW_ZONES = true // 구역(BK/JM/HJ) 바닥·테두리·입구 아치·이름표·범례 (개발용)
+export const SHOW_ZONE_OWNERS = true // false면 담당자 코드(BK/JM/HJ)를 숨기고 구역 이름만 (발표용)
 export const SHOW_PLACE_LABELS = true // 상호작용 지점 이름표
 export const PHYSICS_DEBUG = false // 충돌 박스·센서를 선으로 보기
 
@@ -30,11 +31,13 @@ export const CAMERA_MIN_DISTANCE = 3
 export const CAMERA_MAX_DISTANCE = 5
 
 // ── 둘러보기 카메라 (FREE_CAMERA 모드) ───────
-export const CAMERA_START = [-28, 42, 34]
-export const CAMERA_TARGET = [0, 0, -2]
+export const CAMERA_START = [0, 200, 170] // 광장 남쪽 위에서 맵 전체를 내려다봄
+export const CAMERA_TARGET = [0, 0, 0]
+export const CAMERA_MAX_ZOOM_OUT = 380
 
 // 태양 방향 (하늘 색과 그림자 방향이 같이 바뀜)
-export const SUN_POSITION = [30, 40, 20]
+export const SUN_POSITION = [90, 160, 60]
+export const SHADOW_AREA = 150 // 그림자가 생기는 범위 (중심에서 ±m)
 
 // 상호작용 지점 타입별 색
 export const PLACE_COLORS = {

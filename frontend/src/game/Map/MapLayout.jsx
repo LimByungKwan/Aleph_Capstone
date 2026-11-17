@@ -1,17 +1,18 @@
-import layout from '../data/buildings.json'
+import { layout } from '../data/mapData.js'
 import Ground from './Ground.jsx'
 import Zones from './Zones.jsx'
 import Prop from './Prop.jsx'
 import { Markings, Road } from './Roads.jsx'
 
-// buildings.json 하나를 읽어서 바닥, 구역, 길, 도로 표시, 건물, 소품, 시작 지점을 배치
+// hub.json + zones/*.json (mapData.js가 합쳐 줌)을 읽어서
+// 바닥, 구역 표시, 길, 도로 표시, 건물, 소품, 시작 지점을 배치
 export default function MapLayout({ showStartMarker = true }) {
   const [startX, startZ] = layout.playerStart
 
   return (
     <group name="map">
       <Ground ground={layout.ground} />
-      <Zones zones={layout.zones} />
+      <Zones />
 
       {layout.roads.map((road) => (
         <Road key={road.id} item={road} />
