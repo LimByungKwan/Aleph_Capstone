@@ -217,10 +217,12 @@ export function getMuralTexture() {
 }
 
 // 간판 (글자 + 배경색)
-export function getSignTexture(text, bg = '#ffffff', fg = '#222222') {
+// aspect: 간판 판의 가로/세로 비율. 캔버스를 같은 비율로 만들어야 글씨가 늘어나거나 눌리지 않음
+export function getSignTexture(text, bg = '#ffffff', fg = '#222222', aspect = 4) {
+  const width = Math.min(2048, Math.max(128, Math.round(128 * aspect)))
   return makeCanvasTexture(
-    `sign:${text}:${bg}:${fg}`,
-    512,
+    `sign:${text}:${bg}:${fg}:${width}`,
+    width,
     128,
     (ctx, w, h) => {
       ctx.fillStyle = bg

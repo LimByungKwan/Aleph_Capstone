@@ -213,7 +213,7 @@ export function BusShelter({ item }) {
       {sign && (
         <mesh position={[0, h - 0.25, d / 2 + 0.16]}>
           <planeGeometry args={[w * 0.7, 0.32]} />
-          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg)} />
+          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg, (w * 0.7) / 0.32)} />
         </mesh>
       )}
     </group>
@@ -236,7 +236,7 @@ export function SignPost({ item }) {
       </mesh>
       <mesh position={[0, h - 0.35, 0.06]}>
         <planeGeometry args={[0.5, 0.14]} />
-        <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg)} />
+        <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg, 0.5 / 0.14)} />
       </mesh>
     </group>
   )

@@ -17,6 +17,10 @@ import {
   Telescope,
   Terrace,
 } from './dateCourse.jsx'
+import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
+import { FilmingAlleyShop } from './filmingAlley.jsx'
+import { SungrayBeach } from './beach.jsx'
+import { FestivalCart } from './festival.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
 // 새 스타일을 만들면 여기에 한 줄 추가하면 돼요.
@@ -53,4 +57,19 @@ export const STYLES = {
   flowerBed: FlowerBed,
   rock: Rock,
   terrace: Terrace,
+  // K-POP (SG)
+  stage: Stage,
+  sungrayBeach: SungrayBeach,
+  festivalCart: FestivalCart,
+  agencyLobby: FilmingAlleyShop,
+  artistLounge: FilmingAlleyShop,
+  soundStudio: FilmingAlleyShop,
+  bdayCafe: BdayCafe,
+  popupStore: PopupStore,
+  practiceRoom: FilmingAlleyShop,
+  videoShop: FilmingAlleyShop,
+  snackBar: FilmingAlleyShop,
+  coinKaraoke: FilmingAlleyShop,
+  recordShop: FilmingAlleyShop,
+  photoStudio: FilmingAlleyShop,
 }

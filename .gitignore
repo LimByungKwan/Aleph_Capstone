@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+.venv
 
 # 설치 폴더
 node_modules/

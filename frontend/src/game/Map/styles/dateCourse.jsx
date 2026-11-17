@@ -406,7 +406,7 @@ export function HanokShop({ item }) {
       {sign && (
         <mesh position={[0, base + 3.15, front + 0.05]} userData={NO_SHADOW}>
           <planeGeometry args={[inW * 0.5, 0.5]} />
-          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg)} />
+          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg, (inW * 0.5) / 0.5)} />
         </mesh>
       )}
       <Instances geometry={GEO.sphere} material={BULB} items={bulbs} />
@@ -486,7 +486,7 @@ export function RooftopRestaurant({ item }) {
       {sign && (
         <mesh position={[0, 4.25, front + 0.05]} userData={NO_SHADOW}>
           <planeGeometry args={[w * 0.5, 0.55]} />
-          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg)} />
+          <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg, (w * 0.5) / 0.55)} />
         </mesh>
       )}
       <Box p={[0, bodyH - 1.5, front + 0.04]} s={[w - 1.2, 1.4, 0.08]} m={WARM_GLASS} userData={NO_SHADOW} />
