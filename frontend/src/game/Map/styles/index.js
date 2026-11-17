@@ -1,5 +1,6 @@
 import { Cafe, Hanok, Modern, Mural, StoneWall } from './buildings.jsx'
 import { Bench, Bins, BusShelter, Fence, Lamp, Pavilion, SignPost, Tree, Vending } from './props.jsx'
+import { JM_STYLES } from './jm_japanese.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
 // 새 스타일을 만들면 여기에 한 줄 추가하면 돼요.
@@ -20,4 +21,6 @@ export const STYLES = {
   signPost: SignPost,
   fence: Fence,
   vending: Vending,
+  // 애니메이션 구역(JM) 일본풍: jmTorii, jmMachiya, jmShrine, jmLantern
+  ...JM_STYLES,
 }
