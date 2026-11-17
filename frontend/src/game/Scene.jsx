@@ -11,8 +11,20 @@ import FollowCamera from './Player/FollowCamera.jsx'
 import PlaceSensors from './Interaction/PlaceSensors.jsx'
 import InteractionKeys from './Interaction/InteractionKeys.jsx'
 import { useGameStore } from '../store/gameStore.js'
-import { CAMERA_START, CAMERA_TARGET, CAMERA_VIEW, FREE_CAMERA, PHYSICS_DEBUG, SUN_POSITION } from './config.js'
+import {
+  CAMERA_MAX_ZOOM_OUT,
+  CAMERA_START,
+  CAMERA_TARGET,
+  CAMERA_VIEW,
+  FREE_CAMERA,
+  PHYSICS_DEBUG,
+  SHADOW_AREA,
+  SHOW_ZONE_OWNERS,
+  SHOW_ZONES,
+  SUN_POSITION,
+} from './config.js'
 import { labelLayer } from './labelLayer.js'
+import { zones } from './data/mapData.js'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
@@ -39,7 +51,7 @@ export default function Scene() {
   return (
     <KeyboardControls map={KEYBOARD_MAP}>
       <div ref={labelLayer} style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <Canvas shadows="percentage" camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 500 }}>
+        <Canvas shadows="percentage" camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
           <Sky sunPosition={SUN_POSITION} turbidity={6} rayleigh={1.5} />
 
           {/* 약한 전체 조명 + 그림자 있는 태양광 1개 */}
@@ -48,13 +60,13 @@ export default function Scene() {
             position={SUN_POSITION}
             intensity={1.6}
             castShadow
-            shadow-mapSize={[2048, 2048]}
-            shadow-camera-left={-45}
-            shadow-camera-right={45}
-            shadow-camera-top={35}
-            shadow-camera-bottom={-35}
+            shadow-mapSize={[4096, 4096]}
+            shadow-camera-left={-SHADOW_AREA}
+            shadow-camera-right={SHADOW_AREA}
+            shadow-camera-top={SHADOW_AREA}
+            shadow-camera-bottom={-SHADOW_AREA}
             shadow-camera-near={1}
-            shadow-camera-far={150}
+            shadow-camera-far={600}
             shadow-bias={-0.0005}
           />
 
@@ -99,7 +111,7 @@ function OverviewCamera() {
       target={CAMERA_TARGET}
       maxPolarAngle={Math.PI / 2 - 0.05}
       minDistance={3}
-      maxDistance={90}
+      maxDistance={CAMERA_MAX_ZOOM_OUT}
       screenSpacePanning={false}
     />
   )
@@ -125,11 +137,13 @@ function HelpPanel({ playing, onStart, onStop }) {
         pointerEvents: 'none',
       }}
     >
-      <strong>SceneWalk AI · 골목 맵</strong>
+      <strong>SceneWalk AI</strong>
       <br />
       {playing
         ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
         : '왼쪽 드래그: 회전 · 오른쪽 드래그: 이동 · 휠: 확대/축소'}
+
+      {SHOW_ZONES && <ZoneLegend />}
 
       {playing && (
         <div style={{ marginTop: 6, fontFamily: 'Consolas, monospace', fontSize: 12 }}>
@@ -158,6 +172,31 @@ function HelpPanel({ playing, onStart, onStop }) {
       >
         {playing ? '맵 전체 보기' : `▶ ${CAMERA_VIEW === 'first' ? '1인칭' : '3인칭'}으로 플레이하기`}
       </button>
+    </div>
+  )
+}
+
+// 구역 범례: "■ BK 분홍 / ■ JM 하늘 / ■ HJ 주황" (발표용이면 구역 이름만)
+function ZoneLegend() {
+  return (
+    <div style={{ marginTop: 4 }}>
+      {zones.map((zone, i) => (
+        <span key={zone.zoneId} style={{ whiteSpace: 'nowrap' }}>
+          {i > 0 && ' / '}
+          <span
+            style={{
+              display: 'inline-block',
+              width: 10,
+              height: 10,
+              marginRight: 4,
+              borderRadius: 2,
+              background: zone.color,
+              verticalAlign: 'middle',
+            }}
+          />
+          {SHOW_ZONE_OWNERS ? `${zone.zoneId} ${zone.colorName}` : zone.name}
+        </span>
+      ))}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { EYE_HEIGHT, LOOK_SENSITIVITY } from '../config.js'
+import { PLAYER_START_YAW } from './Player.jsx'
 
 const MAX_PITCH = 1.4 // 위아래로 볼 수 있는 최대 각도 (약 80도)
 
@@ -9,8 +10,8 @@ const MAX_PITCH = 1.4 // 위아래로 볼 수 있는 최대 각도 (약 80도)
 export default function FirstPersonCamera({ playerRef }) {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
-  // 처음엔 동쪽(+x, 골목 안쪽)을 바라봄
-  const look = useRef({ yaw: -Math.PI / 2, pitch: 0 })
+  // 처음엔 시작 방향(hub.json의 playerStartYawDeg)을 바라봄
+  const look = useRef({ yaw: PLAYER_START_YAW, pitch: 0 })
 
   useEffect(() => {
     const canvas = gl.domElement

@@ -1,0 +1,24 @@
+{
+  "zoneId": "SG",
+  "owner": "성근",
+  "name": "K-POP",
+  "origin": [-85, 0],
+  "size": [80, 80],
+  "color": "#b18cff",
+  "colorName": "보라",
+  "entrance": { "position": [40, 0], "rotationDeg": 90, "width": 6 },
+
+  "roads": [
+    { "id": "sg_entry", "style": "asphalt", "position": [30, 0], "size": [20, 0.02, 6], "rotationDeg": 0 }
+  ],
+
+  "markings": [],
+
+  "buildings": [
+    { "id": "sg_box_1", "position": [-3, -8], "size": [8, 8, 8],  "rotationDeg": 0, "color": "#9a9a9a", "model": null },
+    { "id": "sg_box_2", "position": [-8, 7],  "size": [6, 10, 6], "rotationDeg": 0, "color": "#9a9a9a", "model": null },
+    { "id": "sg_box_3", "position": [6, 9],   "size": [7, 6, 7],  "rotationDeg": 0, "color": "#9a9a9a", "model": null }
+  ],
+
+  "props": []
+}

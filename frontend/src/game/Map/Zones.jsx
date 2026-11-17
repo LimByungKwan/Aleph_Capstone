@@ -1,40 +1,81 @@
-import { Html } from '@react-three/drei'
-import { SHOW_ZONES } from '../config.js'
+import { Html, Line } from '@react-three/drei'
+import * as THREE from 'three'
+import { zones } from '../data/mapData.js'
+import { SHOW_ZONE_OWNERS, SHOW_ZONES } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
 
-// 구역(A~D)마다 바닥에 옅은 색 띠와 이름표를 표시
-// zone = { id, name, xRange: [시작x, 끝x], zRange: [시작z, 끝z], color }
-export default function Zones({ zones }) {
-  if (!SHOW_ZONES) return null
+// 구역 표시 (개발용): 대표색 반투명 바닥 + 테두리 선 + 입구 아치 + 큰 이름표
+// zones/*.json 파일 하나 = 구역 하나. 파일이 늘면 자동으로 표시돼요.
 
-  return zones.map((zone) => {
-    const [x1, x2] = zone.xRange
-    const [z1, z2] = zone.zRange
-    const cx = (x1 + x2) / 2
-    const cz = (z1 + z2) / 2
-    return (
-      <group key={zone.id}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.17, cz]}>
-          <planeGeometry args={[x2 - x1, z2 - z1]} />
-          <meshBasicMaterial color={zone.color} transparent opacity={0.28} depthWrite={false} />
+const FLOOR_Y = 0.19 // 보도블록(0.15) 바로 위
+const ARCH_HEIGHT = 5
+
+// 이름표 글자: SHOW_ZONE_OWNERS가 false면(발표용) 담당자 코드 없이 구역 이름만
+export function zoneTitle(zone) {
+  return SHOW_ZONE_OWNERS ? `${zone.zoneId} · ${zone.name}` : zone.name
+}
+
+export default function Zones() {
+  if (!SHOW_ZONES) return null
+  return zones.map((zone) => <ZoneMarker key={zone.zoneId} zone={zone} />)
+}
+
+function ZoneMarker({ zone }) {
+  const [ox, oz] = zone.origin
+  const [w, d] = zone.size
+  const border = [
+    [ox - w / 2, FLOOR_Y, oz - d / 2],
+    [ox + w / 2, FLOOR_Y, oz - d / 2],
+    [ox + w / 2, FLOOR_Y, oz + d / 2],
+    [ox - w / 2, FLOOR_Y, oz + d / 2],
+    [ox - w / 2, FLOOR_Y, oz - d / 2],
+  ]
+
+  return (
+    <group name={`zone-${zone.zoneId}`}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[ox, FLOOR_Y, oz]}>
+        <planeGeometry args={[w, d]} />
+        <meshBasicMaterial color={zone.color} transparent opacity={0.18} depthWrite={false} />
+      </mesh>
+      <Line points={border} color={zone.color} lineWidth={3} />
+      {zone.entrance && <EntranceArch zone={zone} />}
+    </group>
+  )
+}
+
+// 구역 입구 아치: 길 양옆 기둥 2개 + 위 가로대 + 이름표 (충돌 없음)
+function EntranceArch({ zone }) {
+  const [ox, oz] = zone.origin
+  const { position, rotationDeg = 0, width = 6 } = zone.entrance
+  const half = width / 2 + 0.7
+  return (
+    <group position={[ox + position[0], 0, oz + position[1]]} rotation={[0, THREE.MathUtils.degToRad(rotationDeg), 0]}>
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * half, ARCH_HEIGHT / 2, 0]} castShadow>
+          <boxGeometry args={[0.4, ARCH_HEIGHT, 0.4]} />
+          <meshStandardMaterial color={zone.color} />
         </mesh>
-        <Html portal={labelLayer} position={[cx, 0.3, 5.6]} center style={{ pointerEvents: 'none' }}>
-          <div
-            style={{
-              padding: '2px 8px',
-              borderRadius: 6,
-              background: zone.color,
-              color: '#222',
-              fontSize: 12,
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              opacity: 0.9,
-            }}
-          >
-            {zone.name}
-          </div>
-        </Html>
-      </group>
-    )
-  })
+      ))}
+      <mesh position={[0, ARCH_HEIGHT, 0]} castShadow>
+        <boxGeometry args={[half * 2 + 0.6, 0.5, 0.5]} />
+        <meshStandardMaterial color={zone.color} />
+      </mesh>
+      <Html portal={labelLayer} position={[0, ARCH_HEIGHT + 1, 0]} center style={{ pointerEvents: 'none' }}>
+        <div
+          style={{
+            padding: '6px 14px',
+            borderRadius: 10,
+            background: zone.color,
+            color: '#1f2937',
+            fontSize: 20,
+            fontWeight: 800,
+            whiteSpace: 'nowrap',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          }}
+        >
+          {zoneTitle(zone)}
+        </div>
+      </Html>
+    </group>
+  )
 }

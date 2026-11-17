@@ -2,10 +2,12 @@ import { Grid } from '@react-three/drei'
 import { SHOW_GRID } from '../config.js'
 
 // 바닥 판 + (켜져 있으면) 1m 격자
+// ground = { size: [가로, 세로], center: [x, z], color }
 export default function Ground({ ground }) {
   const [width, depth] = ground.size
+  const [cx, cz] = ground.center ?? [0, 0]
   return (
-    <group>
+    <group position={[cx, 0, cz]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[width, depth]} />
         <meshStandardMaterial color={ground.color} />
@@ -21,7 +23,7 @@ export default function Ground({ ground }) {
           sectionSize={5}
           sectionThickness={1}
           sectionColor="#4a4a4a"
-          fadeDistance={120}
+          fadeDistance={160}
           fadeStrength={1}
         />
       )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CameraControls, CameraControlsImpl } from '@react-three/drei'
-import { PLAYER_SPAWN } from './Player.jsx'
+import { PLAYER_SPAWN, PLAYER_START_FORWARD } from './Player.jsx'
 import { CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE } from '../config.js'
 
 const { ACTION } = CameraControlsImpl
@@ -32,9 +32,10 @@ export default function FollowCamera({ playerRef }) {
     })
     controls.colliderMeshes = blockers
 
-    // 시작: 캐릭터 뒤(서쪽)에서 골목 안쪽(동쪽)을 바라봄
+    // 시작: 캐릭터 뒤에서 시작 방향(playerStartYawDeg)을 바라봄
     const [x, y, z] = PLAYER_SPAWN
-    controls.setLookAt(x - 4, y + 1.6, z, x, y + LOOK_HEIGHT, z, false)
+    const [fx, fz] = PLAYER_START_FORWARD
+    controls.setLookAt(x - fx * 4, y + 1.6, z - fz * 4, x, y + LOOK_HEIGHT, z, false)
   }, [scene])
 
   useFrame(() => {
