@@ -1,0 +1,451 @@
+/* [3. 개발 > 프론트엔드] 방파제 안으로 들어가기 (색: ui.css 토큰 #F9F6EE · #C86D51 · #2C2A29) */
+
+.bw {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  color: var(--ui-text);
+}
+
+/* ── 파도 전환: 파랑·하양 띠가 아래에서 위로 쓸고 지나감 ── */
+.bw-wave {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.bw-wave__band {
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  height: 140%;
+  border-radius: 45% 55% 0 0 / 18% 22% 0 0;
+  animation: bw-sweep 1.3s cubic-bezier(0.55, 0.05, 0.3, 1) forwards;
+}
+.bw-wave__band--1 {
+  background: linear-gradient(180deg, #e8f4fb 0%, #a8d4ec 100%);
+  animation-delay: 0s;
+}
+.bw-wave__band--2 {
+  background: linear-gradient(180deg, #ffffff 0%, #cfe8f5 100%);
+  animation-delay: 0.12s;
+}
+.bw-wave__band--3 {
+  background: linear-gradient(180deg, #7fb6d8 0%, #3d84b8 100%);
+  animation-delay: 0.24s;
+}
+.bw-wave--done .bw-wave__band {
+  animation: bw-sweep-out 0.9s ease-in forwards;
+}
+@keyframes bw-sweep {
+  from {
+    top: 110%;
+  }
+  to {
+    top: -20%;
+  }
+}
+@keyframes bw-sweep-out {
+  from {
+    top: -20%;
+    opacity: 1;
+  }
+  to {
+    top: -150%;
+    opacity: 0.6;
+  }
+}
+
+/* ── 장면 무대 ── */
+.bw-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-bg);
+  animation: bw-fade 0.6s ease-out both;
+}
+@keyframes bw-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 배경 일러스트 (노을 하늘 + 바다 + 방파제 + 등대) */
+.bw-scenery {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #f9d9b5 0%, #f6c2a0 32%, #f3e2cf 52%, #9cc7de 52.2%, #5e9cc4 100%);
+  opacity: 0.55;
+}
+.bw-sun {
+  position: absolute;
+  left: 62%;
+  top: 30%;
+  width: 18vmin;
+  height: 18vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff3d6 0%, #f8c48d 60%, rgba(248, 196, 141, 0) 72%);
+}
+.bw-sea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52%;
+  bottom: 0;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0 2px, transparent 2px 22px);
+  animation: bw-swell 4s ease-in-out infinite;
+}
+@keyframes bw-swell {
+  50% {
+    transform: translateY(4px);
+  }
+}
+.bw-pier {
+  position: absolute;
+  left: 8%;
+  top: 56%;
+  width: 70%;
+  height: 4.5%;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #d8d2c8, #a39e94);
+  transform: skewX(-25deg);
+}
+.bw-lighthouse {
+  position: absolute;
+  left: 74%;
+  top: 30%;
+  width: 4.2vmin;
+  height: 27%;
+  border-radius: 6px 6px 2px 2px;
+  background: repeating-linear-gradient(180deg, #c8352b 0 18%, #f5f1ea 18% 36%);
+}
+.bw-lighthouse i {
+  position: absolute;
+  left: -20%;
+  top: -14%;
+  width: 140%;
+  height: 16%;
+  border-radius: 40% 40% 4px 4px;
+  background: #fff1c2;
+  box-shadow: 0 0 22px 8px rgba(255, 220, 140, 0.8);
+  animation: bw-blink 2.4s ease-in-out infinite;
+}
+@keyframes bw-blink {
+  50% {
+    box-shadow: 0 0 8px 2px rgba(255, 220, 140, 0.4);
+  }
+}
+
+.bw-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px 0;
+}
+.bw-head h2 {
+  margin: 4px 0 2px;
+  font-family: var(--ui-serif);
+  font-size: clamp(20px, 3vw, 30px);
+}
+.bw-work {
+  margin: 0;
+  font-family: var(--ui-serif);
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+.bw-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 22px;
+  padding: 18px 20px;
+  overflow: auto;
+}
+.bw-card {
+  width: min(420px, 100%);
+  padding: 20px 22px;
+  border-radius: 20px;
+  border: 1px solid var(--ui-border);
+  background: rgba(255, 253, 249, 0.94);
+  box-shadow: var(--ui-shadow);
+}
+.bw-card h3 {
+  margin: 0 0 8px;
+  font-family: var(--ui-serif);
+  color: var(--ui-accent);
+  font-size: 16px;
+}
+.bw-card p {
+  margin: 0 0 16px;
+  line-height: 1.8;
+  font-size: 14px;
+}
+.bw-photo-btn {
+  width: 100%;
+  min-height: 48px;
+  font-size: 15px;
+}
+.bw-stamp-state {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ui-ok);
+}
+.bw-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--ui-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 인증샷 폴라로이드 */
+.bw-polaroid {
+  position: relative;
+  margin: 0;
+  width: min(260px, 80%);
+  padding: 12px 12px 14px;
+  background: #fffdf9;
+  border-radius: 6px;
+  box-shadow: 0 14px 30px rgba(44, 42, 41, 0.28);
+  transform: rotate(-3deg);
+}
+.bw-polaroid--new {
+  animation: bw-print 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes bw-print {
+  from {
+    opacity: 0;
+    transform: translateY(30px) rotate(6deg) scale(0.9);
+  }
+}
+.bw-polaroid__shot {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #f9d9b5 0%, #f6c2a0 45%, #9cc7de 46%, #5e9cc4 100%);
+}
+.bw-polaroid__shot .bw-sun {
+  left: 18%;
+  top: 20%;
+  width: 28%;
+  height: 28%;
+}
+.bw-polaroid__shot .bw-sea {
+  top: 46%;
+}
+.bw-lighthouse--small {
+  left: 68%;
+  top: 14%;
+  width: 9%;
+  height: 34%;
+}
+.bw-bouquet {
+  position: absolute;
+  left: 36%;
+  bottom: 6%;
+  font-size: 54px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+}
+.bw-polaroid figcaption {
+  margin-top: 10px;
+  font-family: var(--ui-serif);
+  font-size: 14px;
+  text-align: center;
+}
+.bw-polaroid figcaption small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ui-muted);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+}
+/* 쾅! 찍히는 스탬프 */
+.bw-seal {
+  position: absolute;
+  right: -14px;
+  top: 18px;
+  padding: 6px 12px;
+  border: 4px solid rgba(155, 44, 34, 0.75);
+  border-radius: 10px;
+  color: rgba(155, 44, 34, 0.9);
+  background: rgba(254, 242, 242, 0.6);
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  transform: rotate(12deg);
+  animation: bw-slam 0.45s 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes bw-slam {
+  from {
+    opacity: 0;
+    transform: rotate(12deg) scale(2.4);
+  }
+}
+
+/* 아래쪽 빈티지 대화창 */
+.bw-dialogue {
+  position: relative;
+  margin: 0 auto 18px;
+  width: min(760px, calc(100% - 32px));
+  padding: 18px 22px 14px;
+  border-radius: 14px;
+  border: 2px solid #5a3d2b;
+  background: linear-gradient(180deg, #fbf3e2, #f3e6cc);
+  box-shadow: 0 10px 26px rgba(44, 42, 41, 0.3), inset 0 0 0 4px rgba(255, 253, 249, 0.6);
+}
+.bw-dialogue__speaker {
+  position: absolute;
+  top: -14px;
+  left: 18px;
+  padding: 3px 14px;
+  border-radius: 999px;
+  background: var(--ui-text);
+  color: var(--ui-bg);
+  font-family: var(--ui-serif);
+  font-size: 13px;
+  font-weight: 700;
+}
+.bw-dialogue p {
+  margin: 4px 0 8px;
+  min-height: 52px;
+  font-family: var(--ui-serif);
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.75;
+}
+.bw-dialogue__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+/* 축하 꽃잎 */
+.bw-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bw-confetti i {
+  position: absolute;
+  top: -20px;
+  left: var(--x);
+  width: 10px;
+  height: 7px;
+  border-radius: 60% 40%;
+  background: var(--c);
+  animation: bw-fall 2.2s var(--d) ease-in forwards;
+}
+@keyframes bw-fall {
+  to {
+    transform: translateY(105vh) rotate(540deg);
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bw *,
+  .bw {
+    animation: none !important;
+  }
+  .bw-wave {
+    display: none;
+  }
+}
+
+/* 근처에 오면 뜨는 안내 칩 */
+.ui-scene-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(44, 42, 41, 0.88);
+  color: var(--ui-bg);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: var(--ui-shadow);
+  animation: bw-fade 0.3s ease-out both;
+}
+.ui-scene-hint kbd {
+  display: inline-block;
+  min-width: 24px;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  font-family: Consolas, monospace;
+  text-align: center;
+}
+
+/* ── 영화·드라마 구역 입장 환영 (EntranceWelcome.jsx) ── */
+.hj-enter {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+}
+.hj-enter__fade {
+  position: absolute;
+  inset: 0;
+  background: #f9f6ee;
+  animation: hj-enter-fade 1.4s ease-out forwards;
+}
+@keyframes hj-enter-fade {
+  0% { opacity: 0; }
+  30% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+.hj-enter__banner {
+  position: relative;
+  margin-top: 14vh;
+  width: min(480px, calc(100% - 32px));
+  padding: 20px 24px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+  text-align: center;
+  animation: hj-enter-drop 0.6s 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.hj-enter__banner h2 {
+  margin: 6px 0;
+  font-family: var(--ui-serif);
+  font-size: clamp(18px, 2.6vw, 24px);
+}
+.hj-enter__banner p {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+.hj-enter__banner strong {
+  color: var(--ui-accent);
+}
+.hj-enter__actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+@keyframes hj-enter-drop {
+  from { opacity: 0; transform: translateY(-16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hj-enter *, .hj-enter { animation: none !important; }
+  .hj-enter__fade { display: none; }
+}

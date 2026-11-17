@@ -1,0 +1,153 @@
+/* [3. 개발 > 프론트엔드] '영화 속으로 입장' 레터박스 연출 (ui.css 색 토큰 사용) */
+
+.cine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cine__fade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(44, 42, 41, 0.15) 0%, rgba(20, 16, 12, 0.6) 100%);
+  animation: cine-fade-in 0.6s ease-out both;
+}
+.cine__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12vh;
+  min-height: 56px;
+  background: #0d0b09;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cine__bar--top {
+  top: 0;
+  animation: cine-bar-top 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cine__bar--bottom {
+  bottom: 0;
+  animation: cine-bar-bottom 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cine__hint {
+  color: rgba(249, 246, 238, 0.65);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.cine__stage {
+  position: absolute;
+  inset: 12vh 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #f9f6ee;
+}
+.cine__eyebrow {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: #f2c9a8;
+  animation: cine-rise 0.6s 0.35s ease-out both;
+}
+.cine__title {
+  margin: 6px 0 4px;
+  font-family: var(--ui-serif);
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 900;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+  animation: cine-rise 0.7s 0.45s ease-out both;
+}
+.cine__work {
+  margin: 0 0 18px;
+  font-family: var(--ui-serif);
+  font-size: 15px;
+  color: #fde7c4;
+  animation: cine-rise 0.6s 0.55s ease-out both;
+}
+.cine__card {
+  width: min(480px, 100%);
+  max-height: 46vh;
+  overflow: auto;
+  padding: 20px 22px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  text-align: left;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  animation: cine-rise 0.6s 0.75s ease-out both;
+}
+.cine__card h3 {
+  margin: 0 0 6px;
+  font-family: var(--ui-serif);
+  font-size: 15px;
+  color: var(--ui-accent);
+}
+.cine__card p {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.cine__card ol {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.cine__card .ui-btn {
+  width: 100%;
+}
+
+/* 나갈 때: 띠가 걷히고 어둠이 걷힘 */
+.cine--leaving .cine__fade {
+  animation: cine-fade-out 0.45s ease-in both;
+}
+.cine--leaving .cine__bar--top {
+  animation: cine-bar-top 0.45s ease-in reverse both;
+}
+.cine--leaving .cine__bar--bottom {
+  animation: cine-bar-bottom 0.45s ease-in reverse both;
+}
+.cine--leaving .cine__stage {
+  opacity: 0;
+  transition: opacity 0.25s ease-in;
+}
+
+@keyframes cine-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cine-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes cine-bar-top {
+  from {
+    transform: translateY(-100%);
+  }
+}
+@keyframes cine-bar-bottom {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes cine-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cine *,
+  .cine {
+    animation: none !important;
+    transition: none !important;
+  }
+}
