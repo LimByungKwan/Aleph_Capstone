@@ -4,7 +4,8 @@ import * as THREE from 'three'
 import { STYLES } from './styles/index.js'
 
 // 맵의 건물·소품을 그리는 공통 컴포넌트.
-// item = { id, position: [x, z], size: [가로, 높이, 깊이], rotationDeg, color, style, model }
+// item = { id, position: [x, z], size: [가로, 높이, 깊이], rotationDeg, color, style, model, elevation }
+// elevation: 바닥에서 띄울 높이(m). 구역 파일에서 "onTerrain": true면 언덕 높이로 자동 계산돼요.
 // 우선순위: model(GLB) > style(코드로 그린 모양) > 색 박스
 // - model이 "/models/xxx.glb"면 GLB 모델 (로딩 중이거나 파일이 없으면 style 모양 또는 박스)
 // - style이 "hanok", "tree" 같은 이름이면 styles/ 폴더의 모양으로 그림
@@ -25,7 +26,7 @@ export default function Prop({ item, castShadow = true }) {
   )
 
   return (
-    <group position={[x, 0, z]} rotation={[0, rotationY, 0]} name={item.id}>
+    <group position={[x, item.elevation ?? 0, z]} rotation={[0, rotationY, 0]} name={item.id}>
       {item.model ? (
         <ModelErrorBoundary fallback={fallback} url={item.model}>
           <Suspense fallback={fallback}>
@@ -40,12 +41,13 @@ export default function Prop({ item, castShadow = true }) {
 }
 
 // 안에 든 모든 메시가 그림자를 만들고 받도록 한 번에 설정
+// (투명한 것, userData.noShadow가 붙은 작은 물체·빛나는 물체는 그림자를 만들지 않음 → 그림자 계산 절약)
 function ShadowGroup({ castShadow, children }) {
   const ref = useRef(null)
   useLayoutEffect(() => {
     ref.current?.traverse((child) => {
       if (child.isMesh) {
-        child.castShadow = castShadow && !child.material.transparent
+        child.castShadow = castShadow && !child.material.transparent && !child.userData.noShadow
         child.receiveShadow = true
       }
     })

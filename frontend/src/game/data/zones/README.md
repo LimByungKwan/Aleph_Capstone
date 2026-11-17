@@ -14,11 +14,11 @@
 | 파일 | 구역 | 담당 | 대표색 | 위치 | 중심(origin) |
 |---|---|---|---|---|---|
 | `jm_anime.json` | 애니메이션 | 지민 (JM) | 하늘 | 북쪽 | (0, -85) |
-| `bk_date.json` | 데이트 코스 | 병관 (BK) | 분홍 | 동쪽 | (85, 0) |
+| `bk_date.json` | 데이트 코스 + 언덕 | 병관 (BK) | 분홍 | 동쪽 (+ 그 북쪽 언덕) | (85, -40) ※ 80 × 160 |
 | `hj_drama.json` | 영화·드라마 | 혜진 (HJ) | 주황 | 남쪽 | (0, 85) |
 | `sg_kpop.json` | K-POP | 성근 (SG) | 보라 | 서쪽 | (-85, 0) |
 
-중앙 광장은 50 × 50m, 구역은 하나에 **80 × 80m**예요. 광장과 구역 사이는 폭 6m 길로 이어져 있어요.
+중앙 광장은 50 × 50m, 구역은 하나에 **80 × 80m**예요. (BK만 북쪽 언덕까지 포함해 80 × 160m — x -40 ~ 40, z -80 ~ 80) 광장과 구역 사이는 폭 6m 길로 이어져 있어요.
 
 ---
 
@@ -40,7 +40,7 @@
 | 구역 | 입구 위치 (내 구역 좌표) | 비워 둘 곳 |
 |---|---|---|
 | JM | (0, 40) 남쪽 가운데 | x -5 ~ 5, z 20 ~ 40 |
-| BK | (-40, 0) 서쪽 가운데 | x -40 ~ -15, z -5 ~ 5 |
+| BK | (-40, 40) 서쪽 (남쪽 절반의 가운데) | x -40 ~ -30, z 35 ~ 45 |
 | HJ | (0, -40) 북쪽 가운데 | x -5 ~ 5, z -40 ~ -15 |
 | SG | (40, 0) 동쪽 가운데 | x 20 ~ 40, z -5 ~ 5 |
 
@@ -91,6 +91,29 @@
 | `signs` | 간판 (modern, cafe) |
 
 소품 `style`: `"tree"`, `"lamp"`, `"bench"`, `"bins"`, `"pavilion"`, `"busShelter"`, `"signPost"`, `"fence"`, `"vending"`, `"stoneWall"`
+
+BK 구역에서 만든 스타일도 누구나 쓸 수 있어요 (`bk_date.json`에 사용 예시가 있어요):
+- 건물: `"hanokShop"`(줄무늬 차양 한옥 가게, `"awning"` 색 / `"display": "cake" | "flower"` / `"roofProp": "camera"`),
+  `"hanokCafe"`, `"rooftopRestaurant"`, `"neonWings"`(빛나는 날개 벽), `"observationTower"`(전망 타워)
+- 소품: `"cherryTree"`, `"lanternLamp"`, `"fountain"`, `"roundPlaza"`, `"lockFence"`, `"telescope"`, `"bollard"`, `"flowerBed"`, `"rock"`, `"terrace"`
+
+### 언덕·데크 산책로 (선택)
+
+구역 파일에 `"terrain"` 목록을 넣으면 언덕과 나무 데크 산책로를 만들 수 있어요. 충돌도 자동으로 생겨요.
+
+```json
+"terrain": [
+  { "type": "hill", "id": "hill", "center": [-25, -26], "radius": [13, 12], "height": 6, "plateau": 0.5 },
+  { "type": "deck", "id": "walk", "width": 2.4, "points": [[-12, -11, 0.1], [-32, -11, 2], [-32, -15, 2]] }
+]
+```
+- `hill`: 가운데 `center`, 가로·세로 반지름 `radius`, 높이 `height`, 꼭대기 평평한 비율 `plateau`
+- `deck`: `points`의 각 점은 [x, z, 높이]. 점을 이어 경사로와 꺾이는 곳을 만들어요 (꺾을 때는 가로·세로로만, 경사는 완만하게)
+- `stairs`: `{ "type": "stairs", "id": "s1", "from": [x, z, 높이], "to": [x, z, 높이], "width": 4 }` — 계단 (충돌은 매끄러운 경사로)
+- `tower`: `{ "type": "tower", "id": "t1", "position": [x, z], "rotationDeg": 0 }` — 들어갈 수 있는 전망 타워
+  (1층 홀 반지름 6m, 문은 rotationDeg 방향, 가운데 엘리베이터 발판에 서 있으면 전망대(18m)까지 자동으로 오르내림)
+- 언덕 위에 건물·소품을 올리려면 그 항목에 `"onTerrain": true` → 언덕 높이만큼 자동으로 올라가요
+  (`"elevation": 18`을 같이 쓰면 그 위로 더 올림 — 예: 전망대 안 망원경)
 
 충돌 박스는 `size` 그대로 자동으로 생겨요. 따로 정하고 싶으면:
 - `"collider": [0.5, 3, 0.5]` → 그 크기로 (예: 나무는 줄기만)
