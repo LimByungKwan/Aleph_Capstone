@@ -232,7 +232,8 @@ export function buildStairs(stairs) {
   const w = stairs.width ?? 4
   const L = Math.hypot(bx - ax, bz - az)
   const rise = bh - ah
-  const count = Math.max(1, Math.ceil(rise / 0.22))
+  // smooth: 완만한 경사로(휠체어용) — 아주 낮은 턱이 촘촘해서 비탈처럼 보임
+  const count = stairs.smooth ? Math.max(4, Math.round(L / 0.4)) : Math.max(1, Math.ceil(rise / 0.22))
   const yaw = Math.atan2(bx - ax, bz - az)
   const dirX = (bx - ax) / L
   const dirZ = (bz - az) / L
@@ -259,6 +260,76 @@ export function buildStairs(stairs) {
   }))
   const result = { steps, ramp, walls, dir: [dirX, dirZ] }
   stairsCache.set(key, result)
+  return result
+}
+
+// ── 계단식 테라스 단 (옹벽 + 난간 + 줄 전구) ───
+// platform = { rect: [x0, z0, x1, z1], height, rails: [{ edge: "north"|"south"|"west"|"east", gaps: [[a, b], ...] }], lights }
+// north = z0(작은 z) 쪽, south = z1 쪽, west = x0, east = x1. gaps는 그 변을 따라 비워 둘 구간(계단·경사로 자리).
+const platformCache = new Map()
+const RAIL_TOP = 1.0
+
+export function buildPlatform(platform) {
+  const key = JSON.stringify(platform)
+  if (platformCache.has(key)) return platformCache.get(key)
+  const [x0, z0, x1, z1] = platform.rect
+  const h = platform.height
+  const body = { p: [(x0 + x1) / 2, h / 2, (z0 + z1) / 2], s: [x1 - x0, h, z1 - z0] }
+  const rails = []
+  const railBlocks = []
+  const railPosts = []
+  const bulbs = []
+  const lightPosts = []
+  const inset = 0.15
+
+  for (const rail of platform.rails ?? []) {
+    const alongX = rail.edge === 'north' || rail.edge === 'south'
+    const fixed =
+      rail.edge === 'north' ? z0 + inset : rail.edge === 'south' ? z1 - inset : rail.edge === 'west' ? x0 + inset : x1 - inset
+    const [start, end] = alongX ? [x0, x1] : [z0, z1]
+    // 전체 변에서 gaps를 뺀 구간들
+    let pieces = [[start, end]]
+    for (const [ga, gb] of rail.gaps ?? []) {
+      pieces = pieces.flatMap(([a, b]) => {
+        if (gb <= a || ga >= b) return [[a, b]]
+        return [
+          [a, Math.max(a, ga)],
+          [Math.min(b, gb), b],
+        ].filter(([p, q]) => q - p > 0.3)
+      })
+    }
+    for (const [a, b] of pieces) {
+      const len = b - a
+      const mid = (a + b) / 2
+      const at = (t) => (alongX ? [t, fixed] : [fixed, t])
+      const [mx, mz] = at(mid)
+      const size = (thick, tall) => (alongX ? [len, tall, thick] : [thick, tall, len])
+      rails.push({ p: [mx, h + RAIL_TOP, mz], s: size(0.08, 0.08) })
+      rails.push({ p: [mx, h + RAIL_TOP * 0.5, mz], s: size(0.05, 0.05) })
+      railBlocks.push({ p: [mx, h + 0.55, mz], s: size(0.12, 1.1) })
+      const posts = Math.max(1, Math.round(len / 1.5))
+      for (let k = 0; k <= posts; k++) {
+        const [px, pz] = at(a + (len * k) / posts)
+        railPosts.push({ p: [px, h + RAIL_TOP / 2, pz], s: [0.06, RAIL_TOP, 0.06] })
+      }
+      if (platform.lights) {
+        const poles = Math.max(1, Math.round(len / 4.5))
+        for (let k = 0; k <= poles; k++) {
+          const [px, pz] = at(a + (len * k) / poles)
+          lightPosts.push({ p: [px, h + 1.1, pz], s: [0.05, 2.2, 0.05] })
+          if (k < poles) {
+            const [qx, qz] = at(a + (len * (k + 1)) / poles)
+            for (let i = 0; i < 8; i++) {
+              const t = (i + 0.5) / 8
+              bulbs.push({ p: [px + (qx - px) * t, h + 2.1 - 0.3 * Math.sin(Math.PI * t), pz + (qz - pz) * t], s: [0.07, 0.07, 0.07] })
+            }
+          }
+        }
+      }
+    }
+  }
+  const result = { body, rails, railBlocks, railPosts, bulbs, lightPosts }
+  platformCache.set(key, result)
   return result
 }
 

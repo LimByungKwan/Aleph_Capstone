@@ -110,6 +110,10 @@ BK 구역에서 만든 스타일도 누구나 쓸 수 있어요 (`bk_date.json`�
 - `hill`: 가운데 `center`, 가로·세로 반지름 `radius`, 높이 `height`, 꼭대기 평평한 비율 `plateau`
 - `deck`: `points`의 각 점은 [x, z, 높이]. 점을 이어 경사로와 꺾이는 곳을 만들어요 (꺾을 때는 가로·세로로만, 경사는 완만하게)
 - `stairs`: `{ "type": "stairs", "id": "s1", "from": [x, z, 높이], "to": [x, z, 높이], "width": 4 }` — 계단 (충돌은 매끄러운 경사로)
+  - `from`이 낮은 쪽, `to`가 높은 쪽. `"smooth": true`면 완만한 경사로(휠체어용, 1:8 이하 권장)
+- `platform`: `{ "type": "platform", "id": "p1", "rect": [x0, z0, x1, z1], "height": 2, "lights": true, "rails": [{ "edge": "south", "gaps": [[a, b]] }] }`
+  — 계단식 테라스 단 (돌 옹벽 + 포장 바닥 + 난간 + 줄 전구). `edge`는 north/south/west/east, `gaps`는 난간을 비울 구간(계단 자리)
+  - 단 위에 건물·소품을 올리려면 그 항목에 `"elevation": 단 높이`
 - `tower`: `{ "type": "tower", "id": "t1", "position": [x, z], "rotationDeg": 0 }` — 들어갈 수 있는 전망 타워
   (1층 홀 반지름 6m, 문은 rotationDeg 방향, 가운데 엘리베이터 발판에 서 있으면 전망대(18m)까지 자동으로 오르내림)
 - 언덕 위에 건물·소품을 올리려면 그 항목에 `"onTerrain": true` → 언덕 높이만큼 자동으로 올라가요

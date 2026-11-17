@@ -3,7 +3,11 @@ import { Bench, Bins, BusShelter, Fence, Lamp, Pavilion, SignPost, Tree, Vending
 import {
   Bollard,
   CherryTree,
+  ContainerPopup,
+  CubeGallery,
   FlowerBed,
+  GlassCafe,
+  GreenhouseCafe,
   Fountain,
   HanokCafe,
   HanokShop,
@@ -53,4 +57,9 @@ export const STYLES = {
   flowerBed: FlowerBed,
   rock: Rock,
   terrace: Terrace,
+  // 데이트 코스 현대 건물 (BK)
+  glassCafe: GlassCafe,
+  cubeGallery: CubeGallery,
+  containerPopup: ContainerPopup,
+  greenhouseCafe: GreenhouseCafe,
 }
