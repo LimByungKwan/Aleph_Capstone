@@ -1,10 +1,12 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 import { KeyboardControls, OrbitControls, Sky } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import MapLayout from './Map/MapLayout.jsx'
 import PlaceMarkers from './Map/PlaceMarkers.jsx'
 import Colliders from './Map/Colliders.jsx'
+import { Elevators } from './Map/Terrain.jsx'
 import Player, { KEYBOARD_MAP } from './Player/Player.jsx'
 import FirstPersonCamera from './Player/FirstPersonCamera.jsx'
 import FollowCamera from './Player/FollowCamera.jsx'
@@ -54,21 +56,9 @@ export default function Scene() {
         <Canvas shadows="percentage" camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
           <Sky sunPosition={SUN_POSITION} turbidity={6} rayleigh={1.5} />
 
-          {/* 약한 전체 조명 + 그림자 있는 태양광 1개 */}
+          {/* 약한 전체 조명 + 그림자 있는 태양광 1개 (그림자는 보고 있는 곳 주변만) */}
           <hemisphereLight args={['#ffffff', '#b9a98f', 0.6]} />
-          <directionalLight
-            position={SUN_POSITION}
-            intensity={1.6}
-            castShadow
-            shadow-mapSize={[4096, 4096]}
-            shadow-camera-left={-SHADOW_AREA}
-            shadow-camera-right={SHADOW_AREA}
-            shadow-camera-top={SHADOW_AREA}
-            shadow-camera-bottom={-SHADOW_AREA}
-            shadow-camera-near={1}
-            shadow-camera-far={600}
-            shadow-bias={-0.0005}
-          />
+          <SunLight />
 
           <MapLayout showStartMarker={!playing} />
           <PlaceMarkers />
@@ -77,6 +67,7 @@ export default function Scene() {
           <Suspense fallback={null}>
             <Physics debug={PHYSICS_DEBUG}>
               <Colliders />
+              <Elevators playerRef={playerRef} />
               {playing && (
                 <>
                   <Player playerRef={playerRef} showModel={!firstPerson} />
@@ -93,6 +84,56 @@ export default function Scene() {
         <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
       </div>
     </KeyboardControls>
+  )
+}
+
+// 태양광 + 그림자. 최적화: 그림자 범위를 맵 전체가 아니라 "카메라가 보고 있는 곳" 주변으로만 잡음
+// → 멀리 있는 건물은 그림자 계산에서 빠지고, 같은 그림자 해상도로 더 선명해짐
+const SHADOW_MIN_AREA = 35
+const lookTarget = new THREE.Vector3()
+
+function SunLight() {
+  const lightRef = useRef(null)
+  const area = useRef(SHADOW_AREA)
+
+  useFrame(({ camera, controls }) => {
+    const light = lightRef.current
+    if (!light) return
+    if (controls?.getTarget) controls.getTarget(lookTarget)
+    else if (controls?.target) lookTarget.copy(controls.target)
+    else lookTarget.set(0, 0, 0)
+
+    // 2m 단위로 맞춰 움직여서 그림자가 지글거리지 않게
+    const x = Math.round(lookTarget.x / 2) * 2
+    const z = Math.round(lookTarget.z / 2) * 2
+    light.position.set(x + SUN_POSITION[0], SUN_POSITION[1], z + SUN_POSITION[2])
+    light.target.position.set(x, 0, z)
+    light.target.updateMatrixWorld()
+
+    const wanted = THREE.MathUtils.clamp(camera.position.distanceTo(lookTarget) * 0.9, SHADOW_MIN_AREA, SHADOW_AREA)
+    if (Math.abs(wanted - area.current) > 3) {
+      area.current = wanted
+      const cam = light.shadow.camera
+      cam.left = cam.bottom = -wanted
+      cam.right = cam.top = wanted
+      cam.updateProjectionMatrix()
+    }
+  })
+
+  return (
+    <directionalLight
+      ref={lightRef}
+      intensity={1.6}
+      castShadow
+      shadow-mapSize={[2048, 2048]}
+      shadow-camera-left={-SHADOW_AREA}
+      shadow-camera-right={SHADOW_AREA}
+      shadow-camera-top={SHADOW_AREA}
+      shadow-camera-bottom={-SHADOW_AREA}
+      shadow-camera-near={1}
+      shadow-camera-far={600}
+      shadow-bias={-0.0005}
+    />
   )
 }
 

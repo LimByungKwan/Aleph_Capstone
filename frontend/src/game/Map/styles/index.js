@@ -1,5 +1,22 @@
 import { Cafe, Hanok, Modern, Mural, StoneWall } from './buildings.jsx'
 import { Bench, Bins, BusShelter, Fence, Lamp, Pavilion, SignPost, Tree, Vending } from './props.jsx'
+import {
+  Bollard,
+  CherryTree,
+  FlowerBed,
+  Fountain,
+  HanokCafe,
+  HanokShop,
+  LanternLamp,
+  LockFence,
+  NeonWings,
+  ObservationTower,
+  Rock,
+  RooftopRestaurant,
+  RoundPlaza,
+  Telescope,
+  Terrace,
+} from './dateCourse.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
 // 새 스타일을 만들면 여기에 한 줄 추가하면 돼요.
@@ -20,4 +37,20 @@ export const STYLES = {
   signPost: SignPost,
   fence: Fence,
   vending: Vending,
+  // 데이트 코스 (BK)
+  hanokShop: HanokShop,
+  hanokCafe: HanokCafe,
+  rooftopRestaurant: RooftopRestaurant,
+  neonWings: NeonWings,
+  observationTower: ObservationTower,
+  cherryTree: CherryTree,
+  lanternLamp: LanternLamp,
+  fountain: Fountain,
+  roundPlaza: RoundPlaza,
+  lockFence: LockFence,
+  telescope: Telescope,
+  bollard: Bollard,
+  flowerBed: FlowerBed,
+  rock: Rock,
+  terrace: Terrace,
 }
