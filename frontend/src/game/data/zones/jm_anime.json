@@ -26,11 +26,14 @@
 
   "terrain": [
     {"type": "stairs", "id": "jm_hill_stairs_s", "from": [0,8,0], "to": [0,-2,5], "width": 4},
-    {"type": "stairs", "id": "jm_hill_stairs_n", "from": [0,-18,0], "to": [0,-8,5], "width": 4}
+    {"type": "stairs", "id": "jm_hill_stairs_n", "from": [0,-18,0], "to": [0,-8,5], "width": 4},
+    {"type": "stairs", "id": "jm_rooftop_stairs_1", "from": [-33.0, 7.0, 0], "to": [-33.0, 1.5, 2.83], "width": 1.5},
+    {"type": "stairs", "id": "jm_rooftop_stairs_2", "from": [-31.4, 1.5, 2.83], "to": [-31.4, 7.0, 5.67], "width": 1.5},
+    {"type": "stairs", "id": "jm_rooftop_stairs_3", "from": [-33.0, 7.0, 5.67], "to": [-33.0, 1.5, 8.5], "width": 1.5}
   ],
   "buildings": [
     {"id": "jm_hill", "position": [0,-5], "size": [80,5,6], "rotationDeg": 0, "color": "#9cc46f", "model": null},
-    {"id": "jm_rooftop", "style": "jmRooftopShrine", "position": [-30,4], "size": [10,8.5,8], "rotationDeg": 90, "color": "#8d8f8c", "model": null},
+    {"id": "jm_rooftop", "style": "jmRooftopBuilding", "position": [-30,4], "size": [10,8.5,8], "rotationDeg": 90, "color": "#8d8f8c", "model": null, "collider": false},
     {"id": "jm_shop_hare", "style": "jmShopRoom", "position": [-15,3.5], "size": [8,7,7], "rotationDeg": 45, "model": null, "collider": false, "shop": {"look": "zakka", "enterable": true, "sign": {"text": "晴れ屋 雑貨店", "bg": "#fff4d6", "fg": "#1e40af"}}},
     {"id": "jm_cafe_rebound", "style": "jmShopRoom", "position": [12,4], "size": [8,7,7], "rotationDeg": -90, "model": null, "collider": false, "shop": {"look": "cafe", "enterable": true, "sign": {"text": "喫茶 リバウンド", "bg": "#1e3a5f", "fg": "#f5e6c8"}}},
     {"id": "jm_antique", "style": "jmShopRoom", "position": [16,35.5], "size": [7,8,6], "rotationDeg": 180, "model": null, "collider": false, "shop": {"look": "antique", "enterable": true, "sign": {"text": "天球屋", "bg": "#2f4f3a", "fg": "#f5e6c8"}}},
@@ -209,6 +212,21 @@
     {"id": "jm_machiya_1_wall_left", "style": "jmCollider", "position": [-23.15,-15], "size": [0.3,7,7], "rotationDeg": 180},
     {"id": "jm_machiya_1_wall_right", "style": "jmCollider", "position": [-30.85,-15], "size": [0.3,7,7], "rotationDeg": 180},
     {"id": "jm_machiya_1_wall_front_l", "style": "jmCollider", "position": [-24.55,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180},
-    {"id": "jm_machiya_1_wall_front_r", "style": "jmCollider", "position": [-29.45,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180}
+    {"id": "jm_machiya_1_wall_front_r", "style": "jmCollider", "position": [-29.45,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180},
+    {"id": "jm_rooftop_wall_back", "style": "jmCollider", "position": [-33.875, 4], "size": [10, 9.4, 0.25], "rotationDeg": 90},
+    {"id": "jm_rooftop_wall_left", "style": "jmCollider", "position": [-30, 8.875], "size": [0.25, 9.4, 8], "rotationDeg": 90},
+    {"id": "jm_rooftop_wall_right", "style": "jmCollider", "position": [-30, -0.875], "size": [0.25, 9.4, 8], "rotationDeg": 90},
+    {"id": "jm_rooftop_wall_front_l", "style": "jmCollider", "position": [-26.125, 1.05], "size": [4.1, 9.4, 0.25], "rotationDeg": 90},
+    {"id": "jm_rooftop_wall_front_r", "style": "jmCollider", "position": [-26.125, 6.95], "size": [4.1, 9.4, 0.25], "rotationDeg": 90},
+    {"id": "jm_rooftop_wall_lintel", "style": "jmCollider", "position": [-26.125, 4], "size": [1.8, 6.9, 0.25], "rotationDeg": 90, "elevation": 2.5},
+    {"id": "jm_rooftop_roof_a", "style": "jmCollider", "position": [-29.25, 4], "size": [9.5, 0.2, 6.0], "rotationDeg": 90, "elevation": 8.3},
+    {"id": "jm_rooftop_roof_b", "style": "jmCollider", "position": [-33.0, 0.375], "size": [2.25, 0.2, 1.5], "rotationDeg": 90, "elevation": 8.3},
+    {"id": "jm_rooftop_roof_c", "style": "jmCollider", "position": [-33.0, 7.875], "size": [1.75, 0.2, 1.5], "rotationDeg": 90, "elevation": 8.3},
+    {"id": "jm_rooftop_landing_1", "style": "jmCollider", "position": [-32.2, 0.375], "size": [2.25, 0.2, 3.1], "rotationDeg": 90, "elevation": 2.63},
+    {"id": "jm_rooftop_landing_2", "style": "jmCollider", "position": [-32.2, 7.875], "size": [1.75, 0.2, 3.1], "rotationDeg": 90, "elevation": 5.47},
+    {"id": "jm_rooftop_landing_1_rail", "style": "jmCollider", "position": [-30.6, 0.375], "size": [2.25, 1.0, 0.1], "rotationDeg": 90, "elevation": 2.83},
+    {"id": "jm_rooftop_landing_2_rail", "style": "jmCollider", "position": [-30.6, 7.875], "size": [1.75, 1.0, 0.1], "rotationDeg": 90, "elevation": 5.67},
+    {"id": "jm_rooftop_roof_hole_rail_n", "style": "jmCollider", "position": [-32.2, 4.25], "size": [5.5, 1.0, 0.1], "rotationDeg": 90, "elevation": 8.5},
+    {"id": "jm_rooftop_roof_hole_rail_w", "style": "jmCollider", "position": [-33.0, 7.05], "size": [0.1, 1.0, 1.5], "rotationDeg": 90, "elevation": 8.5}
   ]
 }

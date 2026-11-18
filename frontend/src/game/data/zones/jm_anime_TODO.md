@@ -29,7 +29,9 @@
 ## 팀에 공유할 것 (PR 전)
 
 - 근접형 작품명 (「슬램 리바운드」, 「그대의 이름을」, 「나츠키 요괴장」 외 6개)
-- 언덕 높이 3m (건물 높이 규칙 6~12m의 예외, 지형)
+- 언덕 높이 5m (건물 높이 규칙 6~12m의 예외, 지형). 계단은 terrain "stairs"(경사로 충돌 포함) 양쪽 2개
+- 옥상 신사 건물(jm_rooftop) 안 계단 3번 → 옥상 (terrain stairs 3개 + jmCollider 벽·층계참·옥상 바닥)
+- 농구 슛·비 오는 정류장 체험 (jm_activities.jsx, jm_activityStore.js)
 - `shared/places.json` 스탬프 지점 3곳 추가
 - `Map/styles/index.js` 등록 2줄
 - `public/fonts` 웹폰트 2개 (OFL)
