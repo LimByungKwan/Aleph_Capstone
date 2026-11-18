@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
-import { getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
+import { getBusSignTexture, getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
 import { RainStop } from './jm_activities.jsx'
 
 // 애니메이션 구역(JM) 전용: 들어갈 수 있는 가게 + 가게 겉모습. 담당: 지민
@@ -658,14 +658,19 @@ export function JmBusStop({ item }) {
         <meshStandardMaterial color="#7a8088" />
       </mesh>
       <Box p={[0, 0.45, -d / 2 + 0.35]} s={[w - 0.3, 0.06, 0.4]} c="#8b6b47" />
-      {/* 둥근 표지판 + 이름판 (대기소 오른쪽 앞) */}
+      {/* 둥근 표지판(버스 그림) + 이름판 (대기소 오른쪽 앞). 둘 다 기둥(반지름 0.04) 앞에 붙여서 기둥이 뚫고 나오지 않게 */}
       <group position={[w / 2 + 0.6, 0, d / 2]}>
         <Cyl p={[0, 1.2, 0]} r={0.04} h={2.4} c="#9ca3af" />
-        <mesh position={[0, 2.35, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.32, 0.32, 0.04, 24]} />
-          <meshStandardMaterial color="#1d4ed8" />
+        <mesh position={[0, 2.35, 0.07]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.34, 0.34, 0.04, 28]} />
+          <meshStandardMaterial color="#e5e7eb" />
         </mesh>
-        <mesh position={[0, 1.85, 0.03]}>
+        <mesh position={[0, 2.35, 0.095]}>
+          <circleGeometry args={[0.33, 32]} />
+          <GlowMaterial map={getBusSignTexture()} transparent />
+        </mesh>
+        <Box p={[0, 1.85, 0.065]} s={[plateW + 0.06, plateH + 0.06, 0.03]} c="#14532d" />
+        <mesh position={[0, 1.85, 0.085]}>
           <planeGeometry args={[plateW, plateH]} />
           <GlowMaterial map={getJpSignTexture(name, '#f5f0e6', '#14532d', plateW / plateH)} />
         </mesh>

@@ -15,13 +15,13 @@ import { HoopShoot } from './jm_activities.jsx'
 // ⚠ 용량을 줄이려고 지금 간판·안내판에 쓰는 글자만 들어 있어요. 새 글자를 쓰면 그 글자만 기본 글꼴로 보여요.
 //   글자를 추가하면 frontend/public/fonts/JM_FONTS.md 의 방법으로 다시 받아 주세요.
 const JP_FONT = '"JmJp", "Yu Gothic", "Meiryo", "Hiragino Sans", sans-serif' // Zen Maru Gothic Bold
-const KR_FONT = '"JmKr", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif' // Gowun Dodum
+export const KR_FONT = '"JmKr", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif' // Gowun Dodum
 const range = (n) => Array.from({ length: n }, (_, i) => i)
 
 // ── 캔버스 텍스처 (같은 그림은 한 번만 만들어 재사용) ──
 // 웹폰트가 늦게 도착하면 이미 만든 그림을 새 글꼴로 다시 그려요.
 const cache = new Map()
-function canvasTexture(key, width, height, draw) {
+export function canvasTexture(key, width, height, draw) {
   if (cache.has(key)) return cache.get(key).texture
   const canvas = document.createElement('canvas')
   canvas.width = width
@@ -53,7 +53,7 @@ if (typeof document !== 'undefined' && typeof FontFace !== 'undefined') {
     .catch((error) => console.warn('[JM] 웹폰트를 불러오지 못해 기본 글꼴로 표시합니다', error))
 }
 
-function fitText(ctx, text, maxWidth, startSize, weight = 'bold', family = JP_FONT, maxHeight = Infinity) {
+export function fitText(ctx, text, maxWidth, startSize, weight = 'bold', family = JP_FONT, maxHeight = Infinity) {
   let size = Math.min(startSize, maxHeight)
   ctx.font = `${weight} ${size}px ${family}`
   while (ctx.measureText(text).width > maxWidth && size > 10) {
@@ -86,6 +86,78 @@ export function getJpSignTexture(text, bg = '#ffffff', fg = '#222222', aspect = 
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(text, w / 2, h / 2 + 4)
+  })
+}
+
+// 시골 버스 정류장 둥근 표지판 그림: 파란 원 + 하얀 버스 그림 + 「バス」
+export function getBusSignTexture() {
+  return canvasTexture('bussign', 256, 256, (ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h)
+    ctx.fillStyle = '#1d4ed8'
+    ctx.beginPath()
+    ctx.arc(w / 2, h / 2, w / 2 - 4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 8
+    ctx.beginPath()
+    ctx.arc(w / 2, h / 2, w / 2 - 14, 0, Math.PI * 2)
+    ctx.stroke()
+    // 버스 몸통
+    const bx = 62
+    const by = 62
+    const bw = 132
+    const bh = 88
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.roundRect(bx, by, bw, bh, 16)
+    ctx.fill()
+    // 창문 3칸 + 앞 유리
+    ctx.fillStyle = '#1d4ed8'
+    for (let i = 0; i < 3; i++) ctx.fillRect(bx + 12 + i * 30, by + 14, 24, 26)
+    ctx.fillRect(bx + 104, by + 14, 18, 40)
+    // 바퀴
+    ctx.fillStyle = '#ffffff'
+    for (const x of [bx + 28, bx + 104]) {
+      ctx.beginPath()
+      ctx.arc(x, by + bh + 4, 13, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.fillStyle = '#1d4ed8'
+    for (const x of [bx + 28, bx + 104]) {
+      ctx.beginPath()
+      ctx.arc(x, by + bh + 4, 5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // 글씨
+    ctx.fillStyle = '#ffffff'
+    fitText(ctx, 'バス', 110, 40, 'bold', JP_FONT)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('バス', w / 2, 192)
+  })
+}
+
+// 나무 화살표 팻말 글씨 (한국어). 판 모양은 JmArrowSign이 그림
+export function getArrowSignTexture(text, aspect = 3.2) {
+  const height = 128
+  const width = Math.round(height * aspect)
+  return canvasTexture(`arrowsign:${text}:${aspect}`, width, height, (ctx, w, h) => {
+    ctx.fillStyle = '#b98b5a'
+    ctx.fillRect(0, 0, w, h)
+    // 나뭇결
+    ctx.strokeStyle = 'rgba(90,60,30,0.28)'
+    ctx.lineWidth = 3
+    for (let i = 1; i < 6; i++) {
+      ctx.beginPath()
+      ctx.moveTo(0, (h * i) / 6 + Math.sin(i) * 3)
+      ctx.bezierCurveTo(w * 0.3, (h * i) / 6 - 6, w * 0.6, (h * i) / 6 + 6, w, (h * i) / 6)
+      ctx.stroke()
+    }
+    ctx.fillStyle = '#3b2412'
+    fitText(ctx, text, w * 0.78, 72, 'bold', KR_FONT, h * 0.62)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(text, w * 0.44, h / 2 + 3)
   })
 }
 
@@ -669,6 +741,177 @@ export function JmHoop({ item }) {
   )
 }
 
+// ── 계단 가운데 빨간 난간 (「그대의 이름을」 재회의 계단) ─────────
+// size = [두께, 높이, 길이]. 길이 방향은 z: +z 끝이 계단 아래(높이 rail.bottom), -z 끝이 위(rail.top)
+// 계단 면에서 0.9m 위로 손잡이, 1.6m마다 기둥. 충돌은 JSON "collider"가 세로 벽으로 막음(계단을 두 줄로 나눔)
+const RAIL_RED = '#c8452f'
+export function JmStairRail({ item }) {
+  const [, , len] = item.size
+  const { bottom = 0, top = 5 } = item.rail ?? {}
+  const rise = top - bottom
+  const slope = Math.atan2(rise, len)
+  const posts = Math.max(2, Math.round(len / 1.6) + 1)
+  const railLen = Math.hypot(len, rise)
+  return (
+    <group>
+      {Array.from({ length: posts }, (_, i) => {
+        const t = i / (posts - 1)
+        const z = len / 2 - t * len
+        const y = bottom + t * rise
+        return (
+          <mesh key={i} position={[0, y + 0.45, z]}>
+            <cylinderGeometry args={[0.035, 0.035, 0.9, 8]} />
+            <meshStandardMaterial color={RAIL_RED} />
+          </mesh>
+        )
+      })}
+      <mesh position={[0, bottom + rise / 2 + 0.9, 0]} rotation={[slope, 0, 0]}>
+        <boxGeometry args={[0.07, 0.07, railLen]} />
+        <meshStandardMaterial color={RAIL_RED} />
+      </mesh>
+      <mesh position={[0, bottom + rise / 2 + 0.45, 0]} rotation={[slope, 0, 0]}>
+        <boxGeometry args={[0.04, 0.04, railLen]} />
+        <meshStandardMaterial color={RAIL_RED} />
+      </mesh>
+    </group>
+  )
+}
+
+// ── 계단 옆 경사 옹벽 (계단 경사를 따라 한 장으로 이어지는 돌담) ─────────
+// size = [두께, 최대 높이, 길이]. +z 끝(계단 아래) 높이 wall.bottom → -z 끝(위) 높이 wall.top
+// 처음엔 stoneWall 토막 4개를 층층이 세웠는데, 토막마다 갓돌이 겹쳐 보여서 한 장으로 바꿈
+export function JmSlopeWall({ item }) {
+  const [t, , len] = item.size
+  const { bottom = 1.5, top = 6 } = item.wall ?? {}
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.moveTo(-len / 2, 0)
+    shape.lineTo(len / 2, 0)
+    shape.lineTo(len / 2, bottom)
+    shape.lineTo(-len / 2, top)
+    shape.closePath()
+    const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false })
+    g.rotateY(-Math.PI / 2) // 모양의 가로 → z(길이), 두께 → x
+    g.translate(t / 2, 0, 0)
+    return g
+  }, [t, len, bottom, top])
+  const slope = Math.atan2(top - bottom, len)
+  const capLen = Math.hypot(len, top - bottom)
+  return (
+    <group>
+      <mesh geometry={geometry}>
+        <meshStandardMaterial color="#9a9188" flatShading />
+      </mesh>
+      {/* 갓돌: 경사를 따라 한 줄 */}
+      <mesh position={[0, (bottom + top) / 2 + 0.06, 0]} rotation={[slope, 0, 0]}>
+        <boxGeometry args={[t + 0.12, 0.12, capLen]} />
+        <meshStandardMaterial color="#5f5a55" />
+      </mesh>
+    </group>
+  )
+}
+
+// ── 나무 화살표 팻말 (한국어 안내) ─────────────────
+// item.signs = [{ text, dir: 'right' | 'left', y }] — 팻말마다 화살표 모양 판. 판 앞면은 +z
+// size 예: [1.6, 2.2, 0.2]. 다른 구역(BK)으로 이어지는 길 안내라 한국어로 씀
+function arrowPlankGeometry(len, h, dir) {
+  const s = new THREE.Shape()
+  const tip = h * 0.55
+  const L = len / 2
+  if (dir === 'left') {
+    s.moveTo(L, -h / 2); s.lineTo(-L + tip, -h / 2); s.lineTo(-L, 0); s.lineTo(-L + tip, h / 2); s.lineTo(L, h / 2)
+  } else {
+    s.moveTo(-L, -h / 2); s.lineTo(L - tip, -h / 2); s.lineTo(L, 0); s.lineTo(L - tip, h / 2); s.lineTo(-L, h / 2)
+  }
+  s.closePath()
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: false })
+  g.translate(0, 0, -0.03)
+  return g
+}
+export function JmArrowSign({ item }) {
+  const [w, h] = item.size
+  const signs = item.signs ?? [{ text: '전망대', dir: 'right' }]
+  const plankH = 0.34
+  const geos = useMemo(() => signs.map((sg) => arrowPlankGeometry(w, plankH, sg.dir ?? 'right')), [signs, w])
+  return (
+    <group>
+      <mesh position={[0, h / 2, -0.06]}>
+        <boxGeometry args={[0.12, h, 0.12]} />
+        <meshStandardMaterial color="#6b4a2f" />
+      </mesh>
+      <mesh position={[0, h + 0.05, -0.06]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[0.12, 0.14, 4]} />
+        <meshStandardMaterial color="#6b4a2f" />
+      </mesh>
+      {signs.map((sg, i) => {
+        const y = sg.y ?? h - 0.35 - i * 0.45
+        const tex = getArrowSignTexture(sg.text, w / plankH)
+        return (
+          <group key={i} position={[0, y, 0.03]}>
+            <mesh geometry={geos[i]}>
+              <meshStandardMaterial color="#9c7246" />
+            </mesh>
+            <mesh position={[sg.dir === 'left' ? 0.04 : -0.04, 0, 0.032]}>
+              <planeGeometry args={[w - plankH * 0.55, plankH * 0.92]} />
+              <GlowMaterial map={tex} glow={0.25} />
+            </mesh>
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+// ── 언제나 꽃이 핀 벚나무 (「초속 5미터」 벚꽃 강변길 전용) ─────────
+// 계절 나무(SeasonalTree)는 계절을 따라 바뀌어서, 강변길만은 사계절 내내 벚꽃이 피게 따로 만듦
+// 가볍게: 줄기 1 + 가지 3 + 꽃송이 덩어리 6 + 바닥 꽃잎 1장. item.rotationDeg로 나무마다 모양이 달라 보이게
+const BLOOM = ['#fbd3df', '#f6b7c9', '#fde6ee', '#f3a6bd']
+export function JmSakuraBloom({ item }) {
+  const [, h] = item.size
+  const trunkH = h * 0.42
+  const seed = hashSeed(item.id ?? 'sakura')
+  const clusters = useMemo(() => {
+    const out = []
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + seed * 6.28
+      const r = 0.9 + ((seed * 97 + i * 31) % 10) / 14
+      out.push({ p: [Math.cos(a) * r, trunkH + 0.9 + ((i * 37) % 5) * 0.22, Math.sin(a) * r], s: 0.85 + ((i * 13) % 4) * 0.12, c: BLOOM[i % BLOOM.length] })
+    }
+    out.push({ p: [0, trunkH + 1.7, 0], s: 1.15, c: BLOOM[0] })
+    return out
+  }, [seed, trunkH])
+  return (
+    <group>
+      <mesh position={[0, trunkH / 2, 0]}>
+        <cylinderGeometry args={[0.13, 0.2, trunkH, 7]} />
+        <meshStandardMaterial color="#5b3a2a" flatShading />
+      </mesh>
+      {[0, 2.1, 4.2].map((a, i) => (
+        <mesh key={i} position={[Math.cos(a) * 0.35, trunkH + 0.35, Math.sin(a) * 0.35]} rotation={[Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7]}>
+          <cylinderGeometry args={[0.05, 0.09, 1.1, 5]} />
+          <meshStandardMaterial color="#5b3a2a" flatShading />
+        </mesh>
+      ))}
+      {clusters.map((c, i) => (
+        <mesh key={i} position={c.p} scale={c.s}>
+          <icosahedronGeometry args={[0.8, 0]} />
+          <meshStandardMaterial color={c.c} flatShading />
+        </mesh>
+      ))}
+      {/* 떨어진 꽃잎 */}
+      <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[1.9, 18]} />
+        <meshStandardMaterial color="#f8c8d6" transparent opacity={0.55} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+function hashSeed(text) {
+  let h = 0
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 1000
+  return h / 1000
+}
+
 // ── 학교 정문 (문기둥 두 개 + 학교 이름판) ─────────
 // item.signs[0].text = 학교 이름. size 예: [6, 2.4, 0.6]. JSON에 "collider": false (가운데로 지나감)
 export function JmSchoolGate({ item }) {
@@ -876,6 +1119,10 @@ export const JM_LANDMARK_STYLES = {
   jmBigTree: JmBigTree,
   jmFarmhouse: JmFarmhouse,
   jmHoop: JmHoop,
+  jmStairRail: JmStairRail,
+  jmSlopeWall: JmSlopeWall,
+  jmArrowSign: JmArrowSign,
+  jmSakuraBloom: JmSakuraBloom,
   jmSchoolGate: JmSchoolGate,
   jmStationSign: JmStationSign,
   jmFloat: JmFloat,
