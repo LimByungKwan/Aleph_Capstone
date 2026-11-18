@@ -230,9 +230,21 @@ export function HoopShoot({ item, rimY }) {
       player.current.getWorldPosition(tmp.me)
       tmp.d.copy(tmp.me).sub(tmp.rim)
       tmp.d.y = 0
-      const near = tmp.d.length() < NEAR_DIST && tmp.d.dot(tmp.forward) > 0.8
-      if (near && s.near !== item.id) store.setShoot({ near: item.id })
-      if (!near && s.near === item.id) store.setShoot({ near: null })
+      // 버그 수정: 코트 가운데에 서면 양쪽 골대가 둘 다 "가깝다"고 판단해 안내·슛 대상이 번갈아 바뀌었음
+      // → 골대 앞쪽(코트 안, 옆으로 4.5m 이내)만 인정하고, 둘 다 해당하면 더 가까운 골대 하나만 잡음
+      const ahead = tmp.d.dot(tmp.forward)
+      const side = Math.abs(tmp.d.x * tmp.forward.z - tmp.d.z * tmp.forward.x)
+      const dist = tmp.d.length()
+      const near = !s.active && dist < NEAR_DIST && ahead > 0.8 && side < 4.5
+      if (near) {
+        if (s.near === item.id) {
+          if (Math.abs((s.nearDist ?? 0) - dist) > 0.2) store.setShoot({ nearDist: dist })
+        } else if (s.near === null || dist < (s.nearDist ?? Infinity) - 0.3) {
+          store.setShoot({ near: item.id, nearDist: dist })
+        }
+      } else if (s.near === item.id && !s.active) {
+        store.setShoot({ near: null, nearDist: Infinity })
+      }
     }
 
     // 힘 게이지 (0 → 1 → 0 왕복)
