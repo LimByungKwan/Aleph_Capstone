@@ -24,11 +24,11 @@ const DARK = '#2b2d30'
 // 최적화: 진짜 조명(PointLight)은 쓰지 않음 → 화면 전체 조명 계산이 늘지 않음.
 //         빛나는 재질 세기만 바꾸고, 바닥 불빛·빛무리는 낮에는 아예 그리지 않음. 값이 그대로면 계산도 생략.
 const NIGHT_MATS = [] // [재질, 낮 세기, 밤 세기]
-const NIGHT_UNIFORM = { value: 0 } // 실내 재질(INTERIOR_MAT)용 밤 정도
+export const NIGHT_UNIFORM = { value: 0 } // 실내 재질(INTERIOR_MAT)용 밤 정도
 let nightFrame = -1
 let nightLast = -1
 
-function nightGlow(material, nightIntensity) {
+export function nightGlow(material, nightIntensity) {
   if (!NIGHT_MATS.some(([m]) => m === material)) {
     NIGHT_MATS.push([material, material.emissiveIntensity, nightIntensity])
     nightLast = -1 // 새 재질이 생기면 다음 프레임에 한 번 다시 맞춤
@@ -757,7 +757,7 @@ const tmpE = new THREE.Euler()
 const tmpC = new THREE.Color()
 
 // rot: y축 회전(숫자) 또는 [x, y, z] 회전
-function piece(shape, [x, y, z], [sx, sy, sz], color, glow = 0, rot = 0) {
+export function piece(shape, [x, y, z], [sx, sy, sz], color, glow = 0, rot = 0) {
   const g = UNIT[shape].clone()
   if (Array.isArray(rot)) tmpE.set(rot[0], rot[1], rot[2])
   else tmpE.set(0, rot, 0)
@@ -958,7 +958,7 @@ function RecessedBody({ w, h, d, y0 = 0, gh, rd, material, kind }) {
 // 최적화: 움직이지 않는 부분은 모양 1개로 합침(그리기 호출 1번), 그네만 따로 흔들림, 충돌 없음
 // 앞(+z) = 사진 찍는 쪽. 하트 아치는 로컬 z -1.5, 삼각대는 z +5.5
 // ════════════════════════════════════════════
-function colorize(geometry, color, glow = 0) {
+export function colorize(geometry, color, glow = 0) {
   const g = geometry.index ? geometry.toNonIndexed() : geometry
   tmpC.set(color)
   const n = g.attributes.position.count

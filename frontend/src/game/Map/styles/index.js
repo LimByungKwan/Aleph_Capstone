@@ -29,6 +29,7 @@ import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { SungrayBeach } from './beach.jsx'
 import { FestivalCart } from './festival.jsx'
+import { HubBuskingStage, HubClockTower, HubCompass, HubFoodTruck, HubMapBoard, HubPergola, HubSignpost, HubTreeBench } from './hub.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
 // 새 스타일을 만들면 여기에 한 줄 추가하면 돼요.
@@ -91,4 +92,13 @@ export const STYLES = {
   coinKaraoke: FilmingAlleyShop,
   recordShop: FilmingAlleyShop,
   photoStudio: FilmingAlleyShop,
+  // 중앙 광장 (hub.json)
+  hubCompass: HubCompass,
+  hubClockTower: HubClockTower,
+  hubTreeBench: HubTreeBench,
+  hubSignpost: HubSignpost,
+  hubMapBoard: HubMapBoard,
+  hubPergola: HubPergola,
+  hubFoodTruck: HubFoodTruck,
+  hubBuskingStage: HubBuskingStage,
 }
