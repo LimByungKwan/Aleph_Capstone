@@ -21,7 +21,16 @@ function useHudWidth() {
         timer = setTimeout(attach, 500) // UI가 늦게 뜨면 잠시 후 다시 찾기
         return
       }
-      const update = () => setWidth(hud.getBoundingClientRect().width)
+      const update = () => {
+        // 포털 장면 등으로 HUD가 빠졌다 새로 만들어지면 옛 요소는 폭 0 → 새 HUD를 다시 찾음
+        if (!hud.isConnected) {
+          observer?.disconnect()
+          setWidth(0)
+          attach()
+          return
+        }
+        setWidth(hud.getBoundingClientRect().width)
+      }
       update()
       observer = new ResizeObserver(update)
       observer.observe(hud)
