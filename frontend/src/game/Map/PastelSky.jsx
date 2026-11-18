@@ -8,35 +8,31 @@ import { live, snapTimeOfDay, stepTimeOfDay } from '../timeOfDay.js'
 import { seeded } from './styles/kit.jsx'
 
 // 파스텔 하늘 세트. 인터넷 이미지(HDR) 없이 코드로만 그려요.
-// 하늘색 = 계절(혜진 님 seasons.js) × 시간대(아침/점심/밤, 설정창 ⚙). timeOfDay.js의 live 값을 따라 부드럽게 바뀌어요.
+// 하늘색은 시간대(아침/점심/밤, 설정창 ⚙)에 따라 timeOfDay.js의 live 값을 따라 부드럽게 바뀌어요. (계절과는 무관)
 // 최적화: 하늘 1번 + 구름 1번 + 먼 산 1번 + 바깥 땅 1번 + 별 1번(밤에만) = 그리기 호출 최대 5번, 그림자 없음.
 
 export default function PastelSky() {
-  const season = useSeason()
-  const look = SEASON_LOOK[season]
   return (
     <>
-      <TimeOfDayDriver season={season} />
-      <fog attach="fog" args={[look.fog ?? SKY_COLORS.fog, FOG_NEAR, FOG_FAR]} />
+      <TimeOfDayDriver />
+      <fog attach="fog" args={[SKY_COLORS.fog, FOG_NEAR, FOG_FAR]} />
       <SkyDome />
       <Stars />
-      <OuterGround color={look.meadow} />
+      <OuterGround />
       {SHOW_MOUNTAINS && <Mountains />}
       {SHOW_CLOUDS && <Clouds />}
     </>
   )
 }
 
-// 매 프레임 하늘·빛 값을 (시간대 × 계절) 목표로 조금씩 옮기고, 안개 색을 맞춤 (가장 먼저 실행)
-function TimeOfDayDriver({ season }) {
+// 매 프레임 하늘·빛 값을 시간대 목표로 조금씩 옮기고, 안개 색을 맞춤 (가장 먼저 실행)
+function TimeOfDayDriver() {
   const scene = useThree((state) => state.scene)
   useLayoutEffect(() => {
-    snapTimeOfDay(useSettings.getState().timeOfDay, season)
-    // 처음 한 번만 바로 맞추고, 이후 계절이 바뀌면 부드럽게 전환
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    snapTimeOfDay(useSettings.getState().timeOfDay)
   }, [])
   useFrame((_, delta) => {
-    stepTimeOfDay(useSettings.getState().timeOfDay, season, delta)
+    stepTimeOfDay(useSettings.getState().timeOfDay, delta)
     if (scene.fog) scene.fog.color.copy(live.fog)
   }, -1)
   return null
@@ -122,7 +118,6 @@ function SkyDome() {
     [],
   )
   const geometry = useMemo(() => new THREE.SphereGeometry(10, 32, 16), [])
-  // 계절 하늘색은 timeOfDay.js가 live 값에 섞어 주므로 여기서 따로 설정하지 않음
 
   // 하늘은 카메라를 따라다님 (아무리 멀리 가도 하늘 끝에 닿지 않게)
   useFrame(({ camera }) => ref.current?.position.copy(camera.position))
