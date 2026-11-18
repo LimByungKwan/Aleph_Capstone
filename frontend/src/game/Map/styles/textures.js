@@ -39,9 +39,42 @@ function makeCanvasTexture(key, width, height, draw, repeat = true) {
 
 // ── 바닥 무늬 (반복용) ─────────────────────────
 // 각 무늬 한 장이 실제로 몇 m인지 (반복 횟수 계산에 사용)
-export const TILE_METERS = { brick: 1, asphalt: 4, tile: 1, stone: 2, paver: 2 }
+export const TILE_METERS = { brick: 1, asphalt: 4, tile: 1, stone: 2, paver: 2, grass: 5, gardenPath: 2.4 }
 
 const PATTERNS = {
+  grass: () =>
+    makeCanvasTexture('grass', 256, 256, (ctx, w, h) => {
+      const random = seededRandom(219)
+      ctx.fillStyle = '#648a49'
+      ctx.fillRect(0, 0, w, h)
+      const shades = ['#729950', '#7b9c55', '#567a43', '#5d8046', '#8bac60']
+      for (let index = 0; index < 4100; index += 1) {
+        ctx.fillStyle = shades[index % shades.length]
+        ctx.fillRect(random() * w, random() * h, 1 + random() * 4, 1 + random() * 2)
+      }
+    }),
+
+  gardenPath: () =>
+    makeCanvasTexture('garden-path', 256, 256, (ctx, w, h) => {
+      const random = seededRandom(220)
+      ctx.fillStyle = '#5d7846'
+      ctx.fillRect(0, 0, w, h)
+      for (let row = 0; row < 4; row += 1) {
+        for (let column = -1; column < 4; column += 1) {
+          const x = column * 64 + (row % 2) * 32
+          const y = row * 64
+          ctx.fillStyle = '#455136'
+          ctx.beginPath()
+          ctx.roundRect(x + 3, y + 5, 58, 56, 8)
+          ctx.fill()
+          ctx.fillStyle = vary('#b9bbb1', random, 0.11)
+          ctx.beginPath()
+          ctx.roundRect(x + 3, y + 3, 58, 54, 8)
+          ctx.fill()
+        }
+      }
+    }),
+
   // 붉은 보도블록 (어긋나게 쌓기)
   brick: () =>
     makeCanvasTexture('brick', 256, 256, (ctx, w, h) => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TIME_PRESETS } from './config.js'
 import { useSettings } from './settingsStore.js'
+import SeasonPicker from './SeasonPicker.jsx'
 
 // 오른쪽 위 ⚙ 설정 버튼 + 설정창 (시간대 / 그래픽 품질 / 구역 표시)
 // 위치: 스탬프북·쿠폰함 버튼 묶음(.ui-hud, 혜진 님 UI) 바로 왼쪽.
@@ -52,14 +53,14 @@ export default function SettingsPanel() {
         ⚙️
       </button>
 
-      {open && (
-        <div style={styles.panel} role="dialog" aria-label="설정">
+        <div hidden={!open} style={styles.panel} role="dialog" aria-label="설정">
           <div style={styles.header}>
             <strong>설정</strong>
             <button type="button" onClick={press(() => setOpen(false))} style={styles.close} aria-label="닫기">
               ✕
             </button>
           </div>
+          <SeasonPicker />
 
           <div style={styles.label}>시간대</div>
           <div style={styles.segment}>
@@ -83,10 +84,9 @@ export default function SettingsPanel() {
 
           <label style={styles.toggleRow}>
             <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} onClick={(e) => e.currentTarget.blur()} />
-            구역 표시 (색 바닥·이름표)
+            구역 테두리 표시
           </label>
         </div>
-      )}
     </div>
   )
 }
