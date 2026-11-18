@@ -11,6 +11,13 @@ import { create } from 'zustand'
 //   lastResult : 'make' | 'miss' | null (방금 슛 결과, 화면 문구용)
 // completed: 완료한 체험 id → 완료 시각(ISO). 나중에 스탬프 API(completeActivity)로 보낼 값
 export const SHOOT_GOAL = 3 // 이번 슛 모드에서 이만큼 넣으면 체험 완료
+export const RAIN_WAIT = 8 // 비 오는 정류장에서 우산 쓰고 이만큼(초) 기다리면 체험 완료
+
+// rain: 비 오는 정류장 체험
+//   inRain   : 비 구역 안인지 (정류장 반경)
+//   near     : 우산 안내가 뜨는 거리 안인지
+//   umbrella : 우산을 폈는지 (E로 펴고 접기)
+//   waited   : 우산 쓰고 비 구역에 있던 시간(초)
 
 export const useJmActivity = create((set, get) => ({
   shoot: { near: null, active: null, power: 0, charging: false, makes: 0, shots: 0, lastResult: null },
@@ -18,6 +25,9 @@ export const useJmActivity = create((set, get) => ({
   startShoot: (hoopId) =>
     set({ shoot: { ...get().shoot, active: hoopId, power: 0, charging: false, makes: 0, shots: 0, lastResult: null } }),
   endShoot: () => set({ shoot: { ...get().shoot, active: null, charging: false, power: 0 } }),
+
+  rain: { inRain: false, near: false, umbrella: false, waited: 0 },
+  setRain: (patch) => set({ rain: { ...get().rain, ...patch } }),
 
   completed: {},
   complete: (activityId) => {

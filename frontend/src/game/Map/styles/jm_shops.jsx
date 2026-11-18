@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
+import { RainStop } from './jm_activities.jsx'
 
 // 애니메이션 구역(JM) 전용: 들어갈 수 있는 가게 + 가게 겉모습. 담당: 지민
 //
@@ -669,6 +670,8 @@ export function JmBusStop({ item }) {
           <GlowMaterial map={getJpSignTexture(name, '#f5f0e6', '#14532d', plateW / plateH)} />
         </mesh>
       </group>
+      {/* 비 오는 정류장 체험 (jm_activities.jsx) */}
+      <RainStop />
     </group>
   )
 }

@@ -4,7 +4,7 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
-import { SHOOT_GOAL, useJmActivity } from './jm_activityStore.js'
+import { RAIN_WAIT, SHOOT_GOAL, useJmActivity } from './jm_activityStore.js'
 
 // 애니메이션 구역(JM) 체험: 농구 슛. 담당: 지민
 //
@@ -325,3 +325,242 @@ const gauge = { position: 'relative', height: 12, borderRadius: 6, background: '
 // 정확한 힘 구간 (0.42 ~ 0.6)
 const sweet = { position: 'absolute', left: '42%', width: '18%', top: 0, bottom: 0, background: 'rgba(74,222,128,0.55)' }
 const gaugeFill = { position: 'absolute', left: 0, top: 0, bottom: 0, background: '#f59e0b', opacity: 0.85 }
+
+// ─────────────────────────────────────────────
+// 비 오는 정류장 (가상 작품 「옆집 토토루」 성지) — 담당: 지민
+//
+// 정류장 반경 RAIN_R 안에 들어가면 비가 서서히 내리고 빗소리가 남 → E로 우산 펴기/접기
+// 우산 쓰고 비 속에서 RAIN_WAIT초 기다리면 체험 완료. 우산 아래로는 비가 안 떨어짐.
+// ⚠ 실제 작품의 캐릭터·버스 모양은 넣지 않음 (팀 규칙 7번). 비·우산·정류장 분위기만.
+//
+// 가볍게 만든 방법:
+// - 빗줄기 900개를 InstancedMesh 하나로 그림 (그리기 호출 1번), 조명은 새로 안 넣음 (SG 점광원 고정 규칙)
+// - 비 구역 밖이면 세기 0 → 갱신도 그리기도 안 함
+// - 빗소리는 파일 없이 Web Audio로 만든 잡음 (혜진님 입장 효과음과 같은 방식). 첫 E 누를 때 켬(브라우저 자동재생 정책)
+
+const RAIN_R = 10 // 비 구역 반경 (정류장 중심에서)
+const UMBRELLA_HINT_R = 4.5 // "E 우산" 안내가 뜨는 거리
+const DROPS = 900
+const RAIN_BOX = 18 // 캐릭터 주변 18 × 18m 안에 비
+const RAIN_TOP = 9
+const DROP_SPEED = 11
+const CANOPY_R = 0.8
+const CANOPY_Y = 1.15 // 캐릭터 중심(약 1m) 위로 우산 높이
+
+const wrap = (v, size) => ((((v + size / 2) % size) + size) % size) - size / 2
+
+export function RainStop() {
+  const scene = useThree((state) => state.scene)
+  const anchor = useRef(null)
+  const dropsRef = useRef(null)
+  const umbrellaRef = useRef(null)
+  const player = useRef(null)
+  const lastLookup = useRef(-Infinity)
+  const intensity = useRef(0)
+  const waited = useRef(0)
+  const audio = useRef(null)
+
+  const tmp = useMemo(() => ({ stop: new THREE.Vector3(), me: new THREE.Vector3(), m: new THREE.Matrix4() }), [])
+  // 빗방울 위치 (월드 x, 높이 y, 월드 z). x·z는 캐릭터 주변으로 감싸서(wrap) 보여 줌
+  const drops = useMemo(() => {
+    const arr = new Float32Array(DROPS * 3)
+    for (let i = 0; i < DROPS; i++) {
+      arr[i * 3] = Math.random() * RAIN_BOX
+      arr[i * 3 + 1] = Math.random() * RAIN_TOP
+      arr[i * 3 + 2] = Math.random() * RAIN_BOX
+    }
+    return arr
+  }, [])
+
+  // E: 비 구역 안에서 우산 펴기/접기 (상호작용 지점 근처면 공용 E에 양보)
+  useEffect(() => {
+    const down = (event) => {
+      if (event.repeat || event.code !== 'KeyE') return
+      const r = useJmActivity.getState().rain
+      const game = useGameStore.getState()
+      if (!r.inRain || game.openPanel || game.nearbyPlaceId) return
+      useJmActivity.getState().setRain({ umbrella: !r.umbrella })
+      startAudio()
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+    // startAudio는 ref만 씀
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 화면을 떠나면 소리 정리
+  useEffect(
+    () => () => {
+      audio.current?.ctx.close().catch(() => {})
+      audio.current = null
+    },
+    [],
+  )
+
+  function startAudio() {
+    if (audio.current) return
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      source.loop = true
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.value = 1400
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      source.connect(filter).connect(gain).connect(ctx.destination)
+      source.start()
+      audio.current = { ctx, gain, filter, last: -1 }
+    } catch {
+      // 소리를 못 내는 환경이면 조용히 넘어감
+    }
+  }
+
+  useFrame(({ clock }, delta) => {
+    const t = clock.elapsedTime
+    if (!anchor.current) return
+    if (!player.current?.parent && t - lastLookup.current > FIND_PLAYER_EVERY) {
+      lastLookup.current = t
+      player.current = scene.getObjectByName('player') ?? null
+    }
+    const store = useJmActivity.getState()
+    const r = store.rain
+    const p = player.current?.parent ? player.current : null
+
+    anchor.current.getWorldPosition(tmp.stop)
+    let dist = Infinity
+    if (p) {
+      p.getWorldPosition(tmp.me)
+      dist = Math.hypot(tmp.me.x - tmp.stop.x, tmp.me.z - tmp.stop.z)
+    }
+    const inRain = dist < RAIN_R
+    const near = dist < UMBRELLA_HINT_R
+    if (inRain !== r.inRain || near !== r.near) {
+      // 비 구역을 나가면 우산도 접힘
+      store.setRain({ inRain, near, ...(inRain ? {} : { umbrella: false }) })
+    }
+
+    // 비 세기: 들어오면 서서히 세지고 나가면 서서히 그침
+    intensity.current += ((inRain ? 1 : 0) - intensity.current) * Math.min(1, delta * 1.2)
+    const k = intensity.current
+
+    // 빗소리 크기 (우산을 펴면 우산에 떨어지는 소리처럼 조금 밝게)
+    const a = audio.current
+    if (a) {
+      const vol = Math.round(k * (r.umbrella ? 0.22 : 0.16) * 100) / 100
+      if (vol !== a.last) {
+        a.gain.gain.setTargetAtTime(vol, a.ctx.currentTime, 0.3)
+        a.filter.frequency.setTargetAtTime(r.umbrella ? 2400 : 1400, a.ctx.currentTime, 0.3)
+        a.last = vol
+      }
+    }
+
+    // 빗줄기
+    const mesh = dropsRef.current
+    if (mesh) {
+      mesh.visible = k > 0.02 && !!p
+      if (mesh.visible) {
+        mesh.material.opacity = 0.5 * k
+        const groundY = tmp.stop.y
+        const shown = Math.floor(DROPS * k)
+        for (let i = 0; i < DROPS; i++) {
+          let y = drops[i * 3 + 1] - DROP_SPEED * delta
+          if (y < 0) y += RAIN_TOP
+          drops[i * 3 + 1] = y
+          const x = tmp.me.x + wrap(drops[i * 3] - tmp.me.x, RAIN_BOX)
+          const z = tmp.me.z + wrap(drops[i * 3 + 2] - tmp.me.z, RAIN_BOX)
+          const wy = groundY + y
+          // 세기만큼만 보이고, 우산 아래는 비가 안 옴
+          const underUmbrella = r.umbrella && Math.hypot(x - tmp.me.x, z - tmp.me.z) < CANOPY_R && wy < tmp.me.y + CANOPY_Y
+          if (i >= shown || underUmbrella) tmp.m.makeTranslation(0, -100, 0)
+          else tmp.m.makeTranslation(x, wy, z)
+          mesh.setMatrixAt(i, tmp.m)
+        }
+        mesh.instanceMatrix.needsUpdate = true
+      }
+    }
+
+    // 우산: 캐릭터 머리 위를 따라다님
+    const um = umbrellaRef.current
+    if (um) {
+      um.visible = r.umbrella && !!p
+      if (um.visible) um.position.set(tmp.me.x + 0.15, tmp.me.y + CANOPY_Y, tmp.me.z)
+    }
+
+    // 우산 쓰고 비 속에서 기다린 시간 → 완료 (완료 기록은 한 번만)
+    if (r.umbrella && inRain && !store.completed.jm_busstop) {
+      waited.current += delta
+      const shownWait = Math.floor(waited.current * 4) / 4
+      if (shownWait !== r.waited) store.setRain({ waited: shownWait })
+      if (waited.current >= RAIN_WAIT && store.complete('jm_busstop')) {
+        useUiStore.getState().toast?.('☔ 비 오는 정류장에서 버스를 기다렸어요! 정류장 체험 완료', 'success')
+      }
+    }
+  })
+
+  return (
+    <>
+      <group ref={anchor} />
+      {createPortal(
+        <>
+          <instancedMesh ref={dropsRef} args={[null, null, DROPS]} visible={false} frustumCulled={false}>
+            <boxGeometry args={[0.012, 0.42, 0.012]} />
+            <meshBasicMaterial color="#d6e6f5" transparent opacity={0} depthWrite={false} />
+          </instancedMesh>
+          <group ref={umbrellaRef} visible={false} rotation={[0, 0, -0.12]}>
+            <mesh position={[0, 0.15, 0]}>
+              <coneGeometry args={[CANOPY_R, 0.38, 10, 1, true]} />
+              <meshStandardMaterial color="#2f4f7f" side={THREE.DoubleSide} />
+            </mesh>
+            <mesh position={[0, -0.35, 0]}>
+              <cylinderGeometry args={[0.012, 0.012, 1.0, 6]} />
+              <meshStandardMaterial color="#d1d5db" />
+            </mesh>
+            <mesh position={[0, 0.37, 0]}>
+              <sphereGeometry args={[0.03, 8, 6]} />
+              <meshStandardMaterial color="#d1d5db" />
+            </mesh>
+          </group>
+        </>,
+        scene,
+      )}
+      <RainHud />
+    </>
+  )
+}
+
+function RainHud() {
+  const r = useJmActivity((state) => state.rain)
+  const done = useJmActivity((state) => Boolean(state.completed.jm_busstop))
+  const shootActive = useJmActivity((state) => state.shoot.active)
+  const size = useThree((state) => state.size)
+  if (!r.inRain || shootActive) return null
+  const waiting = r.umbrella && !done
+  if (!waiting && !r.near && !r.umbrella) return null
+
+  return (
+    <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+      <div style={{ ...hudWrap, width: size.width, height: size.height }}>
+        {waiting ? (
+          <div style={panel}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>☔ 비 오는 정류장에서 버스 기다리는 중…</div>
+            <div style={gauge}>
+              <div style={{ ...gaugeFill, background: '#60a5fa', width: `${Math.min(100, (r.waited / RAIN_WAIT) * 100)}%` }} />
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+              <kbd style={kbd}>E</kbd> 우산 접기
+            </div>
+          </div>
+        ) : (
+          <div style={chip}>
+            <kbd style={kbd}>E</kbd> {r.umbrella ? '우산 접기' : '우산 펴기'} {done && '· 정류장 체험 완료 ✓'}
+          </div>
+        )}
+      </div>
+    </Html>
+  )
+}
