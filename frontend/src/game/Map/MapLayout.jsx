@@ -4,6 +4,7 @@ import Zones from './Zones.jsx'
 import Prop from './Prop.jsx'
 import { Markings, Road } from './Roads.jsx'
 import Terrain from './Terrain.jsx'
+import Landscape from './Landscape.jsx'
 import { useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Color, Object3D, Vector3 } from 'three'
@@ -105,6 +106,7 @@ export default function MapLayout({ showStartMarker = true, highDetail = false }
 
   return (
     <group name="map">
+      <Landscape />
       <Ground ground={layout.ground} />
       <Zones />
 
