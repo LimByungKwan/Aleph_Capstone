@@ -22,7 +22,13 @@ import {
 // [3. 개발 > 기초개발/서비스] 혜진(HJ) 영화·드라마 구역 전용 모양들
 // 공용 styles/index.js에서 ...HJ_STYLES 한 줄로 등록돼요. 다른 구역에서 써도 되지만 수정은 혜진에게.
 // 이름이 다른 사람 style과 겹치지 않게 새 모양은 "hj" 로 시작해요.
+import { HjBlueGate, HjHanokBench, HjSnackSteam, HjStoryCue } from './HjDramaDetails.jsx'
+
 export const HJ_STYLES = {
+  hjBlueGate: HjBlueGate,
+  hjHanokBench: HjHanokBench,
+  hjSnackSteam: HjSnackSteam,
+  hjStoryCue: HjStoryCue,
   confessionWall: ConfessionWall, // 촬영지 '고백 담벼락' — 붉은 벽돌 + 담쟁이 + 전구줄
   summerShelter: SummerShelter, // 촬영지 '여름 정류장' — 민트·나무 정류장 + 포스터
   filmPortal: FilmPortal, // '영화 속으로 입장' 포털 (들어가면 레터박스 연출)

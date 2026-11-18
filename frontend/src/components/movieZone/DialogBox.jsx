@@ -4,7 +4,8 @@ import { useGameStore } from '../../store/gameStore.js'
 import { collectStamp, getShopPromo, listMyStamps } from '../../api/client.js'
 import { useUiStore } from './uiStore.js'
 import { TYPE_LABEL, errorText, useAsync } from './common.jsx'
-import { sceneForPlace } from './sceneData.js'
+import { HJ_DIALOGUE, sceneForPlace } from './sceneData.js'
+import './hj-dialogue.css'
 
 // [3. 개발 > 프론트엔드] 대화창
 // 캐릭터가 지점 근처에서 E를 누르면 gameStore.openPanel이 채워지고, 화면 아래에 이 창이 떠요.
@@ -29,7 +30,8 @@ function DialogContent({ place, onClose }) {
   const { toast, bumpData, openModal } = useUiStore.getState()
   const isNpc = place.type === 'npc'
   const scene = sceneForPlace(place.id) // 방파제처럼 "안으로 들어가는" 촬영지
-  const lines = isNpc ? npcLines(place) : [place.description]
+  const dialogue = HJ_DIALOGUE[place.id]
+  const lines = dialogue ? dialogue.map(({ line }) => line) : isNpc ? npcLines(place) : [place.description]
   const [lineIndex, setLineIndex] = useState(0)
   const typed = useTypewriter(lines[lineIndex])
   const [busy, setBusy] = useState(false)
@@ -58,7 +60,7 @@ function DialogContent({ place, onClose }) {
   const hasMoreLines = lineIndex < lines.length - 1
 
   return (
-    <section className="ui-dialog ui-interactive" role="dialog" aria-labelledby="ui-dialog-name">
+    <section className={`ui-dialog ui-interactive${dialogue ? ' hj-vn' : ''}`} role="dialog" aria-labelledby="ui-dialog-name">
       <div className="ui-dialog__head">
         <span className={`ui-badge ui-badge--${place.type}`}>{TYPE_LABEL[place.type]}</span>
         <span className="ui-dialog__name" id="ui-dialog-name">
@@ -68,6 +70,7 @@ function DialogContent({ place, onClose }) {
       </div>
       {place.work && <div className="ui-dialog__work">{place.work}</div>}
 
+      {dialogue && <span className="hj-vn__speaker">{dialogue[lineIndex].speaker}</span>}
       <p className="ui-dialog__text" aria-live="polite">
         <span className={typed.done ? '' : 'ui-caret'}>{typed.text}</span>
       </p>
@@ -100,7 +103,8 @@ function DialogContent({ place, onClose }) {
           </button>
         )}
         {!isNpc && !scene && (
-          <button type="button" className="ui-btn ui-btn--primary" onClick={handleStamp} disabled={busy || stamped || stamps.loading}>
+          <button type="button" className="ui-btn ui-btn--primary" onClick={handleStamp}
+            disabled={busy || stamped || stamps.loading || Boolean(dialogue && (hasMoreLines || !typed.done))}>
             {stamped ? '획득 완료 ✓' : busy ? '찍는 중…' : '스탬프 찍기'}
           </button>
         )}

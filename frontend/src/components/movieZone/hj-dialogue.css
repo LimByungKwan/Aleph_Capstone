@@ -1,0 +1,36 @@
+/* [3. 개발 > 프론트엔드] HJ 촬영지 대화와 장면 진입 버튼 */
+.hj-story-cue {
+  pointer-events: auto;
+  white-space: nowrap;
+  border: 1px solid #ecd6c2;
+  border-radius: 6px;
+  padding: 5px 9px;
+  color: #f9f6ee;
+  background: #2c2a29;
+  font: 700 14px/1.3 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.hj-story-cue:hover,
+.hj-story-cue:focus-visible {
+  background: #754a3a;
+  outline: 2px solid #f0c2af;
+}
+
+.hj-vn {
+  border-left: 4px solid #c86d51;
+  background: #f9f6ee;
+}
+
+.hj-vn__speaker {
+  display: inline-block;
+  margin-top: 8px;
+  color: #7a3f31;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.hj-vn .ui-dialog__text {
+  color: #2c2a29;
+  line-height: 1.75;
+}

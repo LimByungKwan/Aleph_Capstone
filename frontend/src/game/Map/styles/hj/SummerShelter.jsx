@@ -60,6 +60,10 @@ export default function SummerShelter({ item }) {
           <meshStandardMaterial color={i === 0 ? '#c86d51' : '#78826d'} />
         </mesh>
       ))}
+      <mesh position={[w / 4, 2.27, -d / 2 + 0.11]}>
+        <planeGeometry args={[w * 0.3, 0.34]} />
+        <meshStandardMaterial map={getSignTexture('마지막 버스', '#6f4a3a', '#f8e2af')} roughness={0.95} />
+      </mesh>
 
       {/* 나무 벤치 */}
       {[-0.12, 0.08].map((z) => (
