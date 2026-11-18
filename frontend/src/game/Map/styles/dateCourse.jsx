@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { getCirclePlazaTexture, getNeonWingsTexture, getSignTexture, getStripeTexture, getTiledTexture } from './textures.js'
 import { Ball, Box, Cone, Cyl, GEO, Instances, hashString, mat, seeded, texMat } from './kit.jsx'
-import { SEASON_LOOK, useSeason } from '../../seasons.js'
+import SeasonalTree from './SeasonalTree.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
 // 최적화: 공용 도형·재질(kit.jsx), 반복 물체는 <Instances>, 작은 물체·빛나는 재질은 그림자 끔.
@@ -69,38 +69,8 @@ function bulbLine(from, to, count, sag = 0.25) {
 }
 
 // ── 벚꽃 나무 ─────────────────────────────────
-const BLOSSOM = ['#f9a8d4', '#fbcfe8', '#f472b6', '#fbb6d5']
-const CLUSTERS = [
-  [0, 0, 0, 1],
-  [0.55, -0.2, 0.15, 0.75],
-  [-0.5, -0.15, -0.2, 0.8],
-  [0.1, 0.35, -0.35, 0.7],
-  [-0.15, 0.3, 0.4, 0.65],
-]
-
 export function CherryTree({ item }) {
-  const season = useSeason()
-  const colors = season === 'spring' ? BLOSSOM : SEASON_LOOK[season].leaves
-  const [w, h] = item.size
-  const radius = w / 2
-  const trunkH = h * 0.45
-  const canopyY = trunkH + radius * 0.5
-  return (
-    <group>
-      {item.planter && <Box p={[0, 0.15, 0]} s={[1, 0.3, 1]} c="#a35d47" />}
-      <Cyl p={[0, trunkH / 2, 0]} rad={0.17} h={trunkH} c="#6b4f3a" geo={GEO.cyl8} />
-      <Cyl p={[0.25, trunkH * 0.85, 0]} rad={0.08} h={trunkH * 0.5} r={[0, 0, -0.6]} c="#6b4f3a" geo={GEO.cyl8} />
-      {CLUSTERS.map(([x, y, z, s], i) => (
-        <mesh
-          key={i}
-          geometry={GEO.ico}
-          material={mat(colors[i % colors.length], { flat: true })}
-          position={[x * radius, canopyY + y * radius, z * radius]}
-          scale={s * radius * 0.78}
-        />
-      ))}
-    </group>
-  )
+  return <SeasonalTree item={item} kind="sakura" planter={item.planter} />
 }
 
 // ── 등불 가로등 ───────────────────────────────

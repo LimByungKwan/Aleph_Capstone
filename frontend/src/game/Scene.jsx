@@ -30,7 +30,6 @@ import {
 import { labelLayer } from './labelLayer.js'
 import { zones } from './data/mapData.js'
 import SeasonPicker from './SeasonPicker.jsx'
-import { SEASON_LOOK, useSeason } from './seasons.js'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
@@ -102,7 +101,6 @@ const SHADOW_MIN_AREA = 35
 const lookTarget = new THREE.Vector3()
 
 function SunLight({ castShadow }) {
-  const season = useSeason()
   const lightRef = useRef(null)
   const area = useRef(SHADOW_AREA)
 
@@ -135,7 +133,7 @@ function SunLight({ castShadow }) {
     <directionalLight
       ref={lightRef}
       intensity={1.6}
-      color={SEASON_LOOK[season].sun}
+      color="#fff4e6"
       castShadow={castShadow}
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-SHADOW_AREA}
