@@ -142,5 +142,41 @@
     "position": [-78.3, 0, -75.8],
     "radius": 2.5,
     "model": null
+  },
+  {
+    "id": "spot_sg_stage",
+    "type": "spot",
+    "zone": "SG",
+    "name": "SUNSET WAVE 야외무대",
+    "work": "K-POP 「SUNGRAY: SUNSET WAVE」",
+    "description": "가상 그룹 SUNGRAY의 투어 「SUNSET WAVE」 첫 공연이 열린 야외무대. 관객석 맨 앞에서 무대를 올려다보는 자리가 팬들의 인증샷 명소다.",
+    "tags": ["K-POP", "콘서트", "무대", "SUNGRAY"],
+    "position": [-83.5, 0, 0],
+    "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "shop_sg_bdaycafe",
+    "type": "cafe",
+    "zone": "SG",
+    "name": "happy birthday yunseul~!!",
+    "work": "K-POP 「SUNGRAY: SUNSET WAVE」",
+    "description": "투어 기간에 멤버 YUNSEUL의 생일을 맞아 팬들이 연 생일카페. 현수막과 케이크, 사진 액자로 꾸며져 있다.",
+    "tags": ["K-POP", "생일카페", "카페", "YUNSEUL"],
+    "position": [-66, 0, -6],
+    "radius": 2,
+    "model": null
+  },
+  {
+    "id": "shop_sg_goods",
+    "type": "cafe",
+    "zone": "SG",
+    "name": "SUNGRAY 공식 팝업스토어",
+    "work": "K-POP 「SUNGRAY: SUNSET WAVE」",
+    "description": "「SUNSET WAVE」 투어 굿즈를 파는 팝업스토어. 인형과 앨범, 네 컷 스티커 사진이 진열되어 있다.",
+    "tags": ["K-POP", "굿즈", "팝업스토어", "앨범"],
+    "position": [-54, 0, -6],
+    "radius": 2,
+    "model": null
   }
 ]

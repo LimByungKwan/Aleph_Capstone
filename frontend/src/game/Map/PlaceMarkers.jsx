@@ -34,7 +34,7 @@ function PlaceMarker({ place }) {
           <capsuleGeometry args={[0.35, 1.0, 8, 16]} />
           <meshStandardMaterial color={color} />
         </mesh>
-      ) : (
+      ) : place.zone !== 'SG' && ( // SG 지점은 건물 앞이라 기둥 없이 바닥 원과 이름표만
         <mesh position={[0, 1.5, 0]} castShadow>
           <cylinderGeometry args={[0.15, 0.15, 3, 16]} />
           <meshStandardMaterial color={color} />
