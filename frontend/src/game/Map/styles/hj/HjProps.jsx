@@ -19,6 +19,7 @@ const seedOf = (item) => [...(item.id ?? 'x')].reduce((a, c) => a + c.charCodeAt
 // ── 벚나무 (style: "hjCherryTree") — size [수관 지름, 높이, -] ──
 export function HjCherryTree({ item }) {
   const [crown, h] = item.size
+  const blossoms = useRef(null)
   const clusters = useMemo(() => {
     const rand = rng(seedOf(item))
     return Array.from({ length: 22 }, () => ({
@@ -29,6 +30,21 @@ export function HjCherryTree({ item }) {
       c: BLOSSOM[Math.floor(rand() * BLOSSOM.length)],
     }))
   }, [item, crown, h])
+
+  // [3. 개발 > 렌더링 최적화] 수관의 색과 배치를 유지하면서 한 번에 그려요.
+  useLayoutEffect(() => {
+    const mesh = blossoms.current
+    const matrix = new THREE.Matrix4()
+    const color = new THREE.Color()
+    clusters.forEach(({ x, y, z, s, c }, index) => {
+      matrix.makeScale(s, s, s).setPosition(x, y, z)
+      mesh.setMatrixAt(index, matrix)
+      mesh.setColorAt(index, color.set(c))
+    })
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.instanceColor.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [clusters])
   return (
     <group>
       <mesh position={[0, h * 0.3, 0]}>
@@ -41,19 +57,17 @@ export function HjCherryTree({ item }) {
           <meshStandardMaterial color="#5e4030" />
         </mesh>
       ))}
-      {clusters.map((c, i) => (
-        <mesh key={i} position={[c.x, c.y, c.z]} scale={c.s}>
-          <icosahedronGeometry args={[1, 1]} />
-          <meshStandardMaterial color={c.c} roughness={0.9} emissive="#f4b6c8" emissiveIntensity={0.12} />
-        </mesh>
-      ))}
+      <instancedMesh ref={blossoms} args={[null, null, clusters.length]}>
+        <icosahedronGeometry args={[1, 1]} />
+        <meshStandardMaterial roughness={0.9} emissive="#f4b6c8" emissiveIntensity={0.12} />
+      </instancedMesh>
     </group>
   )
 }
 
 // ── 전구줄 (style: "hjStringLights") — item.points [[x, y, z], ...] 사이를 처진 줄로 잇고 전구를 달아요 ──
 export function HjStringLights({ item }) {
-  const matRefs = useRef([])
+  const bulbMesh = useRef(null)
   const { tube, bulbs } = useMemo(() => {
     const pts = item.points ?? []
     const all = []
@@ -70,15 +84,23 @@ export function HjStringLights({ item }) {
     const count = Math.max(2, Math.round(length / 0.6))
     return {
       tube: new THREE.TubeGeometry(curve, count * 2, 0.012, 4),
-      bulbs: Array.from({ length: count }, (_, i) => ({ p: curve.getPointAt((i + 0.5) / count), phase: i * 1.3 })),
+      bulbs: Array.from({ length: count }, (_, i) => curve.getPointAt((i + 0.5) / count)),
     }
   }, [item.points])
 
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
-    matRefs.current.forEach((m, i) => {
-      if (m) m.emissiveIntensity = 1.5 + Math.sin(t * 2 + bulbs[i].phase) * 0.5
+  useLayoutEffect(() => {
+    const mesh = bulbMesh.current
+    const matrix = new THREE.Matrix4()
+    bulbs.forEach(({ x, y, z }, index) => {
+      mesh.setMatrixAt(index, matrix.makeTranslation(x, y - 0.07, z))
     })
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [bulbs])
+
+  useFrame(({ clock }) => {
+    const mesh = bulbMesh.current
+    if (mesh) mesh.material.emissiveIntensity = 1.5 + Math.sin(clock.elapsedTime * 2) * 0.25
   })
 
   return (
@@ -86,12 +108,10 @@ export function HjStringLights({ item }) {
       <mesh geometry={tube}>
         <meshStandardMaterial color="#2c2a29" />
       </mesh>
-      {bulbs.map((b, i) => (
-        <mesh key={i} position={[b.p.x, b.p.y - 0.07, b.p.z]}>
-          <sphereGeometry args={[0.06, 8, 6]} />
-          <meshStandardMaterial ref={(m) => (matRefs.current[i] = m)} color="#fff1c9" emissive="#ffc46b" emissiveIntensity={1.5} toneMapped={false} />
-        </mesh>
-      ))}
+      <instancedMesh ref={bulbMesh} args={[null, null, bulbs.length]}>
+        <sphereGeometry args={[0.06, 8, 6]} />
+        <meshStandardMaterial color="#fff1c9" emissive="#ffc46b" emissiveIntensity={1.5} toneMapped={false} />
+      </instancedMesh>
     </group>
   )
 }
