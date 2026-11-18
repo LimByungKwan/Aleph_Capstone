@@ -8,6 +8,7 @@ import { JM_SHOP_STYLES } from './jm_shops.jsx'
 import { JM_DETAIL_STYLES } from './jm_details.jsx'
 import { JM_SKIP_STYLES } from './jm_skipstone.jsx'
 import { JM_BRIDGE_STYLES } from './jm_bridges.jsx'
+import { JM_RIVERSIDE_STYLES } from './jm_riverside.jsx'
 
 // 애니메이션 구역(JM) 전용 일본풍 스타일. 담당: 지민
 // 다른 스타일과 같은 약속을 따라요:
@@ -47,6 +48,8 @@ export const JM_STYLES = {
   ...JM_SKIP_STYLES,
   // 붉은 다리·흔들다리 겉모습 (jm_bridges.jsx)
   ...JM_BRIDGE_STYLES,
+  // 강변 소품: 물레방아·노다테·돗자리·철교 (jm_riverside.jsx)
+  ...JM_RIVERSIDE_STYLES,
 }
 
 // ── 도리이 (신사 입구 문) ─────────────────────

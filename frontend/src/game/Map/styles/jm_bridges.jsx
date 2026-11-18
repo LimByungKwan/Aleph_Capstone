@@ -6,6 +6,7 @@ import * as THREE from 'three'
 // 걷는 바닥·난간 충돌은 BK님 지형 데크(terrain "deck")가 그대로 맡고, 여기서는 그 위에 겉모습만 덧입힘
 // (공용 Terrain.jsx를 고치지 않으려고 "옷 입히기" 방식). item.dress = { points: [[x, z, 높이], ...], width, kind }
 //   kind "vermilion"  : 강변으로 내려가는 일본식 붉은 다리 (주홍 난간 + 금색 기보시 + 짙은 나무 기둥)
+//   kind "stairs"     : 짧은 붉은 난간 계단 (지형 계단 옆벽 위에 난간만)
 //   kind "suspension" : 전망대로 건너가는 흔들다리 (양끝 나무 탑 + 늘어진 밧줄 + 발판 + 살짝 흔들림)
 // item.position은 [0, 0] (점이 구역 좌표)
 
@@ -169,9 +170,11 @@ function SuspensionBridge({ points, width }) {
     const L = Math.hypot(e[0] - s[0], e[2] - s[2])
     const towerH = 3.4
     const sag = 2.0
+    // 데크 난간이 가운데에서 1.25m라서, 탑·밧줄은 그 바깥 1.45m에 둠 (겹치지 않게)
+    const k = 1.45 / (width / 2 - 0.02)
     const cable = (side, t) => {
-      const x = s[0] + (e[0] - s[0]) * t + nx * side * 1.12
-      const z = s[2] + (e[2] - s[2]) * t + nz * side * 1.12
+      const x = s[0] + (e[0] - s[0]) * t + nx * side * k
+      const z = s[2] + (e[2] - s[2]) * t + nz * side * k
       const deck = s[1] + (e[1] - s[1]) * t
       const top = deck + towerH - sag * 4 * t * (1 - t)
       return [x, top, z, deck]
@@ -186,9 +189,12 @@ function SuspensionBridge({ points, width }) {
         cables.push({ a: [a[0], a[1], a[2]], b: [b[0], b[1], b[2]] })
       }
       const h = Math.max(4, Math.round(L / 1.4))
-      for (let k = 1; k < h; k++) {
-        const c = cable(side, k / h)
-        hangers.push({ a: [c[0], c[1], c[2]], b: [c[0], c[3] + RAIL_H, c[2]] })
+      for (let j = 1; j < h; j++) {
+        const t = j / h
+        const c = cable(side, t)
+        const rx = s[0] + (e[0] - s[0]) * t + nx * side
+        const rz = s[2] + (e[2] - s[2]) * t + nz * side
+        hangers.push({ a: [c[0], c[1], c[2]], b: [rx, c[3] + RAIL_H, rz] })
       }
     }
     const towers = []
@@ -254,9 +260,52 @@ function SuspensionBridge({ points, width }) {
   )
 }
 
+// ── 붉은 난간 계단 ───────────────────────────────
+// 지형 계단(terrain "stairs")의 옆벽(가운데에서 폭/2+0.15m, 경사면 위 0.9m까지) 위에 주홍 난간과 기보시를 얹음
+function VermilionStairs({ points, width }) {
+  const parts = useMemo(() => {
+    const [[ax, az, ah], [bx, bz, bh]] = points
+    const yaw = Math.atan2(bx - ax, bz - az)
+    const off = width / 2 + 0.15
+    const nx = Math.cos(yaw) * off
+    const nz = -Math.sin(yaw) * off
+    const rails = []
+    const posts = []
+    const L = Math.hypot(bx - ax, bz - az)
+    const n = Math.max(2, Math.round(L / 1.6))
+    for (const side of [1, -1]) {
+      const a = [ax + nx * side, ah + 0.9, az + nz * side]
+      const b = [bx + nx * side, bh + 0.9, bz + nz * side]
+      rails.push({ a: [a[0], a[1] + 0.45, a[2]], b: [b[0], b[1] + 0.45, b[2]], t: 0.13 })
+      for (let k = 0; k <= n; k++) {
+        const t = k / n
+        posts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t])
+      }
+    }
+    return { rails, posts }
+  }, [points, width])
+  return (
+    <group>
+      {parts.rails.map((r, i) => (
+        <Beam key={i} a={r.a} b={r.b} t={r.t} c={VERMILION} />
+      ))}
+      {parts.posts.map((p, i) => (
+        <group key={i}>
+          <mesh position={[p[0], p[1] + 0.28, p[2]]}>
+            <boxGeometry args={[0.15, 0.56, 0.15]} />
+            <meshStandardMaterial color={VERMILION} />
+          </mesh>
+          <Giboshi p={[p[0], p[1] + 0.56, p[2]]} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
 export function JmBridgeDress({ item }) {
   const { points, width = 2.6, kind } = item.dress
   if (kind === 'suspension') return <SuspensionBridge points={points} width={width} />
+  if (kind === 'stairs') return <VermilionStairs points={points} width={width} />
   return <VermilionBridge points={points} width={width} />
 }
 

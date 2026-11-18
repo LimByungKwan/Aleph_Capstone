@@ -508,16 +508,18 @@ function getFlowTexture() {
 
 export function JmRiver({ item }) {
   const season = useSeason()
-  const { points, width } = item.ribbon
-  const geo = useMemo(
-    () => ({
+  const { points, width, bankFromX } = item.ribbon
+  const geo = useMemo(() => {
+    // 호수와 이어지는 어귀에서는 돌 둑을 그리지 않음 (bankFromX보다 서쪽부터 둑)
+    const from = bankFromX === undefined ? 0 : Math.max(0, points.findIndex((q) => q[0] <= bankFromX))
+    const bankPts = points.slice(from)
+    return {
       water: ribbonGeometry(points, width, 0.04),
       flow: ribbonGeometry(points, width * 0.9, 0.05),
-      bankL: ribbonGeometry(points, width, 0.06, -1),
-      bankR: ribbonGeometry(points, width, 0.06, 1),
-    }),
-    [points, width],
-  )
+      bankL: ribbonGeometry(bankPts, width, 0.06, -1),
+      bankR: ribbonGeometry(bankPts, width, 0.06, 1),
+    }
+  }, [points, width, bankFromX])
   const flow = useMemo(() => getFlowTexture()?.clone(), [])
   useFrame((_, delta) => {
     if (flow) {

@@ -35,6 +35,9 @@
   · 구역 밖(x -40 바깥) 좌표지만 jm_anime.json에 함께 둠. 서쪽 담 두 군데(호수 쪽, 남쪽 정류장 옆)를 엶
   · 강둑은 투명 벽(jm_river_bank_*)으로 빠지지 않게, 다리 자리만 비움
   · `shared/places.json`에 촬영지 1곳 추가: spot_jm_sakura_river (「초속 5미터」 벚꽃 강변길) → DB seed도 다시 생성함
+  · 언덕 서쪽 끝 → 강변: 짧은 붉은 난간 계단(terrain stairs + jmBridgeDress "stairs"), 동쪽 끝 → BK 전망대: 흔들다리(terrain deck + "suspension", BK 구역 약 34m)
+  · 강변 소품: 물레방아·노다테 쉼터·꽃놀이 돗자리·나루터와 배(jm_riverside.jsx), 물수제비(jm_skipstone.jsx)
+  · 철길을 서쪽 맵 끝까지 연장(jm_rail_*_w), 강 위 철교(jmRailBridge), 산책로 건널목 신호
 - 옥상 신사 건물(jm_rooftop) 안 계단 3번 → 옥상 (terrain stairs 3개 + jmCollider 벽·층계참·옥상 바닥)
 - 농구 슛·비 오는 정류장 체험 (jm_activities.jsx, jm_activityStore.js)
 - `shared/places.json` 스탬프 지점 3곳 추가
