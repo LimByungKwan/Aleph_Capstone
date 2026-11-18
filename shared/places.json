@@ -7,7 +7,7 @@
     "work": null,
     "description": "중앙 광장에서 여행자를 맞이하는 AI 가이드. 촬영지 순서를 안내해 준다.",
     "tags": ["가이드", "시작"],
-    "position": [0, 0, 4],
+    "position": [0, 0, 7.5],
     "radius": 2,
     "model": null
   },
