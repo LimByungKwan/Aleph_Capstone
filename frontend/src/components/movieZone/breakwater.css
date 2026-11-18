@@ -77,8 +77,16 @@
 .bw-scenery {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #f9d9b5 0%, #f6c2a0 32%, #f3e2cf 52%, #9cc7de 52.2%, #5e9cc4 100%);
+  background: linear-gradient(180deg, #79a6cb 0%, #a6c8de 32%, #e6ece4 52%, #79b2c4 52.2%, #376f91 100%);
   opacity: 0.55;
+}
+.bw-stage--sunset .bw-scenery {
+  background: linear-gradient(180deg, #8e749d 0%, #dca0a0 30%, #ffd09a 52%, #9c8cae 52.2%, #52628d 100%);
+  opacity: 0.72;
+}
+.bw-stage--sunset .bw-scenery .bw-sun {
+  top: 38%;
+  background: radial-gradient(circle, #fff2c3 0%, #f3a564 58%, transparent 72%);
 }
 .bw-sun {
   position: absolute;
@@ -233,7 +241,10 @@
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: 2px;
-  background: linear-gradient(180deg, #f9d9b5 0%, #f6c2a0 45%, #9cc7de 46%, #5e9cc4 100%);
+  background: linear-gradient(180deg, #8ab9dc 0%, #d4e6e8 45%, #79b2c4 46%, #376f91 100%);
+}
+.bw-polaroid__shot--sunset {
+  background: linear-gradient(180deg, #9975a4 0%, #ffc08d 45%, #9c8cae 46%, #52628d 100%);
 }
 .bw-polaroid__shot .bw-sun {
   left: 18%;
