@@ -29,6 +29,7 @@ import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { SungrayBeach } from './beach.jsx'
 import { FestivalCart } from './festival.jsx'
+import { ClawBooth } from './bk_clawMachine.jsx'
 import { HubBuskingStage, HubClockTower, HubCompass, HubFoodTruck, HubMapBoard, HubPergola, HubSignpost, HubTreeBench } from './hub.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
@@ -77,6 +78,7 @@ export const STYLES = {
   couplePhotoZone: CouplePhotoZone,
   landscape: Landscape,
   greenhouseCafe: GreenhouseCafe,
+  clawBooth: ClawBooth, // 인형뽑기 부스 + 미니게임 (bk_clawMachine.jsx)
   // K-POP (SG)
   stage: Stage,
   sungrayBeach: SungrayBeach,
