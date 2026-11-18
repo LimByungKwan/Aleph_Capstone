@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { hipRoofGeometry } from './geometry.js'
 import { getCirclePlazaTexture, getNeonWingsTexture, getSignTexture, getStripeTexture, getTiledTexture } from './textures.js'
 import { Ball, Box, Cone, Cyl, GEO, Instances, hashString, mat, seeded, texMat } from './kit.jsx'
@@ -140,8 +142,143 @@ export function Fountain({ item }) {
       <Cyl p={[0, 1.65, 0]} rad={1} h={0.25} c="#ece6dd" />
       <Cyl p={[0, 1.8, 0]} rad={0.82} h={0.05} m={WATER} userData={NO_SHADOW} />
       <Cyl p={[0, 2.05, 0]} rad={0.16} h={0.55} c="#ece6dd" />
-      <Cone p={[0, 2.6, 0]} rad={0.35} h={0.6} m={SPRAY} userData={NO_SHADOW} />
       <Instances geometry={GEO.ico} material={TINTABLE} items={flowers} />
+      <FountainWater radius={radius} />
+    </group>
+  )
+}
+
+// ── 분수 물줄기 (흐르는 물 + 물결 + 거품) ──────
+// 최적화: 물줄기 15개를 모양 하나로 합쳐 그리기 호출 1번, 흐름은 텍스처 위치만 매 프레임 이동,
+//         거품은 인스턴스 1번, 그림자 없음, 이미지 파일 없이 캔버스로 무늬 생성
+const FOUNTAIN = { lowerWater: 0.72, upperWater: 1.83, jetBase: 2.32, jetTop: 3.35 }
+
+// 물줄기 무늬: 세로로 흐르는 밝은 줄 + 끊김 (투명도 맵)
+let streakTexture = null
+function getStreakTexture() {
+  if (streakTexture) return streakTexture
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 16
+  const ctx = canvas.getContext('2d')
+  const random = seeded(5)
+  ctx.fillStyle = '#7a7a7a'
+  ctx.fillRect(0, 0, 128, 16)
+  for (let i = 0; i < 14; i++) {
+    const x = random() * 128
+    const len = 10 + random() * 26
+    const g = 200 + Math.floor(random() * 55)
+    ctx.fillStyle = `rgb(${g},${g},${g})`
+    ctx.fillRect(x, 0, len, 16)
+    ctx.fillRect(x - 128, 0, len, 16)
+  }
+  streakTexture = new THREE.CanvasTexture(canvas)
+  streakTexture.wrapS = streakTexture.wrapT = THREE.RepeatWrapping
+  streakTexture.repeat.set(2, 1)
+  return streakTexture
+}
+
+const waterGeometryCache = new Map()
+function fountainWaterGeometry(radius) {
+  if (waterGeometryCache.has(radius)) return waterGeometryCache.get(radius)
+  const F = FOUNTAIN
+  const tubes = []
+  const v = (x, y, z) => new THREE.Vector3(x, y, z)
+  // 1) 가운데 위로 솟는 물기둥
+  tubes.push(new THREE.TubeGeometry(new THREE.LineCurve3(v(0, F.jetBase, 0), v(0, F.jetTop, 0)), 6, 0.075, 7))
+  // 2) 꼭대기에서 위 그릇으로 떨어지는 물줄기 6개
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2
+    const [c, s] = [Math.cos(a), Math.sin(a)]
+    const curve = new THREE.QuadraticBezierCurve3(v(0, F.jetTop, 0), v(c * 0.5, F.jetTop + 0.45, s * 0.5), v(c * 0.72, F.upperWater, s * 0.72))
+    tubes.push(new THREE.TubeGeometry(curve, 12, 0.035, 5))
+  }
+  // 3) 위 그릇 가장자리에서 아래 수조로 넘치는 물줄기 8개
+  const land = Math.min(radius - 0.45, 1.65)
+  for (let i = 0; i < 8; i++) {
+    const a = ((i + 0.5) / 8) * Math.PI * 2
+    const [c, s] = [Math.cos(a), Math.sin(a)]
+    const curve = new THREE.QuadraticBezierCurve3(v(c * 0.98, F.upperWater - 0.02, s * 0.98), v(c * (land + 0.05), F.upperWater + 0.05, s * (land + 0.05)), v(c * land, F.lowerWater, s * land))
+    tubes.push(new THREE.TubeGeometry(curve, 12, 0.05, 5))
+  }
+  const merged = mergeGeometries(tubes)
+  tubes.forEach((t) => t.dispose())
+  const result = { geometry: merged, land }
+  waterGeometryCache.set(radius, result)
+  return result
+}
+
+const STREAM_MATERIAL = new THREE.MeshStandardMaterial({
+  color: '#e3f6ff',
+  emissive: '#a7dcff',
+  emissiveIntensity: 0.45,
+  roughness: 0.15,
+  transparent: true,
+  opacity: 0.85,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+})
+const FOAM = mat('#ffffff', { emissive: '#e6f6ff', emissiveIntensity: 0.4, flat: true })
+const RIPPLE_GEOMETRY = new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2)
+
+function FountainWater({ radius }) {
+  const { geometry, land } = fountainWaterGeometry(radius)
+  const ripples = useRef([])
+  const crown = useRef(null)
+
+  // 물결 3개는 각자 투명도가 달라야 해서 재질을 따로 (분수 하나당 3개)
+  const rippleMaterials = useMemo(
+    () => [0, 1, 2].map(() => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false })),
+    [],
+  )
+  const foam = useMemo(
+    () =>
+      range(8).map((i) => {
+        const a = ((i + 0.5) / 8) * Math.PI * 2
+        return { p: [Math.cos(a) * land, FOUNTAIN.lowerWater + 0.02, Math.sin(a) * land], s: [0.22, 0.06, 0.22] }
+      }),
+    [land],
+  )
+
+  useMemo(() => {
+    STREAM_MATERIAL.alphaMap = getStreakTexture()
+    STREAM_MATERIAL.needsUpdate = true
+  }, [])
+
+  useFrame(({ clock }, delta) => {
+    const texture = STREAM_MATERIAL.alphaMap
+    if (texture) texture.offset.x = (texture.offset.x - delta * 1.4) % 1 // 물이 흘러가는 방향으로 무늬 이동
+    const t = clock.elapsedTime
+    // 물결: 안쪽에서 바깥으로 퍼지며 사라짐 (위상 차이로 3개가 번갈아)
+    ripples.current.forEach((ring, i) => {
+      if (!ring) return
+      const phase = (t * 0.45 + i / 3) % 1
+      const isUpper = i === 0
+      const base = isUpper ? 0.25 : 0.6
+      const reach = isUpper ? 0.55 : radius - 0.4
+      ring.scale.setScalar(base + (reach - base) * phase)
+      rippleMaterials[i].opacity = 0.45 * (1 - phase)
+    })
+    // 꼭대기 물보라가 살짝 숨쉬듯
+    if (crown.current) crown.current.scale.setScalar(0.22 + Math.sin(t * 6) * 0.025)
+  })
+
+  return (
+    <group userData={NO_SHADOW}>
+      <mesh geometry={geometry} material={STREAM_MATERIAL} userData={NO_SHADOW} renderOrder={1} />
+      <mesh ref={crown} geometry={GEO.ico} material={SPRAY} position={[0, FOUNTAIN.jetTop + 0.05, 0]} scale={0.22} userData={NO_SHADOW} />
+      <Instances geometry={GEO.ico} material={FOAM} items={foam} />
+      {rippleMaterials.map((material, i) => (
+        <mesh
+          key={i}
+          ref={(el) => (ripples.current[i] = el)}
+          geometry={RIPPLE_GEOMETRY}
+          material={material}
+          position={[0, (i === 0 ? FOUNTAIN.upperWater : FOUNTAIN.lowerWater) + 0.01, 0]}
+          userData={NO_SHADOW}
+          renderOrder={2}
+        />
+      ))}
     </group>
   )
 }
@@ -337,6 +474,731 @@ export function Terrace({ item }) {
   )
 }
 
+// ════════════════════════════════════════════
+// 가게 안쪽 (유리 너머로 보이는 실내)
+// 최적화: 가게 하나의 바닥·가구·조명을 모양 1개로 합치고(꼭짓점 색), 재질 1개 공유 → 그리기 호출 1번
+//         뒷벽 장식은 캔버스 그림 1장, 실내는 그림자 없음, 같은 종류·크기면 모양 재사용
+// ════════════════════════════════════════════
+const CLEAR_GLASS = mat('#d6ecff', { transparent: true, opacity: 0.16, roughness: 0.05 })
+
+// 꼭짓점 색 + "빛나는 정도(glow)"를 받는 실내 전용 재질 (그늘에서도 파스텔이 보이게 살짝 자체 발광)
+const INTERIOR_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 })
+INTERIOR_MAT.onBeforeCompile = (shader) => {
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nattribute float glow;\nvarying float vGlow;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = glow;')
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vGlow;')
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor.rgb * (0.22 + vGlow);')
+}
+
+// 실내 종류별 색
+const INTERIOR_STYLE = {
+  cafe: { wall: '#f6ead8', lower: '#c89f74', accent: '#5b3a29' },
+  dessert: { wall: '#ffe4ef', lower: '#f9c4d8', accent: '#db2777' },
+  photo: { wall: '#ece4ff', lower: '#d8ccf5', accent: '#7c3aed' },
+  flower: { wall: '#e6f6ea', lower: '#b7dcc0', accent: '#2f855a' },
+  brunch: { wall: '#ffe9d6', lower: '#f2c39b', accent: '#9a3412' },
+  jewelry: { wall: '#e8ecf8', lower: '#c3cbe6', accent: '#be123c' },
+  scent: { wall: '#f6e9ff', lower: '#e2c9f5', accent: '#a21caf' },
+  tea: { wall: '#f4ecd8', lower: '#c9b28c', accent: '#166534' },
+  restaurant: { wall: '#f0dcc4', lower: '#8b5e3c', accent: '#7c2d12' },
+  cinemaLobby: { wall: '#3b2f5c', lower: '#2a2142', accent: '#f472b6' },
+  cafe2: { wall: '#f8f6f2', lower: '#d9c3a5', accent: '#3f6212' },
+  wine: { wall: '#5a2a35', lower: '#3b1c24', accent: '#fbbf24' },
+  gallery: { wall: '#fbfbfa', lower: '#ececea', accent: '#f472b6' },
+  popup: { wall: '#fde7f3', lower: '#e9d5ff', accent: '#9333ea' },
+}
+const PASTELS = ['#f9a8d4', '#c4b5fd', '#fde68a', '#a5f3fc', '#fecdd3', '#bbf7d0', '#fdba74']
+
+// ── 뒷벽 그림 (종류별 한 번만 그림) ──
+const backWallCache = new Map()
+function getBackWallTexture(kind) {
+  if (backWallCache.has(kind)) return backWallCache.get(kind)
+  const S = INTERIOR_STYLE[kind] ?? INTERIOR_STYLE.cafe
+  const canvas = document.createElement('canvas')
+  canvas.width = 512
+  canvas.height = 256
+  const ctx = canvas.getContext('2d')
+  const random = seeded(hashString(kind))
+  const rect = (x, y, w, h, c) => {
+    ctx.fillStyle = c
+    ctx.fillRect(x, y, w, h)
+  }
+  const circle = (x, y, r, c) => {
+    ctx.fillStyle = c
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  const glowSpot = (x, y, r, c) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    g.addColorStop(0, c)
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(x - r, y - r, r * 2, r * 2)
+  }
+  const shelf = (x, y, w, items, itemW = 14, itemH = 20) => {
+    rect(x, y, w, 6, '#8b5e3c')
+    for (let i = 0; i < items; i++) rect(x + 6 + i * (w / items), y - itemH, itemW, itemH, PASTELS[Math.floor(random() * PASTELS.length)])
+  }
+  const frame = (x, y, w, h, inner) => {
+    rect(x, y, w, h, '#ffffff')
+    rect(x + 5, y + 5, w - 10, h - 10, inner)
+  }
+
+  // 공통: 벽 + 아래 판벽 + 걸레받이
+  rect(0, 0, 512, 256, S.wall)
+  rect(0, 176, 512, 80, S.lower)
+  rect(0, 172, 512, 6, S.accent)
+
+  switch (kind) {
+    case 'cafe':
+    case 'brunch':
+      rect(196, 40, 120, 74, '#2f4f3a') // 메뉴 보드
+      for (let i = 0; i < 4; i++) rect(210, 54 + i * 14, 60 + random() * 30, 4, '#f5f0e6')
+      shelf(30, 90, 140, 6)
+      shelf(30, 140, 140, 6, 18, 14)
+      shelf(350, 110, 130, 5)
+      circle(420, 50, 22, '#ffffff')
+      circle(420, 50, 18, S.accent)
+      break
+    case 'dessert':
+      for (let x = 0; x < 512; x += 40) rect(x, 0, 18, 172, '#fff1f6')
+      shelf(40, 110, 180, 7, 20, 22)
+      shelf(300, 110, 180, 7, 20, 22)
+      circle(256, 60, 30, '#fbcfe8')
+      circle(256, 60, 18, '#ffffff')
+      break
+    case 'photo': {
+      const g = ctx.createLinearGradient(140, 0, 372, 0)
+      g.addColorStop(0, '#fbcfe8')
+      g.addColorStop(1, '#c4b5fd')
+      ctx.fillStyle = g
+      ctx.fillRect(140, 20, 232, 160) // 배경지
+      for (let i = 0; i < 5; i++) circle(170 + random() * 170, 50 + random() * 90, 16 + random() * 12, 'rgba(255,255,255,0.55)')
+      for (let i = 0; i < 6; i++) frame(20 + (i % 2) * 52, 30 + Math.floor(i / 2) * 46, 44, 40, PASTELS[i % PASTELS.length])
+      for (let i = 0; i < 6; i++) frame(392 + (i % 2) * 52, 30 + Math.floor(i / 2) * 46, 44, 40, PASTELS[(i + 3) % PASTELS.length])
+      break
+    }
+    case 'flower':
+      for (let i = 0; i < 8; i++) {
+        const x = 30 + i * 62
+        rect(x + 14, 0, 2, 40, '#6b7280')
+        circle(x + 15, 52, 20, '#4f8f45')
+        circle(x + 8, 46, 8, PASTELS[i % PASTELS.length])
+      }
+      shelf(60, 140, 390, 12, 16, 26)
+      break
+    case 'jewelry':
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.ellipse(256, 80, 54, 66, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#dbeafe'
+      ctx.beginPath()
+      ctx.ellipse(256, 80, 46, 58, 0, 0, Math.PI * 2)
+      ctx.fill()
+      for (const x of [90, 422]) {
+        glowSpot(x, 70, 40, 'rgba(255,240,200,0.9)')
+        frame(x - 34, 100, 68, 50, '#f5f3ff')
+      }
+      break
+    case 'scent':
+      for (const y of [70, 115, 160]) shelf(40, y, 432, 16, 10, 22)
+      break
+    case 'tea':
+      ctx.strokeStyle = '#6b4a2f'
+      ctx.lineWidth = 4
+      rect(180, 30, 152, 110, '#fff8e8')
+      for (let x = 180; x <= 332; x += 19) {
+        ctx.beginPath()
+        ctx.moveTo(x, 30)
+        ctx.lineTo(x, 140)
+        ctx.stroke()
+      }
+      for (let y = 30; y <= 140; y += 22) {
+        ctx.beginPath()
+        ctx.moveTo(180, y)
+        ctx.lineTo(332, y)
+        ctx.stroke()
+      }
+      shelf(30, 120, 120, 4, 22, 26)
+      shelf(362, 120, 120, 4, 22, 26)
+      break
+    case 'restaurant':
+      for (const y of [60, 110]) shelf(320, y, 160, 9, 8, 30)
+      frame(60, 40, 120, 80, '#fde68a')
+      for (const x of [40, 230, 300]) glowSpot(x, 60, 36, 'rgba(255,214,150,0.9)')
+      break
+    case 'cinemaLobby':
+      for (let i = 0; i < 3; i++) {
+        const x = 70 + i * 140
+        rect(x, 30, 90, 130, ['#be185d', '#1d4ed8', '#7c3aed'][i])
+        circle(x + 45, 80, 26, PASTELS[i])
+        rect(x + 10, 130, 70, 8, '#ffffff')
+      }
+      rect(0, 12, 512, 5, '#f472b6')
+      glowSpot(256, 14, 120, 'rgba(244,114,182,0.5)')
+      break
+    case 'cafe2':
+      for (let x = 260; x < 512; x += 16) rect(x, 0, 10, 172, '#c89f74')
+      for (let i = 0; i < 3; i++) frame(40 + i * 66, 50, 54, 64, PASTELS[i + 2])
+      break
+    case 'wine':
+      rect(40, 20, 432, 150, '#2a1418')
+      for (let r = 0; r < 6; r++) for (let c = 0; c < 18; c++) circle(58 + c * 23.5, 34 + r * 24, 7, random() < 0.5 ? '#7f1d1d' : '#14532d')
+      for (const x of [60, 452]) glowSpot(x, 20, 50, 'rgba(251,191,36,0.6)')
+      break
+    case 'gallery':
+      frame(50, 40, 120, 100, '#fbcfe8')
+      circle(110, 90, 30, '#f472b6')
+      frame(196, 30, 120, 120, '#e0f2fe')
+      rect(220, 60, 70, 60, '#38bdf8')
+      frame(342, 40, 120, 100, '#fef9c3')
+      circle(402, 90, 28, '#facc15')
+      for (const x of [110, 256, 402]) glowSpot(x, 10, 70, 'rgba(255,250,235,0.85)')
+      break
+    case 'popup':
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 9; c++) frame(140 + c * 36, 20 + r * 38, 30, 34, PASTELS[(r + c) % PASTELS.length])
+      rect(20, 30, 100, 40, S.accent)
+      rect(392 + 0, 30, 100, 40, S.accent)
+      break
+    default:
+      shelf(40, 110, 432, 12)
+  }
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.anisotropy = 4
+  backWallCache.set(kind, texture)
+  return texture
+}
+
+// ── 가구 모양 합치기 ──
+const UNIT = {
+  box: new THREE.BoxGeometry(1, 1, 1).toNonIndexed(),
+  cyl: new THREE.CylinderGeometry(1, 1, 1, 10).toNonIndexed(),
+  ico: new THREE.IcosahedronGeometry(1, 0),
+  ico1: new THREE.IcosahedronGeometry(1, 1),
+  cone: new THREE.ConeGeometry(1, 1, 7).toNonIndexed(),
+  rock: new THREE.DodecahedronGeometry(1, 0),
+}
+const tmpM = new THREE.Matrix4()
+const tmpQ = new THREE.Quaternion()
+const tmpE = new THREE.Euler()
+const tmpC = new THREE.Color()
+
+// rot: y축 회전(숫자) 또는 [x, y, z] 회전
+function piece(shape, [x, y, z], [sx, sy, sz], color, glow = 0, rot = 0) {
+  const g = UNIT[shape].clone()
+  if (Array.isArray(rot)) tmpE.set(rot[0], rot[1], rot[2])
+  else tmpE.set(0, rot, 0)
+  tmpQ.setFromEuler(tmpE)
+  g.applyMatrix4(tmpM.compose(new THREE.Vector3(x, y, z), tmpQ, new THREE.Vector3(sx, sy, sz)))
+  tmpC.set(color)
+  const n = g.attributes.position.count
+  const colors = new Float32Array(n * 3)
+  const glows = new Float32Array(n).fill(glow)
+  for (let i = 0; i < n; i++) colors.set([tmpC.r, tmpC.g, tmpC.b], i * 3)
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  g.setAttribute('glow', new THREE.BufferAttribute(glows, 1))
+  g.deleteAttribute('uv')
+  return g
+}
+
+// 가게 안 가구 배치. W(폭) × H(높이) × D(깊이), 바닥 y=0, 뒷벽 z=-D/2, 유리 z=+D/2
+const interiorCache = new Map()
+function interiorGeometry(kind, W, H, D) {
+  const key = `${kind}|${W.toFixed(2)}|${H.toFixed(2)}|${D.toFixed(2)}`
+  if (interiorCache.has(key)) return interiorCache.get(key)
+  const S = INTERIOR_STYLE[kind] ?? INTERIOR_STYLE.cafe
+  const random = seeded(hashString(key))
+  const P = []
+  const back = -D / 2
+  const pastel = () => PASTELS[Math.floor(random() * PASTELS.length)]
+
+  const table = (x, z, chairColor = '#f9a8d4') => {
+    P.push(piece('cyl', [x, 0.75, z], [0.42, 0.05, 0.42], '#ffffff'))
+    P.push(piece('cyl', [x, 0.37, z], [0.05, 0.74, 0.05], '#6b7280'))
+    for (const s of [-1, 1]) {
+      P.push(piece('box', [x + s * 0.72, 0.45, z], [0.4, 0.07, 0.4], chairColor))
+      P.push(piece('box', [x + s * 0.9, 0.7, z], [0.06, 0.45, 0.4], chairColor))
+    }
+  }
+  const counter = (x, z, w, color = '#a47551') => {
+    P.push(piece('box', [x, 0.5, z], [w, 1.0, 0.6], color))
+    P.push(piece('box', [x, 1.03, z], [w + 0.06, 0.06, 0.66], '#f5efe6'))
+  }
+  const pendant = (x, z) => {
+    P.push(piece('box', [x, H - 0.3, z], [0.02, 0.6, 0.02], '#3f3f46'))
+    P.push(piece('cyl', [x, H - 0.66, z], [0.18, 0.14, 0.18], '#fff1c9', 1.4))
+  }
+  const ceilingStrip = () => P.push(piece('box', [0, H - 0.04, 0], [W * 0.6, 0.04, 0.4], '#fff7e6', 1.2))
+
+  // 바닥
+  P.push(piece('box', [0, 0.05, 0], [W, 0.1, D], S.lower))
+
+  switch (kind) {
+    case 'cafe':
+    case 'brunch':
+    case 'cafe2':
+      counter(-W * 0.22, back + 0.55, W * 0.42)
+      P.push(piece('box', [-W * 0.32, 1.25, back + 0.5], [0.45, 0.4, 0.35], '#9ca3af')) // 커피 머신
+      for (let i = 0; i < 4; i++) P.push(piece('cyl', [-W * 0.18 + i * 0.25, 1.12, back + 0.6], [0.06, 0.12, 0.06], pastel()))
+      table(W * 0.18, 0.1, kind === 'brunch' ? '#fdba74' : '#f9a8d4')
+      if (W > 6) table(-W * 0.12, 0.6, '#c4b5fd')
+      if (kind === 'cafe2') for (const x of [-W / 2 + 0.5, W / 2 - 0.5]) {
+        P.push(piece('cyl', [x, 0.25, back + 0.5], [0.22, 0.5, 0.22], '#c2703d'))
+        P.push(piece('ico', [x, 0.85, back + 0.5], [0.4, 0.5, 0.4], '#4f8f45'))
+      }
+      for (const x of [-W * 0.25, 0, W * 0.25]) pendant(x, 0)
+      break
+    case 'dessert':
+      P.push(piece('box', [0, 0.45, back + 0.5], [W * 0.62, 0.9, 0.6], '#fff1f6', 0.3)) // 진열장
+      for (let i = 0; i < 7; i++) {
+        const x = -W * 0.28 + (i * W * 0.56) / 6
+        P.push(piece('cyl', [x, 1.0, back + 0.5], [0.15, 0.18, 0.15], ['#fbcfe8', '#fff7ed', '#f9a8d4', '#a16207'][i % 4], 0.3))
+      }
+      table(W * 0.22, 0.4)
+      for (const x of [-W * 0.2, W * 0.2]) pendant(x, -0.2)
+      break
+    case 'photo':
+      for (const s of [-1, 1]) {
+        P.push(piece('box', [s * W * 0.3, 0.8, back + 0.9], [0.04, 1.6, 0.04], '#3f3f46'))
+        P.push(piece('box', [s * W * 0.3, 1.75, back + 0.9], [0.6, 0.6, 0.15], '#ffffff', 1.0))
+      }
+      P.push(piece('cyl', [0, 0.25, back + 0.9], [0.25, 0.5, 0.25], '#f472b6'))
+      P.push(piece('box', [0, 1.2, D / 2 - 0.7], [0.3, 0.2, 0.2], '#1f2937'))
+      P.push(piece('box', [0, 0.55, D / 2 - 0.7], [0.03, 1.1, 0.03], '#3f3f46'))
+      ceilingStrip()
+      break
+    case 'flower':
+    case 'scent':
+      for (let i = 0; i < 6; i++) {
+        const x = -W * 0.36 + (i * W * 0.72) / 5
+        P.push(piece('cyl', [x, 0.25, back + 0.45], [0.2, 0.5, 0.2], kind === 'flower' ? '#2f6b4f' : '#e9d5ff'))
+        for (let k = 0; k < 3; k++) P.push(piece('ico', [x + (random() - 0.5) * 0.2, 0.62 + random() * 0.15, back + 0.45 + (random() - 0.5) * 0.2], [0.12, 0.12, 0.12], pastel(), 0.25))
+      }
+      P.push(piece('box', [0, 0.4, 0.3], [W * 0.3, 0.8, 0.8], '#a47551'))
+      for (let i = 0; i < 4; i++) P.push(piece('cyl', [-0.4 + i * 0.27, 0.9, 0.3], [0.06, 0.18, 0.06], pastel(), 0.3))
+      ceilingStrip()
+      break
+    case 'jewelry':
+      for (const x of [-W * 0.22, W * 0.22]) {
+        P.push(piece('box', [x, 0.5, back + 0.7], [W * 0.3, 1.0, 0.6], '#f8fafc', 0.35))
+        for (let k = 0; k < 4; k++) P.push(piece('ico', [x - 0.4 + k * 0.27, 1.05, back + 0.7], [0.06, 0.06, 0.06], '#fde68a', 1.2))
+      }
+      P.push(piece('cyl', [0, 0.3, 0.4], [0.22, 0.6, 0.22], '#be123c'))
+      ceilingStrip()
+      break
+    case 'tea':
+      for (const x of [-W * 0.2, W * 0.2]) {
+        P.push(piece('box', [x, 0.2, 0.1], [1.2, 0.4, 0.8], '#8b5e3c'))
+        for (const s of [-1, 1]) P.push(piece('box', [x + s * 0.85, 0.05, 0.1], [0.5, 0.1, 0.5], s > 0 ? '#86efac' : '#fde68a'))
+        P.push(piece('cyl', [x, 0.48, 0.1], [0.1, 0.12, 0.1], '#f5f0e6', 0.3))
+      }
+      for (const x of [-W * 0.25, W * 0.25]) pendant(x, 0)
+      break
+    case 'restaurant':
+      counter(W * 0.25, back + 0.55, W * 0.35, '#5b3a29')
+      table(-W * 0.18, 0.2, '#8b5e3c')
+      P.push(piece('cyl', [-W * 0.18, 0.86, 0.2], [0.05, 0.14, 0.05], '#fff1c9', 1.5)) // 촛불
+      if (W > 7) {
+        table(W * 0.12, 0.7, '#8b5e3c')
+        P.push(piece('cyl', [W * 0.12, 0.86, 0.7], [0.05, 0.14, 0.05], '#fff1c9', 1.5))
+      }
+      for (const x of [-W * 0.3, 0, W * 0.3]) pendant(x, 0.2)
+      break
+    case 'cinemaLobby':
+      counter(-W * 0.2, back + 0.6, W * 0.4, '#dc2626')
+      P.push(piece('box', [-W * 0.3, 1.45, back + 0.55], [0.6, 0.8, 0.5], '#fde68a', 0.8)) // 팝콘 기계
+      P.push(piece('box', [W * 0.25, 0.9, 0.2], [0.8, 1.8, 0.08], '#7c3aed', 0.3)) // 영화 입간판
+      P.push(piece('box', [0, H - 0.05, back + 0.3], [W * 0.9, 0.06, 0.06], '#f472b6', 1.5)) // 네온
+      break
+    case 'wine':
+      counter(0, back + 0.6, W * 0.6, '#3b1c24')
+      for (const x of [-W * 0.2, 0, W * 0.2]) P.push(piece('cyl', [x, 0.38, back + 1.3], [0.18, 0.76, 0.18], '#d4a373'))
+      for (const x of [-W * 0.38, W * 0.38]) P.push(piece('cyl', [x, 0.45, 0.4], [0.35, 0.9, 0.35], '#7c4a2d'))
+      for (const x of [-W * 0.25, W * 0.25]) pendant(x, 0)
+      break
+    case 'gallery':
+      P.push(piece('box', [W * 0.15, 0.5, 0], [0.7, 1.0, 0.7], '#ffffff'))
+      P.push(piece('ico', [W * 0.15, 1.35, 0], [0.42, 0.42, 0.42], '#f472b6', 0.3))
+      P.push(piece('box', [-W * 0.2, 0.25, 0.6], [1.6, 0.45, 0.45], '#d6d3d1'))
+      ceilingStrip()
+      break
+    case 'popup':
+      for (const s of [-1, 1]) {
+        const x = s * W * 0.3
+        P.push(piece('box', [x, 1.5, back + 0.9], [W * 0.3, 0.04, 0.04], '#9ca3af'))
+        for (const s2 of [-1, 1]) P.push(piece('box', [x + s2 * W * 0.15, 0.75, back + 0.9], [0.04, 1.5, 0.04], '#9ca3af'))
+        for (let k = 0; k < 5; k++) P.push(piece('box', [x - W * 0.12 + k * (W * 0.24) / 4, 1.15, back + 0.9], [0.3, 0.6, 0.05], pastel(), 0.2))
+      }
+      P.push(piece('box', [0, 0.4, 0.5], [W * 0.35, 0.8, 0.9], '#ffffff'))
+      for (let k = 0; k < 5; k++) P.push(piece('box', [-0.6 + k * 0.3, 0.86, 0.5], [0.22, 0.1, 0.22], pastel(), 0.3))
+      ceilingStrip()
+      break
+    default:
+      ceilingStrip()
+  }
+
+  const merged = mergeGeometries(P)
+  P.forEach((g) => g.dispose())
+  merged.computeBoundingSphere()
+  interiorCache.set(key, merged)
+  return merged
+}
+
+// 유리 너머 실내 한 칸: 바닥·가구·조명(1번) + 뒷벽 그림(1번) + 유리(1번)
+// 위치: 가운데 바닥 기준 (x 가운데, y 바닥, z 가운데). 앞(유리)은 +z
+function ShopInterior({ kind, W, H, D, p = [0, 0, 0] }) {
+  return (
+    <group position={p}>
+      <mesh geometry={interiorGeometry(kind, W, H, D)} material={INTERIOR_MAT} userData={NO_SHADOW} />
+      <mesh
+        geometry={GEO.plane}
+        material={texMat(getBackWallTexture(kind), { emissive: '#ffffff', emissiveIntensity: 0.35 })}
+        position={[0, H / 2, -D / 2 + 0.01]}
+        scale={[W, H, 1]}
+        userData={NO_SHADOW}
+      />
+      <mesh geometry={GEO.box} material={CLEAR_GLASS} position={[0, H / 2, D / 2 - 0.03]} scale={[W, H, 0.04]} userData={NO_SHADOW} />
+    </group>
+  )
+}
+
+// 앞쪽 1층을 파낸 건물 몸통: 뒤쪽 통짜 + 1층 위 + 양옆 벽 (+ 안쪽 실내)
+// (w, h, d) 몸통 크기, y0 바닥 높이, gh 1층 높이, rd 파낸 깊이
+function RecessedBody({ w, h, d, y0 = 0, gh, rd, material, kind }) {
+  const front = d / 2
+  const back = front - rd
+  const side = 0.25
+  return (
+    <group>
+      <mesh geometry={GEO.box} material={material} position={[0, y0 + h / 2, (back - d / 2) / 2]} scale={[w, h, back + d / 2]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={material} position={[0, y0 + gh + (h - gh) / 2, (front + back) / 2]} scale={[w, h - gh, rd]} castShadow />
+      {[-1, 1].map((s) => (
+        <mesh key={s} geometry={GEO.box} material={material} position={[s * (w / 2 - side / 2), y0 + gh / 2, (front + back) / 2]} scale={[side, gh, rd]} castShadow />
+      ))}
+      <ShopInterior kind={kind} W={w - side * 2} H={gh} D={rd} p={[0, y0, (front + back) / 2]} />
+    </group>
+  )
+}
+
+// ════════════════════════════════════════════
+// 커플 포토존: 꽃 하트 아치 + 원형 데크 + 발자국 + 커플 그네 + 이젤 액자 + 하트 풍선 + 촬영 위치 삼각대
+// 최적화: 움직이지 않는 부분은 모양 1개로 합침(그리기 호출 1번), 그네만 따로 흔들림, 충돌 없음
+// 앞(+z) = 사진 찍는 쪽. 하트 아치는 로컬 z -1.5, 삼각대는 z +5.5
+// ════════════════════════════════════════════
+function colorize(geometry, color, glow = 0) {
+  const g = geometry.index ? geometry.toNonIndexed() : geometry
+  tmpC.set(color)
+  const n = g.attributes.position.count
+  const colors = new Float32Array(n * 3)
+  for (let i = 0; i < n; i++) colors.set([tmpC.r, tmpC.g, tmpC.b], i * 3)
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  g.setAttribute('glow', new THREE.BufferAttribute(new Float32Array(n).fill(glow), 1))
+  if (g.attributes.uv) g.deleteAttribute('uv')
+  return g
+}
+
+// 하트 모양 점들 (아래 뾰족한 끝이 바닥, 폭 약 3.4m, 높이 약 3.1m)
+function heartPoints(count, scale = 0.106, lift = 0.25) {
+  return range(count).map((i) => {
+    const t = (i / count) * Math.PI * 2
+    const x = 16 * Math.sin(t) ** 3
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)
+    return new THREE.Vector3(x * scale, (y + 17) * scale + lift, 0)
+  })
+}
+
+const SWING = { x: 3.6, z: 0.4, top: 2.4 }
+let photoZoneGeometry = null
+function couplePhotoZoneGeometry() {
+  if (photoZoneGeometry) return photoZoneGeometry
+  const P = []
+  const random = seeded(77)
+  const heartZ = -1.5
+  const blossom = ['#f9a8d4', '#fbcfe8', '#ffffff', '#f472b6', '#e9d5ff']
+
+  // 원형 나무 데크 + 분홍 테두리
+  P.push(piece('cyl', [0, 0.06, -0.6], [2.5, 0.12, 2.5], '#c08a5a'))
+  P.push(piece('cyl', [0, 0.05, -0.6], [2.7, 0.1, 2.7], '#f9a8d4'))
+  // 하트 아치: 굵은 흰 테 + 안쪽 분홍 테
+  const pts = heartPoints(48)
+  const outer = new THREE.CatmullRomCurve3(pts.map((p) => p.clone().setZ(heartZ)), true)
+  P.push(colorize(new THREE.TubeGeometry(outer, 96, 0.1, 6, true), '#fff7fb', 0.1))
+  const inner = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(p.x * 0.9, (p.y - 1.65) * 0.9 + 1.65, heartZ + 0.05)), true)
+  P.push(colorize(new THREE.TubeGeometry(inner, 96, 0.05, 5, true), '#f472b6', 0.25))
+  // 아치를 따라 꽃송이 + 작은 전구
+  pts.forEach((p, i) => {
+    const s = 0.14 + random() * 0.1
+    P.push(piece('ico', [p.x + (random() - 0.5) * 0.1, p.y + (random() - 0.5) * 0.1, heartZ + 0.12], [s, s, s], blossom[i % blossom.length], 0.15))
+    if (i % 3 === 0) {
+      const out = p.clone().setZ(0).multiplyScalar(1.07)
+      P.push(piece('ico', [out.x, out.y - 0.1, heartZ + 0.1], [0.06, 0.06, 0.06], '#fff1c9', 1.6))
+    }
+  })
+  // 아치 아래 받침 + 양옆 꽃 화분
+  P.push(piece('box', [0, 0.18, heartZ], [0.5, 0.3, 0.4], '#e7e5e4'))
+  for (const s of [-1, 1]) {
+    P.push(piece('cyl', [s * 2.2, 0.3, heartZ + 0.2], [0.35, 0.6, 0.35], '#f5f0e6'))
+    for (let k = 0; k < 5; k++) P.push(piece('ico', [s * 2.2 + (random() - 0.5) * 0.4, 0.75 + random() * 0.25, heartZ + 0.2 + (random() - 0.5) * 0.4], [0.18, 0.18, 0.18], blossom[k % blossom.length], 0.1))
+  }
+  // 바닥 발자국 두 쌍 (여기 서세요)
+  for (const [x, rot] of [[-0.45, 0.15], [0.45, -0.15]]) {
+    for (const o of [-0.1, 0.1]) P.push(piece('box', [x + o, 0.13, -0.9 + (o > 0 ? 0.06 : 0)], [0.11, 0.01, 0.26], '#db2777', 0.3, rot))
+  }
+  // 커플 그네 틀 (A자 기둥 + 위 가로대). 의자와 줄은 따로 흔들림
+  for (const s of [-1, 1]) {
+    for (const lean of [-0.22, 0.22]) {
+      P.push(piece('box', [SWING.x + s * 1.1, SWING.top / 2, SWING.z + lean * 1.1], [0.1, SWING.top + 0.1, 0.1], '#8b5e3c', 0, [lean, 0, 0]))
+    }
+  }
+  P.push(piece('box', [SWING.x, SWING.top, SWING.z], [2.5, 0.12, 0.12], '#8b5e3c'))
+  for (let k = 0; k < 7; k++) P.push(piece('ico', [SWING.x - 1.1 + k * 0.37, SWING.top + 0.12, SWING.z], [0.12, 0.12, 0.12], blossom[k % blossom.length], 0.15))
+  // 이젤 + 큰 액자 (얼굴 넣고 찍는 프레임)
+  const EX = -3.3
+  const EZ = 0.4
+  for (const [dx, dz] of [[-0.45, 0.15], [0.45, 0.15], [0, -0.35]]) {
+    P.push(piece('box', [EX + dx * 0.5, 0.85, EZ + dz * 0.5], [0.06, 1.75, 0.06], '#a47551', 0, [dz * -0.5, 0, dx * 0.5]))
+  }
+  const FY = 1.55
+  for (const [x, y, w, h] of [[0, 0.62, 1.5, 0.12], [0, -0.62, 1.5, 0.12], [-0.69, 0, 0.12, 1.36], [0.69, 0, 0.12, 1.36]]) {
+    P.push(piece('box', [EX + x, FY + y, EZ + 0.1], [w, h, 0.08], '#f5d0a9', 0.15))
+  }
+  // 하트 풍선 다발 (왼쪽 위) + 줄 + 무게추
+  const BX = -2.3
+  for (let k = 0; k < 6; k++) {
+    const x = BX + (random() - 0.5) * 0.8
+    const y = 3.6 + random() * 0.8
+    const z = heartZ + (random() - 0.5) * 0.6
+    P.push(piece('ico', [x, y, z], [0.26, 0.3, 0.22], ['#f472b6', '#f9a8d4', '#c4b5fd', '#fda4af'][k % 4], 0.25))
+    const mid = [(x + BX) / 2, (y + 0.9) / 2, (z + heartZ) / 2]
+    const len = Math.hypot(x - BX, y - 0.9, z - heartZ)
+    P.push(piece('box', mid, [0.015, len, 0.015], '#ffffff', 0, [Math.atan2(z - heartZ, y - 0.9), 0, -Math.atan2(x - BX, y - 0.9)]))
+  }
+  P.push(piece('box', [BX, 0.95, heartZ], [0.18, 0.18, 0.18], '#f472b6'))
+  // 촬영 위치: 바닥 표시 + 삼각대 + 카메라 (하트를 바라봄)
+  P.push(piece('cyl', [0, 0.03, 5.5], [0.5, 0.04, 0.5], '#f9a8d4', 0.2))
+  for (const a of [0, 2.1, 4.2]) {
+    P.push(piece('box', [Math.sin(a) * 0.2, 0.65, 5.5 + Math.cos(a) * 0.2], [0.04, 1.35, 0.04], '#374151', 0, [Math.cos(a) * 0.3, 0, -Math.sin(a) * 0.3]))
+  }
+  P.push(piece('box', [0, 1.38, 5.5], [0.32, 0.22, 0.14], '#1f2937'))
+  P.push(piece('cyl', [0, 1.38, 5.4], [0.08, 0.08, 0.08], '#9ca3af', 0, [Math.PI / 2, 0, 0]))
+  // 안내 팻말 기둥 (팻말 그림은 따로)
+  P.push(piece('box', [1.1, 0.6, 5.5], [0.08, 1.2, 0.08], '#8b5e3c'))
+
+  photoZoneGeometry = mergeGeometries(P)
+  P.forEach((g) => g.dispose())
+  photoZoneGeometry.computeBoundingSphere()
+  return photoZoneGeometry
+}
+
+const SWING_SEAT = mat('#fbcfe8')
+const SWING_ROPE = mat('#f5f0e6')
+
+export function CouplePhotoZone() {
+  const swingRef = useRef(null)
+  useFrame(({ clock }) => {
+    if (swingRef.current) swingRef.current.rotation.x = Math.sin(clock.elapsedTime * 1.1) * 0.1 // 살랑살랑
+  })
+  return (
+    <group>
+      <mesh geometry={couplePhotoZoneGeometry()} material={INTERIOR_MAT} castShadow receiveShadow />
+      {/* 흔들리는 그네: 위 가로대 높이를 축으로 회전 */}
+      <group ref={swingRef} position={[SWING.x, SWING.top, SWING.z]}>
+        {[-0.75, 0.75].map((x) => (
+          <Box key={x} p={[x, -0.9, 0]} s={[0.03, 1.8, 0.03]} m={SWING_ROPE} userData={NO_SHADOW} />
+        ))}
+        <Box p={[0, -1.8, 0]} s={[1.7, 0.1, 0.55]} m={SWING_SEAT} />
+        <Box p={[0, -1.55, -0.25]} s={[1.7, 0.45, 0.06]} m={SWING_SEAT} />
+      </group>
+      {/* 안내 팻말 */}
+      <mesh position={[1.1, 1.3, 5.55]} userData={NO_SHADOW}>
+        <planeGeometry args={[1.2, 0.3]} />
+        <meshStandardMaterial map={getSignTexture('커플 포토존', '#fff1f5', '#db2777')} />
+      </mesh>
+    </group>
+  )
+}
+
+// ════════════════════════════════════════════
+// 조경 묶음 (landscape): 나무·덤불·꽃밭·풀숲·돌·생울타리·화분·연못 테두리·피크닉 세트
+// 최적화: item 하나의 모든 조경을 모양 1개로 합쳐 그리기 호출 1번 (연못 물만 1번 더), 충돌 없음
+// item.features: [{ t: 종류, p: [x, z], y: 높이(선택), s: 크기 배율, ... }] — 좌표는 item 위치 기준
+// ════════════════════════════════════════════
+const LANDSCAPE_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 })
+const LEAF = ['#5fa24f', '#4f8f45', '#6fb35c', '#3f7a3a', '#7cbf63']
+const PINE = ['#2f6b4a', '#3a7a55', '#285f42']
+const BLOSSOM_LS = ['#f9a8d4', '#fbcfe8', '#f472b6', '#fbb6d5']
+
+function addLandscapeFeature(P, f, random) {
+  const [x, z] = f.p
+  const y = f.y ?? 0
+  const s = f.s ?? 1
+  const pick = (list) => list[Math.floor(random() * list.length)]
+  switch (f.t) {
+    case 'tree':
+    case 'cherry': {
+      const trunkH = 2.4 * s
+      P.push(piece('cyl', [x, y + trunkH / 2, z], [0.18 * s, trunkH, 0.18 * s], '#6b4f3a'))
+      const colors = f.t === 'cherry' ? BLOSSOM_LS : LEAF
+      for (const [dx, dy, dz, k] of [[0, 0.4, 0, 1], [0.6, 0, 0.2, 0.75], [-0.5, 0.1, -0.3, 0.8], [0.1, 0.9, -0.2, 0.65]]) {
+        const r = 1.25 * s * k
+        P.push(piece('ico1', [x + dx * s, y + trunkH + dy * s + 0.6 * s, z + dz * s], [r, r * 0.9, r], pick(colors)))
+      }
+      break
+    }
+    case 'pine': {
+      const trunkH = 1.2 * s
+      P.push(piece('cyl', [x, y + trunkH / 2, z], [0.2 * s, trunkH, 0.2 * s], '#5b4030'))
+      for (let k = 0; k < 3; k++) {
+        const r = (1.7 - k * 0.45) * s
+        P.push(piece('cone', [x, y + trunkH + (0.9 + k * 1.15) * s, z], [r, 2.0 * s, r], PINE[k % PINE.length], 0, random() * 3))
+      }
+      break
+    }
+    case 'bush': {
+      for (const [dx, dz, k] of [[0, 0, 1], [0.45, 0.2, 0.75], [-0.4, -0.15, 0.8]]) {
+        const r = 0.55 * s * k
+        P.push(piece('ico', [x + dx * s, y + r * 0.8, z + dz * s], [r, r * 0.85, r], pick(LEAF)))
+      }
+      if (f.flowers) for (let k = 0; k < 6; k++) {
+        const a = random() * Math.PI * 2
+        P.push(piece('ico', [x + Math.cos(a) * 0.45 * s, y + 0.55 * s + random() * 0.25 * s, z + Math.sin(a) * 0.45 * s], [0.09, 0.09, 0.09], pick(FLOWER_COLORS)))
+      }
+      break
+    }
+    case 'flowers': {
+      const r = f.r ?? 2.5
+      const n = f.n ?? 30
+      for (let k = 0; k < n; k++) {
+        const a = random() * Math.PI * 2
+        const d = Math.sqrt(random()) * r
+        const fs = 0.09 + random() * 0.07
+        const fx = x + Math.cos(a) * d
+        const fz = z + Math.sin(a) * d
+        if (k % 3 === 0) P.push(piece('cone', [fx, y + 0.12, fz], [0.12, 0.25, 0.12], pick(LEAF)))
+        P.push(piece('ico', [fx, y + 0.2 + random() * 0.12, fz], [fs, fs, fs], pick(FLOWER_COLORS)))
+      }
+      break
+    }
+    case 'grass':
+      for (let k = 0; k < 3; k++) {
+        P.push(piece('cone', [x + (random() - 0.5) * 0.3, y + 0.18 * s, z + (random() - 0.5) * 0.3], [0.08 * s, 0.4 * s, 0.08 * s], pick(LEAF), 0, [0.2 * (random() - 0.5), 0, 0.2 * (random() - 0.5)]))
+      }
+      break
+    case 'rock':
+      P.push(piece('rock', [x, y + 0.25 * s, z], [0.7 * s, 0.45 * s, 0.6 * s], pick(['#b8acc0', '#a99fb2', '#c4bacb']), 0, random() * 3))
+      break
+    case 'hedge': {
+      const [x2, z2] = f.p2
+      const len = Math.hypot(x2 - x, z2 - z)
+      const yaw = Math.atan2(x2 - x, z2 - z)
+      const h = f.h ?? 0.9
+      P.push(piece('box', [(x + x2) / 2, y + h / 2, (z + z2) / 2], [0.75, h, len], '#4f8f45', 0, yaw))
+      const bumps = Math.max(1, Math.round(len / 1.4))
+      for (let k = 0; k < bumps; k++) {
+        const t = (k + 0.5) / bumps
+        P.push(piece('ico', [x + (x2 - x) * t, y + h, z + (z2 - z) * t], [0.45, 0.3, 0.45], pick(LEAF)))
+      }
+      break
+    }
+    case 'planter': {
+      const w = f.w ?? 4
+      const d = f.d ?? 1
+      const rot = f.rot ?? 0
+      const c = Math.cos(rot)
+      const sn = Math.sin(rot)
+      const at = (lx) => [x + lx * c, z - lx * sn]
+      P.push(piece('box', [x, y + 0.3, z], [w, 0.6, d], '#9a6b45', 0, rot))
+      P.push(piece('box', [x, y + 0.6, z], [w - 0.12, 0.04, d - 0.12], '#5b4636', 0, rot))
+      const n = Math.max(2, Math.round(w / 0.9))
+      for (let k = 0; k < n; k++) {
+        const [bx, bz] = at(-w / 2 + 0.45 + (k * (w - 0.9)) / Math.max(1, n - 1))
+        const r = 0.35 + random() * 0.12
+        P.push(piece('ico', [bx, y + 0.75, bz], [r, r * 0.8, r], pick(LEAF)))
+        P.push(piece('ico', [bx + (random() - 0.5) * 0.4, y + 0.95, bz + (random() - 0.5) * 0.3], [0.1, 0.1, 0.1], pick(FLOWER_COLORS)))
+      }
+      break
+    }
+    case 'pond': {
+      const r = f.r ?? 4
+      for (let k = 0; k < 14; k++) {
+        const a = (k / 14) * Math.PI * 2 + random() * 0.2
+        const rr = 0.4 + random() * 0.35
+        P.push(piece('rock', [x + Math.cos(a) * (r + 0.2), y + 0.15, z + Math.sin(a) * (r + 0.2)], [rr, rr * 0.6, rr], pick(['#b8acc0', '#c4bacb', '#a99fb2']), 0, random() * 3))
+      }
+      for (let k = 0; k < 10; k++) {
+        const a = random() * Math.PI * 2
+        P.push(piece('cone', [x + Math.cos(a) * (r - 0.4), y + 0.5, z + Math.sin(a) * (r - 0.4)], [0.06, 1.0, 0.06], '#6b8f3a'))
+      }
+      for (let k = 0; k < 5; k++) {
+        const a = random() * Math.PI * 2
+        const d = random() * (r - 1)
+        P.push(piece('cyl', [x + Math.cos(a) * d, y + 0.1, z + Math.sin(a) * d], [0.35, 0.02, 0.35], '#5fa24f'))
+        if (k % 2 === 0) P.push(piece('ico', [x + Math.cos(a) * d, y + 0.16, z + Math.sin(a) * d], [0.1, 0.08, 0.1], '#fbcfe8'))
+      }
+      break
+    }
+    case 'picnic': {
+      const rot = f.rot ?? 0
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 3; j++) {
+          const lx = -0.9 + i * 0.6
+          const lz = -0.6 + j * 0.6
+          P.push(piece('box', [x + lx * Math.cos(rot) + lz * Math.sin(rot), y + 0.02, z - lx * Math.sin(rot) + lz * Math.cos(rot)], [0.6, 0.03, 0.6], (i + j) % 2 ? '#ffffff' : '#f9a8d4', 0, rot))
+        }
+      }
+      P.push(piece('box', [x + 0.5, y + 0.2, z - 0.1], [0.5, 0.35, 0.35], '#b07a4f', 0, rot))
+      P.push(piece('box', [x + 0.5, y + 0.45, z - 0.1], [0.4, 0.05, 0.05], '#8b5e3c', 0, rot))
+      for (const [cx, cz, c] of [[-0.6, 0.3, '#c4b5fd'], [-0.1, 0.4, '#fde68a']]) P.push(piece('box', [x + cx, y + 0.1, z + cz], [0.45, 0.15, 0.45], c, 0, rot))
+      for (const [cx, cz] of [[-0.3, -0.3], [0, -0.35]]) P.push(piece('cyl', [x + cx, y + 0.12, z + cz], [0.06, 0.18, 0.06], '#ffffff'))
+      P.push(piece('box', [x - 1.4, y + 1.1, z - 0.9], [0.04, 2.2, 0.04], '#e5e7eb'))
+      P.push(piece('cone', [x - 1.4, y + 2.25, z - 0.9], [1.3, 0.5, 1.3], '#fbcfe8'))
+      break
+    }
+    default:
+  }
+}
+
+const landscapeCache = new Map()
+function landscapeGeometry(item) {
+  if (landscapeCache.has(item.id)) return landscapeCache.get(item.id)
+  const random = seeded(hashString(item.id))
+  const P = []
+  for (const f of item.features ?? []) addLandscapeFeature(P, f, random)
+  const merged = mergeGeometries(P)
+  P.forEach((g) => g.dispose())
+  merged.computeBoundingSphere()
+  landscapeCache.set(item.id, merged)
+  return merged
+}
+
+export function Landscape({ item }) {
+  const geometry = landscapeGeometry(item)
+  const ponds = (item.features ?? []).filter((f) => f.t === 'pond')
+  return (
+    <group>
+      <mesh geometry={geometry} material={LANDSCAPE_MAT} castShadow receiveShadow />
+      {ponds.map((f, i) => (
+        <Cyl key={i} p={[f.p[0], (f.y ?? 0) + 0.05, f.p[1]]} rad={f.r ?? 4} h={0.06} m={WATER} geo={GEO.cyl48} userData={NO_SHADOW} />
+      ))}
+    </group>
+  )
+}
+
+// 가게 종류 정하기: item.interior가 있으면 그걸, 없으면 모양으로 짐작
+function interiorKinds(item, fallback) {
+  if (item.interior) return Array.isArray(item.interior) ? item.interior : [item.interior, item.interior]
+  if (item.roofProp === 'camera') return ['photo', 'photo']
+  if (item.display === 'cake') return ['dessert', 'dessert']
+  if (item.display === 'flower') return ['flower', 'flower']
+  return [fallback, fallback]
+}
+
 // ── 한옥 가게 (디저트 가게·사진관·꽃집·한옥 카페 공용) ──
 // item.awning: 줄무늬 차양 색 / item.display: "cake" | "flower" | "none"
 // item.roofProp: "camera"(사진관) / item.brick: 아래 벽을 벽돌로 / item.stringLights: 처마 줄조명
@@ -350,48 +1212,40 @@ export function HanokShop({ item }) {
   const front = inD / 2
   const wallColor = item.color ?? '#f5ecdc'
   const sign = item.signs?.[0]
-  const display = item.display ?? 'none'
-  const brickH = 2.6
 
-  const brickTexture = useMemo(() => (item.brick ? getTiledTexture('brick', inW / 1.2, brickH / 1.2) : null), [item.brick, inW])
+  const brickTexture = useMemo(() => (item.brick ? getTiledTexture('brick', inW / 1.2, (wallTop - base) / 1.2) : null), [item.brick, inW, wallTop])
+  const [kind] = interiorKinds(item, 'cafe')
+  const groundH = Math.min(2.8, wallTop - base - 0.6) // 유리 너머 실내 높이
+  const recess = Math.min(3, inD * 0.45) // 파낸 깊이
 
-  const { posts, goods, bulbs } = useMemo(() => {
+  const { posts, bulbs } = useMemo(() => {
     const posts = [-inW / 2, -inW / 6, inW / 6, inW / 2].flatMap((x) =>
       [front, -front].map((z) => ({ p: [x, (base + wallTop) / 2, z], s: [0.22, wallTop - base, 0.22] })),
     )
-    const random = seeded(hashString(item.id))
-    const goods = []
-    if (display !== 'none') {
-      for (const y of [base + 0.75, base + 1.35]) {
-        for (let i = 0; i < 6; i++) {
-          const x = -w * 0.12 - inW * 0.25 + (inW * 0.5 * (i + 0.5)) / 6
-          const c = display === 'cake' ? ['#fbcfe8', '#fff7ed', '#f9a8d4', '#a16207'][Math.floor(random() * 4)] : FLOWER_COLORS[Math.floor(random() * FLOWER_COLORS.length)]
-          goods.push({ p: [x, y, front + 0.14], s: display === 'cake' ? [0.14, 0.16, 0.14] : [0.13, 0.13, 0.13], c })
-        }
-      }
-    }
     const bulbs = item.stringLights ? bulbLine([-w / 2, wallTop - 0.15, front + 0.55], [w / 2, wallTop - 0.15, front + 0.55], 14) : []
-    return { posts, goods, bulbs }
-  }, [item.id, item.stringLights, display, w, inW, front, wallTop])
+    return { posts, bulbs }
+  }, [item.stringLights, w, inW, front, wallTop])
 
   return (
     <group>
       <Box p={[0, base / 2, 0]} s={[w, base, d]} c={STONE} />
-      {item.brick ? (
-        <>
-          <mesh geometry={GEO.box} material={texMat(brickTexture)} position={[0, base + brickH / 2, 0]} scale={[inW, brickH, inD]} />
-          <Box p={[0, (base + brickH + wallTop) / 2, 0]} s={[inW, wallTop - base - brickH, inD]} c={wallColor} />
-        </>
-      ) : (
-        <Box p={[0, (base + wallTop) / 2, 0]} s={[inW, wallTop - base, inD]} c={wallColor} />
-      )}
+      {/* 벽 몸통: 앞쪽 1층을 파내서 유리 너머로 가게 안이 보이게 (벽돌집이면 벽돌 무늬) */}
+      <RecessedBody
+        w={inW}
+        h={wallTop - base}
+        d={inD}
+        y0={base}
+        gh={groundH}
+        rd={recess}
+        material={item.brick ? texMat(brickTexture) : mat(wallColor)}
+        kind={kind}
+      />
       <Instances geometry={GEO.box} material={mat(WOOD)} items={posts} castShadow />
       <Box p={[0, wallTop - 0.15, front]} s={[inW + 0.3, 0.3, 0.3]} c={WOOD} />
-      {/* 진열창 + 문 */}
-      <Box p={[-w * 0.12, base + 1.25, front + 0.03]} s={[inW * 0.58, 1.8, 0.08]} m={WARM_GLASS} userData={NO_SHADOW} />
+      <Box p={[0, base + groundH + 0.08, front + 0.02]} s={[inW, 0.16, 0.12]} c={WOOD} />
+      {/* 문 (유리 앞) */}
       <Box p={[inW / 2 - 0.85, base + 1.1, front + 0.04]} s={[1, 2.2, 0.08]} c="#6b4a2f" />
       <Box p={[inW / 2 - 0.85, base + 1.6, front + 0.09]} s={[0.6, 0.7, 0.02]} m={WARM_GLASS} userData={NO_SHADOW} />
-      <Instances geometry={display === 'cake' ? GEO.cyl : GEO.ico} material={TINTABLE} items={goods} />
       {/* 줄무늬 차양 */}
       {item.awning && (
         <mesh
@@ -433,6 +1287,7 @@ export function RooftopRestaurant({ item }) {
   const bodyH = h - railH
   const front = d / 2
   const sign = item.signs?.[0]
+  const kinds = interiorKinds(item, 'restaurant')
   const awningGeometry = useMemo(() => roofGeometry(w + 0.6, 1.6, 0.6, 0.15), [w])
 
   const parts = useMemo(() => {
@@ -479,9 +1334,9 @@ export function RooftopRestaurant({ item }) {
 
   return (
     <group>
-      <Box p={[0, bodyH / 2, 0]} s={[w, bodyH, d]} c={item.color ?? '#f3ede3'} />
+      {/* 몸통: 1층 앞쪽을 파내서 유리 너머로 가게 안이 보이게 */}
+      <RecessedBody w={w} h={bodyH - 0.6} d={d} y0={0.6} gh={2.55} rd={3.2} material={mat(item.color ?? '#f3ede3')} kind={kinds[0]} />
       <Box p={[0, 0.3, 0]} s={[w + 0.06, 0.6, d + 0.06]} c="#4b4440" />
-      <Box p={[0, 1.75, front + 0.04]} s={[w - 1, 2.3, 0.08]} m={WARM_GLASS} userData={NO_SHADOW} />
       <mesh geometry={awningGeometry} material={ROOF_MAT} position={[0, 3.2, front + 0.35]} />
       {sign && (
         <mesh position={[0, 4.25, front + 0.05]} userData={NO_SHADOW}>
@@ -489,7 +1344,14 @@ export function RooftopRestaurant({ item }) {
           <meshStandardMaterial map={getSignTexture(sign.text, sign.bg, sign.fg, (w * 0.5) / 0.55)} />
         </mesh>
       )}
-      <Box p={[0, bodyH - 1.5, front + 0.04]} s={[w - 1.2, 1.4, 0.08]} m={WARM_GLASS} userData={NO_SHADOW} />
+      {/* 2층 창: 실내 그림 (따로 파내지 않고 그림 한 장으로 — 그리기 호출 늘지 않음) */}
+      <mesh
+        geometry={GEO.plane}
+        material={texMat(getBackWallTexture(kinds[1]), { emissive: '#ffffff', emissiveIntensity: 0.45 })}
+        position={[0, bodyH - 1.5, front + 0.04]}
+        scale={[w - 1.2, 1.4, 1]}
+        userData={NO_SHADOW}
+      />
       <Box p={[0, bodyH, 0]} s={[w + 0.2, 0.2, d + 0.2]} c="#e4dccf" />
       <Box p={[0, bodyH + 0.12, 0]} s={[w - 0.2, 0.06, d - 0.2]} c="#a77a52" />
       {/* 옥상 난간 */}
@@ -594,15 +1456,26 @@ export function GlassCafe({ item }) {
     return range(n).map((i) => ({ p: [-w / 2 + 0.6 + i * 0.35, floorH * 1.5 + 0.15, front - 0.1], s: [0.09, floorH - 0.5, 0.14] }))
   }, [w, floorH, front])
   const columns = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ p: [sx * (w / 2 - 0.2), h / 2, sz * (d / 2 - 0.2)], s: [0.35, h, 0.35] })))
+  const kinds = interiorKinds(item, dark ? 'wine' : 'cafe2')
+  const glassZ = front - 0.35
+  const roomD = Math.min(2.8, d * 0.4) // 유리 너머 실내 깊이
+  const coreFront = glassZ - roomD
+  const coreBack = -d / 2 + 0.2
+  const innerW = w - 0.7
   return (
     <group>
-      <Box p={[0, (h - 0.3) / 2, -0.5]} s={[w - 0.7, h - 0.3, d - 1.6]} c={concrete} />
+      {/* 뒤쪽 노출 콘크리트 몸통 + 실내 양옆 벽 */}
+      <Box p={[0, (h - 0.3) / 2, (coreFront + coreBack) / 2]} s={[innerW, h - 0.3, coreFront - coreBack]} c={concrete} />
+      {[-1, 1].map((s) => (
+        <Box key={s} p={[s * (innerW / 2 - 0.1), (h - 0.3) / 2 + 0.15, glassZ - roomD / 2]} s={[0.2, h - 0.3, roomD]} c={concrete} />
+      ))}
       {[0, floorH, floorH * 2].map((y) => (
         <Box key={y} p={[0, y + 0.15, 0]} s={[w, 0.3, d]} c={concrete} />
       ))}
       <Instances geometry={GEO.box} material={mat(concrete)} items={columns} castShadow />
+      {/* 층마다 통유리 너머 실내 */}
       {[0, 1].map((f) => (
-        <Box key={f} p={[0, floorH * f + 0.3 + (floorH - 0.3) / 2, front - 0.35]} s={[w - 0.7, floorH - 0.3, 0.08]} m={WARM_GLASS} userData={NO_SHADOW} />
+        <ShopInterior key={f} kind={kinds[f]} W={innerW - 0.4} H={floorH - 0.3} D={roomD} p={[0, floorH * f + 0.3, glassZ - roomD / 2]} />
       ))}
       <Instances geometry={GEO.box} material={mat(wood)} items={louvers} />
       <Box p={[0, floorH * 2 + 0.6, d / 2 - 0.6]} s={[w * 0.35, 0.5, 0.6]} c="#5f9e4f" />
@@ -617,8 +1490,8 @@ export function CubeGallery({ item }) {
   const front = d / 2
   return (
     <group>
-      <Box p={[0, h / 2, 0]} s={[w, h, d]} c="#f7f6f2" />
-      <Box p={[-w * 0.16, h * 0.34, front + 0.02]} s={[w * 0.46, h * 0.5, 0.06]} m={WARM_GLASS} userData={NO_SHADOW} />
+      {/* 하얀 큐브: 1층 앞을 파내서 유리 너머 전시실이 보이게 */}
+      <RecessedBody w={w} h={h} d={d} gh={Math.min(3.2, h * 0.55)} rd={Math.min(3, d * 0.45)} material={mat('#f7f6f2')} kind={interiorKinds(item, 'gallery')[0]} />
       <Box p={[w * 0.3, 1.2, front + 0.03]} s={[1.1, 2.4, 0.06]} c={DARK} />
       <Box p={[0, h - 0.5, front + 0.03]} s={[w, 0.12, 0.08]} c={PINK} />
       <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.4, 3)} p={[w * 0.2, h * 0.72, front + 0.02]} />
@@ -642,18 +1515,27 @@ export function ContainerPopup({ item }) {
     const n = Math.floor(w / 0.4)
     for (let i = 0; i <= n; i++) {
       const x = -w / 2 + (w * i) / n
-      list.push({ p: [x, ch / 2, lowerZ + cd / 2 + 0.03], s: [0.06, ch - 0.25, 0.05] })
       list.push({ p: [x * 0.9 + w * 0.05, ch * 1.5, upperZ + cd / 2 + 0.03], s: [0.06, ch - 0.25, 0.05] })
     }
     return list
-  }, [w, ch, cd, lowerZ, upperZ])
+  }, [w, ch, cd, upperZ])
+  const kinds = interiorKinds(item, 'popup')
   return (
     <group>
-      <Box p={[0, ch / 2, lowerZ]} s={[w, ch, cd]} c={item.color ?? '#ff8a7a'} />
+      {/* 아래 컨테이너: 앞을 파내서 유리 너머 매장이 보이게 */}
+      <group position={[0, 0, lowerZ]}>
+        <RecessedBody w={w} h={ch} d={cd} gh={ch - 0.35} rd={cd - 0.4} material={mat(item.color ?? '#ff8a7a')} kind={kinds[0]} />
+      </group>
       <Box p={[w * 0.05, ch * 1.5, upperZ]} s={[w * 0.9, ch, cd]} c={item.accent ?? '#7dd3c0'} />
       <Instances geometry={GEO.box} material={mat('#ffffff', { roughness: 0.6 })} items={ribs} />
-      <Box p={[-w * 0.1, ch * 0.5, front + 0.06]} s={[w * 0.55, ch - 0.7, 0.06]} m={WARM_GLASS} userData={NO_SHADOW} />
-      <Box p={[w * 0.05, ch * 1.45, upperZ + cd / 2 + 0.07]} s={[w * 0.45, ch - 0.9, 0.06]} m={WARM_GLASS} userData={NO_SHADOW} />
+      {/* 위 컨테이너 창: 실내 그림 한 장 */}
+      <mesh
+        geometry={GEO.plane}
+        material={texMat(getBackWallTexture(kinds[1]), { emissive: '#ffffff', emissiveIntensity: 0.45 })}
+        position={[w * 0.05, ch * 1.45, upperZ + cd / 2 + 0.07]}
+        scale={[w * 0.45, ch - 0.9, 1]}
+        userData={NO_SHADOW}
+      />
       {/* 위층으로 가는 철제 계단 (장식) */}
       <Box p={[w / 2 - 0.6, ch * 0.75, front - 0.2]} s={[0.9, 0.08, ch * 1.6]} r={[0.75, 0, 0]} c={STEEL} />
       <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.45, 3.6)} p={[w * 0.05, ch * 1.9, upperZ + cd / 2 + 0.08]} />

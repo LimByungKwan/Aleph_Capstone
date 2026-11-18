@@ -24,11 +24,13 @@ import {
   PHYSICS_DEBUG,
   SHADOW_AREA,
   SHOW_ZONE_OWNERS,
-  SHOW_ZONES,
   SUN_POSITION,
 } from './config.js'
 import { labelLayer } from './labelLayer.js'
 import { zones } from './data/mapData.js'
+import { useSettings } from './settingsStore.js'
+import { live } from './timeOfDay.js'
+import SettingsPanel from './SettingsPanel.jsx'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
@@ -59,9 +61,10 @@ export default function Scene() {
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
           <PastelSky />
 
-          {/* 따뜻한 전체 조명 + 그림자 있는 태양광 1개 (그림자는 보고 있는 곳 주변만) */}
-          <hemisphereLight args={['#fff0f5', '#c2ae98', 0.65]} />
+          {/* 전체 조명 + 그림자 있는 태양광(밤에는 달빛) 1개 — 시간대에 따라 색·세기가 바뀜 */}
+          <SkyAmbient />
           <SunLight />
+          <QualityControl />
 
           <MapLayout showStartMarker={!playing} />
           <PlaceMarkers />
@@ -86,6 +89,7 @@ export default function Scene() {
         </Canvas>
 
         <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
+        <SettingsPanel />
       </div>
     </KeyboardControls>
   )
@@ -96,9 +100,12 @@ export default function Scene() {
 const SHADOW_MIN_AREA = 35
 const lookTarget = new THREE.Vector3()
 
+const SUN_DISTANCE = Math.hypot(...SUN_POSITION)
+
 function SunLight() {
   const lightRef = useRef(null)
   const area = useRef(SHADOW_AREA)
+  const highQuality = useSettings((state) => state.quality === 'high')
 
   useFrame(({ camera, controls }) => {
     const light = lightRef.current
@@ -107,10 +114,15 @@ function SunLight() {
     else if (controls?.target) lookTarget.copy(controls.target)
     else lookTarget.set(0, 0, 0)
 
+    // 시간대에 따라 해(밤엔 달)의 색·세기·방향
+    light.color.copy(live.lightColor)
+    light.intensity = live.lightIntensity
+
     // 2m 단위로 맞춰 움직여서 그림자가 지글거리지 않게
     const x = Math.round(lookTarget.x / 2) * 2
     const z = Math.round(lookTarget.z / 2) * 2
-    light.position.set(x + SUN_POSITION[0], SUN_POSITION[1], z + SUN_POSITION[2])
+    const dir = live.sunDir
+    light.position.set(x + dir.x * SUN_DISTANCE, Math.max(dir.y, 0.15) * SUN_DISTANCE, z + dir.z * SUN_DISTANCE)
     light.target.position.set(x, 0, z)
     light.target.updateMatrixWorld()
 
@@ -129,7 +141,7 @@ function SunLight() {
       ref={lightRef}
       intensity={1.6}
       color="#fff4e6"
-      castShadow
+      castShadow={highQuality}
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-SHADOW_AREA}
       shadow-camera-right={SHADOW_AREA}
@@ -140,6 +152,29 @@ function SunLight() {
       shadow-bias={-0.0005}
     />
   )
+}
+
+// 전체 조명 (하늘빛 + 땅에서 반사되는 빛): 시간대에 따라 색·세기
+function SkyAmbient() {
+  const ref = useRef(null)
+  useFrame(() => {
+    const light = ref.current
+    if (!light) return
+    light.color.copy(live.hemiSky)
+    light.groundColor.copy(live.hemiGround)
+    light.intensity = live.hemiIntensity
+  })
+  return <hemisphereLight ref={ref} args={['#fff0f5', '#c2ae98', 0.65]} />
+}
+
+// 그래픽 품질: 낮음이면 화면 해상도를 1배로 (고해상도 화면에서 픽셀 계산이 1/4로 줄어듦)
+function QualityControl() {
+  const quality = useSettings((state) => state.quality)
+  const setDpr = useThree((state) => state.setDpr)
+  useEffect(() => {
+    setDpr(quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, 2))
+  }, [quality, setDpr])
+  return null
 }
 
 // 둘러보기 카메라. 땅 밑으로 못 내려가고, 옆으로 끌면 땅과 평행하게 이동
@@ -167,6 +202,7 @@ function OverviewCamera() {
 function HelpPanel({ playing, onStart, onStop }) {
   const nearbyPlaceId = useGameStore((state) => state.nearbyPlaceId)
   const openPanel = useGameStore((state) => state.openPanel)
+  const showZones = useSettings((state) => state.showZones)
 
   return (
     <div
@@ -189,7 +225,7 @@ function HelpPanel({ playing, onStart, onStop }) {
         ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
         : '왼쪽 드래그: 회전 · 오른쪽 드래그: 이동 · 휠: 확대/축소'}
 
-      {SHOW_ZONES && <ZoneLegend />}
+      {showZones && <ZoneLegend />}
 
       {playing && (
         <div style={{ marginTop: 6, fontFamily: 'Consolas, monospace', fontSize: 12 }}>

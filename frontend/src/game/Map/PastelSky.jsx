@@ -1,23 +1,70 @@
-import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { CLOUDS_DRIFT, FOG_FAR, FOG_NEAR, SHOW_CLOUDS, SHOW_MOUNTAINS, SKY_COLORS, SUN_POSITION } from '../config.js'
+import { CLOUDS_DRIFT, FOG_FAR, FOG_NEAR, SHOW_CLOUDS, SHOW_MOUNTAINS, SKY_COLORS } from '../config.js'
+import { useSettings } from '../settingsStore.js'
+import { live, snapTimeOfDay, stepTimeOfDay } from '../timeOfDay.js'
 import { seeded } from './styles/kit.jsx'
 
 // 파스텔 하늘 세트. 인터넷 이미지(HDR) 없이 코드로만 그려요.
-// 최적화: 하늘 1번 + 구름 1번 + 먼 산 1번 + 바깥 땅 1번 = 그리기 호출 4번, 그림자 없음.
+// 시간대(아침/점심/밤)는 설정창에서 바꾸고, 색은 timeOfDay.js의 live 값을 따라 부드럽게 바뀌어요.
+// 최적화: 하늘 1번 + 구름 1번 + 먼 산 1번 + 바깥 땅 1번 + 별 1번(밤에만) = 그리기 호출 최대 5번, 그림자 없음.
 
 export default function PastelSky() {
   return (
     <>
+      <TimeOfDayDriver />
       <fog attach="fog" args={[SKY_COLORS.fog, FOG_NEAR, FOG_FAR]} />
       <SkyDome />
+      <Stars />
       <OuterGround />
       {SHOW_MOUNTAINS && <Mountains />}
       {SHOW_CLOUDS && <Clouds />}
     </>
   )
+}
+
+// 매 프레임 시간대 값을 목표로 조금씩 옮기고, 안개 색을 맞춤 (가장 먼저 실행)
+function TimeOfDayDriver() {
+  const scene = useThree((state) => state.scene)
+  useLayoutEffect(() => {
+    snapTimeOfDay(useSettings.getState().timeOfDay)
+  }, [])
+  useFrame((_, delta) => {
+    stepTimeOfDay(useSettings.getState().timeOfDay, delta)
+    if (scene.fog) scene.fog.color.copy(live.fog)
+  }, -1)
+  return null
+}
+
+// ── 별 (밤에만 보임, 점 1,200개를 한 번에) ──
+function Stars() {
+  const ref = useRef(null)
+  const { geometry, material } = useMemo(() => {
+    const random = seeded(31)
+    const count = 1200
+    const positions = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      // 하늘 위쪽 반구에 고르게 (지평선 근처는 적게)
+      const y = 0.08 + random() * 0.92
+      const a = random() * Math.PI * 2
+      const r = Math.sqrt(1 - y * y)
+      positions.set([Math.cos(a) * r * 9, y * 9, Math.sin(a) * r * 9], i * 3)
+    }
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const material = new THREE.PointsMaterial({ color: '#fff8e7', size: 2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false })
+    return { geometry, material }
+  }, [])
+  useFrame(({ camera }) => {
+    const points = ref.current
+    if (!points) return
+    points.visible = live.stars > 0.01 // 낮에는 아예 안 그림
+    material.opacity = live.stars
+    points.position.copy(camera.position)
+  })
+  return <points ref={ref} geometry={geometry} material={material} frustumCulled={false} renderOrder={0} />
 }
 
 // ── 하늘 돔: 위 하늘색 → 지평선 복숭아빛 그라데이션 + 태양 빛번짐 ──
@@ -56,12 +103,13 @@ function SkyDome() {
       new THREE.ShaderMaterial({
         vertexShader: skyVertex,
         fragmentShader: skyFragment,
+        // live 객체를 그대로 연결 → 시간대가 바뀌면 하늘 색이 자동으로 따라감
         uniforms: {
-          top: { value: new THREE.Color(SKY_COLORS.top) },
-          middle: { value: new THREE.Color(SKY_COLORS.middle) },
-          horizon: { value: new THREE.Color(SKY_COLORS.horizon) },
-          sunColor: { value: new THREE.Color(SKY_COLORS.sun) },
-          sunDir: { value: new THREE.Vector3(...SUN_POSITION).normalize() },
+          top: { value: live.top },
+          middle: { value: live.middle },
+          horizon: { value: live.horizon },
+          sunColor: { value: live.sunGlow },
+          sunDir: { value: live.sunDir },
         },
         side: THREE.BackSide,
         depthWrite: false,
@@ -168,15 +216,18 @@ function Clouds() {
   }
 
   // 그룹 전체를 아주 천천히 돌림 (구름 하나하나가 아니라 그룹 1개만 움직임)
-  useFrame((_, delta) => {
-    if (CLOUDS_DRIFT && groupRef.current) groupRef.current.rotation.y += delta * 0.004
-  })
-
   const geometry = useMemo(() => new THREE.IcosahedronGeometry(1, 0), [])
   const material = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: SKY_COLORS.cloudGlow, emissiveIntensity: 0.35, flatShading: true, roughness: 1, fog: false }),
     [],
   )
+
+  useFrame((_, delta) => {
+    if (CLOUDS_DRIFT && groupRef.current) groupRef.current.rotation.y += delta * 0.004
+    // 시간대에 따라 구름 색 (밤에는 어둡고 덜 빛나게)
+    material.color.copy(live.cloud)
+    material.emissiveIntensity = 0.35 * (1 - live.stars * 0.85)
+  })
 
   return (
     <group ref={groupRef}>
