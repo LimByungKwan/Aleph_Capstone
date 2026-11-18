@@ -128,7 +128,7 @@ function SkyDome() {
 // ── 맵 바깥 땅 (지평선까지 이어지는 풀밭, 충돌 없음) ──
 function OuterGround() {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -6, 0]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, 0]}>
       <planeGeometry args={[2400, 2400]} />
       <meshStandardMaterial color={SKY_COLORS.outerGround} roughness={1} />
     </mesh>
@@ -145,6 +145,8 @@ function Mountains() {
     const color = new THREE.Color()
     for (let i = 0; i < 48; i++) {
       const angle = (i / 48) * Math.PI * 2 + random() * 0.08
+      // Keep the expanded sea horizon open instead of surrounding it with cones.
+      if (angle > .7 && angle < 3.5) continue
       const distance = 470 + random() * 140
       const radius = 65 + random() * 60
       const height = 16 + random() * 28

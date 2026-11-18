@@ -2,19 +2,13 @@ import * as THREE from 'three'
 import { Box, Cyl, GEO, Instances, mat, seeded } from './kit.jsx'
 
 import { COAST_SEGMENTS, coastPoint, shoreline } from '../seabed.js'
+import { coastRows } from '../coastColors.js'
 
 function coastline() {
   const vertices = [], colors = [], indices = []
   for (let i = 0; i <= COAST_SEGMENTS; i++) {
-    const { x, z: shore } = coastPoint(i)
-    const width = Math.min(1, (130 - shore) / 23)
-    const rows = [
-      [shore, '#c0ba9f'], [shore + 2 * width, '#e2d4ac'],
-      [shore + 9 * width, '#f2d79f'], [shore + 11 * width, '#cba978'],
-      [shore + (11.5 + .20 * Math.sin(i*.7)) * width, '#eefbf1'],
-      [shore + 12 * width, '#94ddd0'], [shore + 19 * width, '#53b8b9'],
-      [shore + (130-shore)*.30 + 15*width, '#369aa9'], [130, '#286f91'],
-    ]
+    const { x } = coastPoint(i)
+    const rows = coastRows(i)
     rows.forEach(([z,color], k) => {
       vertices.push(x,.035,z)
       colors.push(...new THREE.Color(color).toArray())
