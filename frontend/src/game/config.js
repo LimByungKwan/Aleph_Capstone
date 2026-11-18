@@ -84,8 +84,8 @@ export const TIME_PRESETS = {
     label: '밤',
     sky: { top: '#0b1236', middle: '#1f2659', horizon: '#4d3a6f', sun: '#cfd8ff' },
     sun: [-80, 120, -60], // 밤에는 달 방향
-    light: { color: '#9fb2ff', intensity: 0.35 },
-    hemi: ['#3d4888', '#1c1a33', 0.4],
+    light: { color: '#a9b8ff', intensity: 0.6 }, // 달빛
+    hemi: ['#7480c4', '#5a4636', 1.0], // 하늘은 푸른 밤빛, 땅은 거리 불빛이 비친 따뜻한 색 (너무 깜깜하지 않게)
     fog: '#2b2a52',
     cloud: '#4a4f7a',
     stars: 1,

@@ -6,6 +6,7 @@ import { hipRoofGeometry } from './geometry.js'
 import { getCirclePlazaTexture, getNeonWingsTexture, getSignTexture, getStripeTexture, getTiledTexture } from './textures.js'
 import { Ball, Box, Cone, Cyl, GEO, Instances, hashString, mat, seeded, texMat } from './kit.jsx'
 import SeasonalTree from './SeasonalTree.jsx'
+import { live } from '../../timeOfDay.js'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
 // 최적화: 공용 도형·재질(kit.jsx), 반복 물체는 <Instances>, 작은 물체·빛나는 재질은 그림자 끔.
@@ -18,11 +19,98 @@ const ROOF = '#3d434b'
 const STONE = '#a7a29a'
 const DARK = '#2b2d30'
 
-const WARM_GLASS = mat('#fff3da', { emissive: '#ffcf8a', emissiveIntensity: 0.55, roughness: 0.3 })
-const TOWER_GLASS = mat('#fff4e0', { emissive: '#ffcf91', emissiveIntensity: 0.65, roughness: 0.2 })
-const LANTERN = mat('#fff1c9', { emissive: '#ffc566', emissiveIntensity: 1.1 })
-const BULB = mat('#fff6d8', { emissive: '#ffd27a', emissiveIntensity: 1.6 })
-const WATER = mat('#8fd3f4', { emissive: '#4aa8e0', emissiveIntensity: 0.25, roughness: 0.1 })
+// ── 밤 조명 ───────────────────────────────────
+// 시간대가 밤이 되면(live.stars 0 → 1) 창문·실내·등불·전구가 더 밝게 빛나고, 등불 가로등 아래 바닥에 불빛이 번져요.
+// 최적화: 진짜 조명(PointLight)은 쓰지 않음 → 화면 전체 조명 계산이 늘지 않음.
+//         빛나는 재질 세기만 바꾸고, 바닥 불빛·빛무리는 낮에는 아예 그리지 않음. 값이 그대로면 계산도 생략.
+const NIGHT_MATS = [] // [재질, 낮 세기, 밤 세기]
+const NIGHT_UNIFORM = { value: 0 } // 실내 재질(INTERIOR_MAT)용 밤 정도
+let nightFrame = -1
+let nightLast = -1
+
+function nightGlow(material, nightIntensity) {
+  if (!NIGHT_MATS.some(([m]) => m === material)) {
+    NIGHT_MATS.push([material, material.emissiveIntensity, nightIntensity])
+    nightLast = -1 // 새 재질이 생기면 다음 프레임에 한 번 다시 맞춤
+  }
+  return material
+}
+
+function getGlowTexture() {
+  if (getGlowTexture.cache) return getGlowTexture.cache
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size
+  const ctx = canvas.getContext('2d')
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  g.addColorStop(0, 'rgba(255,255,255,1)')
+  g.addColorStop(0.35, 'rgba(255,255,255,0.55)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, size, size)
+  getGlowTexture.cache = new THREE.CanvasTexture(canvas)
+  getGlowTexture.cache.colorSpace = THREE.SRGBColorSpace
+  return getGlowTexture.cache
+}
+
+// 가로등 아래 바닥에 번지는 따뜻한 불빛 (모든 가로등이 재질 1개 공유)
+const POOL_GEO = new THREE.CircleGeometry(5, 32).rotateX(-Math.PI / 2)
+const POOL_MAT = new THREE.MeshBasicMaterial({
+  color: '#ffb05a',
+  transparent: true,
+  opacity: 0,
+  visible: false,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  polygonOffset: true,
+  polygonOffsetFactor: -2,
+})
+// 등불 둘레 빛무리 (항상 카메라를 바라보는 판)
+const HALO_MAT = new THREE.SpriteMaterial({ color: '#ffc982', transparent: true, opacity: 0, visible: false, depthWrite: false, blending: THREE.AdditiveBlending })
+
+// 한 프레임에 한 번만 (가로등 여러 개가 불러도) 밤 정도에 맞춰 재질 세기 갱신
+function updateNight(frame) {
+  if (frame === nightFrame) return
+  nightFrame = frame
+  const k = live.stars
+  if (Math.abs(k - nightLast) < 0.001) return
+  nightLast = k
+  for (const [material, day, night] of NIGHT_MATS) material.emissiveIntensity = day + (night - day) * k
+  NIGHT_UNIFORM.value = k
+  if (!POOL_MAT.map) {
+    POOL_MAT.map = HALO_MAT.map = getGlowTexture()
+    POOL_MAT.needsUpdate = HALO_MAT.needsUpdate = true
+  }
+  POOL_MAT.opacity = 0.55 * k
+  HALO_MAT.opacity = 0.85 * k
+  POOL_MAT.visible = HALO_MAT.visible = k > 0.02
+}
+
+// BK 구역 안에 있을 때만 밤에 켜지는 따뜻한 거리 조명 (가로등·간판 불빛이 건물 벽과 길을 은은하게 비추는 느낌)
+// 최적화: 방향 계산이 없는 AmbientLight 1개. 항상 달려 있어서 켜고 끌 때 셰이더를 다시 만들지 않고 세기만 바뀜.
+const BK_AREA = { minX: 45, maxX: 125, minZ: -120, maxZ: 40, fade: 30 } // 월드 좌표 (zones/bk_date.json origin·size 기준)
+const lookPoint = new THREE.Vector3()
+function BkNightAmbient() {
+  const ref = useRef(null)
+  useFrame(({ camera, controls }) => {
+    const light = ref.current
+    if (!light) return
+    if (controls?.target) lookPoint.copy(controls.target)
+    else lookPoint.copy(camera.position)
+    const dx = Math.max(BK_AREA.minX - lookPoint.x, 0, lookPoint.x - BK_AREA.maxX)
+    const dz = Math.max(BK_AREA.minZ - lookPoint.z, 0, lookPoint.z - BK_AREA.maxZ)
+    const inside = 1 - Math.min(Math.hypot(dx, dz) / BK_AREA.fade, 1)
+    const wanted = 0.55 * live.stars * inside // 맵 전체 밤 조명 위에 살짝 더함 (경계에서 밝기 차이가 크지 않게)
+    light.intensity += (wanted - light.intensity) * 0.08
+  })
+  return <ambientLight ref={ref} color="#ffcf9e" intensity={0} />
+}
+
+const WARM_GLASS = nightGlow(mat('#fff3da', { emissive: '#ffcf8a', emissiveIntensity: 0.55, roughness: 0.3 }), 1.5)
+const TOWER_GLASS = nightGlow(mat('#fff4e0', { emissive: '#ffcf91', emissiveIntensity: 0.65, roughness: 0.2 }), 1.6)
+const LANTERN = nightGlow(mat('#fff1c9', { emissive: '#ffc566', emissiveIntensity: 1.1 }), 2.6)
+const BULB = nightGlow(mat('#fff6d8', { emissive: '#ffd27a', emissiveIntensity: 1.6 }), 3.2)
+const WATER = nightGlow(mat('#8fd3f4', { emissive: '#4aa8e0', emissiveIntensity: 0.25, roughness: 0.1 }), 0.7)
 const SPRAY = mat('#e0f4ff', { transparent: true, opacity: 0.55, emissive: '#bfe6ff', emissiveIntensity: 0.4 })
 const TINTABLE = mat('#ffffff', { flat: true }) // 인스턴스마다 색을 입힐 때 쓰는 흰 재질
 const ROOF_MAT = mat(ROOF, { flat: true, double: true })
@@ -78,8 +166,12 @@ export function CherryTree({ item }) {
 // ── 등불 가로등 ───────────────────────────────
 export function LanternLamp({ item }) {
   const [, h] = item.size
+  useFrame((state) => updateNight(state.gl.info.render.frame))
   return (
     <group>
+      {/* 밤에만: 바닥 불빛 + 등불 빛무리 */}
+      <mesh geometry={POOL_GEO} material={POOL_MAT} position={[0, 0.03, 0]} renderOrder={2} userData={NO_SHADOW} />
+      <sprite material={HALO_MAT} position={[0, h + 0.3, 0]} scale={[2.4, 2.4, 1]} renderOrder={3} />
       <Cyl p={[0, 0.15, 0]} rad={0.14} h={0.3} c={DARK} geo={GEO.cyl8} />
       <Cyl p={[0, h / 2, 0]} rad={0.06} h={h} c={DARK} geo={GEO.cyl8} />
       <Box p={[0, h + 0.03, 0]} s={[0.46, 0.06, 0.46]} c={DARK} />
@@ -108,6 +200,7 @@ export function Fountain({ item }) {
   )
   return (
     <group>
+      <BkNightAmbient />
       <Cyl p={[0, 0.12, 0]} rad={radius + 1} h={0.24} c="#7fb069" geo={GEO.cyl48} />
       <Cyl p={[0, 0.35, 0]} rad={radius} h={0.7} c="#ece6dd" geo={GEO.cyl48} />
       <Cyl p={[0, 0.68, 0]} rad={radius - 0.25} h={0.06} m={WATER} geo={GEO.cyl48} userData={NO_SHADOW} />
@@ -181,7 +274,7 @@ function fountainWaterGeometry(radius) {
   return result
 }
 
-const STREAM_MATERIAL = new THREE.MeshStandardMaterial({
+const STREAM_MATERIAL = nightGlow(new THREE.MeshStandardMaterial({
   color: '#e3f6ff',
   emissive: '#a7dcff',
   emissiveIntensity: 0.45,
@@ -190,7 +283,7 @@ const STREAM_MATERIAL = new THREE.MeshStandardMaterial({
   opacity: 0.85,
   depthWrite: false,
   side: THREE.DoubleSide,
-})
+}), 0.9)
 const FOAM = mat('#ffffff', { emissive: '#e6f6ff', emissiveIntensity: 0.4, flat: true })
 const RIPPLE_GEOMETRY = new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2)
 
@@ -457,12 +550,13 @@ const CLEAR_GLASS = mat('#d6ecff', { transparent: true, opacity: 0.16, roughness
 // 꼭짓점 색 + "빛나는 정도(glow)"를 받는 실내 전용 재질 (그늘에서도 파스텔이 보이게 살짝 자체 발광)
 const INTERIOR_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 })
 INTERIOR_MAT.onBeforeCompile = (shader) => {
+  shader.uniforms.uNight = NIGHT_UNIFORM
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', '#include <common>\nattribute float glow;\nvarying float vGlow;')
     .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = glow;')
   shader.fragmentShader = shader.fragmentShader
-    .replace('#include <common>', '#include <common>\nvarying float vGlow;')
-    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor.rgb * (0.22 + vGlow);')
+    .replace('#include <common>', '#include <common>\nvarying float vGlow;\nuniform float uNight;')
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor.rgb * (0.22 + vGlow) * (1.0 + uNight * 1.6);')
 }
 
 // 실내 종류별 색
@@ -831,7 +925,7 @@ function ShopInterior({ kind, W, H, D, p = [0, 0, 0] }) {
       <mesh geometry={interiorGeometry(kind, W, H, D)} material={INTERIOR_MAT} userData={NO_SHADOW} />
       <mesh
         geometry={GEO.plane}
-        material={texMat(getBackWallTexture(kind), { emissive: '#ffffff', emissiveIntensity: 0.35 })}
+        material={nightGlow(texMat(getBackWallTexture(kind), { emissive: '#ffffff', emissiveIntensity: 0.35 }), 1)}
         position={[0, H / 2, -D / 2 + 0.01]}
         scale={[W, H, 1]}
         userData={NO_SHADOW}
@@ -1320,7 +1414,7 @@ export function RooftopRestaurant({ item }) {
       {/* 2층 창: 실내 그림 (따로 파내지 않고 그림 한 장으로 — 그리기 호출 늘지 않음) */}
       <mesh
         geometry={GEO.plane}
-        material={texMat(getBackWallTexture(kinds[1]), { emissive: '#ffffff', emissiveIntensity: 0.45 })}
+        material={nightGlow(texMat(getBackWallTexture(kinds[1]), { emissive: '#ffffff', emissiveIntensity: 0.45 }), 1.1)}
         position={[0, bodyH - 1.5, front + 0.04]}
         scale={[w - 1.2, 1.4, 1]}
         userData={NO_SHADOW}
@@ -1358,7 +1452,7 @@ export function RooftopRestaurant({ item }) {
   )
 }
 
-const SCREEN = mat('#f8fafc', { emissive: '#dbe4ff', emissiveIntensity: 0.6 })
+const SCREEN = nightGlow(mat('#f8fafc', { emissive: '#dbe4ff', emissiveIntensity: 0.6 }), 1.3)
 
 // ── 날개 벽화 벽 (빛나는 네온 날개) ────────────
 export function NeonWings({ item }) {
@@ -1384,7 +1478,7 @@ export function NeonWings({ item }) {
       <mesh geometry={capGeometry} material={ROOF_MAT} position={[0, wallH, 0]} />
       <mesh
         geometry={GEO.plane}
-        material={texMat(getNeonWingsTexture(), { emissive: '#ffffff', emissiveIntensity: 1.4, transparent: true })}
+        material={nightGlow(texMat(getNeonWingsTexture(), { emissive: '#ffffff', emissiveIntensity: 1.4, transparent: true }), 2.4)}
         position={[0, wallH * 0.55, d / 2 + 0.03]}
         scale={[w * 0.75, w * 0.375, 1]}
         userData={NO_SHADOW}
@@ -1405,6 +1499,7 @@ const CONCRETE = '#c4c0b9'
 const DARK_CONCRETE = '#4a4441'
 const STEEL = '#3a3f45'
 const GREENHOUSE_GLASS = mat('#e8fff4', { transparent: true, opacity: 0.28, roughness: 0.1, emissive: '#fff3d6', emissiveIntensity: 0.15, double: true })
+nightGlow(GREENHOUSE_GLASS, 0.7)
 
 function SignPlate({ sign, width, p }) {
   if (!sign) return null
@@ -1504,7 +1599,7 @@ export function ContainerPopup({ item }) {
       {/* 위 컨테이너 창: 실내 그림 한 장 */}
       <mesh
         geometry={GEO.plane}
-        material={texMat(getBackWallTexture(kinds[1]), { emissive: '#ffffff', emissiveIntensity: 0.45 })}
+        material={nightGlow(texMat(getBackWallTexture(kinds[1]), { emissive: '#ffffff', emissiveIntensity: 0.45 }), 1.1)}
         position={[w * 0.05, ch * 1.45, upperZ + cd / 2 + 0.07]}
         scale={[w * 0.45, ch - 0.9, 1]}
         userData={NO_SHADOW}
@@ -1564,4 +1659,227 @@ export function GreenhouseCafe({ item }) {
       <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.45, 3.4)} p={[0, wallH - 0.6, d / 2 + 0.06]} />
     </group>
   )
+}
+
+// ════════════════════════════════════════════
+// 전망 타워 꾸미기 (Terrain.jsx의 TowerMesh 안에서 그림, 타워 로컬 좌표: 문은 +z, 엘리베이터 출구는 전망층 -z)
+// 전망층: 바닥 무늬, 바깥을 보는 벤치 4개, 망원경 3개, 하트 포토 프레임, 화분, 사랑의 자물쇠 난간, 매달린 전등, 방향 안내판
+// 1층 홀: 매표 부스, 벤치, 화분, 카펫, 입구 간판 / 바깥: 기둥 LED 띠(밤에 분홍빛), 전망층 아래 전구 링
+// 최적화: 간판 말고는 전부 모양 1개로 합치고 실내 재질(INTERIOR_MAT) 공유 → 그리기 호출 약 7번, 그림자 없음
+// ════════════════════════════════════════════
+const TD = {
+  wood: '#b07a4f',
+  dark: '#3b3633',
+  pot: '#c97b5a',
+  soil: '#5b4636',
+  leaf: '#5fa24f',
+  pink: '#f9a8d4',
+  coral: '#ff8a7a',
+  cream: '#fbf3e6',
+  inlay: '#f4c7d6',
+  inlay2: '#d9b48f',
+  lamp: '#fff1c9',
+}
+const DECK_SEATS = [0.25, 0.75, 1.25, 1.75].map((k) => k * Math.PI) // 벤치 (사이사이)
+const DECK_SCOPES = [0, 0.5, 1.5].map((k) => k * Math.PI) // 망원경 (π = 엘리베이터 출구 앞은 하트 프레임)
+const LED = nightGlow(mat('#ffd1e3', { emissive: '#ff7eb6', emissiveIntensity: 0.35 }), 2.6)
+
+// 로컬 조각들을 타워 원 둘레(각도 a, 반지름 r, 높이 y)로 옮김. 조각의 +z가 바깥을 향함 (turn으로 더 돌릴 수 있음)
+function atRing(geoms, a, r, y, turn = 0) {
+  const m = new THREE.Matrix4().compose(
+    new THREE.Vector3(Math.sin(a) * r, y, Math.cos(a) * r),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a + turn, 0)),
+    new THREE.Vector3(1, 1, 1),
+  )
+  geoms.forEach((g) => g.applyMatrix4(m))
+  return geoms
+}
+
+const benchParts = () => [
+  piece('box', [0, 0.45, 0], [1.8, 0.08, 0.5], TD.wood),
+  piece('box', [0, 0.75, -0.23], [1.8, 0.45, 0.06], TD.wood),
+  ...[-0.78, 0.78].map((x) => piece('box', [x, 0.22, 0], [0.08, 0.44, 0.45], TD.dark)),
+]
+const scopeParts = () => [
+  piece('cyl', [0, 0.04, 0], [0.3, 0.08, 0.3], TD.dark),
+  piece('cyl', [0, 0.55, 0], [0.06, 1.0, 0.06], TD.dark),
+  piece('box', [0, 1.1, 0], [0.24, 0.24, 0.3], TD.pink),
+  piece('cyl', [0, 1.24, 0.28], [0.11, 0.6, 0.11], TD.coral, 0, [Math.PI / 2 - 0.2, 0, 0]),
+  piece('cyl', [0, 1.18, -0.08], [0.06, 0.16, 0.06], TD.dark, 0, [Math.PI / 2 - 0.2, 0, 0]),
+]
+const planterParts = (seed) => {
+  const random = seeded(seed)
+  return [
+    piece('cyl', [0, 0.25, 0], [0.3, 0.5, 0.3], TD.pot),
+    piece('cyl', [0, 0.49, 0], [0.27, 0.03, 0.27], TD.soil),
+    piece('ico1', [0, 0.72, 0], [0.34, 0.3, 0.34], TD.leaf),
+    ...range(4).map((i) => {
+      const a = random() * Math.PI * 2
+      return piece('ico', [Math.sin(a) * 0.22, 0.8 + random() * 0.12, Math.cos(a) * 0.22], [0.07, 0.07, 0.07], FLOWER_COLORS[i % FLOWER_COLORS.length], 0.2)
+    }),
+  ]
+}
+const flatRing = (r0, r1, y, color, flip = false) =>
+  colorize(new THREE.RingGeometry(r0, r1, 48).rotateX(flip ? Math.PI / 2 : -Math.PI / 2).translate(0, y, 0), color)
+
+function towerDecorGeometry(T) {
+  const P = []
+  const deck = T.deckFloor
+  const top = T.deckFloor + T.deckWallHeight
+  const random = seeded(77)
+
+  // ── 전망층 바닥 무늬: 세 겹 원 띠 + 바퀴살 나무 줄
+  P.push(flatRing(3.0, 3.25, deck + 0.025, TD.inlay2))
+  P.push(flatRing(4.55, 4.75, deck + 0.025, TD.inlay))
+  P.push(flatRing(6.55, 6.75, deck + 0.025, TD.inlay2))
+  range(16).forEach((i) => {
+    const a = ((i + 0.5) / 16) * Math.PI * 2
+    P.push(...atRing([piece('box', [0, 0, 0], [0.08, 0.01, 1.2], TD.inlay2)], a, 5.65, deck + 0.025))
+  })
+
+  // ── 바깥을 보는 벤치 4개 (등받이가 안쪽)
+  DECK_SEATS.forEach((a) => P.push(...atRing(benchParts(), a, 5.4, deck)))
+  // ── 동전 망원경 3개
+  DECK_SCOPES.forEach((a) => P.push(...atRing(scopeParts(), a, 6.25, deck)))
+  // ── 화분 (벤치와 망원경 사이)
+  range(8).forEach((i) => {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8 // 22.5°씩 비켜서 망원경·하트 프레임과 안 겹치게
+    P.push(...atRing(planterParts(200 + i), a, 6.5, deck))
+  })
+
+  // ── 하트 포토 프레임: 엘리베이터에서 내리면 바로 정면, 뒤로 바깥 풍경
+  const heart = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(heartPoints(48, 0.058, 0.12), true), 64, 0.07, 6, true)
+  P.push(...atRing([colorize(heart, TD.pink, 0.55)], Math.PI, 6.2, deck, Math.PI))
+  P.push(...atRing([piece('box', [0, 0.04, 0], [1.6, 0.08, 0.5], TD.cream), piece('box', [0, 0.09, 0.28], [1.2, 0.02, 0.06], TD.coral, 0.3)], Math.PI, 6.2, deck, Math.PI))
+
+  // ── 사랑의 자물쇠 난간: 엘리베이터 구멍 둘레 유리 난간 위 손잡이 + 알록달록 자물쇠 (출구 쪽은 비움)
+  const railR = T.shaftRadius + 0.08
+  range(44).forEach((i) => {
+    const a = (i / 44) * Math.PI * 2
+    if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.5) return
+    P.push(...atRing([piece('box', [0, 0, 0], [0.38, 0.05, 0.07], TD.dark)], a, railR, deck + 1.12))
+    if (random() < 0.8) {
+      const color = LOCK_COLORS[Math.floor(random() * LOCK_COLORS.length)]
+      P.push(...atRing([piece('box', [0, 0, 0.05], [0.09, 0.11, 0.04], color, 0.15)], a + (random() - 0.5) * 0.06, railR, deck + 1.0 - random() * 0.06))
+    }
+  })
+
+  // ── 천장 + 매달린 전등 4개
+  P.push(flatRing(T.shaftRadius + 0.3, T.deckRadius - 0.2, top - 0.05, TD.cream, true))
+  DECK_SEATS.forEach((a) => {
+    P.push(
+      ...atRing(
+        [
+          piece('cyl', [0, -0.45, 0], [0.012, 0.9, 0.012], TD.dark),
+          piece('cone', [0, -0.95, 0], [0.28, 0.22, 0.28], TD.coral),
+          piece('ico1', [0, -1.08, 0], [0.12, 0.12, 0.12], TD.lamp, 1.4),
+        ],
+        a,
+        4.3,
+        top - 0.05,
+      ),
+    )
+  })
+
+  // ── 1층 홀: 매표 부스(문 맞은편), 벽 따라 벤치, 화분, 둥근 카펫
+  P.push(
+    ...atRing(
+      [
+        piece('box', [0, 0.55, 0], [2.4, 1.1, 0.7], TD.cream),
+        piece('box', [0, 0.25, 0.36], [2.4, 0.5, 0.02], TD.coral),
+        piece('box', [0, 1.13, 0.05], [2.6, 0.06, 0.85], TD.wood),
+        piece('box', [0.6, 1.3, -0.1], [0.4, 0.3, 0.05], '#1f2937', 0.6),
+        piece('box', [-0.7, 1.22, 0.15], [0.3, 0.12, 0.2], TD.pink),
+        piece('box', [0, 2.6, -0.32], [2.6, 0.6, 0.06], TD.pink, 0.5),
+      ],
+      Math.PI,
+      4.75,
+      0,
+      Math.PI,
+    ),
+  )
+  for (const a of [Math.PI / 2, -Math.PI / 2]) P.push(...atRing(benchParts(), a, 5.3, 0, Math.PI))
+  ;[0.5, -0.5, 2.3, -2.3].forEach((a, i) => P.push(...atRing(planterParts(300 + i), a, 5.2, 0)))
+  P.push(flatRing(T.shaftRadius + 0.2, 4.0, 0.03, '#f6d5df'))
+  // 바깥 문 옆 큰 화분
+  ;[0.42, -0.42].forEach((a, i) => P.push(...atRing(planterParts(400 + i), a, 6.9, 0)))
+
+  // ── 바깥: 전망층 아래 전구 링 (빛나는 작은 공)
+  range(40).forEach((i) => {
+    const a = (i / 40) * Math.PI * 2
+    P.push(...atRing([piece('ico', [0, 0, 0], [0.09, 0.09, 0.09], TD.lamp, 1.6)], a, T.deckRadius + 0.05, deck - 0.12))
+  })
+
+  const merged = mergeGeometries(P)
+  P.forEach((g) => g.dispose())
+  return merged
+}
+
+// 기둥을 따라 올라가는 LED 띠 (밤에 분홍빛으로 빛남)
+function towerLedItems(T) {
+  return [0.25, 0.75, 1.25, 1.75].map((k) => {
+    const a = k * Math.PI
+    const r = T.shaftRadius + 0.17
+    const y0 = T.tubeBottom
+    const y1 = T.deckFloor - 1.5
+    return { p: [Math.sin(a) * r, (y0 + y1) / 2, Math.cos(a) * r], s: [0.07, y1 - y0, 0.07] }
+  })
+}
+
+// 방향 안내판: 월드 방향(북·동·남·서)을 타워 로컬 각도로 바꿔서 유리벽 안쪽 위에 붙임
+const TOWER_SIGNS = [
+  { world: Math.PI, text: '북 ↑  JM 애니메이션' },
+  { world: Math.PI / 2, text: '동 →  해 뜨는 언덕' },
+  { world: 0, text: '남 ↓  BK 데이트 거리 · HJ 영화·드라마' },
+  { world: -Math.PI / 2, text: '서 ←  중앙 광장 · SG K-POP' },
+]
+const SIGN_BG = '#3b3633'
+const SIGN_FG = '#fff1c9'
+
+export function TowerDecor({ T, yaw }) {
+  const geometry = useMemo(() => towerDecorGeometry(T), [T])
+  const leds = useMemo(() => towerLedItems(T), [T])
+  const signW = 2.6
+  const signH = 0.32
+  const entranceW = 3.4
+  const entranceH = 0.45
+  return (
+    <group userData={NO_SHADOW}>
+      <mesh geometry={geometry} material={INTERIOR_MAT} />
+      <Instances geometry={GEO.box} material={LED} items={leds} />
+      {TOWER_SIGNS.map(({ world, text }) => {
+        const a = world - yaw
+        const r = T.deckRadius - 0.22
+        const material = nightGlow(texMat(getSignTexture(text, SIGN_BG, SIGN_FG, signW / signH), { emissive: '#ffffff', emissiveIntensity: 0.25 }), 0.9)
+        return (
+          <mesh
+            key={text}
+            geometry={GEO.plane}
+            material={material}
+            position={[Math.sin(a) * r, T.deckFloor + T.deckWallHeight - 0.45, Math.cos(a) * r]}
+            rotation={[0, a + Math.PI, 0]}
+            scale={[signW, signH, 1]}
+          />
+        )
+      })}
+      {/* 1층 입구 간판 (문 위, 바깥쪽) */}
+      <mesh
+        geometry={GEO.plane}
+        material={nightGlow(texMat(getSignTexture('SKY 전망대 · 엘리베이터 탑승', TD.coral, '#ffffff', entranceW / entranceH), { emissive: '#ffffff', emissiveIntensity: 0.35 }), 1.2)}
+        position={[0, T.hallHeight - 0.65, T.hallRadius + 0.22]}
+        scale={[entranceW, entranceH, 1]}
+      />
+    </group>
+  )
+}
+
+// 꾸미기 중 부딪혀야 하는 것들 (벤치·매표 부스·망원경) — Terrain.jsx의 타워 충돌에 더해짐
+export function towerDecorColliders(T) {
+  const boxes = []
+  const at = (a, r, y, s, turn = 0) => boxes.push({ p: [Math.sin(a) * r, y, Math.cos(a) * r], r: [0, a + turn, 0], s })
+  DECK_SEATS.forEach((a) => at(a, 5.4, T.deckFloor + 0.5, [1.8, 1.0, 0.55]))
+  DECK_SCOPES.forEach((a) => at(a, 6.25, T.deckFloor + 0.6, [0.3, 1.2, 0.3]))
+  for (const a of [Math.PI / 2, -Math.PI / 2]) at(a, 5.3, 0.5, [1.8, 1.0, 0.55], Math.PI)
+  at(Math.PI, 4.75, 0.6, [2.6, 1.2, 0.85], Math.PI)
+  return boxes
 }
