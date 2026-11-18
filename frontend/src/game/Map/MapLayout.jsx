@@ -11,6 +11,8 @@ import { Color, Object3D, Vector3 } from 'three'
 // [3. 개발 > 렌더링 최적화] 작은 장식만 묶어서 멀리서는 생략해요.
 const CELL_SIZE = 24
 const DETAIL_DISTANCE = 95
+// 전망대(BK 타워 전망층, 높이 약 25m)처럼 높은 곳에서는 맵 전체가 보이도록 거리 생략을 끔 (땅 위에서는 그대로 생략)
+const OVERLOOK_HEIGHT = 18
 const detailStyles = /^(bench|bins|vending|lamp|hjLantern|hjMailbox|hjBicycle|hjAFrameSign|hjCafeSet|hjFruitCart|hjPetals|hjStringLights)$/
 const mainProps = []
 const detailCells = new Map()
@@ -47,7 +49,7 @@ function DetailCell({ cell, alwaysVisible, maxDistance = DETAIL_DISTANCE }) {
   useFrame(({ camera }) => {
     if (!ref.current) return
     const distance = camera.position.distanceToSquared(cell.center)
-    ref.current.visible = alwaysVisible || distance < maxDistance ** 2
+    ref.current.visible = alwaysVisible || camera.position.y > OVERLOOK_HEIGHT || distance < maxDistance ** 2
   })
   return (
     <group ref={ref}>

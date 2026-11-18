@@ -6,6 +6,7 @@ import { layout } from '../data/mapData.js'
 import { buildDeck, buildHill, buildPlatform, buildStairs, ringPieces, terrainHeightAt, TOWER, towerColliderPieces } from './terrain.js'
 import { Ball, Cyl, GEO, Instances, mat, texMat } from './styles/kit.jsx'
 import { getTiledTexture } from './styles/textures.js'
+import { TowerDecor, towerDecorColliders } from './styles/dateCourse.jsx'
 
 // 구역 파일의 "terrain" 항목을 그림: 언덕(hill), 데크 산책로(deck), 계단(stairs), 들어갈 수 있는 전망 타워(tower)
 // 화면용(<Terrain />), 충돌용(<TerrainColliders />), 움직이는 엘리베이터(<Elevators />)가 같은 계산 결과를 써요.
@@ -132,7 +133,7 @@ function TowerMesh({ tower }) {
       {/* 엘리베이터 통로: 기둥 4개 + 유리관 + 분홍 띠 */}
       <Instances geometry={GEO.box} material={CREAM} items={parts.columns} castShadow />
       <mesh geometry={geo.tube} material={GLASS} position={[0, (T.tubeBottom + T.deckFloor) / 2, 0]} scale={[1, T.deckFloor - T.tubeBottom, 1]} />
-      {[7, 11, 15].map((y) => (
+      {[0.38, 0.6, 0.82].map((k) => T.deckFloor * k).map((y) => (
         <mesh key={y} geometry={geo.band} material={PINK} position={[0, y, 0]} scale={[T.shaftRadius + 0.08, 0.35, T.shaftRadius + 0.08]} />
       ))}
 
@@ -150,6 +151,9 @@ function TowerMesh({ tower }) {
       <Ball p={[0, top + 6.3, 0]} rad={0.2} m={mat('#ff9fb5', { emissive: '#ff5c8a', emissiveIntensity: 1 })} />
       {/* 엘리베이터 구멍 둘레 낮은 유리 난간 */}
       <mesh geometry={geo.tube} material={GLASS} position={[0, T.deckFloor + 0.55, 0]} scale={[1, 1.1, 1]} />
+
+      {/* 벤치·망원경·하트 프레임·매표 부스·전등·LED 띠·안내판 (BK dateCourse.jsx) */}
+      <TowerDecor T={T} yaw={yawOf(tower)} />
     </group>
   )
 }
@@ -195,7 +199,7 @@ export function TerrainColliders() {
             <BoxSet
               key={item.id}
               name={item.id}
-              boxes={towerColliderPieces()}
+              boxes={[...towerColliderPieces(), ...towerDecorColliders(TOWER)]}
               position={[item.position[0], towerBaseY(item), item.position[1]]}
               rotation={[0, yawOf(item), 0]}
             />
