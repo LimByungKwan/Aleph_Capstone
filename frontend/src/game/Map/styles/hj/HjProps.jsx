@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getAFrameTexture, getStripeTexture } from './hjTextures.js'
+import { SEASON_LOOK, useSeason } from '../../../seasons.js'
 
 // [3. 개발 > 기초개발/서비스] 혜진 구역 소품 (벚나무 · 전구줄 · 입간판 · 등롱 · 과일 수레 · 카페 테이블 ·
 // 우체통 · 자전거 · 자동차 · 흩날리는 꽃잎). 모두 size [w, h, d] 기준, 앞면 +z.
@@ -18,6 +19,8 @@ const seedOf = (item) => [...(item.id ?? 'x')].reduce((a, c) => a + c.charCodeAt
 
 // ── 벚나무 (style: "hjCherryTree") — size [수관 지름, 높이, -] ──
 export function HjCherryTree({ item }) {
+  const season = useSeason()
+  const colors = season === 'spring' ? BLOSSOM : SEASON_LOOK[season].leaves
   const [crown, h] = item.size
   const blossoms = useRef(null)
   const clusters = useMemo(() => {
@@ -27,7 +30,7 @@ export function HjCherryTree({ item }) {
       y: h * 0.62 + (rand() - 0.3) * h * 0.35,
       z: (rand() - 0.5) * crown,
       s: crown * (0.16 + rand() * 0.12),
-      c: BLOSSOM[Math.floor(rand() * BLOSSOM.length)],
+      tint: rand(),
     }))
   }, [item, crown, h])
 
@@ -36,15 +39,15 @@ export function HjCherryTree({ item }) {
     const mesh = blossoms.current
     const matrix = new THREE.Matrix4()
     const color = new THREE.Color()
-    clusters.forEach(({ x, y, z, s, c }, index) => {
+    clusters.forEach(({ x, y, z, s, tint }, index) => {
       matrix.makeScale(s, s, s).setPosition(x, y, z)
       mesh.setMatrixAt(index, matrix)
-      mesh.setColorAt(index, color.set(c))
+      mesh.setColorAt(index, color.set(colors[Math.floor(tint * colors.length)]))
     })
     mesh.instanceMatrix.needsUpdate = true
     mesh.instanceColor.needsUpdate = true
     mesh.computeBoundingSphere()
-  }, [clusters])
+  }, [clusters, colors])
   return (
     <group>
       <mesh position={[0, h * 0.3, 0]}>
@@ -59,7 +62,7 @@ export function HjCherryTree({ item }) {
       ))}
       <instancedMesh ref={blossoms} args={[null, null, clusters.length]}>
         <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial roughness={0.9} emissive="#f4b6c8" emissiveIntensity={0.12} />
+        <meshStandardMaterial roughness={0.9} emissive="#f4b6c8" emissiveIntensity={season === 'spring' ? 0.12 : 0} />
       </instancedMesh>
     </group>
   )
@@ -351,6 +354,10 @@ export function HjCar({ item }) {
 // ── 흩날리는 벚꽃잎 (style: "hjPetals") — size [가로, 높이, 세로] 영역 안에서 떨어져요. 충돌 없음 ──
 const PETAL_COUNT = 260
 export function HjPetals({ item }) {
+  return useSeason() === 'spring' ? <HjSpringPetals item={item} /> : null
+}
+
+function HjSpringPetals({ item }) {
   const [w, h, d] = item.size
   const ref = useRef(null)
   const geometry = useMemo(() => new THREE.CircleGeometry(0.06, 5), [])

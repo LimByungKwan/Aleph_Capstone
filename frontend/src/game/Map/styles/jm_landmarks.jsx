@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
-import { SEASON } from './jm_seasons.jsx'
+import { useSeason } from '../../seasons.js'
 
 // 애니메이션 구역(JM) 전용: 성지 안내판(직접 그린 포스터), 일본어 간판, 작품별 랜드마크. 담당: 지민
 //
@@ -516,13 +516,14 @@ export function JmPosterBoard({ item }) {
 // size [가로, 0.05, 깊이]. JSON에 "collider": false
 const PADDY = { spring: '#7fa9c9', summer: '#5f9a3e', autumn: '#d8b24a', winter: '#eef2f6' }
 export function JmPaddy({ item }) {
+  const season = useSeason()
   const [w, , d] = item.size
   const rows = Math.max(2, Math.round(d / 0.9))
   return (
     <group>
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color={PADDY[SEASON]} />
+        <meshStandardMaterial color={PADDY[season]} />
       </mesh>
       {/* 논두렁 */}
       {[-1, 1].map((side) => (
@@ -531,11 +532,11 @@ export function JmPaddy({ item }) {
           <meshStandardMaterial color="#8b7355" />
         </mesh>
       ))}
-      {SEASON !== 'winter' &&
+      {season !== 'winter' &&
         range(rows).map((i) => (
           <mesh key={i} position={[0, 0.12, -d / 2 + (d * (i + 0.5)) / rows]}>
             <boxGeometry args={[w - 0.6, 0.18, 0.12]} />
-            <meshStandardMaterial color={SEASON === 'autumn' ? '#c99a2e' : SEASON === 'spring' ? '#9ccb6a' : '#4e8a33'} />
+            <meshStandardMaterial color={season === 'autumn' ? '#c99a2e' : season === 'spring' ? '#9ccb6a' : '#4e8a33'} />
           </mesh>
         ))}
     </group>
@@ -545,6 +546,7 @@ export function JmPaddy({ item }) {
 // ── 큰 녹나무 (상록수, 겨울엔 눈만 살짝) ─────────
 // size 예: [9, 14, 9]. JSON에 "collider": [1.2, 5, 1.2] 권장
 export function JmBigTree({ item }) {
+  const season = useSeason()
   const [w, h] = item.size
   const r = w / 2
   const trunkH = h * 0.42
@@ -578,7 +580,7 @@ export function JmBigTree({ item }) {
       {blobs.map(([x, y, z, s], i) => (
         <mesh key={i} position={[x * r, trunkH + r * 0.35 + y * r, z * r]}>
           <icosahedronGeometry args={[s * r * 0.7, 1]} />
-          <meshStandardMaterial color={SEASON === 'winter' && i === 5 ? '#eef2f6' : leaf[i % leaf.length]} flatShading />
+          <meshStandardMaterial color={season === 'winter' && i === 5 ? '#eef2f6' : leaf[i % leaf.length]} flatShading />
         </mesh>
       ))}
     </group>
@@ -587,11 +589,12 @@ export function JmBigTree({ item }) {
 
 // ── 시골 농가 (큰 초가풍 지붕) ──────────────────
 export function JmFarmhouse({ item }) {
+  const season = useSeason()
   const [w, h, d] = item.size
   const wallH = h * 0.42
   const roofH = h - wallH
   const roof = useMemo(() => hipRoofGeometry(w + 1.6, d + 1.6, roofH, 0.1), [w, d, roofH])
-  const roofColor = SEASON === 'winter' ? '#e9edf2' : '#9c8456'
+  const roofColor = season === 'winter' ? '#e9edf2' : '#9c8456'
   return (
     <group>
       <mesh position={[0, wallH / 2, 0]}>
