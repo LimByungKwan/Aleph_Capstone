@@ -45,7 +45,7 @@ function Cyl({ p, r, h, c, e, rot }) {
 const GLASS = '#a9cbe0'
 
 // ── 가게 ──────────────────────────────────────
-// item.shop = { look, interior?, enterable, sign: { text, bg, fg } }
+// item.shop = { look, interior?, enterable, sign: { text, bg, fg } }, item.sugidama?: true
 // interior: 겉모습(look)은 같고 안만 다를 때 (예: 마치야 겉모습 + 찻집 내부 = "teahouse")
 export function JmShopRoom({ item }) {
   const [w, h, d] = item.size
@@ -129,6 +129,17 @@ export function JmShopRoom({ item }) {
         )}
       {shop.look === 'machiya' && <Box p={[0, DOOR_H - 0.35, front + 0.08]} s={[DOOR_W + 0.4, 0.7, 0.02]} c="#1e3a5f" />}
 
+      {/* 삼나무 공 (스기다마, 양조장 표시). item.sugidama: true. 간판 오른쪽 처마 밑 */}
+      {item.sugidama && (
+        <group position={[w / 2 - 0.7, DOOR_H + 0.1, front + 0.5]}>
+          <Cyl p={[0, 0.45, 0]} r={0.02} h={0.3} c="#2b1d14" />
+          <mesh>
+            <icosahedronGeometry args={[0.4, 1]} />
+            <meshStandardMaterial color="#5b6b3a" flatShading />
+          </mesh>
+        </group>
+      )}
+
       {/* 2층 (장식, 올라갈 수 없음) */}
       {upperH > 0 && <Box p={[0, wallH + upperH / 2, -0.2]} s={[w * 0.8, upperH, d * 0.8]} c={look.upper} />}
       {upperH > 0 && <Box p={[0, wallH + upperH / 2, d * 0.4 - 0.18]} s={[w * 0.45, upperH * 0.45, 0.05]} c="#fff1cf" e="#ffd88a" />}
@@ -161,6 +172,7 @@ function Interior({ look, w, d, wallH }) {
   if (look === 'machiya') return <UdonInterior w={w} back={back} d={d} wallH={wallH} />
   if (look === 'teahouse') return <TeahouseInterior w={w} back={back} d={d} wallH={wallH} />
   if (look === 'zakka') return <ZakkaInterior w={w} back={back} d={d} wallH={wallH} />
+  if (look === 'brewery') return <BreweryInterior w={w} back={back} d={d} wallH={wallH} />
   return null
 }
 
@@ -527,6 +539,95 @@ function ZakkaInterior({ w, back, d, wallH }) {
         <circleGeometry args={[0.25, 20]} />
         <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={0.4} />
       </mesh>
+    </group>
+  )
+}
+
+// 효카 양조장: 왼쪽 큰 나무 술통 2개 + 앞쪽 짚 술통(코모다루) 더미
+//            + 오른쪽 벽 술병 선반 + 뒤쪽 시음 카운터(잔·술병). 가운데 통로는 비워 둠
+function BigTub({ p, r = 0.7, h = 1.6 }) {
+  return (
+    <group position={p}>
+      <Cyl p={[0, h / 2, 0]} r={r} h={h} c="#8a6a4a" />
+      {[0.2, h / 2, h - 0.2].map((y) => (
+        <Cyl key={y} p={[0, y, 0]} r={r + 0.02} h={0.08} c="#3f2a1d" />
+      ))}
+      <Cyl p={[0, h + 0.02, 0]} r={r - 0.05} h={0.04} c="#6b4a2f" />
+    </group>
+  )
+}
+function Komodaru({ p }) {
+  return (
+    <group position={p}>
+      <Cyl p={[0, 0.23, 0]} r={0.28} h={0.46} c="#e9dfc4" />
+      <Cyl p={[0, 0.06, 0]} r={0.29} h={0.05} c="#7a6a4a" />
+      <Cyl p={[0, 0.4, 0]} r={0.29} h={0.05} c="#7a6a4a" />
+      <Box p={[0, 0.23, 0.27]} s={[0.22, 0.24, 0.02]} c="#b91c1c" />
+    </group>
+  )
+}
+function Isshobin({ p, c = '#1f4d2b' }) {
+  return (
+    <group position={p}>
+      <Cyl p={[0, 0.17, 0]} r={0.06} h={0.34} c={c} />
+      <Cyl p={[0, 0.4, 0]} r={0.025} h={0.12} c={c} />
+      <Box p={[0, 0.18, 0.06]} s={[0.07, 0.12, 0.005]} c="#f5f0e6" />
+    </group>
+  )
+}
+function BreweryInterior({ w, back, d, wallH }) {
+  const front = d / 2
+  const leftX = -w / 2 + T + 0.85
+  const rackX = w / 2 - T - 0.25
+  return (
+    <group>
+      {/* 큰 술통 2개 (왼쪽 벽) */}
+      <BigTub p={[leftX, 0.12, back + 0.9]} />
+      <BigTub p={[leftX, 0.12, back + 2.5]} r={0.6} h={1.4} />
+
+      {/* 짚 술통 더미 3-2-1 (왼쪽 앞) */}
+      <group position={[leftX + 0.05, 0.12, front - T - 1.2]}>
+        {[-0.58, 0, 0.58].map((z) => (
+          <Komodaru key={z} p={[0, 0, z]} />
+        ))}
+        {[-0.29, 0.29].map((z) => (
+          <Komodaru key={z} p={[0, 0.46, z]} />
+        ))}
+        <Komodaru p={[0, 0.92, 0]} />
+      </group>
+
+      {/* 오른쪽 벽 술병 선반 */}
+      <Box p={[rackX + 0.15, 1.2, 0.3]} s={[0.05, 2.2, d * 0.5]} c="#5a3d2a" />
+      {[0.5, 1.15, 1.8].map((y) => (
+        <group key={y}>
+          <Box p={[rackX, y, 0.3]} s={[0.35, 0.04, d * 0.5]} c="#6b4a2f" />
+          {range(6).map((i) => (
+            <Isshobin key={i} p={[rackX, y + 0.02, 0.3 - d * 0.22 + (i * d * 0.44) / 5]} c={i % 2 ? '#5b3a1e' : '#1f4d2b'} />
+          ))}
+        </group>
+      ))}
+
+      {/* 시음 카운터 (뒤 오른쪽) + 잔(마스) + 술병 */}
+      <Box p={[w / 4 + 0.2, 0.55, back + 0.5]} s={[w / 2 - 1, 1.0, 0.7]} c="#6b4a2f" />
+      <Box p={[w / 4 + 0.2, 1.08, back + 0.5]} s={[w / 2 - 0.9, 0.06, 0.8]} c="#2b1d14" />
+      {range(4).map((i) => (
+        <Box key={i} p={[w / 4 - 0.9 + i * 0.35, 1.16, back + 0.65]} s={[0.12, 0.1, 0.12]} c="#e8d3a8" />
+      ))}
+      <Isshobin p={[w / 4 + 0.7, 1.11, back + 0.4]} />
+      <Isshobin p={[w / 4 + 1.0, 1.11, back + 0.4]} c="#5b3a1e" />
+
+      {/* 뒷벽 술 이름 천 (가운데) + 안쪽 스기다마 */}
+      <Box p={[-0.3, 2.4, back + 0.02]} s={[1.2, 1.4, 0.02]} c="#1e3a5f" />
+      <Box p={[-0.3, 2.4, back + 0.04]} s={[0.12, 1.0, 0.01]} c="#f5f0e6" />
+      <group position={[w / 4 + 0.2, wallH - 0.75, back + 0.6]}>
+        <Cyl p={[0, 0.4, 0]} r={0.015} h={0.5} c="#2b1d14" />
+        <mesh>
+          <icosahedronGeometry args={[0.28, 1]} />
+          <meshStandardMaterial color="#6b7a3e" flatShading />
+        </mesh>
+      </group>
+
+      <PendantLamps xs={[-w * 0.15, w * 0.15]} z={0.4} wallH={wallH} />
     </group>
   )
 }

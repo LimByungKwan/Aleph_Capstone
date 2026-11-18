@@ -33,7 +33,7 @@
     {"id": "jm_bakery", "style": "jmShopRoom", "position": [29,21.5], "size": [8,6,7], "rotationDeg": -90, "model": null, "collider": false, "shop": {"look": "bakery", "enterable": true, "sign": {"text": "ベーカリー 坂の上", "bg": "#7c2d12", "fg": "#fef3c7"}}},
     {"id": "jm_library", "style": "jmShopRoom", "position": [29.5,32.5], "size": [10,8,8], "rotationDeg": -135, "model": null, "shop": {"look": "library", "sign": {"text": "市立 図書館", "bg": "#f5f0e6", "fg": "#14532d"}}},
     {"id": "jm_farmhouse", "style": "jmFarmhouse", "position": [-18,33], "size": [10,7,7], "rotationDeg": -20, "model": null},
-    {"id": "jm_machiya_1", "style": "jmMachiya", "sugidama": true, "position": [-27,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "signs": [{"text": "氷華酒造", "bg": "#1e3a5f", "fg": "#f5f0e6"}]},
+    {"id": "jm_machiya_1", "style": "jmShopRoom", "sugidama": true, "position": [-27,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "collider": false, "shop": {"look": "machiya", "interior": "brewery", "enterable": true, "sign": {"text": "氷華酒造", "bg": "#1e3a5f", "fg": "#f5f0e6"}}},
     {"id": "jm_machiya_2", "style": "jmMachiya", "sugidama": true, "position": [-18,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "signs": [{"text": "古典堂 書店", "bg": "#3f2a1d", "fg": "#f5e6c8"}]},
     {"id": "jm_udon", "style": "jmShopRoom", "position": [-9,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "collider": false, "shop": {"look": "machiya", "enterable": true, "sign": {"text": "狐うどん", "bg": "#7f1d1d", "fg": "#fef3c7"}}},
     {"id": "jm_machiya_4", "style": "jmShopRoom", "position": [9,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "collider": false, "shop": {"look": "machiya", "interior": "teahouse", "enterable": true, "sign": {"text": "妖怪茶屋", "bg": "#14532d", "fg": "#f0fdf4"}}},
@@ -240,6 +240,11 @@
     {"id": "jm_shop_hare_wall_left", "style": "jmCollider", "position": [-17.72,6.22], "size": [0.3,7,7], "rotationDeg": 45},
     {"id": "jm_shop_hare_wall_right", "style": "jmCollider", "position": [-12.28,0.78], "size": [0.3,7,7], "rotationDeg": 45},
     {"id": "jm_shop_hare_wall_front_l", "style": "jmCollider", "position": [-14.36,7.6], "size": [3.1,7,0.3], "rotationDeg": 45},
-    {"id": "jm_shop_hare_wall_front_r", "style": "jmCollider", "position": [-10.9,4.14], "size": [3.1,7,0.3], "rotationDeg": 45}
+    {"id": "jm_shop_hare_wall_front_r", "style": "jmCollider", "position": [-10.9,4.14], "size": [3.1,7,0.3], "rotationDeg": 45},
+    {"id": "jm_machiya_1_wall_back", "style": "jmCollider", "position": [-27,-11.65], "size": [8,7,0.3], "rotationDeg": 180},
+    {"id": "jm_machiya_1_wall_left", "style": "jmCollider", "position": [-23.15,-15], "size": [0.3,7,7], "rotationDeg": 180},
+    {"id": "jm_machiya_1_wall_right", "style": "jmCollider", "position": [-30.85,-15], "size": [0.3,7,7], "rotationDeg": 180},
+    {"id": "jm_machiya_1_wall_front_l", "style": "jmCollider", "position": [-24.55,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180},
+    {"id": "jm_machiya_1_wall_front_r", "style": "jmCollider", "position": [-29.45,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180}
   ]
 }
