@@ -34,8 +34,9 @@
     {"type": "stairs", "id": "stairs_alley_low", "from": [-26,33,0], "to": [-26,28,2], "width": 6},
     {"type": "stairs", "id": "stairs_alley_high", "from": [-26,20,2], "to": [-26,15,4], "width": 6},
     {"type": "hill", "id": "hill", "center": [0,-42], "radius": [34,32], "height": 9, "plateau": 0.4},
-    {"type": "deck", "id": "boardwalk", "width": 2.6, "smooth": true, "points": [[-24,0,4],[-23,-7,null],[-15,-12,null],[-2,-10,null],[10,-13,null],[16,-19,null],[9,-24.5,null],[1.5,-25.5,null],[0,-28.5,null],[0,-31.5,9]]},
-    {"type": "tower", "id": "tower", "position": [0,-42], "rotationDeg": -37}
+    {"type": "deck", "id": "boardwalk", "width": 2.6, "smooth": true, "gate": {"text": "♥ SKY 전망대 가는 길", "back": "데이트 거리 가는 길"}, "points": [[-24,0,4],[-23,-7,null],[-15,-12,null],[-2,-10,null],[10,-13,null],[16,-19,null],[9,-24.5,null],[1.5,-25.5,null],[0,-28.5,null],[0,-31.5,9]]},
+    {"type": "tower", "id": "tower", "position": [0,-42], "rotationDeg": -37},
+    {"type": "deck", "id": "bridge_link", "width": 2.6, "smooth": true, "clearance": 0.15, "color": "#6e4b33", "points": [[-11,-50,9],[-9.6,-49.6,null],[-8.4,-48.3,9]]}
   ],
 
   "buildings": [
@@ -106,6 +107,7 @@
     {"rotationDeg": 0, "id": "tree_40", "style": "cherryTree", "size": [4,6.5,4], "collider": [0.5,3,0.5], "position": [-17,68]},
     {"rotationDeg": 90, "id": "bench_41", "style": "bench", "size": [1.8,0.5,0.5], "position": [-30,65]},
     {"rotationDeg": 0, "id": "bench_42", "style": "bench", "size": [1.8,0.5,0.5], "position": [-23.5,72]},
+    {"rotationDeg": -90, "id": "claw_booth", "style": "clawBooth", "size": [3.4,3.9,2.4], "collider": [3.4,3,2], "signs": [{"text": "♥ 인형뽑기", "bg": "#ff8a7a", "fg": "#ffffff"}], "position": [-22.5,66.5]},
     {"rotationDeg": 0, "id": "flowers_43", "style": "flowerBed", "size": [5,0.45,1.4], "position": [-27.5,60.5]},
     {"rotationDeg": 0, "id": "lamp_44", "style": "lanternLamp", "size": [0.3,3.2,0.3], "position": [-33,62]},
     {"rotationDeg": 0, "id": "lamp_45", "style": "lanternLamp", "size": [0.3,3.2,0.3], "position": [-18,62]},
@@ -126,12 +128,12 @@
     {"rotationDeg": 0, "id": "tree_56", "style": "cherryTree", "size": [3.4,5.6,3.4], "collider": [0.5,3,0.5], "elevation": 4, "position": [38.6,12.8]},
     {"rotationDeg": 0, "id": "flowers_57", "style": "flowerBed", "size": [6,0.45,0.8], "elevation": 4, "position": [-6,1.4]},
     {"rotationDeg": 0, "id": "tower_plaza", "style": "roundPlaza", "size": [22,0.12,22], "collider": false, "onTerrain": true, "position": [0,-42]},
-    {"rotationDeg": 0, "id": "lock_fence", "style": "lockFence", "size": [24,1.1,24], "radius": 12, "gapDeg": 40, "collider": false, "onTerrain": true, "position": [0,-42]},
+    {"rotationDeg": 0, "id": "lock_fence", "style": "lockFence", "size": [24,1.1,24], "radius": 12, "gapDeg": 40, "extraGaps": [{"deg": -126, "width": 24}], "collider": false, "onTerrain": true, "position": [0,-42]},
     {"rotationDeg": 0, "id": "lamp_58", "style": "lanternLamp", "size": [0.3,3.2,0.3], "onTerrain": true, "position": [5.72,-33.19]},
     {"rotationDeg": 0, "id": "lamp_59", "style": "lanternLamp", "size": [0.3,3.2,0.3], "onTerrain": true, "position": [-10.04,-45.07]},
     {"rotationDeg": 0, "id": "lamp_60", "style": "lanternLamp", "size": [0.3,3.2,0.3], "onTerrain": true, "position": [10.23,-44.36]},
     {"rotationDeg": 0, "id": "lamp_61", "style": "lanternLamp", "size": [0.3,3.2,0.3], "onTerrain": true, "position": [-0.55,-52.49]},
-    {"rotationDeg": 55, "id": "bench_62", "style": "bench", "size": [1.8,0.5,0.5], "onTerrain": true, "position": [-9,-48]},
+    {"rotationDeg": 105, "id": "bench_62", "style": "bench", "size": [1.8,0.5,0.5], "onTerrain": true, "position": [-9.7,-39.4]},
     {"rotationDeg": -55, "id": "bench_63", "style": "bench", "size": [1.8,0.5,0.5], "onTerrain": true, "position": [9,-48]},
     {"rotationDeg": 0, "id": "bench_64", "style": "bench", "size": [1.8,0.5,0.5], "onTerrain": true, "position": [0,-52.5]},
     {"rotationDeg": 0, "id": "tree_65", "style": "cherryTree", "size": [4,6.5,4], "collider": [0.5,3,0.5], "onTerrain": true, "elevation": -0.25, "position": [-26,-24]},
