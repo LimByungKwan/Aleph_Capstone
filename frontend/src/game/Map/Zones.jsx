@@ -1,8 +1,9 @@
 import { Html, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { zones } from '../data/mapData.js'
-import { SHOW_ZONE_OWNERS, SHOW_ZONES } from '../config.js'
+import { SHOW_ZONE_OWNERS } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
+import { useSettings } from '../settingsStore.js'
 
 // 구역 표시 (개발용): 대표색 반투명 바닥 + 테두리 선 + 입구 아치 + 큰 이름표
 // zones/*.json 파일 하나 = 구역 하나. 파일이 늘면 자동으로 표시돼요.
@@ -15,8 +16,10 @@ export function zoneTitle(zone) {
   return SHOW_ZONE_OWNERS ? `${zone.zoneId} · ${zone.name}` : zone.name
 }
 
+// 켜고 끄기: 설정창(⚙)의 "구역 표시" (기본값은 config.js의 SHOW_ZONES)
 export default function Zones() {
-  if (!SHOW_ZONES) return null
+  const showZones = useSettings((state) => state.showZones)
+  if (!showZones) return null
   return zones.map((zone) => <ZoneMarker key={zone.zoneId} zone={zone} />)
 }
 

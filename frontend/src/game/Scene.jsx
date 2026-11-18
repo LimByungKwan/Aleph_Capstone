@@ -24,11 +24,13 @@ import {
   PHYSICS_DEBUG,
   SHADOW_AREA,
   SHOW_ZONE_OWNERS,
-  SHOW_ZONES,
   SUN_POSITION,
 } from './config.js'
 import { labelLayer } from './labelLayer.js'
 import { zones } from './data/mapData.js'
+import { useSettings } from './settingsStore.js'
+import { live } from './timeOfDay.js'
+import SettingsPanel from './SettingsPanel.jsx'
 import SeasonPicker from './SeasonPicker.jsx'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
 
@@ -36,7 +38,10 @@ import SeasonalWeather from './Map/SeasonalWeather.jsx'
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
 export default function Scene() {
   const [playing, setPlaying] = useState(!FREE_CAMERA)
-  const [highDetail, setHighDetail] = useState(false)
+  // 그래픽 품질은 설정창(⚙)과 왼쪽 '고화질' 체크박스가 같은 값을 씀 (기본: 낮음)
+  const highDetail = useSettings((state) => state.quality === 'high')
+  const setQuality = useSettings((state) => state.setQuality)
+  const setHighDetail = (on) => setQuality(on ? 'high' : 'low')
   const playerRef = useRef(null) // 캐릭터 위치를 카메라·센서와 공유
 
   const startPlay = (event) => {
@@ -62,8 +67,8 @@ export default function Scene() {
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
           <PastelSky />
 
-          {/* 따뜻한 전체 조명 + 그림자 있는 태양광 1개 (그림자는 보고 있는 곳 주변만) */}
-          <hemisphereLight args={['#fff0f5', '#c2ae98', 0.65]} />
+          {/* 전체 조명 + 그림자 있는 태양광(밤에는 달빛) 1개 — 계절·시간대에 따라 색·세기가 바뀜 (그림자는 보고 있는 곳 주변만) */}
+          <SkyAmbient />
           <SunLight castShadow={highDetail} />
 
           <MapLayout showStartMarker={!playing} highDetail={highDetail} />
@@ -90,6 +95,7 @@ export default function Scene() {
         </Canvas>
 
         <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} highDetail={highDetail} setHighDetail={setHighDetail} />
+        <SettingsPanel />
       </div>
     </KeyboardControls>
   )
@@ -99,6 +105,8 @@ export default function Scene() {
 // → 멀리 있는 건물은 그림자 계산에서 빠지고, 같은 그림자 해상도로 더 선명해짐
 const SHADOW_MIN_AREA = 35
 const lookTarget = new THREE.Vector3()
+
+const SUN_DISTANCE = Math.hypot(...SUN_POSITION)
 
 function SunLight({ castShadow }) {
   const lightRef = useRef(null)
@@ -111,10 +119,15 @@ function SunLight({ castShadow }) {
     else if (controls?.target) lookTarget.copy(controls.target)
     else lookTarget.set(0, 0, 0)
 
+    // 시간대에 따라 해(밤엔 달)의 색·세기·방향
+    light.color.copy(live.lightColor)
+    light.intensity = live.lightIntensity
+
     // 2m 단위로 맞춰 움직여서 그림자가 지글거리지 않게
     const x = Math.round(lookTarget.x / 2) * 2
     const z = Math.round(lookTarget.z / 2) * 2
-    light.position.set(x + SUN_POSITION[0], SUN_POSITION[1], z + SUN_POSITION[2])
+    const dir = live.sunDir
+    light.position.set(x + dir.x * SUN_DISTANCE, Math.max(dir.y, 0.15) * SUN_DISTANCE, z + dir.z * SUN_DISTANCE)
     light.target.position.set(x, 0, z)
     light.target.updateMatrixWorld()
 
@@ -147,6 +160,19 @@ function SunLight({ castShadow }) {
   )
 }
 
+// 전체 조명 (하늘빛 + 땅에서 반사되는 빛): 시간대에 따라 색·세기
+function SkyAmbient() {
+  const ref = useRef(null)
+  useFrame(() => {
+    const light = ref.current
+    if (!light) return
+    light.color.copy(live.hemiSky)
+    light.groundColor.copy(live.hemiGround)
+    light.intensity = live.hemiIntensity
+  })
+  return <hemisphereLight ref={ref} args={['#fff0f5', '#c2ae98', 0.65]} />
+}
+
 // 둘러보기 카메라. 땅 밑으로 못 내려가고, 옆으로 끌면 땅과 평행하게 이동
 function OverviewCamera() {
   const camera = useThree((state) => state.camera)
@@ -172,6 +198,7 @@ function OverviewCamera() {
 function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
   const nearbyPlaceId = useGameStore((state) => state.nearbyPlaceId)
   const openPanel = useGameStore((state) => state.openPanel)
+  const showZones = useSettings((state) => state.showZones)
 
   return (
     <div
@@ -194,7 +221,7 @@ function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
         ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
         : '왼쪽 드래그: 회전 · 오른쪽 드래그: 이동 · 휠: 확대/축소'}
 
-      {SHOW_ZONES && <ZoneLegend />}
+      {showZones && <ZoneLegend />}
       <SeasonPicker />
       <label style={{ display: 'block', marginTop: 4, pointerEvents: 'auto' }}>
         <input
