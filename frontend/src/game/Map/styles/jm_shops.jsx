@@ -160,6 +160,7 @@ function Interior({ look, w, d, wallH }) {
   if (look === 'antique') return <AntiqueInterior w={w} back={back} d={d} wallH={wallH} />
   if (look === 'machiya') return <UdonInterior w={w} back={back} d={d} wallH={wallH} />
   if (look === 'teahouse') return <TeahouseInterior w={w} back={back} d={d} wallH={wallH} />
+  if (look === 'zakka') return <ZakkaInterior w={w} back={back} d={d} wallH={wallH} />
   return null
 }
 
@@ -421,6 +422,111 @@ function TeahouseInterior({ w, back, d, wallH }) {
       {[-1, 1].map((i) => (
         <Cyl key={i} p={[i * w * 0.28, wallH - 0.6, -0.6]} r={0.18} h={0.4} c="#f5f0e6" e="#ffcc66" />
       ))}
+    </group>
+  )
+}
+
+// 하레야 잡화점: 천장의 펼친 우산들 + 창가 테루테루보즈 줄 + 왼쪽 우산꽂이
+//              + 오른쪽 벽 선반(장화·작은 잡화) + 뒤쪽 계산대. 가운데 통로는 비워 둠
+const UMBRELLA_COLORS = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6']
+function TeruTeruBozu({ p, scale = 1 }) {
+  return (
+    <group position={p} scale={scale}>
+      <Cyl p={[0, 0.35, 0]} r={0.006} h={0.5} c="#9ca3af" />
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.11, 14, 10]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0, -0.2, 0]}>
+        <coneGeometry args={[0.14, 0.28, 12, 1, true]} />
+        <meshStandardMaterial color="#ffffff" side={THREE.DoubleSide} />
+      </mesh>
+      <Box p={[0, -0.09, 0]} s={[0.2, 0.02, 0.2]} c="#ef4444" />
+    </group>
+  )
+}
+function ZakkaInterior({ w, back, d, wallH }) {
+  const front = d / 2
+  const shelfX = w / 2 - T - 0.3
+  return (
+    <group>
+      {/* 천장: 펼친 우산 6개 (2줄) */}
+      {range(6).map((i) => {
+        const x = ((i % 3) - 1) * w * 0.27
+        const z = i < 3 ? -0.9 : 1.0
+        return (
+          <group key={i} position={[x, wallH - 0.75, z]} rotation={[0.12 * ((i % 2) * 2 - 1), 0, 0.1 * (((i + 1) % 2) * 2 - 1)]}>
+            <Cyl p={[0, 0.4, 0]} r={0.01} h={0.8} c="#d1d5db" />
+            <mesh position={[0, 0.05, 0]}>
+              <coneGeometry args={[0.7, 0.3, 8, 1, true]} />
+              <meshStandardMaterial color={UMBRELLA_COLORS[i]} side={THREE.DoubleSide} />
+            </mesh>
+            <Cyl p={[0, -0.25, 0]} r={0.012} h={0.6} c="#4b5563" />
+          </group>
+        )
+      })}
+
+      {/* 창가(앞벽 안쪽) 테루테루보즈 줄 */}
+      <Box p={[0, 2.95, front - T - 0.25]} s={[w - 0.8, 0.02, 0.02]} c="#9ca3af" />
+      {range(7).map((i) => {
+        const x = -w / 2 + 0.8 + (i * (w - 1.6)) / 6
+        if (Math.abs(x) < DOOR_W / 2 + 0.1) return null
+        return <TeruTeruBozu key={i} p={[x, 2.45, front - T - 0.25]} />
+      })}
+
+      {/* 왼쪽: 우산꽂이 2개 + 꽂힌 우산 */}
+      {[-1.2, 0.6].map((z, k) => (
+        <group key={z} position={[-w / 2 + T + 0.4, 0.12, z]}>
+          <Cyl p={[0, 0.3, 0]} r={0.32} h={0.6} c="#475569" />
+          {range(5).map((i) => {
+            const a = (i / 5) * Math.PI * 2
+            return (
+              <group key={i} position={[Math.cos(a) * 0.15, 0.6, Math.sin(a) * 0.15]} rotation={[Math.sin(a) * 0.15, 0, -Math.cos(a) * 0.15]}>
+                <mesh position={[0, 0.35, 0]}>
+                  <coneGeometry args={[0.06, 0.75, 8]} />
+                  <meshStandardMaterial color={UMBRELLA_COLORS[(i + k * 2) % UMBRELLA_COLORS.length]} />
+                </mesh>
+                <mesh position={[0, 0.72, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <torusGeometry args={[0.05, 0.012, 6, 10, Math.PI]} />
+                  <meshStandardMaterial color="#5a3d2a" />
+                </mesh>
+              </group>
+            )
+          })}
+        </group>
+      ))}
+
+      {/* 오른쪽 벽 선반 3단: 장화 + 작은 잡화 상자 */}
+      <Box p={[shelfX + 0.2, 1.2, -0.3]} s={[0.05, 2.2, d * 0.6]} c="#e2e8f0" />
+      {[0.5, 1.15, 1.8].map((y) => (
+        <Box key={y} p={[shelfX, y, -0.3]} s={[0.45, 0.04, d * 0.6]} c="#cbd5e1" />
+      ))}
+      {[0.5, 1.15, 1.8].map((y, row) =>
+        range(5).map((i) => {
+          const z = -0.3 - d * 0.25 + (i * d * 0.5) / 4
+          const color = UMBRELLA_COLORS[(i + row) % UMBRELLA_COLORS.length]
+          return row === 0 ? (
+            <group key={`${row}${i}`} position={[shelfX - 0.02, y + 0.12, z]}>
+              <Box p={[0, 0.08, 0]} s={[0.12, 0.32, 0.12]} c={color} />
+              <Box p={[-0.06, -0.04, 0]} s={[0.2, 0.08, 0.12]} c={color} />
+            </group>
+          ) : (
+            <Box key={`${row}${i}`} p={[shelfX - 0.02, y + 0.11, z]} s={[0.18, 0.18, 0.26]} c={color} />
+          )
+        }),
+      )}
+
+      {/* 뒤쪽 계산대 + 계산기 + 테루테루보즈 하나 */}
+      <Box p={[w / 4, 0.5, back + 0.5]} s={[w / 2 - 1.2, 1, 0.6]} c="#1e40af" />
+      <Box p={[w / 4, 1.02, back + 0.5]} s={[w / 2 - 1.1, 0.05, 0.7]} c="#f8fafc" />
+      <Box p={[w / 4 + 0.6, 1.12, back + 0.45]} s={[0.35, 0.15, 0.25]} c="#334155" />
+      <TeruTeruBozu p={[w / 4 - 0.6, 1.3, back + 0.5]} scale={0.8} />
+      {/* 뒷벽 하늘색 포스터 (맑음 표시) */}
+      <Box p={[-w / 4, 2.2, back + 0.02]} s={[1.4, 1, 0.03]} c="#bae6fd" />
+      <mesh position={[-w / 4, 2.25, back + 0.05]}>
+        <circleGeometry args={[0.25, 20]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={0.4} />
+      </mesh>
     </group>
   )
 }
