@@ -15,7 +15,7 @@ export const SCENES = {
     dialogue: [
       { speaker: '해원', line: '등대 불이 켜지면, 내가 아직 여기 있다는 뜻이야.' },
       { speaker: '도윤', line: '파도가 몇 번을 지워도, 우리가 앉았던 자리는 그대로더라.' },
-      { speaker: '해원', line: '맑은 날도, 흐린 날도, 그냥 그런 날도… 너랑 기다린 날은 전부 좋았어.' },
+      { speaker: '해원', line: '바다는 매일 다른 색인데, 돌아오는 배를 볼 때면 늘 같은 마음이 들어.' },
     ],
     photoAction: '💐 꽃다발 들고 인증샷 남기기',
     photoCaption: '방파제 끝, 등대 아래에서',
@@ -24,3 +24,24 @@ export const SCENES = {
 }
 
 export const sceneForPlace = (placeId) => SCENES[placeId] ?? null
+
+export const HJ_DIALOGUE = {
+  spot_hj_breakwater: [
+    { speaker: '해원', line: '노을이 바다 끝에 걸리면, 우리 잠깐만 여기 더 있을래?' },
+  ],
+  spot_hj_vintage: [
+    { speaker: '서진', line: '파란 대문에 기대 있을게. 네 자전거 종소리는 멀리서도 알아듣거든.' },
+    { speaker: '유준', line: '오늘은 골목 끝까지 천천히 가자. 저 전구가 켜지는 것도 보고 싶어.' },
+  ],
+  spot_wall: [
+    { speaker: '순덕', line: '나무 평상에 앉으면 대문 여는 소리만으로도 누가 오는지 알았지.' },
+    { speaker: '연희', line: '그럼 오늘은 내가 먼저 와서 네 자리를 데워 둘게.' },
+  ],
+  spot_busstop: [
+    { speaker: '지안', line: '막차 놓쳐도 괜찮아. 빗소리가 이렇게 가까운 건 오랜만이니까.' },
+    { speaker: '현수', line: '그럼 건너편 분식집까지 같이 갈래? 아직 불이 켜져 있어.' },
+  ],
+  shop_hj_snack: [
+    { speaker: '분식집 주인', line: '우산은 문 옆에 두고 와. 떡볶이가 막 끓었으니 여기서 몸 좀 녹이고 가.' },
+  ],
+}

@@ -39,6 +39,7 @@ function SceneContent({ scene }) {
   const [photo, setPhoto] = useState(null) // { takenAt }
   const [celebrate, setCelebrate] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [sunset, setSunset] = useState(false)
 
   const stamps = useAsync(() => listMyStamps({ userId }), [userId])
   const stamped = stamps.data?.stamps.some((s) => s.placeId === PLACE_ID)
@@ -64,7 +65,7 @@ function SceneContent({ scene }) {
 
   const takePhoto = async () => {
     setBusy(true)
-    setPhoto({ takenAt: new Date() })
+    setPhoto({ takenAt: new Date(), sunset })
     try {
       const { issuedCoupons } = await collectStamp({ userId, placeId: PLACE_ID })
       setCelebrate(true)
@@ -89,7 +90,7 @@ function SceneContent({ scene }) {
       </div>
 
       {phase === 'story' && (
-        <div className="bw-stage">
+        <div className={`bw-stage${sunset ? ' bw-stage--sunset' : ''}`}>
           {/* 배경: 하늘·바다·방파제·등대 일러스트 (CSS로 그림) */}
           <div className="bw-scenery" aria-hidden="true">
             <span className="bw-sun" />
@@ -109,6 +110,9 @@ function SceneContent({ scene }) {
               <h2 id="bw-title">{scene.title}</h2>
               <p className="bw-work">{scene.work}</p>
             </div>
+            <button type="button" className="ui-btn" aria-pressed={sunset} onClick={() => setSunset((value) => !value)}>
+              노을 필터 {sunset ? '켜짐' : '꺼짐'}
+            </button>
           </header>
 
           <div className="bw-body">
@@ -130,7 +134,7 @@ function SceneContent({ scene }) {
 
             {photo && (
               <figure ref={photoRef} className={`bw-polaroid ${celebrate ? 'bw-polaroid--new' : ''}`}>
-                <div className="bw-polaroid__shot" aria-hidden="true">
+                <div className={`bw-polaroid__shot${photo.sunset ? ' bw-polaroid__shot--sunset' : ''}`} aria-hidden="true">
                   <span className="bw-sun" />
                   <span className="bw-sea" />
                   <span className="bw-lighthouse bw-lighthouse--small">
