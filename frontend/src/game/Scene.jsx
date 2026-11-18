@@ -33,6 +33,8 @@ import { live } from './timeOfDay.js'
 import SettingsPanel from './SettingsPanel.jsx'
 import SeasonPicker from './SeasonPicker.jsx'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
+import ShaderWarmup from './ShaderWarmup.jsx'
+import PointLightLock from './PointLightLock.jsx'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
@@ -92,6 +94,8 @@ export default function Scene() {
           </Suspense>
 
           {playing ? <InteractionKeys /> : <OverviewCamera />}
+          <PointLightLock />
+          <ShaderWarmup trigger={`${playing}-${highDetail}`} />
         </Canvas>
 
         <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} highDetail={highDetail} setHighDetail={setHighDetail} />
