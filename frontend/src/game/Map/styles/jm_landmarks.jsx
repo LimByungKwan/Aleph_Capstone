@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { useSeason } from '../../seasons.js'
+import { HoopShoot } from './jm_activities.jsx'
 
 // 애니메이션 구역(JM) 전용: 성지 안내판(직접 그린 포스터), 일본어 간판, 작품별 랜드마크. 담당: 지민
 //
@@ -662,6 +663,8 @@ export function JmHoop({ item }) {
         <torusGeometry args={[0.23, 0.02, 6, 20]} />
         <meshStandardMaterial color="#e8792a" />
       </mesh>
+      {/* 슛 체험 (jm_activities.jsx) — 림 위치를 넘겨줌 */}
+      <HoopShoot item={item} rimY={rimY} />
     </group>
   )
 }
