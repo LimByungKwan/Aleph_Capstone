@@ -4,7 +4,7 @@
 // 처음 화면을 무엇으로 시작할지 (화면의 버튼으로 언제든 바꿀 수 있어요)
 // true: 맵 전체 둘러보기로 시작 → "1인칭으로 플레이하기" 버튼으로 캐릭터 조종
 // false: 바로 캐릭터 모드로 시작
-export const FREE_CAMERA = true
+export const FREE_CAMERA = false // [3. 개발 > 프론트엔드] 첫 접속은 3인칭 플레이로 시작
 
 // 캐릭터 모드 카메라: 'first' = 1인칭(캐릭터 눈 위치), 'third' = 3인칭(뒤에서 따라감)
 export const CAMERA_VIEW = 'third'
