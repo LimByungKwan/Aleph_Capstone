@@ -18,6 +18,7 @@ const SHOP_OFFERS = {
 const ACTIVITIES = [
   { id: 'jm_hoop', name: '농구 슛 체험', minSeconds: 5 },
   { id: 'jm_busstop', name: '비 오는 정류장 체험', minSeconds: 8 },
+  { id: 'jm_skip', name: '물수제비 체험', minSeconds: 3 },
 ]
 
 const q = (v) => (v === null || v === undefined ? 'null' : `'${String(v).replaceAll("'", "''")}'`)

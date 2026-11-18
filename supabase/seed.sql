@@ -22,5 +22,6 @@ on conflict (shop_id) do update set title = excluded.title, discount = excluded.
 
 insert into public.activities (id, name, min_seconds) values
   ('jm_hoop', '농구 슛 체험', 5),
-  ('jm_busstop', '비 오는 정류장 체험', 8)
+  ('jm_busstop', '비 오는 정류장 체험', 8),
+  ('jm_skip', '물수제비 체험', 3)
 on conflict (id) do update set name = excluded.name, min_seconds = excluded.min_seconds;

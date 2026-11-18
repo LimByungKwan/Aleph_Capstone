@@ -6,6 +6,8 @@ import { JM_SEASON_STYLES } from './jm_seasons.jsx'
 import { getJpSignTexture, GlowMaterial, JM_LANDMARK_STYLES } from './jm_landmarks.jsx'
 import { JM_SHOP_STYLES } from './jm_shops.jsx'
 import { JM_DETAIL_STYLES } from './jm_details.jsx'
+import { JM_SKIP_STYLES } from './jm_skipstone.jsx'
+import { JM_BRIDGE_STYLES } from './jm_bridges.jsx'
 
 // 애니메이션 구역(JM) 전용 일본풍 스타일. 담당: 지민
 // 다른 스타일과 같은 약속을 따라요:
@@ -41,6 +43,10 @@ export const JM_STYLES = {
   ...JM_SHOP_STYLES,
   // 허수아비·볏단 걸이·데미즈야 같은 영역별 세부 소품, 자연스러운 호수 (jm_details.jsx)
   ...JM_DETAIL_STYLES,
+  // 물수제비 체험 (jm_skipstone.jsx)
+  ...JM_SKIP_STYLES,
+  // 붉은 다리·흔들다리 겉모습 (jm_bridges.jsx)
+  ...JM_BRIDGE_STYLES,
 }
 
 // ── 도리이 (신사 입구 문) ─────────────────────

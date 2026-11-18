@@ -334,14 +334,17 @@ const gaugeFill = { position: 'absolute', left: 0, top: 0, bottom: 0, background
 // ⚠ 실제 작품의 캐릭터·버스 모양은 넣지 않음 (팀 규칙 7번). 비·우산·정류장 분위기만.
 //
 // 가볍게 만든 방법:
-// - 빗줄기 900개를 InstancedMesh 하나로 그림 (그리기 호출 1번), 조명은 새로 안 넣음 (SG 점광원 고정 규칙)
+// - 빗줄기 500개를 InstancedMesh 하나로 그림 (그리기 호출 1번), 조명은 새로 안 넣음 (SG 점광원 고정 규칙)
 // - 비 구역 밖이면 세기 0 → 갱신도 그리기도 안 함
 // - 빗소리는 파일 없이 Web Audio로 만든 잡음 (혜진님 입장 효과음과 같은 방식). 첫 E 누를 때 켬(브라우저 자동재생 정책)
 
-const RAIN_R = 10 // 비 구역 반경 (정류장 중심에서)
-const UMBRELLA_HINT_R = 4.5 // "E 우산" 안내가 뜨는 거리
-const DROPS = 900
-const RAIN_BOX = 18 // 캐릭터 주변 18 × 18m 안에 비
+// 비는 정류장 둘레(반경 RAIN_AREA)에만 내림. 캐릭터가 정류장 가까이(RAIN_R) 와야 시작
+// (처음엔 캐릭터 주변에 내리게 했더니, 애니 구역 입구로 들어올 때 정류장 옆을 지나며 비가 와서 바꿈)
+const RAIN_R = 5 // 비가 시작되는 거리 (정류장 중심에서)
+const UMBRELLA_HINT_R = 5 // "E 우산" 안내가 뜨는 거리
+const DROPS = 500
+const RAIN_AREA = 5.5 // 비가 내리는 둘레 반경 (정류장 중심)
+const RAIN_BOX = RAIN_AREA * 2
 const RAIN_TOP = 9
 const DROP_SPEED = 11
 const CANOPY_R = 0.8
@@ -471,12 +474,14 @@ export function RainStop() {
           let y = drops[i * 3 + 1] - DROP_SPEED * delta
           if (y < 0) y += RAIN_TOP
           drops[i * 3 + 1] = y
-          const x = tmp.me.x + wrap(drops[i * 3] - tmp.me.x, RAIN_BOX)
-          const z = tmp.me.z + wrap(drops[i * 3 + 2] - tmp.me.z, RAIN_BOX)
+          // 정류장 중심 기준 네모 안의 점 → 둥근 둘레 밖은 그리지 않음
+          const x = tmp.stop.x + wrap(drops[i * 3], RAIN_BOX)
+          const z = tmp.stop.z + wrap(drops[i * 3 + 2], RAIN_BOX)
+          const outside = Math.hypot(x - tmp.stop.x, z - tmp.stop.z) > RAIN_AREA
           const wy = groundY + y
           // 세기만큼만 보이고, 우산 아래는 비가 안 옴
           const underUmbrella = r.umbrella && Math.hypot(x - tmp.me.x, z - tmp.me.z) < CANOPY_R && wy < tmp.me.y + CANOPY_Y
-          if (i >= shown || underUmbrella) tmp.m.makeTranslation(0, -100, 0)
+          if (i >= shown || outside || underUmbrella) tmp.m.makeTranslation(0, -100, 0)
           else tmp.m.makeTranslation(x, wy, z)
           mesh.setMatrixAt(i, tmp.m)
         }
