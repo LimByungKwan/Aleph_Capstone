@@ -130,5 +130,17 @@
     "position": [0, 0, -115],
     "radius": 2.5,
     "model": null
+  },
+  {
+    "id": "spot_jm_sakura_river",
+    "type": "spot",
+    "zone": "JM",
+    "name": "「초속 5미터」 벚꽃 강변길",
+    "work": "애니메이션 「초속 5미터」",
+    "description": "호수에서 흘러나온 강을 따라 벚꽃이 이어지는 산책로. 두 사람이 꽃잎이 떨어지는 속도를 이야기하며 걷던 오프닝 장면의 배경지.",
+    "tags": ["애니메이션", "벚꽃", "산책로", "강"],
+    "position": [-76.7, 0, -77.9],
+    "radius": 2.5,
+    "model": null
   }
 ]

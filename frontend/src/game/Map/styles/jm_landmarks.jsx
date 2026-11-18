@@ -669,6 +669,42 @@ export function JmHoop({ item }) {
   )
 }
 
+// ── 계단 가운데 빨간 난간 (「그대의 이름을」 재회의 계단) ─────────
+// size = [두께, 높이, 길이]. 길이 방향은 z: +z 끝이 계단 아래(높이 rail.bottom), -z 끝이 위(rail.top)
+// 계단 면에서 0.9m 위로 손잡이, 1.6m마다 기둥. 충돌은 JSON "collider"가 세로 벽으로 막음(계단을 두 줄로 나눔)
+const RAIL_RED = '#c8452f'
+export function JmStairRail({ item }) {
+  const [, , len] = item.size
+  const { bottom = 0, top = 5 } = item.rail ?? {}
+  const rise = top - bottom
+  const slope = Math.atan2(rise, len)
+  const posts = Math.max(2, Math.round(len / 1.6) + 1)
+  const railLen = Math.hypot(len, rise)
+  return (
+    <group>
+      {Array.from({ length: posts }, (_, i) => {
+        const t = i / (posts - 1)
+        const z = len / 2 - t * len
+        const y = bottom + t * rise
+        return (
+          <mesh key={i} position={[0, y + 0.45, z]}>
+            <cylinderGeometry args={[0.035, 0.035, 0.9, 8]} />
+            <meshStandardMaterial color={RAIL_RED} />
+          </mesh>
+        )
+      })}
+      <mesh position={[0, bottom + rise / 2 + 0.9, 0]} rotation={[slope, 0, 0]}>
+        <boxGeometry args={[0.07, 0.07, railLen]} />
+        <meshStandardMaterial color={RAIL_RED} />
+      </mesh>
+      <mesh position={[0, bottom + rise / 2 + 0.45, 0]} rotation={[slope, 0, 0]}>
+        <boxGeometry args={[0.04, 0.04, railLen]} />
+        <meshStandardMaterial color={RAIL_RED} />
+      </mesh>
+    </group>
+  )
+}
+
 // ── 학교 정문 (문기둥 두 개 + 학교 이름판) ─────────
 // item.signs[0].text = 학교 이름. size 예: [6, 2.4, 0.6]. JSON에 "collider": false (가운데로 지나감)
 export function JmSchoolGate({ item }) {
@@ -876,6 +912,7 @@ export const JM_LANDMARK_STYLES = {
   jmBigTree: JmBigTree,
   jmFarmhouse: JmFarmhouse,
   jmHoop: JmHoop,
+  jmStairRail: JmStairRail,
   jmSchoolGate: JmSchoolGate,
   jmStationSign: JmStationSign,
   jmFloat: JmFloat,

@@ -12,7 +12,8 @@ insert into public.places (id, type, zone, name, work) values
   ('cafe_soran', 'cafe', 'BK', '소란 커피', '드라마 「여름이 머무는 정류장」'),
   ('spot_jm_crossing', 'spot', 'JM', '「슬램 리바운드」 오프닝 건널목', '애니메이션 「슬램 리바운드」'),
   ('spot_jm_stairs', 'spot', 'JM', '「그대의 이름을」 재회의 계단', '애니메이션 「그대의 이름을」'),
-  ('spot_jm_shrine', 'spot', 'JM', '「나츠키 요괴장」 여우 신사', '애니메이션 「나츠키 요괴장」')
+  ('spot_jm_shrine', 'spot', 'JM', '「나츠키 요괴장」 여우 신사', '애니메이션 「나츠키 요괴장」'),
+  ('spot_jm_sakura_river', 'spot', 'JM', '「초속 5미터」 벚꽃 강변길', '애니메이션 「초속 5미터」')
 on conflict (id) do update set type = excluded.type, zone = excluded.zone, name = excluded.name, work = excluded.work;
 
 insert into public.shop_offers (shop_id, title, discount, perk, menu, valid_days) values

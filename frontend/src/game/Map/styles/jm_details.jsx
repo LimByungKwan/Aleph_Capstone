@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSeason } from '../../seasons.js'
 
@@ -437,7 +438,126 @@ export function JmTireSwing({ item }) {
   )
 }
 
+// ── 강 · 산책로 (애니 구역 서쪽 빈터, K-POP 구역 북쪽) ──────────────
+// item.ribbon = { points: [[x, z], ...], width } — 점은 구역 좌표, item.position은 [0, 0]
+// 호수에서 흘러나온 강이 빈터를 지나 맵 서쪽 끝으로 빠져나감. 남쪽 기슭에 산책로, 북쪽 기슭에 벚꽃
+// 땅을 팔 수 없어서(바닥이 평평한 충돌면) 물은 땅 높이에 깔고, 빠지지 않게 강둑을 따라 투명 벽(jmCollider)
+// 가볍게: 강 = 물 1장 + 물결 1장 + 돌 둑 2장, 산책로 = 1장. 물결은 텍스처만 흘림
+function ribbonGeometry(points, width, y, side = 0) {
+  // side 0: 가운데 기준 폭 전체, side ±1: 가장자리 바깥쪽 띠(돌 둑)
+  const pos = []
+  const uv = []
+  const idx = []
+  let len = 0
+  for (let i = 0; i < points.length; i++) {
+    const a = points[Math.max(0, i - 1)]
+    const b = points[Math.min(points.length - 1, i + 1)]
+    const dx = b[0] - a[0]
+    const dz = b[1] - a[1]
+    const L = Math.hypot(dx, dz) || 1
+    const nx = dz / L
+    const nz = -dx / L
+    if (i > 0) len += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1])
+    const [x, z] = points[i]
+    let inner = -width / 2
+    let outer = width / 2
+    if (side) {
+      inner = side * (width / 2)
+      outer = side * (width / 2 + 0.7)
+    }
+    pos.push(x + nx * inner, y, z + nz * inner, x + nx * outer, y, z + nz * outer)
+    uv.push(0, len / 4, 1, len / 4)
+    if (i > 0) {
+      const k = i * 2
+      idx.push(k - 2, k, k - 1, k - 1, k, k + 1) // 앞면이 위를 보게 (뒷면이면 조명이 어둡게 계산됨)
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  // 방향에 따라 뒷면이 위로 올 수 있어서 법선을 위로 고정
+  const n = g.attributes.normal
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0)
+  return g
+}
+
+let flowTexture = null
+function getFlowTexture() {
+  if (flowTexture || typeof document === 'undefined') return flowTexture
+  const c = document.createElement('canvas')
+  c.width = 64
+  c.height = 128
+  const g = c.getContext('2d')
+  g.strokeStyle = 'rgba(255,255,255,0.5)'
+  g.lineCap = 'round'
+  for (let i = 0; i < 9; i++) {
+    const x = 6 + ((i * 23) % 52)
+    const y = (i * 37) % 128
+    g.lineWidth = 1.5
+    g.beginPath()
+    g.moveTo(x, y)
+    g.lineTo(x + 2, y + 10 + (i % 3) * 6)
+    g.stroke()
+  }
+  flowTexture = new THREE.CanvasTexture(c)
+  flowTexture.wrapS = flowTexture.wrapT = THREE.RepeatWrapping
+  return flowTexture
+}
+
+export function JmRiver({ item }) {
+  const season = useSeason()
+  const { points, width } = item.ribbon
+  const geo = useMemo(
+    () => ({
+      water: ribbonGeometry(points, width, 0.04),
+      flow: ribbonGeometry(points, width * 0.9, 0.05),
+      bankL: ribbonGeometry(points, width, 0.06, -1),
+      bankR: ribbonGeometry(points, width, 0.06, 1),
+    }),
+    [points, width],
+  )
+  const flow = useMemo(() => getFlowTexture()?.clone(), [])
+  useFrame((_, delta) => {
+    if (flow) {
+      flow.offset.y -= delta * 0.35 // 호수(시작점) → 하류 쪽으로 흐름
+    }
+  })
+  const winter = season === 'winter'
+  return (
+    <group>
+      <mesh geometry={geo.water}>
+        <meshStandardMaterial color={winter ? '#bcd6ea' : '#3f7fb5'} metalness={0.3} roughness={0.15} side={THREE.DoubleSide} />
+      </mesh>
+      {flow && !winter && (
+        <mesh geometry={geo.flow}>
+          <meshBasicMaterial map={flow} transparent opacity={0.45} depthWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {[geo.bankL, geo.bankR].map((g, i) => (
+        <mesh key={i} geometry={g}>
+          <meshStandardMaterial color={winter ? SNOW : '#a29d93'} roughness={1} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+export function JmPathRibbon({ item }) {
+  const season = useSeason()
+  const { points, width } = item.ribbon
+  const geo = useMemo(() => ribbonGeometry(points, width, 0.03), [points, width])
+  return (
+    <mesh geometry={geo}>
+      <meshStandardMaterial color={season === 'winter' ? '#e6e2da' : '#cdbb8e'} roughness={1} side={THREE.DoubleSide} />
+    </mesh>
+  )
+}
+
 export const JM_DETAIL_STYLES = {
+  jmRiver: JmRiver,
+  jmPathRibbon: JmPathRibbon,
   jmScarecrow: JmScarecrow,
   jmRiceRack: JmRiceRack,
   jmHokora: JmHokora,

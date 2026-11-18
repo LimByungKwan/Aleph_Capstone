@@ -29,7 +29,12 @@
 ## 팀에 공유할 것 (PR 전)
 
 - 근접형 작품명 (「슬램 리바운드」, 「그대의 이름을」, 「나츠키 요괴장」 외 6개)
-- 언덕 높이 5m (건물 높이 규칙 6~12m의 예외, 지형). 계단은 terrain "stairs"(경사로 충돌 포함) 양쪽 2개
+- 언덕 높이 6.5m (건물 높이 규칙 6~12m의 예외, 지형). 계단은 terrain "stairs"(경사로 충돌 포함) 양쪽 2개
+- 「그대의 이름을」 재회의 계단: 남쪽 계단 폭 3.2m·길이 13m, 가운데 빨간 난간(jmStairRail, 계단을 두 줄로 나누는 충돌 벽), 양옆 돌 옹벽 4단
+- 애니 구역 서쪽 빈터(K-POP 구역 북쪽, 지민 담당): 호수에서 흘러나온 강(jmRiver) + 남쪽 기슭 산책로(jmPathRibbon) + 다리 2개 + 벚꽃·석등·벤치
+  · 구역 밖(x -40 바깥) 좌표지만 jm_anime.json에 함께 둠. 서쪽 담 두 군데(호수 쪽, 남쪽 정류장 옆)를 엶
+  · 강둑은 투명 벽(jm_river_bank_*)으로 빠지지 않게, 다리 자리만 비움
+  · `shared/places.json`에 촬영지 1곳 추가: spot_jm_sakura_river (「초속 5미터」 벚꽃 강변길) → DB seed도 다시 생성함
 - 옥상 신사 건물(jm_rooftop) 안 계단 3번 → 옥상 (terrain stairs 3개 + jmCollider 벽·층계참·옥상 바닥)
 - 농구 슛·비 오는 정류장 체험 (jm_activities.jsx, jm_activityStore.js)
 - `shared/places.json` 스탬프 지점 3곳 추가
