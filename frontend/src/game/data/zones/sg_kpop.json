@@ -75,7 +75,7 @@
     {"id": "sg_fan_lamp2", "style": "lamp", "position": [5.7, 35], "size": [0.35, 3.7, 0.35], "rotationDeg": 0},
     {"id": "sg_fan_cherry2", "style": "cherryTree", "position": [11.8, 35], "size": [3.2, 4.3, 3.2], "rotationDeg": 0, "collider": [0.45, 3, 0.45]},
     {"id": "sg_backstage_tree0", "style": "tree", "position": [-13.2, -13], "size": [3.5, 4.8, 3.5], "rotationDeg": 0, "collider": [0.5, 4, 0.5]},
-    {"id": "sg_backstage_tree1", "style": "tree", "position": [-13.2, 8], "size": [3.5, 4.8, 3.5], "rotationDeg": 0, "collider": [0.5, 4, 0.5]},
+    {"id": "sg_backstage_tree1", "style": "tree", "position": [-13.2, 13], "size": [3.5, 4.8, 3.5], "rotationDeg": 0, "collider": [0.5, 4, 0.5]},
     {"id": "sg_backstage_tree2", "style": "tree", "position": [-13.2, 30], "size": [3.5, 4.8, 3.5], "rotationDeg": 0, "collider": [0.5, 4, 0.5]},
     {"id": "sg_walk_sign0", "style": "signPost", "position": [11, 10], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "촬영 골목 · 해변 산책로", "bg": "#365762", "fg": "#fff2da"}]},
     {"id": "sg_walk_sign1", "style": "signPost", "position": [4.8, 40], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "물비늘 해수욕장", "bg": "#365762", "fg": "#fff2da"}]},
