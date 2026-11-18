@@ -1,13 +1,12 @@
 import * as THREE from 'three'
 import { Box, Cyl, GEO, Instances, mat, seeded } from './kit.jsx'
 
-import { shoreline } from '../seabed.js'
+import { COAST_SEGMENTS, coastPoint, shoreline } from '../seabed.js'
 
 function coastline() {
   const vertices = [], colors = [], indices = []
-  for (let i = 0; i <= 96; i++) {
-    const x = -45 + 85 * i / 96
-    const shore = shoreline(x)
+  for (let i = 0; i <= COAST_SEGMENTS; i++) {
+    const { x, z: shore } = coastPoint(i)
     const width = Math.min(1, (130 - shore) / 23)
     const rows = [
       [shore, '#c0ba9f'], [shore + 2 * width, '#e2d4ac'],
@@ -40,7 +39,7 @@ for (let x=-38;x<=13;x+=.53)
 for (let i=0;i<190;i++) {
   const x=-44+rand()*79, edge=shoreline(x)+13
   const z=edge+rand()*(129-edge)
-  if(z<129 && z>edge) ripples.push({p:[x,.048,z],s:[.5+rand()*1.8,.012,.05+rand()*.1],r:[0,rand()*.3-.15,0]})
+  if(z<129 && z>edge) ripples.push({p:[x,.078,z],s:[.5+rand()*1.8,.012,.05+rand()*.1],r:[0,rand()*.3-.15,0]})
 }
 const pale = mat('#b4e5df')
 function Parasol({x,z,color}) {

@@ -1,38 +1,29 @@
 {
-  "ground": { "size": [260, 260], "center": [0, 0], "color": "#b9b4a8" },
+  "ground": { "size": [260, 260], "center": [0, 0], "color": "#648a49" },
   "playerStart": [0, 14],
   "playerStartYawDeg": 0,
 
   "roads": [
     { "id": "hub_plaza",    "style": "tile",    "position": [0, 0],       "size": [50, 0.12, 50],  "rotationDeg": 0 },
 
-    { "id": "road_to_jm",   "style": "asphalt", "position": [0, -35],     "size": [6, 0.02, 20],   "rotationDeg": 0 },
-    { "id": "walk_to_jm_w", "style": "brick",   "position": [-3.75, -35], "size": [1.5, 0.15, 20], "rotationDeg": 0 },
-    { "id": "walk_to_jm_e", "style": "brick",   "position": [3.75, -35],  "size": [1.5, 0.15, 20], "rotationDeg": 0 },
+    { "id": "road_to_jm",   "style": "gardenPath", "position": [0, -35],     "size": [6, 0.10, 20],   "rotationDeg": 0 },
+    { "id": "walk_to_jm_w", "style": "grass",   "position": [-3.75, -35], "size": [1.5, 0.055, 20], "rotationDeg": 0 },
+    { "id": "walk_to_jm_e", "style": "grass",   "position": [3.75, -35],  "size": [1.5, 0.055, 20], "rotationDeg": 0 },
 
-    { "id": "road_to_bk",   "style": "asphalt", "position": [35, 0],      "size": [20, 0.02, 6],   "rotationDeg": 0 },
-    { "id": "walk_to_bk_n", "style": "brick",   "position": [35, -3.75],  "size": [20, 0.15, 1.5], "rotationDeg": 0 },
-    { "id": "walk_to_bk_s", "style": "brick",   "position": [35, 3.75],   "size": [20, 0.15, 1.5], "rotationDeg": 0 },
+    { "id": "road_to_bk",   "style": "gardenPath", "position": [35, 0],      "size": [20, 0.10, 6],   "rotationDeg": 0 },
+    { "id": "walk_to_bk_n", "style": "grass",   "position": [35, -3.75],  "size": [20, 0.055, 1.5], "rotationDeg": 0 },
+    { "id": "walk_to_bk_s", "style": "grass",   "position": [35, 3.75],   "size": [20, 0.055, 1.5], "rotationDeg": 0 },
 
-    { "id": "road_to_hj",   "style": "asphalt", "position": [0, 35],      "size": [6, 0.02, 20],   "rotationDeg": 0 },
-    { "id": "walk_to_hj_w", "style": "brick",   "position": [-3.75, 35],  "size": [1.5, 0.15, 20], "rotationDeg": 0 },
-    { "id": "walk_to_hj_e", "style": "brick",   "position": [3.75, 35],   "size": [1.5, 0.15, 20], "rotationDeg": 0 },
+    { "id": "road_to_hj",   "style": "gardenPath", "position": [0, 35],      "size": [6, 0.10, 20],   "rotationDeg": 0 },
+    { "id": "walk_to_hj_w", "style": "grass",   "position": [-3.75, 35],  "size": [1.5, 0.055, 20], "rotationDeg": 0 },
+    { "id": "walk_to_hj_e", "style": "grass",   "position": [3.75, 35],   "size": [1.5, 0.055, 20], "rotationDeg": 0 },
 
-    { "id": "road_to_sg",   "style": "asphalt", "position": [-35, 0],     "size": [20, 0.02, 6],   "rotationDeg": 0 },
-    { "id": "walk_to_sg_n", "style": "brick",   "position": [-35, -3.75], "size": [20, 0.15, 1.5], "rotationDeg": 0 },
-    { "id": "walk_to_sg_s", "style": "brick",   "position": [-35, 3.75],  "size": [20, 0.15, 1.5], "rotationDeg": 0 }
+    { "id": "road_to_sg",   "style": "gardenPath", "position": [-35, 0],     "size": [20, 0.10, 6],   "rotationDeg": 0 },
+    { "id": "walk_to_sg_n", "style": "grass",   "position": [-35, -3.75], "size": [20, 0.055, 1.5], "rotationDeg": 0 },
+    { "id": "walk_to_sg_s", "style": "grass",   "position": [-35, 3.75],  "size": [20, 0.055, 1.5], "rotationDeg": 0 }
   ],
 
-  "markings": [
-    { "type": "line", "from": [0, -45], "to": [0, -28.6], "color": "#f2c14e", "width": 0.1, "double": true },
-    { "type": "line", "from": [28.6, 0], "to": [45, 0],   "color": "#f2c14e", "width": 0.1, "double": true },
-    { "type": "line", "from": [0, 28.6], "to": [0, 45],   "color": "#f2c14e", "width": 0.1, "double": true },
-    { "type": "line", "from": [-45, 0], "to": [-28.6, 0], "color": "#f2c14e", "width": 0.1, "double": true },
-    { "type": "crosswalk", "position": [0, -27], "size": [3, 6], "rotationDeg": 90 },
-    { "type": "crosswalk", "position": [27, 0],  "size": [3, 6], "rotationDeg": 0 },
-    { "type": "crosswalk", "position": [0, 27],  "size": [3, 6], "rotationDeg": 90 },
-    { "type": "crosswalk", "position": [-27, 0], "size": [3, 6], "rotationDeg": 0 }
-  ],
+  "markings": [],
 
   "buildings": [],
 

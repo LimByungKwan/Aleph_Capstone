@@ -4,12 +4,16 @@ import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { TerrainColliders } from './Terrain.jsx'
 import { GEO } from './styles/kit.jsx'
+import { HjHarborCollider } from './styles/hj/HjHarbor.jsx'
 
 // 눈에 보이는 모델과 별개인 "충돌 전용" 박스들.
 // - JSON의 size 그대로 만들어서, 나중에 건물이 GLB로 바뀌어도 충돌 범위는 그대로예요.
 // - 길·인도(roads)는 충돌 없음 → 인도 턱(0.15m)은 그냥 걸어서 넘어감
 const WALL_HEIGHT = 10
 const WALL_THICKNESS = 1
+const harborProps = layout.props.filter((item) => item.zone === 'HJ' && (
+  item.style === 'hjSea' || item.style === 'hjBreakwater' || (item.style === 'hjBoat' && item.moored)
+))
 
 export default function Colliders() {
   const [groundW, groundD] = layout.ground.size
@@ -45,6 +49,8 @@ export default function Colliders() {
           <BoxCollider key={item.id} item={item} />
         ))}
       </RigidBody>
+
+      {harborProps.map((item) => <HjHarborCollider key={item.id} item={item} />)}
 
       {/* 건물: 카메라가 벽을 뚫지 않게 막아 주는 투명 박스 (소품은 제외 — 가로등 기둥에 카메라가 걸리지 않게) */}
       {layout.buildings.map((item) => (

@@ -23,12 +23,9 @@ import {
   FREE_CAMERA,
   PHYSICS_DEBUG,
   SHADOW_AREA,
-  SHOW_ZONE_OWNERS,
-  SHOW_ZONES,
   SUN_POSITION,
 } from './config.js'
 import { labelLayer } from './labelLayer.js'
-import { zones } from './data/mapData.js'
 import SeasonPicker from './SeasonPicker.jsx'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
 
@@ -150,28 +147,97 @@ function SunLight({ castShadow }) {
 // 둘러보기 카메라. 땅 밑으로 못 내려가고, 옆으로 끌면 땅과 평행하게 이동
 function OverviewCamera() {
   const camera = useThree((state) => state.camera)
+  const controlsRef = useRef(null)
+  const keys = useRef(new Set())
+  const movement = useRef({ forward: new THREE.Vector3(), right: new THREE.Vector3(), offset: new THREE.Vector3() })
 
   // 플레이에서 돌아올 때 카메라를 맵 전체가 보이는 위치로 되돌림
   useEffect(() => {
     camera.position.set(...CAMERA_START)
+    // 전체 보기에서 1~2cm 간격의 도로·바닥을 구분할 수 있게 깊이 정밀도를 높여요.
+    const previousNear = camera.near
+    camera.near = 1.2
+    camera.updateProjectionMatrix()
+    return () => {
+      camera.near = previousNear
+      camera.updateProjectionMatrix()
+    }
   }, [camera])
+
+  useEffect(() => {
+    const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+    const onDown = (event) => {
+      if (!arrows.includes(event.code) || event.target.closest?.('input, select, textarea, button, [contenteditable]')) return
+      event.preventDefault()
+      keys.current.add(event.code)
+    }
+    const onUp = (event) => keys.current.delete(event.code)
+    const clear = () => keys.current.clear()
+    window.addEventListener('keydown', onDown)
+    window.addEventListener('keyup', onUp)
+    window.addEventListener('blur', clear)
+    return () => {
+      clear()
+      window.removeEventListener('keydown', onDown)
+      window.removeEventListener('keyup', onUp)
+      window.removeEventListener('blur', clear)
+    }
+  }, [])
+
+  useFrame((_, delta) => {
+    const controls = controlsRef.current
+    if (!controls || !keys.current.size) return
+    const pressed = keys.current
+    const { forward, right, offset } = movement.current
+    camera.getWorldDirection(forward)
+    forward.y = 0
+    forward.normalize()
+    right.set(-forward.z, 0, forward.x)
+    offset.copy(forward).multiplyScalar(Number(pressed.has('ArrowUp')) - Number(pressed.has('ArrowDown')))
+    offset.addScaledVector(right, Number(pressed.has('ArrowRight')) - Number(pressed.has('ArrowLeft')))
+    offset.normalize().multiplyScalar(55 * Math.min(delta, 0.05))
+    camera.position.add(offset)
+    controls.target.add(offset)
+    controls.update()
+  })
 
   return (
     <OrbitControls
+      ref={controlsRef}
       makeDefault
       target={CAMERA_TARGET}
-      maxPolarAngle={Math.PI / 2 - 0.05}
+      minPolarAngle={0.18}
+      maxPolarAngle={1.20}
       minDistance={3}
       maxDistance={CAMERA_MAX_ZOOM_OUT}
       screenSpacePanning={false}
+      enableDamping
+      dampingFactor={0.16}
+      rotateSpeed={0.45}
+      panSpeed={0.82}
+      zoomSpeed={0.75}
+      mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
+      touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN }}
+      onChange={() => {
+        const controls = controlsRef.current
+        if (!controls) return
+        const { target } = controls
+        const x = THREE.MathUtils.clamp(target.x, -126, 126)
+        const z = THREE.MathUtils.clamp(target.z, -126, 126)
+        camera.position.x += x - target.x
+        camera.position.z += z - target.z
+        target.x = x
+        target.z = z
+      }}
     />
   )
 }
 
 // 왼쪽 위 안내 + 모드 전환 버튼 + (확인용) 게임 스토어 값
 function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
-  const nearbyPlaceId = useGameStore((state) => state.nearbyPlaceId)
-  const openPanel = useGameStore((state) => state.openPanel)
+  const [showHelp, setShowHelp] = useState(true)
+  const [showSettings, setShowSettings] = useState(false)
+  const compactButton = { pointerEvents: 'auto', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, border: 0 }
 
   return (
     <div
@@ -188,78 +254,55 @@ function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
         pointerEvents: 'none',
       }}
     >
-      <strong>SceneWalk AI</strong>
-      <br />
-      {playing
-        ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
-        : '왼쪽 드래그: 회전 · 오른쪽 드래그: 이동 · 휠: 확대/축소'}
-
-      {SHOW_ZONES && <ZoneLegend />}
-      <SeasonPicker />
-      <label style={{ display: 'block', marginTop: 4, pointerEvents: 'auto' }}>
-        <input
-          type="checkbox"
-          checked={highDetail}
-          onChange={(event) => {
-            setHighDetail(event.currentTarget.checked)
-            event.currentTarget.blur()
-          }}
-        />{' '}
-        고화질 (그림자·고해상도)
-      </label>
-
-      {playing && (
-        <div style={{ marginTop: 6, fontFamily: 'Consolas, monospace', fontSize: 12 }}>
-          nearbyPlaceId: {JSON.stringify(nearbyPlaceId)}
-          <br />
-          openPanel: {JSON.stringify(openPanel)}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={playing ? onStop : onStart}
-        style={{
-          display: 'block',
-          marginTop: 8,
-          padding: '6px 12px',
-          border: 'none',
-          borderRadius: 6,
-          background: playing ? '#e5e7eb' : '#22c55e',
-          color: playing ? '#111' : '#fff',
-          fontWeight: 700,
-          fontSize: 13,
-          cursor: 'pointer',
-          pointerEvents: 'auto',
-        }}
-      >
-        {playing ? '맵 전체 보기' : `▶ ${CAMERA_VIEW === 'first' ? '1인칭' : '3인칭'}으로 플레이하기`}
-      </button>
-    </div>
-  )
-}
-
-// 구역 범례: "■ BK 분홍 / ■ JM 하늘 / ■ HJ 주황" (발표용이면 구역 이름만)
-function ZoneLegend() {
-  return (
-    <div style={{ marginTop: 4 }}>
-      {zones.map((zone, i) => (
-        <span key={zone.zoneId} style={{ whiteSpace: 'nowrap' }}>
-          {i > 0 && ' / '}
-          <span
-            style={{
-              display: 'inline-block',
-              width: 10,
-              height: 10,
-              marginRight: 4,
-              borderRadius: 2,
-              background: zone.color,
-              verticalAlign: 'middle',
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {showHelp && <strong style={{ marginRight: 'auto' }}>SceneWalk AI</strong>}
+        <button type="button" style={compactButton} aria-expanded={showHelp} aria-controls="scenewalk-help"
+          onClick={(event) => { setShowHelp(!showHelp); event.currentTarget.blur() }}>
+          {showHelp ? '안내 숨기기' : '안내 보기'}
+        </button>
+        <button type="button" style={compactButton} aria-expanded={showSettings} aria-controls="scenewalk-settings"
+          onClick={(event) => { setShowSettings(!showSettings); event.currentTarget.blur() }}>
+          ⚙ 설정
+        </button>
+      </div>
+      <div id="scenewalk-settings" hidden={!showSettings}>
+        <SeasonPicker />
+        <label style={{ display: 'block', marginTop: 4, pointerEvents: 'auto' }}>
+          <input
+            type="checkbox"
+            checked={highDetail}
+            onChange={(event) => {
+              setHighDetail(event.currentTarget.checked)
+              event.currentTarget.blur()
             }}
-          />
-          {SHOW_ZONE_OWNERS ? `${zone.zoneId} ${zone.colorName}` : zone.name}
-        </span>
-      ))}
+          />{' '}
+          고화질 (그림자·고해상도)
+        </label>
+      </div>
+      <div id="scenewalk-help" hidden={!showHelp} style={{ marginTop: 6 }}>
+        {playing
+          ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
+          : '왼쪽 드래그·방향키: 이동 · 오른쪽 드래그: 회전 · 휠: 확대/축소'}
+        <button
+          type="button"
+          onClick={playing ? onStop : onStart}
+          style={{
+            display: 'block',
+            marginTop: 8,
+            padding: '6px 12px',
+            border: 'none',
+            borderRadius: 6,
+            background: playing ? '#e5e7eb' : '#22c55e',
+            color: playing ? '#111' : '#fff',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+          }}
+        >
+          {playing ? '맵 전체 보기' : `▶ ${CAMERA_VIEW === 'first' ? '1인칭' : '3인칭'}으로 플레이하기`}
+        </button>
+      </div>
     </div>
   )
 }

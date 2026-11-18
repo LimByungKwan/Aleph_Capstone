@@ -8,6 +8,24 @@ import { useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Color, Object3D, Vector3 } from 'three'
 
+// 높이가 같은 포장 두 장이 만나는 교차부만 조금 띄워서 겹침을 막아요.
+const roadLayers = []
+for (const item of layout.roads) {
+  const [x, z] = item.position
+  const [w, height, d] = item.size
+  const yaw = (item.rotationDeg ?? 0) * Math.PI / 180
+  const rx = (Math.abs(Math.cos(yaw)) * w + Math.abs(Math.sin(yaw)) * d) / 2
+  const rz = (Math.abs(Math.sin(yaw)) * w + Math.abs(Math.cos(yaw)) * d) / 2
+  const bounds = [x - rx, z - rz, x + rx, z + rz]
+  const layer = roadLayers.reduce((level, previous) => {
+    const [left, north, right, south] = previous.bounds
+    const overlaps = bounds[0] < right - 0.001 && bounds[2] > left + 0.001 &&
+      bounds[1] < south - 0.001 && bounds[3] > north + 0.001
+    return height === previous.height && overlaps ? Math.max(level, previous.layer + 1) : level
+  }, 0)
+  roadLayers.push({ item, bounds, height, layer })
+}
+
 // [3. 개발 > 렌더링 최적화] 작은 장식만 묶어서 멀리서는 생략해요.
 const CELL_SIZE = 24
 const DETAIL_DISTANCE = 95
@@ -106,8 +124,8 @@ export default function MapLayout({ showStartMarker = true, highDetail = false }
       <Ground ground={layout.ground} />
       <Zones />
 
-      {layout.roads.map((road) => (
-        <Road key={road.id} item={road} />
+      {roadLayers.map(({ item, layer }) => (
+        <Road key={item.id} item={item} layer={layer} />
       ))}
       <Markings markings={layout.markings} />
       <Terrain />
