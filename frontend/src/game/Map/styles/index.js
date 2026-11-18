@@ -27,6 +27,7 @@ import {
 } from './dateCourse.jsx'
 import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
+import { SgStudio } from './sg_studio.jsx'
 import { SungrayBeach } from './beach.jsx'
 import { FestivalCart } from './festival.jsx'
 import { ClawBooth } from './bk_clawMachine.jsx'
@@ -85,7 +86,7 @@ export const STYLES = {
   festivalCart: FestivalCart,
   agencyLobby: FilmingAlleyShop,
   artistLounge: FilmingAlleyShop,
-  soundStudio: FilmingAlleyShop,
+  soundStudio: SgStudio,
   bdayCafe: BdayCafe,
   popupStore: PopupStore,
   practiceRoom: FilmingAlleyShop,

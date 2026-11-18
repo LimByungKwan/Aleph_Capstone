@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Scene from './game/Scene.jsx'
 import UiRoot from './components/movieZone/UiRoot.jsx'
 import OwnerPage from './components/boss/OwnerPage.jsx'
+import StudioPanel from './components/sg/StudioPanel.jsx'
 
 // 주소 # 뒤로 화면 전환 (라우터 라이브러리 없이)
 //   #/       → 3D 맵 + 게임 UI(대화창·스탬프북·쿠폰함)  — 혜진
@@ -27,6 +28,7 @@ export default function App() {
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <Scene />
       <UiRoot />
+      <StudioPanel />
     </div>
   )
 }
