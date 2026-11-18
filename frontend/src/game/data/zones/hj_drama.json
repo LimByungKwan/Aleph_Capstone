@@ -14,7 +14,12 @@
     {"id": "vintage_plaza", "style": "stone", "position": [2,6], "size": [16,0.12,20], "rotationDeg": 0},
     {"id": "plaza_link", "style": "stone", "position": [2,-2.5], "size": [3,0.12,4], "rotationDeg": 0},
     {"id": "breakwater_entry", "style": "stone", "position": [-38.5,24], "size": [5,0.14,3.8], "rotationDeg": 0},
-    {"id": "harbor_lawn", "color": "#8fb86a", "position": [31,30], "size": [18,0.05,20], "rotationDeg": 0},
+    {"id": "coastwalk", "style": "gardenPath", "position": [-38.5,-6.5], "size": [2.8,0.10,62], "rotationDeg": 0},
+    {"id": "plaza_coast_link", "style": "gardenPath", "position": [-19.25,-37], "size": [38.5,0.11,2.7], "rotationDeg": 0},
+    {"id": "beach_coast_link", "style": "gardenPath", "position": [-47,-25], "size": [18.5,0.112,2.7], "rotationDeg": 0},
+    {"id": "beach_boardwalk", "style": "stone", "position": [-55.5,-15], "size": [2.6,0.106,22.5], "rotationDeg": 0},
+    {"id": "retro_market_walk", "style": "gardenPath", "position": [-3.5,14], "size": [12.5,0.13,3.4], "rotationDeg": 0},
+    {"id": "cyber_walk", "style": "gardenPath", "position": [26,15], "size": [16,0.115,2.8], "rotationDeg": 0},
     {"id": "hanok_lawn_w", "color": "#9cc27a", "position": [-36.5,-5], "size": [7,0.05,58], "rotationDeg": 0}
   ],
 
@@ -33,6 +38,12 @@
     {"id": "b_mural_1988", "style": "hjBrickBuilding", "position": [5,21], "size": [8,10,6], "rotationDeg": 0, "model": null, "brick": false, "color": "#cdbfa8", "mural": "front", "awning": ["#c86d51", "#f9f6ee"], "signs": [{"text": "추억 문방구", "bg": "#fff7d6", "fg": "#1e3a8a"}]},
     {"id": "b_vintage_sw", "style": "hjBrickBuilding", "position": [-5,20], "size": [7,7,6], "rotationDeg": 0, "model": null, "awning": ["#78826d", "#f4f1ea"], "signs": [{"text": "골목 이발소", "bg": "#ffffff", "fg": "#1d4ed8"}]},
     {"id": "b_books_ne", "style": "hjBrickBuilding", "position": [11,-30], "size": [10,9,8], "rotationDeg": -90, "model": null, "roofTank": true, "awning": ["#0369a1", "#f4f1ea"], "signs": [{"text": "등대 서점", "bg": "#e0f2fe", "fg": "#075985"}]},
+
+    {"id": "cyber_tower", "style": "hjCyberTower", "position": [31,-7], "size": [8,23,8], "rotationDeg": -32, "color": "#35405b", "text": "사이버 서울 타워", "secondary": "네온 광장"},
+    {"id": "cyber_archive", "style": "hjCyberTower", "position": [35,-19], "size": [5.8,15,5.8], "rotationDeg": 0, "color": "#3a3751", "accent": "pink", "text": "미래 서울 기록관", "secondary": "광학 연구소"},
+    {"id": "cyber_observatory", "style": "hjCyberTower", "position": [37,-32], "size": [4.8,18,5.1], "color": "#39445c", "text": "도시 관측소", "secondary": "옥상 전망대"},
+    {"id": "cyber_relay", "style": "hjCyberTower", "position": [26.8,-25], "size": [4.5,12,4.8], "accent": "pink", "rotationDeg": -18, "color": "#4a415b", "text": "전파 중계소", "secondary": "미래 통신"},
+    {"id": "medic_center", "style": "hjCyberTower", "position": [32,8], "size": [8,10.5,7], "rotationDeg": -24, "color": "#2c5361", "accent": "pink", "text": "AI 의료 센터", "secondary": "시민 진료실"},
 
     {"id": "b_snack", "style": "hjBrickBuilding", "position": [8,37.5], "size": [9,6,5], "rotationDeg": 180, "model": null, "awning": ["#ea580c", "#fff7ed"], "signs": [{"text": "정류장 분식", "bg": "#ffedd5", "fg": "#c2410c"}]},
     {"id": "b_laundry", "style": "hjBrickBuilding", "position": [-20,37.5], "size": [9,6,5], "rotationDeg": 180, "model": null, "brick": false, "color": "#e6d8c3", "awning": ["#7c3aed", "#f5f3ff"], "signs": [{"text": "골목 세탁소", "bg": "#f5f3ff", "fg": "#5b21b6"}]}
@@ -83,12 +94,30 @@
     {"id": "plaza_lantern_1", "style": "hjLantern", "position": [-5.4,-3], "size": [0.45,0.9,0.45], "collider": [0.45,0.9,0.45], "rotationDeg": 0},
     {"id": "plaza_lantern_2", "style": "hjLantern", "position": [9.4,15.5], "size": [0.45,0.9,0.45], "collider": [0.45,0.9,0.45], "rotationDeg": 0},
     {"id": "plaza_lamp", "style": "lamp", "position": [9.6,-3], "size": [0.3,4.5,0.3], "rotationDeg": 180},
-    {"id": "film_portal", "style": "filmPortal", "position": [2,12.5], "size": [2.6,0.1,2.6], "collider": false, "rotationDeg": 0,
+    {"id": "retro_seam", "style": "hjRift", "position": [0,0], "size": [25,0.1,49], "collider": false,
+      "points": [[4,-21],[6,-14],[10,-10],[9,-6],[14,0],[13,5],[19,15],[17.8,20],[21.2,23],[21,29]]},
+    {"id": "future_grid", "style": "hjCyberGrid", "position": [28.5,-0.5], "size": [21,0.1,66], "collider": false},
+    {"id": "skywalk_center", "style": "hjSkywalk", "position": [31.5,0.8], "size": [10,6.5,2.4], "rotationDeg": 90, "collider": false},
+    {"id": "skywalk_archive", "style": "hjSkywalk", "position": [33,-13.4], "size": [9.5,10.7,1.9], "rotationDeg": 110, "collider": false},
+    {"id": "future_police_car", "style": "hjFloatingCar", "position": [26,9], "size": [3.1,5.7,1.4], "rotationDeg": -23, "police": true, "collider": false},
+    {"id": "future_commuter_car", "style": "hjFloatingCar", "position": [36,-2], "size": [2.8,8.1,1.3], "rotationDeg": 20, "collider": false},
+    {"id": "lunar_base", "style": "hjLunarBase", "position": [30,24], "size": [10,3.2,8], "rotationDeg": -12, "collider": false},
+    {"id": "retro_stairs", "style": "hjRetroStairs", "position": [-6,0.5], "size": [2.1,1.5,3.2], "rotationDeg": 0},
+    {"id": "pony_taxi", "style": "hjCar", "position": [-8,26.9], "size": [3.7,1.4,1.65], "rotationDeg": 10, "color": "#ddb344"},
+    {"id": "retro_market", "style": "hjFruitCart", "position": [4,11.8], "size": [1.55,2.0,0.85], "rotationDeg": 6, "awning": ["#863e32","#efcf9a"]},
+    {"id": "retro_market_sign", "style": "hjAFrameSign", "position": [5,12.4], "size": [0.74,1.15,0.58], "collider": false, "text": "시장\n골목 슈퍼"},
+    {"id": "retro_shop_sign", "style": "hjAFrameSign", "position": [-4.25,-3.8], "size": [0.74,1.15,0.58], "collider": false, "text": "구멍가게"},
+    {"id": "retro_hanok_sign", "style": "hjAFrameSign", "position": [-23.9,-12], "size": [0.76,1.15,0.58], "rotationDeg": 90, "collider": false, "text": "다시, 한옥"},
+    {"id": "retro_crew_1", "style": "hjRetroCrew", "position": [1.4,10], "size": [0.4,1.1,0.4], "color": "#a77b51", "collider": false},
+    {"id": "retro_crew_2", "style": "hjRetroCrew", "position": [-4,13], "size": [0.4,1.1,0.4], "color": "#6b8573", "collider": false},
+    {"id": "coast_direction", "style": "hjAFrameSign", "position": [-36.6,19], "size": [1,1.3,0.6], "collider": false, "text": "해변 · 중앙 광장\n↑"},
+    {"id": "plaza_direction", "style": "hjAFrameSign", "position": [-36.5,-35.4], "size": [1,1.3,0.6], "collider": false, "text": "중앙 광장 →\n해변 ←"},
+    {"id": "film_portal", "style": "filmPortal", "position": [19,15], "size": [3.7,0.1,3.7], "elevation": 0.145, "collider": false, "rotationDeg": -35, "warpHub": true,
       "portal": {
-        "title": "명장면 세트장",
-        "work": "영화 「여름의 기억」 (가상 작품)",
-        "synopsis": "장마가 끝난 첫날, 버스를 놓친 두 사람이 정류장 지붕 아래에서 처음 말을 건넨다. 비가 그친 줄도 모르고 이야기를 이어 가던 그날 오후가, 둘의 여름 전체가 된다.",
-        "points": ["빈티지 골목 벽화 앞, 해 질 무렵 역광 사진", "정류장 포스터 앞에서 우산을 같이 쓰는 구도", "고백 담벼락 전구줄이 켜지는 저녁 7시"]
+        "title": "시공간 워프 허브",
+        "work": "가상 영화 「서울, 두 개의 시간」",
+        "synopsis": "오래된 전화 부스에서 수화기를 들면 벽돌 골목의 오후와 네온이 흐르는 미래 서울이 한 장면에 겹친다.",
+        "points": ["왼편 레트로 골목에서 노란 택시와 시장 찾기", "오른편 사이버 서울 타워와 하늘다리 둘러보기", "달 기지의 우주인과 로버 찾기"]
       }},
 
     {"id": "blue_gate", "style": "hjBlueGate", "position": [0.3,8.2], "size": [3.1,2.9,0.36], "rotationDeg": 180, "collider": false},
