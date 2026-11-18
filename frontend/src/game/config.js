@@ -55,6 +55,43 @@ export const CLOUDS_DRIFT = true // 구름이 천천히 흘러감
 export const SHOW_MOUNTAINS = true // 맵 둘레 먼 산
 export const SHADOW_AREA = 150 // 그림자가 생기는 범위 (중심에서 ±m)
 
+// ── 시간대 (설정창 ⚙에서 아침 / 점심 / 밤 선택) ──
+// sky: 하늘 위·중간·지평선·해(달) 빛번짐 색 / sun: 해(달) 방향 / light: 햇빛 색·세기
+// hemi: 전체 조명 [하늘색, 땅색, 세기] / fog: 안개 색 / cloud: 구름 색 / stars: 별 보이기(0~1)
+export const DEFAULT_TIME = 'noon'
+export const TIME_PRESETS = {
+  morning: {
+    label: '아침',
+    sky: { top: '#8fc3ee', middle: '#d3e6f6', horizon: '#ffcf9f', sun: '#ffd9a0' },
+    sun: [150, 45, 70],
+    light: { color: '#ffd9b3', intensity: 1.3 },
+    hemi: ['#ffe9dc', '#b9a58e', 0.55],
+    fog: '#f6d8c2',
+    cloud: '#fff1e6',
+    stars: 0,
+  },
+  noon: {
+    label: '점심',
+    sky: { top: SKY_COLORS.top, middle: SKY_COLORS.middle, horizon: SKY_COLORS.horizon, sun: SKY_COLORS.sun },
+    sun: SUN_POSITION,
+    light: { color: '#fff4e6', intensity: 1.6 },
+    hemi: ['#fff0f5', '#c2ae98', 0.65],
+    fog: SKY_COLORS.fog,
+    cloud: '#ffffff',
+    stars: 0,
+  },
+  night: {
+    label: '밤',
+    sky: { top: '#0b1236', middle: '#1f2659', horizon: '#4d3a6f', sun: '#cfd8ff' },
+    sun: [-80, 120, -60], // 밤에는 달 방향
+    light: { color: '#a9b8ff', intensity: 0.6 }, // 달빛
+    hemi: ['#7480c4', '#5a4636', 1.0], // 하늘은 푸른 밤빛, 땅은 거리 불빛이 비친 따뜻한 색 (너무 깜깜하지 않게)
+    fog: '#2b2a52',
+    cloud: '#4a4f7a',
+    stars: 1,
+  },
+}
+
 // 상호작용 지점 타입별 색
 export const PLACE_COLORS = {
   spot: '#ff8c42', // 촬영지: 주황

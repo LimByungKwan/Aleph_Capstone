@@ -26,14 +26,19 @@ import {
   SUN_POSITION,
 } from './config.js'
 import { labelLayer } from './labelLayer.js'
-import SeasonPicker from './SeasonPicker.jsx'
+import { useSettings } from './settingsStore.js'
+import { live } from './timeOfDay.js'
+import SettingsPanel from './SettingsPanel.jsx'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
+import ShaderWarmup from './ShaderWarmup.jsx'
+import PointLightLock from './PointLightLock.jsx'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
 export default function Scene() {
   const [playing, setPlaying] = useState(!FREE_CAMERA)
-  const [highDetail, setHighDetail] = useState(false)
+  // 그래픽 품질은 설정창(⚙)과 왼쪽 '고화질' 체크박스가 같은 값을 씀 (기본: 낮음)
+  const highDetail = useSettings((state) => state.quality === 'high')
   const playerRef = useRef(null) // 캐릭터 위치를 카메라·센서와 공유
 
   const startPlay = (event) => {
@@ -59,8 +64,8 @@ export default function Scene() {
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
           <PastelSky />
 
-          {/* 따뜻한 전체 조명 + 그림자 있는 태양광 1개 (그림자는 보고 있는 곳 주변만) */}
-          <hemisphereLight args={['#fff0f5', '#c2ae98', 0.65]} />
+          {/* 전체 조명 + 그림자 있는 태양광(밤에는 달빛) 1개 — 계절·시간대에 따라 색·세기가 바뀜 (그림자는 보고 있는 곳 주변만) */}
+          <SkyAmbient />
           <SunLight castShadow={highDetail} />
 
           <MapLayout showStartMarker={!playing} highDetail={highDetail} />
@@ -84,9 +89,12 @@ export default function Scene() {
           </Suspense>
 
           {playing ? <InteractionKeys /> : <OverviewCamera />}
+          <PointLightLock />
+          <ShaderWarmup trigger={`${playing}-${highDetail}`} />
         </Canvas>
 
-        <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} highDetail={highDetail} setHighDetail={setHighDetail} />
+        <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
+        <SettingsPanel />
       </div>
     </KeyboardControls>
   )
@@ -96,6 +104,8 @@ export default function Scene() {
 // → 멀리 있는 건물은 그림자 계산에서 빠지고, 같은 그림자 해상도로 더 선명해짐
 const SHADOW_MIN_AREA = 35
 const lookTarget = new THREE.Vector3()
+
+const SUN_DISTANCE = Math.hypot(...SUN_POSITION)
 
 function SunLight({ castShadow }) {
   const lightRef = useRef(null)
@@ -108,10 +118,15 @@ function SunLight({ castShadow }) {
     else if (controls?.target) lookTarget.copy(controls.target)
     else lookTarget.set(0, 0, 0)
 
+    // 시간대에 따라 해(밤엔 달)의 색·세기·방향
+    light.color.copy(live.lightColor)
+    light.intensity = live.lightIntensity
+
     // 2m 단위로 맞춰 움직여서 그림자가 지글거리지 않게
     const x = Math.round(lookTarget.x / 2) * 2
     const z = Math.round(lookTarget.z / 2) * 2
-    light.position.set(x + SUN_POSITION[0], SUN_POSITION[1], z + SUN_POSITION[2])
+    const dir = live.sunDir
+    light.position.set(x + dir.x * SUN_DISTANCE, Math.max(dir.y, 0.15) * SUN_DISTANCE, z + dir.z * SUN_DISTANCE)
     light.target.position.set(x, 0, z)
     light.target.updateMatrixWorld()
 
@@ -142,6 +157,19 @@ function SunLight({ castShadow }) {
       shadow-bias={-0.0005}
     />
   )
+}
+
+// 전체 조명 (하늘빛 + 땅에서 반사되는 빛): 시간대에 따라 색·세기
+function SkyAmbient() {
+  const ref = useRef(null)
+  useFrame(() => {
+    const light = ref.current
+    if (!light) return
+    light.color.copy(live.hemiSky)
+    light.groundColor.copy(live.hemiGround)
+    light.intensity = live.hemiIntensity
+  })
+  return <hemisphereLight ref={ref} args={['#fff0f5', '#c2ae98', 0.65]} />
 }
 
 // 둘러보기 카메라. 땅 밑으로 못 내려가고, 옆으로 끌면 땅과 평행하게 이동
@@ -234,9 +262,8 @@ function OverviewCamera() {
 }
 
 // 왼쪽 위 안내 + 모드 전환 버튼 + (확인용) 게임 스토어 값
-function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
+function HelpPanel({ playing, onStart, onStop }) {
   const [showHelp, setShowHelp] = useState(true)
-  const [showSettings, setShowSettings] = useState(false)
   const compactButton = { pointerEvents: 'auto', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, border: 0 }
 
   return (
@@ -260,24 +287,6 @@ function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
           onClick={(event) => { setShowHelp(!showHelp); event.currentTarget.blur() }}>
           {showHelp ? '안내 숨기기' : '안내 보기'}
         </button>
-        <button type="button" style={compactButton} aria-expanded={showSettings} aria-controls="scenewalk-settings"
-          onClick={(event) => { setShowSettings(!showSettings); event.currentTarget.blur() }}>
-          ⚙ 설정
-        </button>
-      </div>
-      <div id="scenewalk-settings" hidden={!showSettings}>
-        <SeasonPicker />
-        <label style={{ display: 'block', marginTop: 4, pointerEvents: 'auto' }}>
-          <input
-            type="checkbox"
-            checked={highDetail}
-            onChange={(event) => {
-              setHighDetail(event.currentTarget.checked)
-              event.currentTarget.blur()
-            }}
-          />{' '}
-          고화질 (그림자·고해상도)
-        </label>
       </div>
       <div id="scenewalk-help" hidden={!showHelp} style={{ marginTop: 6 }}>
         {playing

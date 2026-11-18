@@ -123,6 +123,11 @@ function eulerOf(yaw, pitch) {
 export function buildDeck(deck, terrain) {
   const key = JSON.stringify(deck)
   if (deckCache.has(key)) return deckCache.get(key)
+  if (deck.smooth) {
+    const result = buildCurvedDeck(deck, terrain)
+    deckCache.set(key, result)
+    return result
+  }
 
   const w = deck.width ?? 2.4
   const pts = deck.points
@@ -218,6 +223,111 @@ export function buildDeck(deck, terrain) {
   deckCache.set(key, result)
   return result
 }
+
+// ── 꼬불꼬불한 데크 (deck.smooth = true) ──────
+// points를 지나는 부드러운 곡선(Catmull-Rom)을 약 1m 간격으로 잘라 발판을 이어 붙임.
+// 높이는 처음 → 끝 높이로 고르게 오르되, 언덕 경사면(울퉁불퉁)에서는 땅 위 0.6m, 평평한 곳은 0.1m 위로 올림.
+// 꺾이는 층계참 없이 자연스럽게 이어지고, 끝은 언덕 꼭대기 바닥과 거의 같은 높이로 붙어요.
+// 반환 형식은 buildDeck과 같아서 화면·충돌 코드는 그대로 씀
+function buildCurvedDeck(deck, terrain) {
+  const w = deck.width ?? 2.4
+  const ctrl = deck.points
+  const curve = new THREE.CatmullRomCurve3(
+    ctrl.map(([x, z]) => new THREE.Vector3(x, 0, z)),
+    false,
+    'centripetal',
+  )
+  const n = Math.max(2, Math.ceil(curve.getLength() / (deck.step ?? 1)))
+  const pts = curve.getSpacedPoints(n)
+  const h0 = ctrl[0][2]
+  const h1 = ctrl[ctrl.length - 1][2]
+  // 언덕 경사면은 로우폴리 꼭짓점이 ±0.15 울퉁불퉁 + 삼각형 보간 오차 → 넉넉히 띄움
+  const bumpy = (x, z) =>
+    terrain.some((t) => {
+      if (t.type !== 'hill') return false
+      const h = hillHeight(t, x, z)
+      return h > 0.02 && h < t.height - 0.02
+    })
+  const raw = pts.map((p, i) => {
+    if (i === 0 || i === n) return i === 0 ? h0 : h1
+    const ground = terrainHeightAt(terrain, p.x, p.z)
+    return Math.max(h0 + ((h1 - h0) * i) / n, ground + (bumpy(p.x, p.z) ? 0.6 : 0.1))
+  })
+  // 높이를 살짝 고르게 (울컥거리지 않게), 양 끝은 그대로
+  const H = raw.map((h, i) => {
+    if (i === 0 || i === n) return h
+    let sum = 0
+    let count = 0
+    for (let k = Math.max(0, i - 2); k <= Math.min(n, i + 2); k++) {
+      sum += raw[k]
+      count++
+    }
+    return Math.max(sum / count, raw[i])
+  })
+  const yawAt = (i) => Math.atan2(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)
+  const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)))
+
+  const boards = []
+  const rails = []
+  const railBlocks = []
+  const railPosts = []
+  const supports = []
+
+  // 발판: 굽은 곳 바깥쪽에 틈이 생기지 않게 조금 길게
+  for (let i = 0; i < n; i++) {
+    const a = pts[i]
+    const b = pts[i + 1]
+    const L = Math.hypot(b.x - a.x, b.z - a.z)
+    const yaw = yawAt(i)
+    const bend = Math.max(i > 0 ? turn(yaw, yawAt(i - 1)) : 0, i + 1 < n ? turn(yaw, yawAt(i + 1)) : 0)
+    const extra = Math.min(0.6, w * Math.tan(bend / 2))
+    const dy = H[i + 1] - H[i]
+    const len = Math.hypot(L, dy) + extra
+    boards.push({
+      p: [(a.x + b.x) / 2, (H[i] + H[i + 1]) / 2 - BOARD_THICK / 2 + 0.05, (a.z + b.z) / 2],
+      r: eulerOf(yaw, -Math.atan2(dy, L)),
+      s: [w, BOARD_THICK, len],
+    })
+  }
+
+  // 난간: 각 점의 양옆(진행 방향 오른쪽 = (cos, -sin)) 점을 이어서
+  const sidePoint = (i, side) => {
+    const prev = pts[Math.max(0, i - 1)]
+    const next = pts[Math.min(n, i + 1)]
+    const yaw = Math.atan2(next.x - prev.x, next.z - prev.z)
+    const o = (w / 2 - 0.05) * side
+    return [pts[i].x + Math.cos(yaw) * o, H[i], pts[i].z - Math.sin(yaw) * o]
+  }
+  for (const side of [1, -1]) {
+    const S = range(n + 1).map((i) => sidePoint(i, side))
+    for (let i = 0; i < n; i++) {
+      const [ax, ay, az] = S[i]
+      const [bx, by, bz] = S[i + 1]
+      const L = Math.hypot(bx - ax, bz - az)
+      if (L < 0.02) continue
+      const len = Math.hypot(L, by - ay) + 0.04
+      const r = eulerOf(Math.atan2(bx - ax, bz - az), -Math.atan2(by - ay, L))
+      const mid = [(ax + bx) / 2, (ay + by) / 2, (az + bz) / 2]
+      rails.push({ p: [mid[0], mid[1] + RAIL_HEIGHT, mid[2]], r, s: [0.08, 0.08, len] })
+      rails.push({ p: [mid[0], mid[1] + RAIL_HEIGHT * 0.5, mid[2]], r, s: [0.05, 0.05, len] })
+      railBlocks.push({ p: [mid[0], mid[1] + 0.55, mid[2]], r, s: [0.1, 1.1, len] })
+    }
+    S.forEach(([x, y, z], i) => {
+      if (i % 2 === 0 || i === n) railPosts.push({ p: [x, y + RAIL_HEIGHT / 2, z], s: [0.05, RAIL_HEIGHT, 0.05] })
+    })
+    // 기둥 (약 2.5m마다)
+    for (let i = 0; i <= n; i += 3) {
+      const [x, y, z] = sidePoint(i, side * 0.7)
+      const bottom = terrainHeightAt(terrain, x, z)
+      const top = y - 0.15
+      if (top - bottom > 0.3) supports.push({ p: [x, (top + bottom) / 2, z], s: [0.12, top - bottom, 0.12] })
+    }
+  }
+
+  return { boards, rails, railBlocks, railPosts, supports }
+}
+
+const range = (count) => Array.from({ length: count }, (_, i) => i)
 
 // ── 계단 ─────────────────────────────────────
 // stairs = { from: [x, z, 높이], to: [x, z, 높이], width }
@@ -343,7 +453,7 @@ export const TOWER = {
   shaftRadius: 2.45,
   liftRadius: 2.2,
   tubeBottom: 2.7, // 이 높이부터 엘리베이터 통로 유리벽 (아래는 타는 입구)
-  deckFloor: 18,
+  deckFloor: 23, // 전망층 바닥 높이 (타워 바닥 기준, 언덕 위라 실제로는 약 32m)
   deckRadius: 7,
   deckWallHeight: 3.5,
 }

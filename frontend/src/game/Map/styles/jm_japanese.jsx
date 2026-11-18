@@ -411,8 +411,8 @@ export function JmHut({ item }) {
         <meshStandardMaterial color="#a68660" />
       </mesh>
       {/* 문 + 창문 */}
-      <mesh position={[-w * 0.15, lift + wallH * 0.42, bodyZ + bodyD / 2 + 0.05]}>
-        <planeGeometry args={[0.9, wallH * 0.8]} />
+      <mesh position={[-w * 0.15, lift + wallH * 0.36, bodyZ + bodyD / 2 + 0.05]}>
+        <planeGeometry args={[0.9, wallH * 0.72]} />
         <meshStandardMaterial color="#3b2a1d" />
       </mesh>
       <mesh position={[w * 0.25, lift + wallH * 0.62, bodyZ + bodyD / 2 + 0.05]}>
@@ -445,10 +445,10 @@ export function JmHut({ item }) {
         <planeGeometry args={[bodyD * 0.8, wallH * 0.75]} />
         <meshStandardMaterial color="#2f6fd6" side={THREE.DoubleSide} />
       </mesh>
-      {/* 손글씨 나무 간판 (문 위) */}
-      <mesh position={[-w * 0.15, lift + wallH + 0.05, bodyZ + bodyD / 2 + 0.25]} rotation={[-0.1, 0, -0.04]}>
-        <planeGeometry args={[1.8, 0.45]} />
-        <GlowMaterial map={getJpSignTexture(sign, '#c9a46a', '#3b2a1d', 1.8 / 0.45)} />
+      {/* 손글씨 나무 간판 (문 위 벽면) — 앞으로 기운 지붕·처마에 가리거나 뚫리지 않도록 벽에 붙이고 처마 끝보다 아래로 */}
+      <mesh position={[-w * 0.15, lift + wallH * 0.72 + 0.23, bodyZ + bodyD / 2 + 0.06]} rotation={[0, 0, -0.04]}>
+        <planeGeometry args={[1.8, 0.38]} />
+        <GlowMaterial map={getJpSignTexture(sign, '#c9a46a', '#3b2a1d', 1.8 / 0.38)} />
       </mesh>
     </group>
   )

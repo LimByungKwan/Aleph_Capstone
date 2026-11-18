@@ -1,5 +1,6 @@
 import { DoubleSide, Shape, ShapeGeometry } from 'three'
 import { zones } from '../data/mapData.js'
+import { useSettings } from '../settingsStore.js'
 import { Box, Cyl, GEO, Instances, mat } from './styles/kit.jsx'
 import { getSignTexture } from './styles/textures.js'
 import { getWoodSignTexture } from './styles/hj/hjTextures.js'
@@ -56,13 +57,14 @@ function borders(zone) {
 const themeBorders = zones.map((zone) => ({ zone, items: borders(zone) }))
 
 export default function Zones() {
+  const showZones = useSettings((state) => state.showZones)
   return themeBorders.map(({ zone, items }) => {
     const gate = GATES[zone.zoneId]
     const { position: [x, z], width = 6 } = zone.entrance ?? { position: [0, 0] }
     const [ox, oz] = zone.origin
     return (
       <group key={zone.zoneId} position={[ox, 0, oz]}>
-        <Instances geometry={GEO.box} material={curbMaterial} items={items} />
+        {showZones && <Instances geometry={GEO.box} material={curbMaterial} items={items} />}
         {zone.entrance && gate && (
           <group name={gate.title} position={[x, 0, z]} rotation={[0, gate.face * Math.PI / 180, 0]}>
             <ThemeGate id={zone.zoneId} gate={gate} width={width} />
