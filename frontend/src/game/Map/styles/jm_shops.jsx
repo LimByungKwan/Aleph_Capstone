@@ -45,7 +45,8 @@ function Cyl({ p, r, h, c, e, rot }) {
 const GLASS = '#a9cbe0'
 
 // ── 가게 ──────────────────────────────────────
-// item.shop = { look, enterable, sign: { text, bg, fg } }
+// item.shop = { look, interior?, enterable, sign: { text, bg, fg } }
+// interior: 겉모습(look)은 같고 안만 다를 때 (예: 마치야 겉모습 + 찻집 내부 = "teahouse")
 export function JmShopRoom({ item }) {
   const [w, h, d] = item.size
   const shop = item.shop ?? {}
@@ -147,7 +148,7 @@ export function JmShopRoom({ item }) {
       )}
 
       {/* 안쪽 가구 */}
-      {enterable && <Interior look={shop.look} w={w} d={d} wallH={wallH} />}
+      {enterable && <Interior look={shop.interior ?? shop.look} w={w} d={d} wallH={wallH} />}
     </group>
   )
 }
@@ -158,6 +159,7 @@ function Interior({ look, w, d, wallH }) {
   if (look === 'bakery') return <BakeryInterior w={w} back={back} d={d} />
   if (look === 'antique') return <AntiqueInterior w={w} back={back} d={d} wallH={wallH} />
   if (look === 'machiya') return <UdonInterior w={w} back={back} d={d} wallH={wallH} />
+  if (look === 'teahouse') return <TeahouseInterior w={w} back={back} d={d} wallH={wallH} />
   return null
 }
 
@@ -310,6 +312,114 @@ function UdonInterior({ w, back, d, wallH }) {
       {/* 제등 */}
       {[-1, 1].map((i) => (
         <Cyl key={i} p={[i * w * 0.25, wallH - 0.6, 0.5]} r={0.2} h={0.45} c="#f5f0e6" e="#ffcc66" />
+      ))}
+    </group>
+  )
+}
+
+// 요괴 찻집: 왼쪽 다다미 좌석(낮은 상 2개) + 오른쪽 벽 화과자 진열장 + 뒤쪽 차 카운터
+// 입구에서 뒤 카운터까지 가운데 통로(x -1~1)는 비워 둠
+const WAGASHI = ['#f9c6d3', '#9bbf6a', '#f5f0e6', '#8e6aa8', '#e8b04a']
+function TeahouseInterior({ w, back, d, wallH }) {
+  const front = d / 2
+  const tatamiW = w / 2 - 1.35
+  const tatamiX = -w / 2 + T + tatamiW / 2
+  const tatamiD = d - 1.8
+  const tatamiZ = back + tatamiD / 2
+  const caseX = w / 2 - T - 0.4
+  return (
+    <group>
+      {/* 다다미 좌석 (높이 0.3) + 이음선 */}
+      <Box p={[tatamiX, 0.25, tatamiZ]} s={[tatamiW, 0.3, tatamiD]} c="#c8c38a" />
+      <Box p={[tatamiX, 0.41, tatamiZ]} s={[0.04, 0.01, tatamiD - 0.1]} c="#7a7448" />
+      {range(2).map((i) => (
+        <Box key={i} p={[tatamiX, 0.41, back + ((i + 1) * tatamiD) / 3]} s={[tatamiW - 0.1, 0.01, 0.04]} c="#7a7448" />
+      ))}
+      {/* 낮은 상 + 방석 + 찻잔·화과자 접시 */}
+      {[-1, 1].map((i) => (
+        <group key={i} position={[tatamiX, 0.4, tatamiZ + i * 1.3]}>
+          <Box p={[0, 0.3, 0]} s={[0.9, 0.06, 0.9]} c="#4a2f1f" />
+          <Box p={[0, 0.14, 0]} s={[0.12, 0.28, 0.12]} c="#4a2f1f" />
+          {[-1, 1].map((c) => (
+            <Box key={c} p={[c * 0.75, 0.04, 0]} s={[0.5, 0.08, 0.5]} c="#14532d" />
+          ))}
+          {[-1, 1].map((c) => (
+            <Cyl key={c} p={[c * 0.25, 0.38, 0.15]} r={0.06} h={0.1} c="#5f7f4a" />
+          ))}
+          <Cyl p={[0, 0.34, -0.2]} r={0.14} h={0.02} c="#f5f0e6" />
+          <mesh position={[0, 0.39, -0.2]}>
+            <sphereGeometry args={[0.06, 12, 8]} />
+            <meshStandardMaterial color={WAGASHI[i < 0 ? 0 : 1]} />
+          </mesh>
+        </group>
+      ))}
+      {/* 족자 (다다미 쪽 뒷벽) */}
+      <Box p={[tatamiX, 2.3, back + 0.02]} s={[0.8, 1.6, 0.03]} c="#efe6cf" />
+      <Box p={[tatamiX, 2.4, back + 0.04]} s={[0.08, 0.9, 0.01]} c="#2b1d14" />
+      {[1.5, 3.1].map((y) => (
+        <Box key={y} p={[tatamiX, y, back + 0.04]} s={[0.9, 0.05, 0.05]} c="#3f2a1d" />
+      ))}
+
+      {/* 화과자 진열장 (오른쪽 벽, 유리 덮개) */}
+      <Box p={[caseX, 0.55, 0.6]} s={[0.7, 0.86, 2.4]} c="#3f2a1d" />
+      <Box p={[caseX, 1.18, 0.6]} s={[0.7, 0.4, 2.4]} c={GLASS} o={0.3} />
+      {range(2).map((row) =>
+        range(6).map((i) => {
+          const z = 0.6 - 1.0 + (i * 2.0) / 5
+          const color = WAGASHI[(i + row * 2) % WAGASHI.length]
+          return row === 0 ? (
+            <mesh key={`${row}${i}`} position={[caseX - 0.12, 1.05, z]}>
+              <sphereGeometry args={[0.07, 12, 8]} />
+              <meshStandardMaterial color={color} />
+            </mesh>
+          ) : (
+            <Box key={`${row}${i}`} p={[caseX + 0.14, 1.04, z]} s={[0.12, 0.08, 0.18]} c={color} />
+          )
+        }),
+      )}
+
+      {/* 차 카운터 (뒤 오른쪽) + 화로·쇠주전자 + 차통 + 여우 인형 */}
+      <Box p={[w / 4 + 0.3, 0.55, back + 0.45]} s={[w / 2 - 1.2, 1.0, 0.7]} c="#5a3d2a" />
+      <Box p={[w / 4 + 0.3, 1.08, back + 0.45]} s={[w / 2 - 1.1, 0.06, 0.8]} c="#2b1d14" />
+      <Cyl p={[w / 4 - 0.4, 1.2, back + 0.45]} r={0.2} h={0.18} c="#6b6b6b" />
+      <mesh position={[w / 4 - 0.4, 1.42, back + 0.45]}>
+        <sphereGeometry args={[0.17, 14, 10]} />
+        <meshStandardMaterial color="#2a2a2a" />
+      </mesh>
+      {['#14532d', '#1f1f1f', '#7f1d1d'].map((c, i) => (
+        <Cyl key={c} p={[w / 4 + 0.4 + i * 0.3, 1.24, back + 0.35]} r={0.09} h={0.26} c={c} />
+      ))}
+      {[0, 1].map((i) => (
+        <group key={i} position={[w / 2 - T - 0.45 - i * 0.35, 1.11, back + 0.6]}>
+          <mesh position={[0, 0.16, 0]}>
+            <coneGeometry args={[0.09, 0.32, 10]} />
+            <meshStandardMaterial color="#f5f0e6" />
+          </mesh>
+          <Box p={[0, 0.12, 0.07]} s={[0.12, 0.06, 0.02]} c="#b91c1c" />
+        </group>
+      ))}
+
+      {/* 입구 왼쪽 구석: 외눈 우산 요괴 (접힌 우산 + 눈 하나) */}
+      <group position={[-w / 2 + T + 0.45, 0.12, front - T - 0.45]}>
+        <Cyl p={[0, 0.2, 0]} r={0.03} h={0.4} c="#5a3d2a" />
+        <mesh position={[0, 0.95, 0]}>
+          <coneGeometry args={[0.24, 1.1, 12]} />
+          <meshStandardMaterial color="#6d4c8f" />
+        </mesh>
+        <mesh position={[0.11, 0.9, -0.1]}>
+          <sphereGeometry args={[0.06, 12, 8]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0.15, 0.9, -0.13]}>
+          <sphereGeometry args={[0.03, 10, 6]} />
+          <meshStandardMaterial color="#111111" />
+        </mesh>
+      </group>
+
+      {/* 종이 제등 (가운데 붉은 것 하나 + 양옆) */}
+      <Cyl p={[0, wallH - 0.7, 0.3]} r={0.26} h={0.55} c="#c2410c" e="#ff9a4d" />
+      {[-1, 1].map((i) => (
+        <Cyl key={i} p={[i * w * 0.28, wallH - 0.6, -0.6]} r={0.18} h={0.4} c="#f5f0e6" e="#ffcc66" />
       ))}
     </group>
   )

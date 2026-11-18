@@ -36,7 +36,7 @@
     {"id": "jm_machiya_1", "style": "jmMachiya", "sugidama": true, "position": [-27,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "signs": [{"text": "氷華酒造", "bg": "#1e3a5f", "fg": "#f5f0e6"}]},
     {"id": "jm_machiya_2", "style": "jmMachiya", "sugidama": true, "position": [-18,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "signs": [{"text": "古典堂 書店", "bg": "#3f2a1d", "fg": "#f5e6c8"}]},
     {"id": "jm_udon", "style": "jmShopRoom", "position": [-9,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "collider": false, "shop": {"look": "machiya", "enterable": true, "sign": {"text": "狐うどん", "bg": "#7f1d1d", "fg": "#fef3c7"}}},
-    {"id": "jm_machiya_4", "style": "jmMachiya", "sugidama": true, "position": [9,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "signs": [{"text": "妖怪茶屋", "bg": "#14532d", "fg": "#f0fdf4"}]},
+    {"id": "jm_machiya_4", "style": "jmShopRoom", "position": [9,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "collider": false, "shop": {"look": "machiya", "interior": "teahouse", "enterable": true, "sign": {"text": "妖怪茶屋", "bg": "#14532d", "fg": "#f0fdf4"}}},
     {"id": "jm_machiya_5", "style": "jmMachiya", "sugidama": true, "position": [18,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "signs": [{"text": "お面屋", "bg": "#f5f0e6", "fg": "#7c2d12"}]},
     {"id": "jm_machiya_6", "style": "jmMachiya", "sugidama": true, "position": [27,-15], "size": [8,7,7], "rotationDeg": 180, "model": null, "signs": [{"text": "折鶴文具", "bg": "#1f2937", "fg": "#fde68a"}]},
     {"id": "jm_shrine", "style": "jmShrine", "position": [0,-36], "size": [12,9,7], "rotationDeg": 0, "model": null}
@@ -230,6 +230,11 @@
     {"id": "jm_udon_wall_left", "style": "jmCollider", "position": [-5.15,-15], "size": [0.3,7,7], "rotationDeg": 180},
     {"id": "jm_udon_wall_right", "style": "jmCollider", "position": [-12.85,-15], "size": [0.3,7,7], "rotationDeg": 180},
     {"id": "jm_udon_wall_front_l", "style": "jmCollider", "position": [-6.55,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180},
-    {"id": "jm_udon_wall_front_r", "style": "jmCollider", "position": [-11.45,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180}
+    {"id": "jm_udon_wall_front_r", "style": "jmCollider", "position": [-11.45,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180},
+    {"id": "jm_machiya_4_wall_back", "style": "jmCollider", "position": [9,-11.65], "size": [8,7,0.3], "rotationDeg": 180},
+    {"id": "jm_machiya_4_wall_left", "style": "jmCollider", "position": [12.85,-15], "size": [0.3,7,7], "rotationDeg": 180},
+    {"id": "jm_machiya_4_wall_right", "style": "jmCollider", "position": [5.15,-15], "size": [0.3,7,7], "rotationDeg": 180},
+    {"id": "jm_machiya_4_wall_front_l", "style": "jmCollider", "position": [11.45,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180},
+    {"id": "jm_machiya_4_wall_front_r", "style": "jmCollider", "position": [6.55,-18.35], "size": [3.1,7,0.3], "rotationDeg": 180}
   ]
 }
