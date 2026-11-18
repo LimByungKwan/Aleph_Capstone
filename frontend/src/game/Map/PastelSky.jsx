@@ -1,28 +1,26 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { CLOUDS_DRIFT, FOG_FAR, FOG_NEAR, SHOW_CLOUDS, SHOW_MOUNTAINS, SKY_COLORS, SUN_POSITION } from '../config.js'
 import { seeded } from './styles/kit.jsx'
-import { SEASON_LOOK, useSeason } from '../seasons.js'
 
 // 파스텔 하늘 세트. 인터넷 이미지(HDR) 없이 코드로만 그려요.
 // 최적화: 하늘 1번 + 구름 1번 + 먼 산 1번 + 바깥 땅 1번 = 그리기 호출 4번, 그림자 없음.
 
 export default function PastelSky() {
-  const look = SEASON_LOOK[useSeason()]
   return (
     <>
-      <fog attach="fog" args={[look.fog, FOG_NEAR, FOG_FAR]} />
-      <SkyDome colors={look.sky} />
-      <OuterGround color={look.meadow} />
+      <fog attach="fog" args={[SKY_COLORS.fog, FOG_NEAR, FOG_FAR]} />
+      <SkyDome />
+      <OuterGround />
       {SHOW_MOUNTAINS && <Mountains />}
       {SHOW_CLOUDS && <Clouds />}
     </>
   )
 }
 
-// ── 하늘 돔: 위 하늘색 → 지평선 복숭아빛 그라데이션 + 태양 빛번짐 ──
+// ── 하늘 돔: 짙은 파랑에서 옅은 푸른 지평선으로 이어지는 그라데이션 ──
 const skyVertex = /* glsl */ `
   varying vec3 vDir;
   void main() {
@@ -51,7 +49,7 @@ const skyFragment = /* glsl */ `
   }
 `
 
-function SkyDome({ colors }) {
+function SkyDome() {
   const ref = useRef(null)
   const material = useMemo(
     () =>
@@ -72,12 +70,6 @@ function SkyDome({ colors }) {
     [],
   )
   const geometry = useMemo(() => new THREE.SphereGeometry(10, 32, 16), [])
-  useLayoutEffect(() => {
-    const { top, middle, horizon } = material.uniforms
-    top.value.set(colors[0])
-    middle.value.set(colors[1])
-    horizon.value.set(colors[2])
-  }, [colors, material])
 
   // 하늘은 카메라를 따라다님 (아무리 멀리 가도 하늘 끝에 닿지 않게)
   useFrame(({ camera }) => ref.current?.position.copy(camera.position))
@@ -86,11 +78,11 @@ function SkyDome({ colors }) {
 }
 
 // ── 맵 바깥 땅 (지평선까지 이어지는 풀밭, 충돌 없음) ──
-function OuterGround({ color }) {
+function OuterGround() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
       <planeGeometry args={[2400, 2400]} />
-      <meshStandardMaterial color={color} roughness={1} />
+      <meshStandardMaterial color={SKY_COLORS.outerGround} roughness={1} />
     </mesh>
   )
 }
