@@ -29,6 +29,9 @@ import {
 } from './config.js'
 import { labelLayer } from './labelLayer.js'
 import { zones } from './data/mapData.js'
+import SeasonPicker from './SeasonPicker.jsx'
+import { SEASON_LOOK, useSeason } from './seasons.js'
+import SeasonalWeather from './Map/SeasonalWeather.jsx'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
@@ -65,6 +68,7 @@ export default function Scene() {
           <SunLight castShadow={highDetail} />
 
           <MapLayout showStartMarker={!playing} highDetail={highDetail} />
+          {playing && <SeasonalWeather playerRef={playerRef} />}
           <PlaceMarkers />
 
           {/* 물리 엔진(Rapier)은 처음에 잠깐 로딩이 필요해서 Suspense로 감쌈 */}
@@ -98,6 +102,7 @@ const SHADOW_MIN_AREA = 35
 const lookTarget = new THREE.Vector3()
 
 function SunLight({ castShadow }) {
+  const season = useSeason()
   const lightRef = useRef(null)
   const area = useRef(SHADOW_AREA)
 
@@ -130,7 +135,7 @@ function SunLight({ castShadow }) {
     <directionalLight
       ref={lightRef}
       intensity={1.6}
-      color="#fff4e6"
+      color={SEASON_LOOK[season].sun}
       castShadow={castShadow}
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-SHADOW_AREA}
@@ -192,6 +197,7 @@ function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
         : '왼쪽 드래그: 회전 · 오른쪽 드래그: 이동 · 휠: 확대/축소'}
 
       {SHOW_ZONES && <ZoneLegend />}
+      <SeasonPicker />
       <label style={{ display: 'block', marginTop: 4, pointerEvents: 'auto' }}>
         <input
           type="checkbox"

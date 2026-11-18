@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { SEASON } from './jm_seasons.jsx'
+import { useSeason } from '../../seasons.js'
 
 // 애니메이션 구역(JM) 전용: 영역마다 "무엇을 묘사했는지" 알아볼 수 있게 하는 세부 소품. 담당: 지민
 // 대부분 충돌 없이 써도 되는 작은 소품이에요 (필요한 것만 JSON에서 collider 지정).
@@ -30,6 +30,7 @@ function Cyl({ p, r1, r2, h, c, rot, seg = 10 }) {
 
 // ── 허수아비 (논 한가운데) ──────────────────────
 export function JmScarecrow() {
+  const season = useSeason()
   return (
     <group>
       <Cyl p={[0, 0.9, 0]} r1={0.04} h={1.8} c={WOOD} />
@@ -39,7 +40,7 @@ export function JmScarecrow() {
         <sphereGeometry args={[0.16, 10, 8]} />
         <meshStandardMaterial color="#efe6cf" />
       </mesh>
-      <Cyl p={[0, 1.8, 0]} r1={0.08} r2={0.34} h={0.14} c={SEASON === 'winter' ? SNOW : STRAW} seg={14} />
+      <Cyl p={[0, 1.8, 0]} r1={0.08} r2={0.34} h={0.14} c={season === 'winter' ? SNOW : STRAW} seg={14} />
     </group>
   )
 }
@@ -47,6 +48,7 @@ export function JmScarecrow() {
 // ── 볏단 걸이 (가을 논 옆, 벼를 말리는 나무 틀) ──────────
 // 가을에만 볏단이 걸려요. size [가로, 높이, 깊이]
 export function JmRiceRack({ item }) {
+  const season = useSeason()
   const [w, h] = item.size
   const posts = Math.max(2, Math.round(w / 1.5) + 1)
   return (
@@ -55,7 +57,7 @@ export function JmRiceRack({ item }) {
         <Cyl key={i} p={[-w / 2 + (w * i) / (posts - 1), h / 2, 0]} r1={0.04} h={h} c={WOOD} />
       ))}
       <Cyl p={[0, h - 0.25, 0]} r1={0.03} h={w} c={WOOD} rot={[0, 0, Math.PI / 2]} />
-      {SEASON === 'autumn' &&
+      {season === 'autumn' &&
         range(Math.round(w / 0.35)).map((i) => (
           <mesh key={i} position={[-w / 2 + 0.2 + i * 0.35, h - 0.6, 0]}>
             <coneGeometry args={[0.16, 0.75, 6]} />
@@ -68,13 +70,14 @@ export function JmRiceRack({ item }) {
 
 // ── 길가 작은 사당 (호코라) ────────────────────────
 export function JmHokora() {
+  const season = useSeason()
   return (
     <group>
       <Box p={[0, 0.25, 0]} s={[0.9, 0.5, 0.7]} c="#9a958c" />
       <Box p={[0, 0.85, 0]} s={[0.6, 0.7, 0.5]} c={WOOD} />
       <mesh position={[0, 1.35, 0]} rotation={[0, Math.PI / 4, 0]}>
         <coneGeometry args={[0.6, 0.4, 4]} />
-        <meshStandardMaterial color={SEASON === 'winter' ? SNOW : '#33373d'} flatShading />
+        <meshStandardMaterial color={season === 'winter' ? SNOW : '#33373d'} flatShading />
       </mesh>
       <Box p={[0, 0.85, 0.26]} s={[0.3, 0.4, 0.02]} c="#c8452f" />
     </group>
@@ -160,6 +163,7 @@ export function JmBall() {
 // ── 역 승강장 (지붕·기둥·벤치·노란 점자 블록) ─────────────
 // size [길이, 높이(승강장), 폭]. JSON에 "collider": [길이, 높이, 폭]
 export function JmPlatform({ item }) {
+  const season = useSeason()
   const [w, h, d] = item.size
   const roofY = h + 2.6
   return (
@@ -169,7 +173,7 @@ export function JmPlatform({ item }) {
       {range(3).map((i) => (
         <Cyl key={i} p={[-w / 3 + (i * w) / 3, h + 1.3, d / 4]} r1={0.07} h={2.6} c="#6b7280" />
       ))}
-      <Box p={[0, roofY, 0.1]} s={[w * 0.8, 0.12, d + 0.4]} c={SEASON === 'winter' ? SNOW : '#4b5563'} />
+      <Box p={[0, roofY, 0.1]} s={[w * 0.8, 0.12, d + 0.4]} c={season === 'winter' ? SNOW : '#4b5563'} />
       <Box p={[w * 0.15, h + 0.45, d / 4 + 0.3]} s={[1.6, 0.08, 0.4]} c="#2563eb" />
     </group>
   )
@@ -214,8 +218,9 @@ const FLOWERS = {
   winter: [SNOW, '#e5e7eb'],
 }
 export function JmFlowerBed({ item }) {
+  const season = useSeason()
   const [w, , d] = item.size
-  const colors = item.white ? ['#ffffff', '#f8fafc'] : FLOWERS[SEASON]
+  const colors = item.white ? ['#ffffff', '#f8fafc'] : FLOWERS[season]
   const n = Math.round(w * d * 4)
   const dots = useMemo(() => {
     let s = Math.round((w * 13 + d * 7) * 1000) || 1
@@ -225,8 +230,8 @@ export function JmFlowerBed({ item }) {
   return (
     <group>
       <Box p={[0, 0.12, 0]} s={[w, 0.24, d]} c="#6b4f3a" />
-      <Box p={[0, 0.25, 0]} s={[w - 0.15, 0.04, d - 0.15]} c={SEASON === 'winter' ? SNOW : '#4e7a34'} />
-      {SEASON !== 'winter' &&
+      <Box p={[0, 0.25, 0]} s={[w - 0.15, 0.04, d - 0.15]} c={season === 'winter' ? SNOW : '#4e7a34'} />
+      {season !== 'winter' &&
         dots.map(([x, z, k], i) => (
           <mesh key={i} position={[x, 0.33, z]}>
             <sphereGeometry args={[0.07, 6, 5]} />
@@ -283,13 +288,14 @@ export function JmSakeBarrels() {
 
 // ── 데미즈야 (신사 손 씻는 곳) ──────────────────────────
 export function JmChozuya({ item }) {
+  const season = useSeason()
   const [w, h, d] = item.size
   return (
     <group>
       {[-1, 1].map((sx) =>
         [-1, 1].map((sz) => <Cyl key={`${sx}${sz}`} p={[(sx * (w - 0.2)) / 2, h / 2, (sz * (d - 0.2)) / 2]} r1={0.08} h={h} c="#c8452f" />),
       )}
-      <Box p={[0, h + 0.1, 0]} s={[w + 0.6, 0.2, d + 0.6]} c={SEASON === 'winter' ? SNOW : '#33373d'} />
+      <Box p={[0, h + 0.1, 0]} s={[w + 0.6, 0.2, d + 0.6]} c={season === 'winter' ? SNOW : '#33373d'} />
       <Box p={[0, 0.4, 0]} s={[w * 0.6, 0.8, d * 0.5]} c="#9a958c" />
       <Box p={[0, 0.79, 0]} s={[w * 0.5, 0.02, d * 0.38]} c="#6fa8d6" />
       {range(3).map((i) => (
@@ -322,6 +328,7 @@ export function JmEma({ item }) {
 // ── 자연스러운 호수 (불규칙한 물가 + 모래·풀 물가 + 돌 + 갈대) ──
 // size [가로, 0.05, 세로] 안에 들어가는 둥근 호수. JSON에 "collider": false
 export function JmLake({ item }) {
+  const season = useSeason()
   const [w, , d] = item.size
   const shapes = useMemo(() => {
     const make = (sx, sz) => {
@@ -343,12 +350,12 @@ export function JmLake({ item }) {
     const a = (i / 14) * Math.PI * 2 + 0.2
     return [Math.cos(a) * (w / 2) * 0.9, Math.sin(a) * (d / 2) * 0.87, 0.18 + (i % 3) * 0.08]
   }), [w, d])
-  const waterColor = SEASON === 'winter' ? '#bcd6ea' : '#3f7fb5'
+  const waterColor = season === 'winter' ? '#bcd6ea' : '#3f7fb5'
   return (
     <group>
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <shapeGeometry args={[shapes.shore]} />
-        <meshStandardMaterial color={SEASON === 'winter' ? SNOW : '#cdbb8e'} />
+        <meshStandardMaterial color={season === 'winter' ? SNOW : '#cdbb8e'} />
       </mesh>
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <shapeGeometry args={[shapes.water]} />
@@ -360,11 +367,11 @@ export function JmLake({ item }) {
           <meshStandardMaterial color="#8d8a84" flatShading />
         </mesh>
       ))}
-      {SEASON !== 'winter' &&
+      {season !== 'winter' &&
         range(18).map((i) => {
           const a = (i / 18) * Math.PI * 2
           return (
-            <Cyl key={i} p={[Math.cos(a) * (w / 2) * 0.84, 0.45, -Math.sin(a) * (d / 2) * 0.8]} r1={0.02} h={0.9} c={SEASON === 'autumn' ? '#b59a52' : '#6a8f3e'} seg={4} />
+            <Cyl key={i} p={[Math.cos(a) * (w / 2) * 0.84, 0.45, -Math.sin(a) * (d / 2) * 0.8]} r1={0.02} h={0.9} c={season === 'autumn' ? '#b59a52' : '#6a8f3e'} seg={4} />
           )
         })}
     </group>
@@ -403,11 +410,12 @@ export function JmBoat() {
 // ── 먼 산 (호수 뒤 배경 언덕) ──────────────────────────────
 // size [가로, 높이, 깊이]. JSON에 "collider": false
 export function JmMound({ item }) {
+  const season = useSeason()
   const [w, h, d] = item.size
   return (
     <mesh position={[0, 0, 0]} scale={[w / 2, h, d / 2]}>
       <sphereGeometry args={[1, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-      <meshStandardMaterial color={SEASON === 'winter' ? '#e3e9ef' : SEASON === 'autumn' ? '#9c7a3c' : '#5f8f4a'} flatShading />
+      <meshStandardMaterial color={season === 'winter' ? '#e3e9ef' : season === 'autumn' ? '#9c7a3c' : '#5f8f4a'} flatShading />
     </mesh>
   )
 }

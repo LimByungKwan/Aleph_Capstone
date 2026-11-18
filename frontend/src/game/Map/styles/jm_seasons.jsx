@@ -1,34 +1,9 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
-// 애니메이션 구역(JM) 전용: 사계절 나무·바닥 + 일본 골목 소품. 담당: 지민
-//
-// ── 계절 정하기 ──────────────────────────────
-// 1) 주소 뒤에 ?season=spring | summer | autumn | winter 를 붙이면 그 계절 (발표 때 바꿔 보여 주기용)
-// 2) 아니면 JM_SEASON 값
-// 3) JM_SEASON = 'auto' 이면 한국 시간 기준 오늘 날짜의 계절 (3~5월 봄, 6~8월 여름, 9~11월 가을, 12~2월 겨울)
-// 계절은 페이지를 불러올 때 한 번 정해져요. 바꾼 뒤에는 새로고침하세요.
-export const JM_SEASON = 'auto'
+import { useSeason } from '../../seasons.js'
 
-const SEASONS = ['spring', 'summer', 'autumn', 'winter']
-
-function pickSeason() {
-  try {
-    const fromUrl = new URLSearchParams(window.location.search).get('season')
-    if (SEASONS.includes(fromUrl)) return fromUrl
-  } catch {
-    // window가 없는 환경이면 무시
-  }
-  if (SEASONS.includes(JM_SEASON)) return JM_SEASON
-  const month = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', month: 'numeric' }))
-  if (month >= 3 && month <= 5) return 'spring'
-  if (month >= 6 && month <= 8) return 'summer'
-  if (month >= 9 && month <= 11) return 'autumn'
-  return 'winter'
-}
-
-export const SEASON = pickSeason()
-
+// 애니메이션 구역(JM) 전용 나무·바닥·골목 소품
 const range = (n) => Array.from({ length: n }, (_, i) => i)
 
 // ── 계절별 나뭇잎 색 ──────────────────────────
@@ -71,12 +46,13 @@ const BRANCHES = [
 ]
 
 function SeasonTree({ item, kind }) {
+  const season = useSeason()
   const [w, h] = item.size
   const radius = w / 2
   const trunkH = h * 0.5
   const canopyY = trunkH + radius * 0.5
-  const colors = LEAVES[kind][SEASON]
-  const snowy = SEASON === 'winter'
+  const colors = LEAVES[kind][season]
+  const snowy = season === 'winter'
 
   return (
     <group>
@@ -139,8 +115,9 @@ const hash = (text) => [...text].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 2
 
 // 조각이 수백 개라 색마다 InstancedMesh 하나로 그려요 (그리기 호출 수를 색 개수만큼으로 줄임)
 export function JmGroundCover({ item }) {
+  const season = useSeason()
   const [w, , d] = item.size
-  const cfg = GROUND[SEASON]
+  const cfg = GROUND[season]
 
   const groups = useMemo(() => {
     const count = Math.min(220, Math.round(w * d * cfg.density))
@@ -168,6 +145,7 @@ export function JmGroundCover({ item }) {
 }
 
 function PieceInstances({ matrices, color }) {
+  const season = useSeason()
   const ref = useRef(null)
   useLayoutEffect(() => {
     matrices.forEach((m, i) => ref.current.setMatrixAt(i, m))
@@ -175,7 +153,7 @@ function PieceInstances({ matrices, color }) {
   }, [matrices])
   return (
     <instancedMesh ref={ref} args={[null, null, matrices.length]}>
-      <circleGeometry args={[0.5, SEASON === 'winter' ? 10 : 5]} />
+      <circleGeometry args={[0.5, season === 'winter' ? 10 : 5]} />
       <meshStandardMaterial color={color} />
     </instancedMesh>
   )
@@ -184,6 +162,7 @@ function PieceInstances({ matrices, color }) {
 // ── 대나무 숲 ─────────────────────────────────
 // size [가로, 높이, 깊이] 안에 대나무를 여러 그루. 겨울엔 잎 위에 눈. JSON에 "collider": false 또는 작은 값
 export function JmBamboo({ item }) {
+  const season = useSeason()
   const [w, h, d] = item.size
   const rand = seeded(hash(item.id ?? 'bamboo'))
   const count = Math.max(4, Math.round(w * d * 1.2))
@@ -192,7 +171,7 @@ export function JmBamboo({ item }) {
     z: (rand() - 0.5) * d,
     hh: h * (0.75 + rand() * 0.25),
   }))
-  const leaf = SEASON === 'autumn' ? '#8fa848' : SEASON === 'spring' ? '#7fbf55' : '#4f9a3c'
+  const leaf = season === 'autumn' ? '#8fa848' : season === 'spring' ? '#7fbf55' : '#4f9a3c'
   return (
     <group>
       {stalks.map((s, i) => (
@@ -204,7 +183,7 @@ export function JmBamboo({ item }) {
           {range(3).map((k) => (
             <mesh key={k} position={[0, s.hh * (0.7 + k * 0.12), 0]} rotation={[0, k * 2.1, 0.5]}>
               <coneGeometry args={[0.45, 0.9, 5]} />
-              <meshStandardMaterial color={SEASON === 'winter' && k === 2 ? '#f4f7fb' : leaf} flatShading />
+              <meshStandardMaterial color={season === 'winter' && k === 2 ? '#f4f7fb' : leaf} flatShading />
             </mesh>
           ))}
         </group>
@@ -351,9 +330,10 @@ const ZONE_LIGHT_COLOR = {
 // 색 세기를 한곳에서 조절 (0.5 은은함 ~ 1.2 강함)
 export const JM_LIGHT_INTENSITY = 1.2
 export function JmZoneLight({ item }) {
+  const season = useSeason()
   const [, h] = item.size
   const { intensity = JM_LIGHT_INTENSITY, distance = 36 } = item.light ?? {}
-  return <pointLight position={[0, h, 0]} color={ZONE_LIGHT_COLOR[SEASON]} intensity={intensity} distance={distance} decay={0} castShadow={false} />
+  return <pointLight position={[0, h, 0]} color={ZONE_LIGHT_COLOR[season]} intensity={intensity} distance={distance} decay={0} castShadow={false} />
 }
 
 export const JM_SEASON_STYLES = {
