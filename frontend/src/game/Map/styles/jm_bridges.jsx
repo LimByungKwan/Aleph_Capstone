@@ -159,11 +159,27 @@ function VermilionBridge({ points, width }) {
 
 // ── 흔들다리 ─────────────────────────────────────
 // 양끝 나무 탑(높이 3.4m) 사이로 굵은 밧줄이 늘어지고(가운데가 처짐), 1.4m마다 내려오는 밧줄이 난간을 잡음
-// 발판 판자는 InstancedMesh 하나. 밧줄·판자 묶음이 아주 살짝 좌우로 흔들림(보기만, 충돌은 그대로)
+// 흔들림 (실제 출렁다리처럼):
+//  - 양끝(탑)은 고정, 가운데로 갈수록 크게 움직이는 활 모양 흔들림 (sin(πu), u = 다리 위 위치 0~1)
+//  - 좌우 흔들림은 느리게(약 0.4Hz), 높이 있는 밧줄일수록 조금 더 크게 → 판자·밧줄·내림줄이 같이 움직여 끊어져 보이지 않음
+//  - 위아래 출렁임도 같은 활 모양으로 부드럽게. 건너는 중이면 걸음 같은 출렁임이 조금 더해짐
+//  - 바람: 잔잔하다가 가끔 돌풍. 걷는 바닥 충돌·난간(BK 데크)은 고정이라 판자는 바닥 위로만, 좌우는 조금만 움직이고
+//    내림줄 아래 끝은 난간에 붙여 둠 → 위 밧줄이 흔들리면 내림줄이 기울어지는 모양 (떨어져 보이지 않게)
 const SLATS_GAP = 0.34
+const swayTmp = { a: new THREE.Vector3(), p: new THREE.Vector3(), d: new THREE.Vector3(), z: new THREE.Vector3(0, 0, 1) }
 function SuspensionBridge({ points, width }) {
-  const swayRef = useRef(null)
+  const anchor = useRef(null)
   const slatRef = useRef(null)
+  const cableRef = useRef(null)
+  const hangerRef = useRef(null)
+  const playerRef = useRef(null)
+  const lastLookup = useRef(-Infinity)
+  const amp = useRef(0.3)
+  const walk = useRef(0)
+  const lateral = useRef(0)
+  const vertical = useRef(0)
+  const va = useMemo(() => new THREE.Vector3(), [])
+  const vb = useMemo(() => new THREE.Vector3(), [])
   const seg = useMemo(() => edges(points, width, 0.02)[0], [points, width])
   const data = useMemo(() => {
     const { s, e, nx, nz } = seg
@@ -172,69 +188,123 @@ function SuspensionBridge({ points, width }) {
     const sag = 2.0
     // 데크 난간이 가운데에서 1.25m라서, 탑·밧줄은 그 바깥 1.45m에 둠 (겹치지 않게)
     const k = 1.45 / (width / 2 - 0.02)
+    const deckAt = (t) => s[1] + (e[1] - s[1]) * t
     const cable = (side, t) => {
       const x = s[0] + (e[0] - s[0]) * t + nx * side * k
       const z = s[2] + (e[2] - s[2]) * t + nz * side * k
-      const deck = s[1] + (e[1] - s[1]) * t
-      const top = deck + towerH - sag * 4 * t * (1 - t)
-      return [x, top, z, deck]
+      const top = deckAt(t) + towerH - sag * 4 * t * (1 - t)
+      return { p: [x, top, z], u: t, h: top - deckAt(t) }
     }
     const cables = []
     const hangers = []
     for (const side of [1, -1]) {
       const n = 24
-      for (let k = 0; k < n; k++) {
-        const a = cable(side, k / n)
-        const b = cable(side, (k + 1) / n)
-        cables.push({ a: [a[0], a[1], a[2]], b: [b[0], b[1], b[2]] })
-      }
+      for (let j = 0; j < n; j++) cables.push({ a: cable(side, j / n), b: cable(side, (j + 1) / n), t: 0.07 })
       const h = Math.max(4, Math.round(L / 1.4))
       for (let j = 1; j < h; j++) {
         const t = j / h
-        const c = cable(side, t)
-        const rx = s[0] + (e[0] - s[0]) * t + nx * side
-        const rz = s[2] + (e[2] - s[2]) * t + nz * side
-        hangers.push({ a: [c[0], c[1], c[2]], b: [rx, c[3] + RAIL_H, rz] })
+        const bottom = { p: [s[0] + (e[0] - s[0]) * t + nx * side, deckAt(t) + RAIL_H, s[2] + (e[2] - s[2]) * t + nz * side], u: t, h: RAIL_H, lat: 0, vert: 0 }
+        hangers.push({ a: cable(side, t), b: bottom, t: 0.03 })
       }
     }
     const towers = []
     for (const t of [0, 1]) {
-      const base = cable(1, t)
-      const other = cable(-1, t)
-      towers.push({ a: [base[0], base[3], base[2]], top: base[3] + towerH + 0.2, b: [other[0], other[3], other[2]] })
+      const base = cable(1, t).p
+      const other = cable(-1, t).p
+      towers.push({ a: [base[0], deckAt(t), base[2]], top: deckAt(t) + towerH + 0.2, b: [other[0], deckAt(t), other[2]] })
     }
     const count = Math.floor(L / SLATS_GAP)
-    return { cables, hangers, towers, count, L }
-  }, [seg])
+    const len = Math.hypot(nx, nz)
+    return { cables, hangers, towers, count, side: [nx / len, nz / len] }
+  }, [seg, width])
+  const { s, e, yaw } = seg
+  const pitch = -Math.atan2(e[1] - s[1], Math.hypot(e[0] - s[0], e[2] - s[2]))
 
-  const placeSlats = (m) => {
-    if (!m) return
-    slatRef.current = m
-    const { s, e, yaw } = seg
-    const pitch = -Math.atan2(e[1] - s[1], Math.hypot(e[0] - s[0], e[2] - s[2]))
-    tmpQ.setFromEuler(tmpE.set(pitch, yaw, 0, 'YXZ'))
-    for (let i = 0; i < data.count; i++) {
-      const t = (i + 0.5) / data.count
-      tmpP.set(s[0] + (e[0] - s[0]) * t, s[1] + (e[1] - s[1]) * t + 0.07, s[2] + (e[2] - s[2]) * t)
-      tmpS.set(1, 1, 1)
-      tmpM.compose(tmpP, tmpQ, tmpS)
-      m.setMatrixAt(i, tmpM)
-    }
-    m.instanceMatrix.needsUpdate = true
+  // 흔들린 위치: 활 모양 sin(πu) × 좌우(높을수록 조금 더) / 위아래(바닥 위로만)
+  const moved = (pt, out) => {
+    const bell = Math.sin(Math.PI * pt.u)
+    const lat = bell * lateral.current * (1 + 0.3 * pt.h) * (pt.lat ?? 1)
+    out.set(pt.p[0] + data.side[0] * lat, pt.p[1] + bell * vertical.current * (pt.vert ?? 1), pt.p[2] + data.side[1] * lat)
+    return out
   }
+  const setBeam = (mesh, i, a, b, thick) => {
+    swayTmp.d.subVectors(b, a)
+    const L = swayTmp.d.length()
+    tmpQ.setFromUnitVectors(swayTmp.z, swayTmp.d.normalize())
+    tmpP.addVectors(a, b).multiplyScalar(0.5)
+    tmpS.set(thick, thick, L)
+    tmpM.compose(tmpP, tmpQ, tmpS)
+    mesh.setMatrixAt(i, tmpM)
+  }
+  const slatBase = useMemo(
+    () =>
+      Array.from({ length: data.count }, (_, i) => {
+        const u = (i + 0.5) / data.count
+        return { p: [s[0] + (e[0] - s[0]) * u, s[1] + (e[1] - s[1]) * u + 0.07, s[2] + (e[2] - s[2]) * u], u, h: 0, lat: 0.2 }
+      }),
+    [data.count, s, e],
+  )
 
-  useFrame(({ clock }) => {
-    if (swayRef.current) swayRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.3) * 0.004
+  useFrame(({ clock, scene, camera }, delta) => {
+    const t = clock.elapsedTime
+    // 렉 줄이기: 카메라가 다리 가운데에서 80m 넘게 멀면 흔들림 계산(판자·밧줄 약 200개 위치)을 쉼
+    if (anchor.current) {
+      anchor.current.getWorldPosition(swayTmp.a)
+      const mx = swayTmp.a.x + (s[0] + e[0]) / 2 - camera.position.x
+      const mz = swayTmp.a.z + (s[2] + e[2]) / 2 - camera.position.z
+      if (mx * mx + mz * mz > 80 * 80) return
+    }
+    if (!playerRef.current?.parent && t - lastLookup.current > 1) {
+      lastLookup.current = t
+      playerRef.current = scene.getObjectByName('player') ?? null
+    }
+    let onBridge = false
+    if (playerRef.current?.parent && anchor.current) {
+      anchor.current.getWorldPosition(swayTmp.a)
+      playerRef.current.getWorldPosition(swayTmp.p)
+      const px = swayTmp.p.x - swayTmp.a.x
+      const pz = swayTmp.p.z - swayTmp.a.z
+      const dx = e[0] - s[0]
+      const dz = e[2] - s[2]
+      const u = ((px - s[0]) * dx + (pz - s[2]) * dz) / (dx * dx + dz * dz)
+      const sd = Math.abs((px - s[0]) * dz - (pz - s[2]) * dx) / Math.hypot(dx, dz)
+      onBridge = u > 0.02 && u < 0.98 && sd < width / 2 + 0.3
+    }
+    // 세기는 천천히 바뀌게 (돌풍·건너기 시작/끝이 툭 끊기지 않게)
+    const gust = 0.35 + 0.65 * Math.max(0, Math.sin(t * 0.35)) ** 2
+    amp.current += (gust + (onBridge ? 0.9 : 0) - amp.current) * Math.min(1, delta * 0.8)
+    walk.current += ((onBridge ? 1 : 0) - walk.current) * Math.min(1, delta * 1.5)
+    const A = amp.current
+    // 좌우: 느린 주기(약 0.4Hz) + 더 느린 흔들림을 섞어 기계적인 반복 느낌을 줄임
+    lateral.current = A * 0.24 * (Math.sin(t * 2.5) * 0.8 + Math.sin(t * 1.1 + 1.3) * 0.2)
+    // 위아래: 바닥 위로만 (0 ~ 최대). 건널 때는 걸음 같은 출렁임(약 1.2Hz)을 조금 더함
+    vertical.current = A * 0.08 * (0.5 + 0.5 * Math.sin(t * 2.5 + 0.8)) + walk.current * 0.07 * (0.5 + 0.5 * Math.sin(t * 7.5))
+
+    const slats = slatRef.current
+    if (slats) {
+      tmpQ.setFromEuler(tmpE.set(pitch, yaw, 0, 'YXZ'))
+      tmpS.set(1, 1, 1)
+      slatBase.forEach((base, i) => {
+        moved(base, tmpP)
+        tmpM.compose(tmpP, tmpQ, tmpS)
+        slats.setMatrixAt(i, tmpM)
+      })
+      slats.instanceMatrix.needsUpdate = true
+    }
+    if (cableRef.current) {
+      data.cables.forEach((c, i) => setBeam(cableRef.current, i, moved(c.a, va), moved(c.b, vb), c.t))
+      cableRef.current.instanceMatrix.needsUpdate = true
+    }
+    if (hangerRef.current) {
+      data.hangers.forEach((c, i) => setBeam(hangerRef.current, i, moved(c.a, va), moved(c.b, vb), c.t))
+      hangerRef.current.instanceMatrix.needsUpdate = true
+    }
   })
 
   return (
     <group>
-      {/* 발판 (데크 바닥 위에 짙은 판자) */}
-      <instancedMesh ref={placeSlats} args={[null, null, data.count]}>
-        <boxGeometry args={[width + 0.1, 0.05, SLATS_GAP * 0.78]} />
-        <meshStandardMaterial color="#6e4b33" />
-      </instancedMesh>
-      {/* 양끝 탑 */}
+      <group ref={anchor} />
+      {/* 양끝 탑 (고정) */}
       {data.towers.map((tw, i) => (
         <group key={i}>
           {[tw.a, tw.b].map((p, j) => (
@@ -247,15 +317,19 @@ function SuspensionBridge({ points, width }) {
           <Beam a={[tw.a[0], tw.top - 0.7, tw.a[2]]} b={[tw.b[0], tw.top - 0.7, tw.b[2]]} t={0.14} c={DARK_WOOD} />
         </group>
       ))}
-      {/* 밧줄 (살짝 흔들림) */}
-      <group ref={swayRef}>
-        {data.cables.map((c, i) => (
-          <Beam key={i} a={c.a} b={c.b} t={0.07} c={ROPE} />
-        ))}
-        {data.hangers.map((h, i) => (
-          <Beam key={i} a={h.a} b={h.b} t={0.03} c={ROPE} />
-        ))}
-      </group>
+      {/* 흔들리는 부분: 판자·밧줄·내림줄 (매 프레임 위치를 다시 계산) */}
+      <instancedMesh ref={slatRef} args={[null, null, data.count]} frustumCulled={false}>
+        <boxGeometry args={[width + 0.1, 0.05, SLATS_GAP * 0.78]} />
+        <meshStandardMaterial color="#6e4b33" />
+      </instancedMesh>
+      <instancedMesh ref={cableRef} args={[null, null, data.cables.length]} frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={ROPE} />
+      </instancedMesh>
+      <instancedMesh ref={hangerRef} args={[null, null, data.hangers.length]} frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={ROPE} />
+      </instancedMesh>
     </group>
   )
 }
