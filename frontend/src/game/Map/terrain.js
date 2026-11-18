@@ -251,7 +251,7 @@ function buildCurvedDeck(deck, terrain) {
   const raw = pts.map((p, i) => {
     if (i === 0 || i === n) return i === 0 ? h0 : h1
     const ground = terrainHeightAt(terrain, p.x, p.z)
-    return Math.max(h0 + ((h1 - h0) * i) / n, ground + (bumpy(p.x, p.z) ? 0.6 : 0.1))
+    return Math.max(h0 + ((h1 - h0) * i) / n, ground + (bumpy(p.x, p.z) ? (deck.clearance ?? 0.6) : 0.1))
   })
   // 높이를 살짝 고르게 (울컥거리지 않게), 양 끝은 그대로
   const H = raw.map((h, i) => {
@@ -324,7 +324,9 @@ function buildCurvedDeck(deck, terrain) {
     }
   }
 
-  return { boards, rails, railBlocks, railPosts, supports }
+  // 시작점과 진행 방향 (입구 아치를 세울 자리)
+  const start = { p: [pts[0].x, H[0], pts[0].z], yaw: yawAt(0) }
+  return { boards, rails, railBlocks, railPosts, supports, start }
 }
 
 const range = (count) => Array.from({ length: count }, (_, i) => i)
@@ -456,6 +458,9 @@ export const TOWER = {
   deckFloor: 23, // 전망층 바닥 높이 (타워 바닥 기준, 언덕 위라 실제로는 약 32m)
   deckRadius: 7,
   deckWallHeight: 3.5,
+  // 엘리베이터 문: 1층은 홀 입구(+z, 각도 0), 전망층은 출구(-z, 각도 π). 문 자리 반각(라디안)·문 높이
+  liftDoorHalf: 0.45,
+  liftDoorHeight: 2.35,
 }
 
 // 원 둘레를 따라 박스 조각들 (벽·바닥 링). skip(angle)이 true면 그 자리는 비움(문)
@@ -505,7 +510,9 @@ export function towerColliderPieces() {
     ...ringPieces({ radius: T.deckRadius, y0: T.deckFloor - 0.3, y1: T.deckFloor, count: 28, radialWidth: T.deckRadius - T.shaftRadius - 0.05 }),
     // 전망대 유리벽
     ...ringPieces({ radius: T.deckRadius, thickness: 0.3, y0: T.deckFloor, y1: T.deckFloor + T.deckWallHeight, count: 32 }),
-    // 엘리베이터 구멍 둘레 낮은 유리 난간 (문 쪽만 열림)
-    ...ringPieces({ radius: T.shaftRadius, thickness: 0.15, y0: T.deckFloor, y1: T.deckFloor + 1.1, count: 22, skip: (a) => angleNear(a, Math.PI, 0.45) }),
+    // 1층 엘리베이터 통로 유리벽 (바닥 ~ 통로 시작 높이, 문 자리는 비움 — 문 충돌은 Elevator가 열고 닫음)
+    ...ringPieces({ radius: T.shaftRadius, thickness: 0.2, y0: 0, y1: T.tubeBottom, count: 22, skip: (a) => angleNear(a, 0, T.liftDoorHalf) }),
+    // 전망층 엘리베이터 통로 유리벽 (바닥 ~ 천장, 출구 문 자리는 비움)
+    ...ringPieces({ radius: T.shaftRadius, thickness: 0.15, y0: T.deckFloor, y1: T.deckFloor + T.deckWallHeight, count: 22, skip: (a) => angleNear(a, Math.PI, T.liftDoorHalf) }),
   ]
 }
