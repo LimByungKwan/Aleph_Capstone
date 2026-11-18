@@ -42,11 +42,11 @@ export const SUN_POSITION = [90, 160, 60]
 export const SKY_COLORS = {
   top: '#4f9de8', // 머리 위 하늘
   middle: '#9ccdf8', // 중간
-  horizon: '#ffd7c8', // 지평선 (복숭아빛)
+  horizon: '#d6eaf8', // 옅은 푸른 지평선
   sun: '#fff1c7', // 태양 빛번짐
-  fog: '#f3d9d2', // 멀리 있는 것이 섞여 드는 색 (지평선과 비슷하게)
+  fog: '#d6eaf8', // 원경이 지평선에 자연스럽게 섞이는 색
   outerGround: '#c9dcb0', // 맵 바깥 풀밭
-  cloudGlow: '#ffd9e4', // 구름에 살짝 도는 분홍빛
+  cloudGlow: '#e5f3ff',
 }
 export const FOG_NEAR = 360 // 이 거리부터 안개가 시작 (m) — 맵 안은 선명하게, 바깥만 흐리게
 export const FOG_FAR = 900 // 이 거리에서 완전히 지평선 색

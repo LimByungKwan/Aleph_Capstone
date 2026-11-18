@@ -2,7 +2,8 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getAFrameTexture, getStripeTexture } from './hjTextures.js'
-import { SEASON_LOOK, useSeason } from '../../../seasons.js'
+import { useSeason } from '../../../seasons.js'
+import SeasonalTree from '../SeasonalTree.jsx'
 
 // [3. 개발 > 기초개발/서비스] 혜진 구역 소품 (벚나무 · 전구줄 · 입간판 · 등롱 · 과일 수레 · 카페 테이블 ·
 // 우체통 · 자전거 · 자동차 · 흩날리는 꽃잎). 모두 size [w, h, d] 기준, 앞면 +z.
@@ -19,53 +20,7 @@ const seedOf = (item) => [...(item.id ?? 'x')].reduce((a, c) => a + c.charCodeAt
 
 // ── 벚나무 (style: "hjCherryTree") — size [수관 지름, 높이, -] ──
 export function HjCherryTree({ item }) {
-  const season = useSeason()
-  const colors = season === 'spring' ? BLOSSOM : SEASON_LOOK[season].leaves
-  const [crown, h] = item.size
-  const blossoms = useRef(null)
-  const clusters = useMemo(() => {
-    const rand = rng(seedOf(item))
-    return Array.from({ length: 22 }, () => ({
-      x: (rand() - 0.5) * crown,
-      y: h * 0.62 + (rand() - 0.3) * h * 0.35,
-      z: (rand() - 0.5) * crown,
-      s: crown * (0.16 + rand() * 0.12),
-      tint: rand(),
-    }))
-  }, [item, crown, h])
-
-  // [3. 개발 > 렌더링 최적화] 수관의 색과 배치를 유지하면서 한 번에 그려요.
-  useLayoutEffect(() => {
-    const mesh = blossoms.current
-    const matrix = new THREE.Matrix4()
-    const color = new THREE.Color()
-    clusters.forEach(({ x, y, z, s, tint }, index) => {
-      matrix.makeScale(s, s, s).setPosition(x, y, z)
-      mesh.setMatrixAt(index, matrix)
-      mesh.setColorAt(index, color.set(colors[Math.floor(tint * colors.length)]))
-    })
-    mesh.instanceMatrix.needsUpdate = true
-    mesh.instanceColor.needsUpdate = true
-    mesh.computeBoundingSphere()
-  }, [clusters, colors])
-  return (
-    <group>
-      <mesh position={[0, h * 0.3, 0]}>
-        <cylinderGeometry args={[0.16, 0.26, h * 0.6, 8]} />
-        <meshStandardMaterial color="#5e4030" />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * crown * 0.18, h * 0.58, 0]} rotation={[0, 0, -s * 0.7]}>
-          <cylinderGeometry args={[0.07, 0.1, h * 0.35, 6]} />
-          <meshStandardMaterial color="#5e4030" />
-        </mesh>
-      ))}
-      <instancedMesh ref={blossoms} args={[null, null, clusters.length]}>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial roughness={0.9} emissive="#f4b6c8" emissiveIntensity={season === 'spring' ? 0.12 : 0} />
-      </instancedMesh>
-    </group>
-  )
+  return <SeasonalTree item={item} kind="sakura" />
 }
 
 // ── 전구줄 (style: "hjStringLights") — item.points [[x, y, z], ...] 사이를 처진 줄로 잇고 전구를 달아요 ──

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { getSignTexture } from './textures.js'
-import { SEASON_LOOK, useSeason } from '../../seasons.js'
+import SeasonalTree from './SeasonalTree.jsx'
 
 // 소품 스타일들. JSON의 size [가로 w, 높이 h, 깊이 d] 기준으로 그려요. 앞면은 +z.
 
@@ -11,38 +11,8 @@ const METAL = '#2b2d30'
 const range = (n) => Array.from({ length: n }, (_, i) => i)
 
 // ── 가로수 (화분 + 줄기 + 잎 뭉치) ───────────
-const LEAF_CLUSTERS = [
-  [0, 0, 0, 1],
-  [0.5, -0.15, 0.2, 0.75],
-  [-0.45, -0.1, -0.25, 0.8],
-  [0.1, 0.4, -0.3, 0.7],
-  [-0.2, 0.35, 0.35, 0.65],
-  [0.35, 0.25, -0.05, 0.6],
-]
 export function Tree({ item }) {
-  const colors = SEASON_LOOK[useSeason()].leaves
-  const [w, h] = item.size
-  const radius = w / 2
-  const trunkH = h * 0.5
-  const canopyY = trunkH + radius * 0.55
-  return (
-    <group>
-      <mesh position={[0, 0.15, 0]}>
-        <boxGeometry args={[1, 0.3, 1]} />
-        <meshStandardMaterial color="#a35d47" />
-      </mesh>
-      <mesh position={[0, trunkH / 2, 0]}>
-        <cylinderGeometry args={[0.12, 0.2, trunkH, 7]} />
-        <meshStandardMaterial color="#6b4f3a" />
-      </mesh>
-      {LEAF_CLUSTERS.map(([x, y, z, s], i) => (
-        <mesh key={i} position={[x * radius, canopyY + y * radius, z * radius]}>
-          <icosahedronGeometry args={[s * radius * 0.75, 1]} />
-          <meshStandardMaterial color={colors[i % colors.length]} flatShading />
-        </mesh>
-      ))}
-    </group>
-  )
+  return <SeasonalTree item={item} planter />
 }
 
 // ── 가로등 (청사초롱 느낌 등) ─────────────────

@@ -6,7 +6,6 @@ import { CLOUDS_DRIFT, FOG_FAR, FOG_NEAR, SHOW_CLOUDS, SHOW_MOUNTAINS, SKY_COLOR
 import { useSettings } from '../settingsStore.js'
 import { live, snapTimeOfDay, stepTimeOfDay } from '../timeOfDay.js'
 import { seeded } from './styles/kit.jsx'
-import { SEASON_LOOK, useSeason } from '../seasons.js'
 
 // 파스텔 하늘 세트. 인터넷 이미지(HDR) 없이 코드로만 그려요.
 // 하늘색 = 계절(혜진 님 seasons.js) × 시간대(아침/점심/밤, 설정창 ⚙). timeOfDay.js의 live 값을 따라 부드럽게 바뀌어요.
@@ -132,11 +131,11 @@ function SkyDome() {
 }
 
 // ── 맵 바깥 땅 (지평선까지 이어지는 풀밭, 충돌 없음) ──
-function OuterGround({ color }) {
+function OuterGround() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
       <planeGeometry args={[2400, 2400]} />
-      <meshStandardMaterial color={color} roughness={1} />
+      <meshStandardMaterial color={SKY_COLORS.outerGround} roughness={1} />
     </mesh>
   )
 }

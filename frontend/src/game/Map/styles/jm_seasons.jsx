@@ -2,97 +2,15 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 import { useSeason } from '../../seasons.js'
+import SeasonalTree from './SeasonalTree.jsx'
 
 // 애니메이션 구역(JM) 전용 나무·바닥·골목 소품
 const range = (n) => Array.from({ length: n }, (_, i) => i)
 
-// ── 계절별 나뭇잎 색 ──────────────────────────
-// null = 잎이 다 떨어진 겨울나무 (가지만)
-const LEAVES = {
-  sakura: {
-    spring: ['#f6b6c8', '#f9c9d6', '#f3a5bc'], // 벚꽃
-    summer: ['#4f8a3c', '#5e9a48', '#447a34'],
-    autumn: ['#c8643a', '#b5502f', '#d9894a'], // 붉은 갈색 단풍
-    winter: null,
-  },
-  maple: {
-    spring: ['#9cc96b', '#b3d67f', '#8bbb5c'], // 연두
-    summer: ['#3f7a35', '#4c8a40', '#356a2d'],
-    autumn: ['#c9282d', '#e0452b', '#b51f2a', '#ef7a2c'], // 모미지
-    winter: null,
-  },
-  ginkgo: {
-    spring: ['#a8d07a', '#bcdc8e', '#97c46a'],
-    summer: ['#4f8f3a', '#5c9c45', '#468232'],
-    autumn: ['#f2c12e', '#f7d046', '#e6ad1f'], // 노란 은행
-    winter: null,
-  },
-}
-
-const CLUSTERS = [
-  [0, 0, 0, 1],
-  [0.55, -0.15, 0.2, 0.7],
-  [-0.5, -0.1, -0.25, 0.75],
-  [0.15, 0.35, -0.45, 0.65],
-  [-0.2, 0.3, 0.45, 0.6],
-]
-
-// 겨울나무 가지 (방향 x, z, 기울기)
-const BRANCHES = [
-  [1, 0, 0.7],
-  [-0.6, 0.8, 0.6],
-  [-0.5, -0.85, 0.65],
-  [0.3, 0.95, 0.5],
-]
-
-function SeasonTree({ item, kind }) {
-  const season = useSeason()
-  const [w, h] = item.size
-  const radius = w / 2
-  const trunkH = h * 0.5
-  const canopyY = trunkH + radius * 0.5
-  const colors = LEAVES[kind][season]
-  const snowy = season === 'winter'
-
-  return (
-    <group>
-      {/* 잎이 있을 때는 줄기를 잎 덩어리 가운데까지 올려서 줄기와 잎이 떨어져 보이지 않게 */}
-      <mesh position={[0, (colors ? canopyY : trunkH) / 2, 0]}>
-        <cylinderGeometry args={[0.13, 0.22, colors ? canopyY : trunkH, 7]} />
-        <meshStandardMaterial color="#5a4234" />
-      </mesh>
-      {colors
-        ? CLUSTERS.map(([x, y, z, s], i) => (
-            <mesh key={i} position={[x * radius, canopyY + y * radius, z * radius]}>
-              <icosahedronGeometry args={[s * radius * 0.75, 1]} />
-              <meshStandardMaterial color={colors[i % colors.length]} flatShading />
-            </mesh>
-          ))
-        : BRANCHES.map(([dx, dz, tilt], i) => {
-            const len = radius * 1.1
-            return (
-              <group key={i} position={[0, trunkH - 0.2, 0]} rotation={[0, Math.atan2(dx, dz), 0]}>
-                <mesh position={[0, (len / 2) * Math.cos(tilt), (len / 2) * Math.sin(tilt)]} rotation={[tilt, 0, 0]}>
-                  <cylinderGeometry args={[0.04, 0.08, len, 5]} />
-                  <meshStandardMaterial color="#4a372b" />
-                </mesh>
-                {snowy && (
-                  <mesh position={[0, len * Math.cos(tilt) + 0.05, len * Math.sin(tilt)]}>
-                    <sphereGeometry args={[0.14, 6, 5]} />
-                    <meshStandardMaterial color="#f4f7fb" />
-                  </mesh>
-                )}
-              </group>
-            )
-          })}
-    </group>
-  )
-}
-
-// 기존 tree와 같은 크기 약속. JSON에 "collider": [0.5, 3, 0.5] 권장
-export const JmSakura = ({ item }) => <SeasonTree item={item} kind="sakura" />
-export const JmMaple = ({ item }) => <SeasonTree item={item} kind="maple" />
-export const JmGinkgo = ({ item }) => <SeasonTree item={item} kind="ginkgo" />
+// 기존 구역 파일의 수종·크기 설정을 공용 사계절 나무에 전달해요.
+export const JmSakura = ({ item }) => <SeasonalTree item={item} kind="sakura" />
+export const JmMaple = ({ item }) => <SeasonalTree item={item} kind="maple" />
+export const JmGinkgo = ({ item }) => <SeasonalTree item={item} kind="ginkgo" />
 
 // ── 계절 바닥 (꽃잎·풀·낙엽·눈) ────────────────
 // 바닥에 얇게 깔리는 조각들. size [가로, 0.02, 깊이] 범위 안에 흩뿌림. JSON에 "collider": false
