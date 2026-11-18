@@ -1,5 +1,6 @@
 import { RoundedBox, useAnimations, useGLTF, useTexture } from '@react-three/drei'
-import { Suspense, useEffect, useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import * as THREE from 'three'
 import { Box, Cyl, GEO, Instances, mat, texMat } from './kit.jsx'
@@ -121,13 +122,25 @@ export function Stage({ item }) {
       {lightXs.map((x, i) => (
         <group key={x} position={[x, trussY - 0.6, towerZ]}>
           <Cyl p={[0, 0, 0]} rad={0.28} h={0.5} m={HOUSING} />
-          <Cyl p={[0, -0.27, 0]} rad={0.22} h={0.04} m={LENS[i % 2]} {...glow} />
-          <mesh geometry={BEAM_GEO} material={BEAMS[i % 2]} rotation={[tilt, 0, 0]} scale={[1.6, beamLen, 1.6]}
-            position={[0, -(beamLen / 2) * Math.cos(tilt), -(beamLen / 2) * Math.sin(tilt)]} {...glow} />
+          <SwingBeam phase={i % 2 ? Math.PI : 0}>
+            <Cyl p={[0, -0.27, 0]} rad={0.22} h={0.04} m={LENS[i % 2]} {...glow} />
+            <mesh geometry={BEAM_GEO} material={BEAMS[i % 2]} rotation={[tilt, 0, 0]} scale={[1.6, beamLen, 1.6]}
+              position={[0, -(beamLen / 2) * Math.cos(tilt), -(beamLen / 2) * Math.sin(tilt)]} {...glow} />
+          </SwingBeam>
         </group>
       ))}
     </group>
   )
+}
+
+// 조명 빔을 좌우로 흔듦. 홀수·짝수 조명은 반대로 움직여 빔이 엇갈리게 함.
+// 메시 회전만 바꾸므로 셰이더 재컴파일·점광원 추가 없음.
+function SwingBeam({ phase, children }) {
+  const ref = useRef()
+  useFrame(({ clock }) => {
+    ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.8 + phase) * 0.45
+  })
+  return <group ref={ref}>{children}</group>
 }
 
 // 세로 트러스 타워: 모서리 기둥 4개 + 칸마다 가로대 + 앞뒤 면 대각선
