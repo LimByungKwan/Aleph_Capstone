@@ -6,7 +6,7 @@
   "size": [80,80],
   "color": "#ffa45c",
   "colorName": "주황",
-  "entrance": {"position": [0,-40], "rotationDeg": 0, "width": 6},
+  "entrance": {"position": [0,-40], "rotationDeg": 180, "width": 6},
 
   "roads": [
     {"id": "alley_path", "style": "stone", "position": [-22,-5], "size": [3.5,0.12,58], "rotationDeg": 0},
@@ -39,21 +39,15 @@
   ],
 
   "props": [
-    {"id": "entry_gate", "style": "hjBlossomGate", "position": [0,-35], "size": [11,5.6,1], "collider": false, "rotationDeg": 180,
-      "title": "영화·드라마 거리", "subtitle": "SceneWalk · 촬영지 골목"},
-    {"id": "entry_trigger", "style": "hjEntranceGate", "position": [0,-35], "size": [6,4.5,2.4], "collider": false, "rotationDeg": 180, "arch": false},
+    {"id": "entry_trigger", "style": "hjEntranceGate", "position": [0,-35], "size": [6,4.5,2.4], "collider": false, "rotationDeg": 180, "arch": false, "showPad": false},
     {"id": "main_road", "style": "hjCurvedRoad", "position": [0,0], "size": [1,0.1,1], "collider": false, "rotationDeg": 0, "width": 6,
-      "points": [[0,-40],[0,-26],[3,-18],[10,-11],[15,-3],[16,8],[14,19],[8,27],[0,30],[-12,30],[-24,29],[-33,26],[-40,24]]},
-    {"id": "crosswalk_s", "style": "hjCrosswalk", "position": [-14,30], "size": [3,0.1,6], "collider": false, "rotationDeg": 0},
-    {"id": "crosswalk_n", "style": "hjCrosswalk", "position": [0.6,-22], "size": [3,0.1,6], "collider": false, "rotationDeg": 75},
+      "crosswalks": [[-14,30],[0.6,-22]], "points": [[0,-40],[0,-26],[3,-18],[10,-11],[15,-3],[16,8],[14,19],[8,27],[0,30],[-12,30],[-24,29],[-33,26],[-40,24]]},
 
-    {"id": "sea", "style": "hjSea", "position": [31,-10], "size": [18,0.1,60], "collider": false, "rotationDeg": 0, "openings": [[0.6,8.4]]},
-    {"id": "quay_fence_n", "style": "fence", "position": [21.6,-24.5], "size": [31,1,0.1], "rotationDeg": 90},
-    {"id": "quay_fence_s", "style": "fence", "position": [21.6,9], "size": [22,1,0.1], "rotationDeg": 90},
+    {"id": "sea", "style": "hjSea", "position": [31,-10], "size": [18,0.1,60], "collider": false, "rotationDeg": 0, "openings": [[2.95,7.05]]},
     {"id": "breakwater", "style": "hjBreakwater", "position": [0,0], "size": [1,0.1,1], "collider": false, "rotationDeg": 0, "width": 3, "clearStart": 3,
-      "points": [[20.8,-5],[22.5,-7],[27,-12],[31,-21],[33.5,-29]]},
-    {"id": "lighthouse", "style": "hjLighthouse", "position": [34.5,-32.5], "size": [1.8,8,1.8], "collider": [2.4,8,2.4], "rotationDeg": 0},
-    {"id": "boat_1", "style": "hjBoat", "position": [29,-2], "size": [5,1.6,1.8], "collider": false, "rotationDeg": 20, "color": "#24476b"},
+      "boarding": [25.65,-5], "points": [[20,-5],[24,-5],[27,-5],[28,-9],[25,-17],[24.8,-26]]},
+    {"id": "lighthouse", "style": "hjLighthouse", "position": [24.8,-29], "size": [1.8,8,1.8], "collider": [2.4,8,2.4], "rotationDeg": 0},
+    {"id": "boat_1", "style": "hjBoat", "position": [25,-0.75], "size": [6,1.6,3], "collider": false, "rotationDeg": 0, "moored": true, "color": "#24476b"},
     {"id": "boat_2", "style": "hjBoat", "position": [35,9], "size": [4.4,1.5,1.7], "collider": false, "rotationDeg": -35, "color": "#7a2e2e"},
     {"id": "harbor_bench", "style": "bench", "position": [24,23], "size": [1.8,0.5,0.5], "rotationDeg": -90},
     {"id": "harbor_lamp", "style": "lamp", "position": [21,-12], "size": [0.3,4.5,0.3], "rotationDeg": 180},

@@ -128,7 +128,7 @@ function SkyDome() {
 // ── 맵 바깥 땅 (지평선까지 이어지는 풀밭, 충돌 없음) ──
 function OuterGround() {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.5, 0]}>
       <planeGeometry args={[2400, 2400]} />
       <meshStandardMaterial color={SKY_COLORS.outerGround} roughness={1} />
     </mesh>

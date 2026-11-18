@@ -66,7 +66,7 @@ export default function HjEntranceGate({ item }) {
       {/* 바닥 입장 띠 (트리거 영역 표시) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} onClick={enterByClick}>
         <planeGeometry args={[w, depth]} />
-        <meshBasicMaterial ref={padMatRef} color="#f9f6ee" transparent opacity={0.3} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial ref={item.showPad === false ? null : padMatRef} color="#f9f6ee" transparent opacity={item.showPad === false ? 0 : 0.3} depthWrite={false} toneMapped={false} />
       </mesh>
 
       {/* item.arch === false면 아치 없이 입장 띠만 (다른 입구 아치와 겹칠 때) */}

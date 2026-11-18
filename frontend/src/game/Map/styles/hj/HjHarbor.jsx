@@ -2,6 +2,8 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getTiledTexture } from '../textures.js'
+import { Box, GEO, Instances, mat } from '../kit.jsx'
+import { CuboidCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
 
 // [3. 개발 > 기초개발/서비스] 혜진 구역 바닷가: 바다 · 방파제 · 등대 · 고깃배
 // 촬영지 '방파제 & 등대' (가상 영화 「등대가 켜지면」)
@@ -30,7 +32,7 @@ export function HjSea({ item }) {
     for (let i = 0; i < pos.count; i += 1) {
       const x = base[i * 3]
       const z = base[i * 3 + 2]
-      pos.setY(i, Math.sin(x * 0.45 + t * 1.2) * 0.05 + Math.cos(z * 0.38 + t * 0.9) * 0.05)
+      pos.setY(i, Math.sin(x * 0.45 + t * 1.2) * 0.024 + Math.cos(z * 0.38 + t * 0.9) * 0.024)
     }
     pos.needsUpdate = true
   })
@@ -42,17 +44,10 @@ export function HjSea({ item }) {
         <planeGeometry args={[w, d]} />
         <meshStandardMaterial color="#1f4f7a" />
       </mesh>
-      <mesh ref={ref} geometry={geometry} position={[0, 0.06, 0]}>
+      <mesh ref={ref} geometry={geometry} position={[0, 0.11, 0]}>
         <meshStandardMaterial color="#3d84b8" transparent opacity={0.88} roughness={0.25} metalness={0.15} />
       </mesh>
-      {/* 육지 쪽 둑 (item.openings 구간은 비워서 방파제로 걸어 들어갈 수 있게) */}
-      {item.wall !== false &&
-        wallSegments(d, item.openings).map(([from, to]) => (
-          <mesh key={from} position={[-w / 2 + 0.4, 0.45, (from + to) / 2]}>
-            <boxGeometry args={[0.8, 0.9, to - from]} />
-            <meshStandardMaterial color="#a39e94" roughness={0.95} />
-          </mesh>
-        ))}
+      {item.wall !== false && <HarborRails boxes={seaRails(item)} />}
     </group>
   )
 }
@@ -70,13 +65,64 @@ function wallSegments(d, openings = []) {
   return segments.filter(([a, b]) => b - a > 0.05)
 }
 
+function seaRails({ size: [w, , d], openings }) {
+  const height = 1.65
+  const edges = wallSegments(d, openings).map(([from, to]) => ({
+    p: [-w / 2 + 0.4, height / 2, (from + to) / 2], s: [0.28, height, to - from],
+  }))
+  return [
+    ...edges,
+    { p: [w / 2 - 0.14, height / 2, 0], s: [0.28, height, d] },
+    ...[-1, 1].map((side) => ({ p: [0.2, height / 2, side * (d / 2 - 0.14)], s: [w - 0.4, height, 0.28] })),
+  ]
+}
+
+const STONE_RAIL = mat('#aaa69d', { flat: true })
+const WOOD_DECK = '#ad8562'
+
+function HarborRails({ boxes }) {
+  return <Instances geometry={GEO.box} material={STONE_RAIL} items={boxes} />
+}
+
+function breakwaterCurve(item) {
+  return new THREE.CatmullRomCurve3(item.points.map(([x, z]) => new THREE.Vector3(x, 0, z)))
+}
+
+function breakwaterRails(item, curve) {
+  const width = item.width ?? 3
+  const count = Math.ceil(curve.getLength() / 0.8)
+  const rails = []
+  for (const side of [-1, 1]) {
+    let previous
+    for (let index = 0; index <= count; index += 1) {
+      const t = index / count
+      const tangent = curve.getTangentAt(t)
+      const point = curve.getPointAt(t).addScaledVector(new THREE.Vector3(-tangent.z, 0, tangent.x), side * (width / 2 - 0.08))
+      if (previous) {
+        const center = previous.clone().lerp(point, 0.5)
+        const atGangway = item.boarding && center.z > item.boarding[1] && Math.abs(center.x - item.boarding[0]) < 0.88 && Math.abs(center.z - item.boarding[1]) < 2.3
+        if (!atGangway) {
+          const dx = point.x - previous.x
+          const dz = point.z - previous.z
+          rails.push({ p: [center.x, 0.83, center.z], s: [Math.hypot(dx, dz) + 0.07, 1.18, 0.18], r: [0, -Math.atan2(dz, dx), 0] })
+        }
+      }
+      previous = point
+    }
+  }
+  const end = curve.getPointAt(1)
+  const tangent = curve.getTangentAt(1)
+  rails.push({ p: [end.x, 0.83, end.z], s: [width, 1.18, 0.18], r: [0, Math.atan2(tangent.x, tangent.z), 0] })
+  return rails
+}
+
 // ── 방파제 (style: "hjBreakwater") — item.points [[x,z],...] 따라 콘크리트 길 + 양옆 테트라포드 돌
 // item.clearStart: 시작부터 이 길이(m)만큼은 테트라포드를 두지 않음 (입구가 트이게)
 export function HjBreakwater({ item }) {
   const width = item.width ?? 3
   const clearStart = item.clearStart ?? 0
-  const { deck, rocks } = useMemo(() => {
-    const curve = new THREE.CatmullRomCurve3((item.points ?? []).map(([x, z]) => new THREE.Vector3(x, 0, z)))
+  const { deck, rocks, rails } = useMemo(() => {
+    const curve = breakwaterCurve(item)
     const length = curve.getLength()
     const count = Math.max(2, Math.round(length / 1.2))
     const rockList = []
@@ -93,16 +139,19 @@ export function HjBreakwater({ item }) {
       if (t * length < clearStart) continue // 입구 쪽은 돌 없이 비워 둠
       for (const side of [-1, 1]) {
         const off = side * (width / 2 + 0.5 + rand() * 0.5)
+        const x = p.x + normal.x * off
+        const z = p.z + normal.z * off
+        if (item.boarding && z > item.boarding[1] && Math.abs(x - item.boarding[0]) < 2.4 && z - item.boarding[1] < 3.6) continue
         rockList.push({
-          x: p.x + normal.x * off,
-          z: p.z + normal.z * off,
+          x,
+          z,
           s: 0.55 + rand() * 0.45,
           r: rand() * Math.PI,
         })
       }
     }
-    return { deck: deckGeometry(curve, length, width), rocks: rockList }
-  }, [item.points, width, clearStart])
+    return { deck: deckGeometry(curve, length, width), rocks: rockList, rails: breakwaterRails(item, curve) }
+  }, [item, width, clearStart])
 
   // 돌 무늬 한 장 = 2m (UV를 m 단위로 만들어서 반복 0.5)
   const stone = useMemo(() => getTiledTexture('stone', 0.5, 0.5), [])
@@ -115,6 +164,7 @@ export function HjBreakwater({ item }) {
       <mesh geometry={deck.sides}>
         <meshStandardMaterial color="#9d968b" roughness={0.95} side={THREE.DoubleSide} />
       </mesh>
+      <HarborRails boxes={rails} />
       {rocks.map((r, i) => (
         <mesh key={`r${i}`} position={[r.x, 0.3, r.z]} rotation={[r.r, r.r * 2, 0]} scale={r.s}>
           <dodecahedronGeometry args={[0.8, 0]} />
@@ -236,13 +286,84 @@ export function HjLighthouse({ item }) {
   )
 }
 
-// ── 고깃배 (style: "hjBoat") — size [길이, 높이, 폭]. 물 위에서 살짝 흔들려요. 충돌 없음.
+function mooredBoatBoxes({ size: [length, h, beam] }) {
+  const deckTop = h * 0.5 + 0.04
+  const boardingX = 0.65
+  const gangwayRun = 1.6
+  const highZ = -beam * 0.475 + 0.15
+  const rise = deckTop - 0.24
+  const slope = -Math.atan2(rise, gangwayRun)
+  const midZ = highZ - gangwayRun / 2
+  const midY = (deckTop + 0.24) / 2
+  const ramp = { p: [boardingX, midY - 0.055, midZ], s: [1.35, 0.12, Math.hypot(rise, gangwayRun)], r: [slope, 0, 0] }
+  const rails = [-1, 1].map((side) => ({
+    p: [boardingX + side * 0.66, midY + 0.45, midZ],
+    s: [0.10, 0.89, ramp.s[2]], r: ramp.r,
+  }))
+  const sideZ = beam * 0.455
+  const endX = length * 0.46
+  const railY = deckTop + 0.42
+  const opening = 0.72
+  rails.push(
+    { p: [0, railY, sideZ], s: [endX * 2, 0.86, 0.13] },
+    ...[[-endX, boardingX - opening], [boardingX + opening, endX]].map(([a, b]) => ({
+      p: [(a + b) / 2, railY, -sideZ], s: [b - a, 0.86, 0.13],
+    })),
+    ...[-1, 1].map((side) => ({ p: [side * endX, railY, 0], s: [0.13, 0.86, beam * 0.91] })),
+  )
+  const cabinLength = length * 0.32
+  const cabinWidth = beam * 0.72
+  const cabinHeight = 2.05
+  const cabinX = -length * 0.19
+  const cabinY = deckTop + cabinHeight / 2
+  return {
+    ramp,
+    rails,
+    deck: { p: [0, h * 0.5, 0], s: [length * 0.95, 0.08, beam * 0.95] },
+    cabin: [
+      { p: [cabinX - cabinLength / 2, cabinY, 0], s: [0.12, cabinHeight, cabinWidth] },
+      ...[-1, 1].map((side) => ({
+        p: [cabinX, cabinY, side * cabinWidth / 2], s: [cabinLength, cabinHeight, 0.12],
+      })),
+      { p: [cabinX, deckTop + cabinHeight + 0.04, 0], s: [cabinLength + 0.2, 0.16, cabinWidth + 0.22] },
+    ],
+  }
+}
+
+// [3. 개발 > 물리] 화면과 같은 바닥·난간 좌표를 사용하고, 선착장 통로만 열어 둬요.
+export function HjHarborCollider({ item }) {
+  const { boxes, surface } = useMemo(() => {
+    if (item.style === 'hjSea') return { boxes: item.wall === false ? [] : seaRails(item) }
+    if (item.style === 'hjBoat') {
+      const { deck, cabin, ramp, rails } = mooredBoatBoxes(item)
+      return { boxes: [deck, ramp, ...rails, ...cabin] }
+    }
+    const curve = breakwaterCurve(item)
+    const { top, sides } = deckGeometry(curve, curve.getLength(), item.width ?? 3)
+    const surface = [top.attributes.position.array, new Uint32Array(top.index.array)]
+    top.dispose()
+    sides.dispose()
+    return { boxes: breakwaterRails(item, curve), surface }
+  }, [item])
+
+  return (
+    <RigidBody type="fixed" colliders={false} name={`${item.id}/harbor-colliders`}
+      position={[item.position[0], item.elevation ?? 0, item.position[1]]}
+      rotation={[0, THREE.MathUtils.degToRad(item.rotationDeg ?? 0), 0]}>
+      {surface && <TrimeshCollider args={surface} />}
+      {boxes.map(({ p, s, r }, index) => <CuboidCollider key={index} position={p} rotation={r} args={s.map((length) => length / 2)} />)}
+    </RigidBody>
+  )
+}
+
+// ── 고깃배 (style: "hjBoat") — 정박한 배에는 걸어서 오를 수 있어요.
 export function HjBoat({ item }) {
   const [length, h, beam] = item.size
   const ref = useRef(null)
   const phase = (item.id?.length ?? 3) * 0.7
+  const moored = useMemo(() => item.moored ? mooredBoatBoxes(item) : null, [item])
   useFrame(({ clock }) => {
-    if (!ref.current) return
+    if (!ref.current || moored) return
     const t = clock.elapsedTime + phase
     ref.current.position.y = Math.sin(t * 1.3) * 0.08
     ref.current.rotation.z = Math.sin(t * 0.9) * 0.04
@@ -264,15 +385,22 @@ export function HjBoat({ item }) {
         <boxGeometry args={[length * 0.95, 0.08, beam * 0.95]} />
         <meshStandardMaterial color="#e9e4d8" />
       </mesh>
+      {moored && (
+        <>
+          <Box p={moored.ramp.p} s={moored.ramp.s} r={moored.ramp.r} c={WOOD_DECK} />
+          <Instances geometry={GEO.box} material={mat('#554438')} items={moored.rails} />
+          <Instances geometry={GEO.box} material={mat('#f5f1ea')} items={moored.cabin} />
+        </>
+      )}
       {/* 조타실 */}
-      <mesh position={[-length * 0.15, h * 0.85, 0]}>
+      {!moored && <mesh position={[-length * 0.15, h * 0.85, 0]}>
         <boxGeometry args={[length * 0.3, h * 0.6, beam * 0.7]} />
         <meshStandardMaterial color="#f5f1ea" />
-      </mesh>
-      <mesh position={[-length * 0.15, h * 0.95, beam * 0.36]}>
+      </mesh>}
+      {!moored && <mesh position={[-length * 0.15, h * 0.95, beam * 0.36]}>
         <planeGeometry args={[length * 0.22, h * 0.22]} />
         <meshStandardMaterial color="#3d5a73" />
-      </mesh>
+      </mesh>}
       {/* 돛대 + 깃발 */}
       <mesh position={[length * 0.12, h * 1.3, 0]}>
         <cylinderGeometry args={[0.04, 0.05, h * 1.6, 6]} />

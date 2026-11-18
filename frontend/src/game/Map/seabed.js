@@ -6,6 +6,12 @@ export function shoreline(x) {
   return 43 + 85 * t ** 7 + 1.5 * Math.sin(t * 13)
 }
 export const beachBounds = [originX-45, originX+40, originZ+40, originZ+130]
+export const COAST_SEGMENTS = 96
+
+export function coastPoint(index) {
+  const x = -45 + 85 * index / COAST_SEGMENTS
+  return { x, z: shoreline(x) }
+}
 export function waterDepth(x,z) {
   const [left,right,start,end] = beachBounds
   if(x<left || x>right || z<start || z>end) return 0
