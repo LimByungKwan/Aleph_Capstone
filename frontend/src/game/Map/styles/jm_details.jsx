@@ -396,9 +396,10 @@ export function JmPier({ item }) {
 }
 
 // ── 작은 나룻배 ───────────────────────────────────────
+// 배 바닥(반구, 깊이 0.25)이 물(높이 0.04~0.05)보다 위에 오게 0.27에 띄움 (예전 0.12는 바닥이 물에 잠겨 보였음)
 export function JmBoat() {
   return (
-    <group position={[0, 0.12, 0]}>
+    <group position={[0, 0.27, 0]}>
       <mesh scale={[0.6, 0.25, 1.6]}>
         <sphereGeometry args={[1, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]} />
         <meshStandardMaterial color="#8b5a3c" side={THREE.DoubleSide} />

@@ -21,7 +21,7 @@ export const SKIP_GOAL = 3 // 물수제비: 돌이 이만큼 튀면 체험 완�
 //   waited   : 우산 쓰고 비 구역에 있던 시간(초)
 
 export const useJmActivity = create((set, get) => ({
-  shoot: { near: null, active: null, power: 0, charging: false, makes: 0, shots: 0, lastResult: null },
+  shoot: { near: null, nearDist: Infinity, active: null, power: 0, charging: false, makes: 0, shots: 0, lastResult: null },
   setShoot: (patch) => set({ shoot: { ...get().shoot, ...patch } }),
   startShoot: (hoopId) =>
     set({ shoot: { ...get().shoot, active: hoopId, power: 0, charging: false, makes: 0, shots: 0, lastResult: null } }),
