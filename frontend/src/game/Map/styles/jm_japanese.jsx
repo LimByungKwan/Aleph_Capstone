@@ -6,6 +6,9 @@ import { JM_SEASON_STYLES } from './jm_seasons.jsx'
 import { getJpSignTexture, GlowMaterial, JM_LANDMARK_STYLES } from './jm_landmarks.jsx'
 import { JM_SHOP_STYLES } from './jm_shops.jsx'
 import { JM_DETAIL_STYLES } from './jm_details.jsx'
+import { JM_SKIP_STYLES } from './jm_skipstone.jsx'
+import { JM_BRIDGE_STYLES } from './jm_bridges.jsx'
+import { JM_RIVERSIDE_STYLES } from './jm_riverside.jsx'
 
 // 애니메이션 구역(JM) 전용 일본풍 스타일. 담당: 지민
 // 다른 스타일과 같은 약속을 따라요:
@@ -32,6 +35,7 @@ export const JM_STYLES = {
   jmHut: JmHut,
   jmLanternString: JmLanternString,
   jmRooftopShrine: JmRooftopShrine,
+  jmRooftopBuilding: JmRooftopBuilding,
   // 사계절 나무·바닥, 전봇대·우체통 같은 골목 소품 (jm_seasons.jsx)
   ...JM_SEASON_STYLES,
   // 성지 안내판(직접 그린 포스터), 논, 큰 나무, 농구 골대 같은 작품별 랜드마크 (jm_landmarks.jsx)
@@ -40,6 +44,12 @@ export const JM_STYLES = {
   ...JM_SHOP_STYLES,
   // 허수아비·볏단 걸이·데미즈야 같은 영역별 세부 소품, 자연스러운 호수 (jm_details.jsx)
   ...JM_DETAIL_STYLES,
+  // 물수제비 체험 (jm_skipstone.jsx)
+  ...JM_SKIP_STYLES,
+  // 붉은 다리·흔들다리 겉모습 (jm_bridges.jsx)
+  ...JM_BRIDGE_STYLES,
+  // 강변 소품: 물레방아·노다테·돗자리·철교 (jm_riverside.jsx)
+  ...JM_RIVERSIDE_STYLES,
 }
 
 // ── 도리이 (신사 입구 문) ─────────────────────
@@ -484,6 +494,121 @@ export function JmLanternString({ item }) {
 
 // ── 옥상 신사가 있는 낡은 빌딩 ──────────────────
 // 빌딩(size 높이) 옥상 위에 작은 도리이와 사당을 올림. 옥상에는 올라갈 수 없음(보는 용도)
+// ── 들어가서 옥상까지 올라가는 옥상 신사 건물 ─────────
+// 1층 로비(앞면 가운데 문) → 안쪽 계단 3번(층계참 2곳) → 옥상 구멍으로 나가면 도리이·사당
+// 계단·충돌은 데이터(jm_anime.json)가 맡음: terrain의 jm_rooftop_stairs_1~3, props의 jm_rooftop_* (jmCollider)
+// 여기서는 눈에 보이는 것만 그림. 좌표는 모두 건물 기준(앞 +z, 가로 x). size 예: [10, 8.5, 8]
+// 왜 층계참 3단: 계단 난간 벽(높이 약 0.9m)이 옆으로 나가는 길을 막아서, 마지막 계단 끝이 바로 옥상 바닥으로 이어지게 함
+const RT = 0.25 // 벽 두께
+const RT_DOOR = 1.8
+const RT_DOOR_H = 2.5
+export function JmRooftopBuilding({ item }) {
+  const [w, h, d] = item.size
+  const wall = item.color ?? '#8d8f8c'
+  const inner = '#d9d6cf'
+  const slab = '#a3a5a2'
+  const front = d / 2
+  const floors = Math.max(2, Math.floor(h / 3))
+  const sideW = (w - RT_DOOR) / 2
+  const Box = ({ p, s, c, e }) => (
+    <mesh position={p}>
+      <boxGeometry args={s} />
+      <meshStandardMaterial color={c} emissive={e ?? '#000000'} emissiveIntensity={e ? 0.5 : 0} />
+    </mesh>
+  )
+  return (
+    <group>
+      {/* 바닥 */}
+      <Box p={[0, 0.05, 0]} s={[w, 0.1, d]} c="#bdb7ab" />
+      {/* 뒤·옆 벽 (바깥 회색, 안쪽 밝은 색은 얇은 판으로) */}
+      <Box p={[0, h / 2, -front + RT / 2]} s={[w, h, RT]} c={wall} />
+      <Box p={[-w / 2 + RT / 2, h / 2, 0]} s={[RT, h, d]} c={wall} />
+      <Box p={[w / 2 - RT / 2, h / 2, 0]} s={[RT, h, d]} c={wall} />
+      <Box p={[0, h / 2, -front + RT + 0.01]} s={[w - 2 * RT, h, 0.02]} c={inner} />
+      {[-1, 1].map((side) => (
+        <Box key={side} p={[side * (w / 2 - RT - 0.01), h / 2, 0]} s={[0.02, h, d - 2 * RT]} c={inner} />
+      ))}
+      {/* 앞벽: 문 양옆 + 문 위 */}
+      {[-1, 1].map((side) => (
+        <Box key={side} p={[side * (RT_DOOR / 2 + sideW / 2), h / 2, front - RT / 2]} s={[sideW, h, RT]} c={wall} />
+      ))}
+      <Box p={[0, (h + RT_DOOR_H) / 2, front - RT / 2]} s={[RT_DOOR, h - RT_DOOR_H, RT]} c={wall} />
+      {[-1, 1].map((side) => (
+        <Box key={side} p={[side * (RT_DOOR / 2 + 0.06), RT_DOOR_H / 2, front - RT / 2]} s={[0.12, RT_DOOR_H, RT + 0.04]} c="#4b5563" />
+      ))}
+      {/* 바깥 창 띠 (앞·양옆, 층마다) */}
+      {range(floors).map((f) => (
+        <group key={f}>
+          {f > 0 && <Box p={[0, f * 3 + 1.6, front + 0.02]} s={[w - 1, 1.2, 0.02]} c="#3a3f44" />}
+          {f === 0 &&
+            [-1, 1].map((side) => <Box key={side} p={[side * (RT_DOOR / 2 + sideW / 2), 1.6, front + 0.02]} s={[sideW - 0.8, 1.2, 0.02]} c="#3a3f44" />)}
+          {[-1, 1].map((side) => (
+            <Box key={side} p={[side * (w / 2 + 0.02), f * 3 + 1.6, 0]} s={[0.02, 1.2, d - 1]} c="#3a3f44" />
+          ))}
+        </group>
+      ))}
+      {/* 입구 위 작은 차양 + 1층 로비 우편함 */}
+      <Box p={[0, RT_DOOR_H + 0.15, front + 0.45]} s={[RT_DOOR + 0.8, 0.08, 0.9]} c="#6b7280" />
+      <Box p={[-w / 2 + RT + 0.2, 1.3, front - 1.3]} s={[0.3, 0.9, 1.2]} c="#9ca3af" />
+      {range(3).map((i) => (
+        <Box key={i} p={[-w / 2 + RT + 0.36, 1.05 + i * 0.25, front - 1.3]} s={[0.02, 0.18, 1.1]} c="#4b5563" />
+      ))}
+
+      {/* 층계참 2곳 (계단 1→2 사이, 2→3 사이) + 로비 쪽 난간 */}
+      <Box p={[3.625, 2.73, -2.2]} s={[2.25, 0.2, 3.1]} c={slab} />
+      <Box p={[-3.875, 5.57, -2.2]} s={[1.75, 0.2, 3.1]} c={slab} />
+      <Box p={[3.625, 2.83 + 0.5, -0.6]} s={[2.25, 1, 0.06]} c="#6b7280" />
+      <Box p={[-3.875, 5.67 + 0.5, -0.6]} s={[1.75, 1, 0.06]} c="#6b7280" />
+
+      {/* 옥상 바닥 (계단 3 위쪽만 뚫림) */}
+      <Box p={[0, h - 0.1, 0.75]} s={[9.5, 0.2, 6]} c={slab} />
+      <Box p={[3.625, h - 0.1, -3]} s={[2.25, 0.2, 1.5]} c={slab} />
+      <Box p={[-3.875, h - 0.1, -3]} s={[1.75, 0.2, 1.5]} c={slab} />
+      {/* 계단 구멍 둘레 난간 */}
+      <Box p={[-0.25, h + 0.5, -2.2]} s={[5.5, 1, 0.06]} c="#6b7280" />
+      <Box p={[-3.05, h + 0.5, -3]} s={[0.06, 1, 1.5]} c="#6b7280" />
+
+      {/* 옥상 난간 */}
+      {[
+        [0, d / 2, w, 0.1],
+        [0, -d / 2, w, 0.1],
+        [w / 2, 0, 0.1, d],
+        [-w / 2, 0, 0.1, d],
+      ].map(([x, z, sx, sz], i) => (
+        <Box key={i} p={[x, h + 0.45, z]} s={[sx, 0.9, sz]} c="#b9bbb8" />
+      ))}
+
+      {/* 옥상: 도리이 → 작은 사당 (앞에서 들어오면 도리이를 지나 사당) */}
+      <group position={[-1, h, 1.9]}>
+        <JmTorii item={{ size: [2.2, 2.4, 0.3] }} />
+      </group>
+      <group position={[-1, h, 0.1]}>
+        <Box p={[0, 0.5, 0]} s={[1, 1, 0.9]} c={WOOD} />
+        <mesh position={[0, 1.2, 0]} rotation={[0, Math.PI / 4, 0]}>
+          <coneGeometry args={[0.95, 0.5, 4]} />
+          <meshStandardMaterial color={ROOF_TILE} flatShading />
+        </mesh>
+      </group>
+      {/* 옥상 화분 (풀이 무성한 느낌) */}
+      {[
+        [3.9, 3.2],
+        [-4.0, 3.2],
+        [3.9, 0.4],
+        [-4.0, 0.4],
+        [1.6, 3.4],
+      ].map(([x, z], i) => (
+        <group key={i} position={[x, h, z]}>
+          <Box p={[0, 0.25, 0]} s={[0.8, 0.5, 0.6]} c="#8a6a4a" />
+          <mesh position={[0, 0.75, 0]}>
+            <icosahedronGeometry args={[0.45, 0]} />
+            <meshStandardMaterial color={i % 2 ? '#6b8f3a' : '#4f7a34'} flatShading />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
 export function JmRooftopShrine({ item }) {
   const [w, h, d] = item.size
   const floors = Math.max(2, Math.floor(h / 3))
