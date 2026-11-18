@@ -57,9 +57,38 @@ export function HjCurvedRoad({ item }) {
     )
     const count = Math.max(8, (item.points?.length ?? 2) * SAMPLES_PER_SEGMENT)
     const totalLength = curve.getLength()
+    const crossings = (item.crosswalks ?? []).map(([x, z]) => {
+      let nearest = 0
+      let distance = Infinity
+      for (let index = 0; index <= count * 3; index += 1) {
+        const t = index / (count * 3)
+        const point = curve.getPointAt(t)
+        const squared = (point.x - x) ** 2 + (point.z - z) ** 2
+        if (squared < distance) {
+          nearest = t
+          distance = squared
+        }
+      }
+      return nearest * totalLength
+    })
+    const crosswalks = crossings.flatMap((center) => {
+      const start = Math.max(0, center - 1.4)
+      const span = Math.min(totalLength, center + 1.4) - start
+      const fraction = (t) => (start + span * t) / totalLength
+      const segment = {
+        getPointAt: (t) => curve.getPointAt(fraction(t)),
+        getTangentAt: (t) => curve.getTangentAt(fraction(t)),
+      }
+      const stripeCount = Math.max(1, Math.floor((width - 0.9) / 0.7))
+      return Array.from({ length: stripeCount }, (_, index) => {
+        const offset = (index - (stripeCount - 1) / 2) * 0.7
+        return ribbon(segment, 12, offset - 0.24, offset + 0.24, 0.04)
+      })
+    })
     // 점선: 3m 칠하고 3m 비우기
     const dashes = []
     for (let s = 1.5; s < totalLength - 3; s += 6) {
+      if (crossings.some((center) => s < center + 1.4 && s + 3 > center - 1.4)) continue
       const sub = new THREE.CatmullRomCurve3(
         Array.from({ length: 4 }, (_, i) => curve.getPointAt(Math.min(1, (s + i) / totalLength))),
       )
@@ -71,8 +100,9 @@ export function HjCurvedRoad({ item }) {
       walks: [ribbon(curve, count, -half - 1.75, -half - 0.25, 0.15), ribbon(curve, count, half + 0.25, half + 1.75, 0.15)],
       edges: [ribbon(curve, count, -half + 0.25, -half + 0.37, 0.03), ribbon(curve, count, half - 0.37, half - 0.25, 0.03)],
       dashes,
+      crosswalks,
     }
-  }, [item.points, half])
+  }, [item.points, item.crosswalks, width, half])
 
   const textures = useMemo(() => ({ asphalt: tiled('asphalt'), brick: tiled('brick') }), [])
 
@@ -89,6 +119,11 @@ export function HjCurvedRoad({ item }) {
       {parts.dashes.map((g, i) => (
         <mesh key={`d${i}`} geometry={g}>
           <meshStandardMaterial color="#f2c14e" side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-2} />
+        </mesh>
+      ))}
+      {parts.crosswalks.map((geometry, index) => (
+        <mesh key={index} geometry={geometry}>
+          <meshStandardMaterial color="#f2f2ec" side={THREE.DoubleSide} />
         </mesh>
       ))}
       {parts.curbs.map((g, i) => (

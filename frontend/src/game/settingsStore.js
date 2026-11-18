@@ -4,7 +4,7 @@ import { DEFAULT_TIME, SHOW_ZONES } from './config.js'
 // 설정창(⚙) 값. 3D 화면 쪽에서만 쓰는 저장소예요. (팀 공용 약속인 store/gameStore.js와는 별개)
 // - timeOfDay : 'morning' | 'noon' | 'night'  (하늘·햇빛·안개·별)
 // - quality   : 'high' | 'low'                 (low = 그림자 끄기 + 화면 해상도 낮추기)
-// - showZones : 구역 표시(색 바닥·테두리·입구 아치·이름표·범례) 켜기/끄기
+// - showZones : 구역 테두리 표시 켜기/끄기
 // 이 브라우저에 저장돼서 새로고침해도 유지돼요.
 
 const KEY = 'scenewalk-settings'

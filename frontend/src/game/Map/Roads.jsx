@@ -3,8 +3,8 @@ import * as THREE from 'three'
 import { getRoadTextTexture, getTiledTexture, TILE_METERS } from './styles/textures.js'
 
 // 길·인도·광장 바닥 (충돌 없음)
-// item.style: "asphalt" | "brick" | "tile" | "stone" → 무늬 텍스처, 없으면 color 단색
-export function Road({ item }) {
+// item.style은 TILE_METERS의 바닥 무늬예요. 없으면 color 단색을 사용해요.
+export function Road({ item, layer = 0 }) {
   const [x, z] = item.position
   const [w, h, d] = item.size
   const rotationY = THREE.MathUtils.degToRad(item.rotationDeg ?? 0)
@@ -15,7 +15,7 @@ export function Road({ item }) {
   }, [item.style, w, d])
 
   return (
-    <mesh position={[x, h / 2, z]} rotation={[0, rotationY, 0]} receiveShadow name={item.id}>
+    <mesh position={[x, h / 2 + layer * 0.006, z]} rotation={[0, rotationY, 0]} receiveShadow name={item.id}>
       <boxGeometry args={[w, h, d]} />
       <meshStandardMaterial map={texture} color={texture ? '#ffffff' : item.color} />
     </mesh>
