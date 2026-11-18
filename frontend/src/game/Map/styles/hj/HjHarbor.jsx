@@ -10,9 +10,11 @@ import { getTiledTexture } from '../textures.js'
 export function HjSea({ item }) {
   const [w, , d] = item.size
   const ref = useRef(null)
+  const lastWaveTick = useRef(-1)
   const geometry = useMemo(() => {
     const g = new THREE.PlaneGeometry(w, d, Math.ceil(w / 1.5), Math.ceil(d / 1.5))
     g.rotateX(-Math.PI / 2)
+    g.attributes.position.setUsage(THREE.DynamicDrawUsage)
     return g
   }, [w, d])
   const base = useMemo(() => Float32Array.from(geometry.attributes.position.array), [geometry])
@@ -21,6 +23,10 @@ export function HjSea({ item }) {
     const pos = ref.current?.geometry.attributes.position
     if (!pos) return
     const t = clock.elapsedTime
+    // [3. 개발 > 렌더링 최적화] 물결의 속도는 유지하고 메시 갱신은 초당 최대 30회로 제한해요.
+    const tick = Math.floor(t * 30)
+    if (lastWaveTick.current === tick) return
+    lastWaveTick.current = tick
     for (let i = 0; i < pos.count; i += 1) {
       const x = base[i * 3]
       const z = base[i * 3 + 2]
