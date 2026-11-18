@@ -10,6 +10,8 @@ import { JM_SKIP_STYLES } from './jm_skipstone.jsx'
 import { JM_BRIDGE_STYLES } from './jm_bridges.jsx'
 import { JM_RIVERSIDE_STYLES } from './jm_riverside.jsx'
 import { JM_BENCH_STYLES } from './jm_bench.jsx'
+import { mergeStyles } from './jm_perf.jsx'
+import { Fence } from './props.jsx'
 
 // 애니메이션 구역(JM) 전용 일본풍 스타일. 담당: 지민
 // 다른 스타일과 같은 약속을 따라요:
@@ -27,7 +29,21 @@ const STONE = '#a29d93'
 const range = (n) => Array.from({ length: n }, (_, i) => i)
 
 // index.js의 STYLES에 펼쳐 넣는 목록 (새 스타일은 여기만 추가하면 돼서 index.js를 다시 안 건드려도 됨)
-export const JM_STYLES = {
+// 렉 줄이기: 움직이는 부품이 있는 스타일만 빼고, 정적 부품을 오브젝트마다 재질별로 합쳐 그림 (jm_perf.jsx)
+const NO_MERGE = new Set([
+  'jmHoop', // 슛 공(움직임)
+  'jmBusStop', // 비·우산(움직임)
+  'jmSkipSpot', // 물수제비 돌·물보라(움직임)
+  'jmBridgeDress', // 흔들다리(매 프레임 움직임)
+  'jmWaterwheel', // 도는 바퀴
+  'jmRiver', // 흐르는 물결
+  'jmCollider', // 그리는 것 없음
+  'jmZoneLight', // 조명
+  'jmGroundCover', // 이미 인스턴스 한 번에 그림
+  'jmPathRibbon', // 이미 메시 하나
+])
+
+const JM_STYLES_RAW = {
   jmTorii: JmTorii,
   jmMachiya: JmMachiya,
   jmShrine: JmShrine,
@@ -53,7 +69,11 @@ export const JM_STYLES = {
   ...JM_RIVERSIDE_STYLES,
   // 앉을 수 있는 벤치 (jm_bench.jsx)
   ...JM_BENCH_STYLES,
+  // 공용 난간(props.jsx Fence)을 애니 구역에서는 합쳐서 그림 (공용 파일은 그대로)
+  jmFence: Fence,
 }
+
+export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)
 
 // ── 도리이 (신사 입구 문) ─────────────────────
 // size 예: [6.4, 5.5, 0.8]. 사이로 지나다닐 수 있게 JSON에 "collider": false 권장

@@ -42,6 +42,7 @@ export function JmBench({ item }) {
   const anchor = useRef(null)
   const player = useRef(null)
   const lastLookup = useRef(-Infinity)
+  const nextCheck = useRef(0) // 렉 줄이기: 캐릭터가 멀면 가끔만 확인
   // 앉기 상태: phase 'sitting' | 'standing' | null, t = 동작 진행(0~1), model = 옮기는 모델, saved = 원래 위치
   const sit = useRef({ phase: null, t: 0, model: null, saved: null })
   const tmp = useMemo(
@@ -150,7 +151,7 @@ export function JmBench({ item }) {
     const s = sit.current
 
     // 가까운 벤치 하나만 "E 앉기" (벤치가 여러 개 붙어 있어도 안내가 번갈아 바뀌지 않게)
-    if (p && !st.active) {
+    if (p && !st.active && (t >= nextCheck.current || st.near === item.id)) {
       updateSeat()
       p.getWorldPosition(tmp.me)
       // 앉는 자리 바로 앞(0.5m)을 기준으로 거리 → 등 뒤에서는 안내 안 뜸
@@ -158,6 +159,8 @@ export function JmBench({ item }) {
       const dist = Math.hypot(tmp.me.x - tmp.p.x, tmp.me.z - tmp.p.z)
       const ahead = (tmp.me.x - tmp.seat.x) * tmp.front.x + (tmp.me.z - tmp.seat.z) * tmp.front.z
       const near = dist < SIT_NEAR && ahead > -0.1 && Math.abs(tmp.me.y - tmp.seat.y) < 1.8
+      // 10m 넘게 떨어져 있으면 0.3초 뒤에 다시 확인 (벤치 23개가 매 프레임 계산하지 않게)
+      nextCheck.current = dist > 10 ? t + 0.3 : 0
       if (near) {
         if (st.near === item.id) {
           if (Math.abs(st.nearDist - dist) > 0.2) store.setSit({ nearDist: dist })

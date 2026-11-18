@@ -245,8 +245,15 @@ function SuspensionBridge({ points, width }) {
     [data.count, s, e],
   )
 
-  useFrame(({ clock, scene }, delta) => {
+  useFrame(({ clock, scene, camera }, delta) => {
     const t = clock.elapsedTime
+    // 렉 줄이기: 카메라가 다리 가운데에서 80m 넘게 멀면 흔들림 계산(판자·밧줄 약 200개 위치)을 쉼
+    if (anchor.current) {
+      anchor.current.getWorldPosition(swayTmp.a)
+      const mx = swayTmp.a.x + (s[0] + e[0]) / 2 - camera.position.x
+      const mz = swayTmp.a.z + (s[2] + e[2]) / 2 - camera.position.z
+      if (mx * mx + mz * mz > 80 * 80) return
+    }
     if (!playerRef.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
       playerRef.current = scene.getObjectByName('player') ?? null

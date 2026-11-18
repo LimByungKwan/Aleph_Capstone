@@ -45,6 +45,7 @@ export function HoopShoot({ item, rimY }) {
   const player = useRef(null)
   const lastLookup = useRef(-Infinity)
   const phase = useRef(0)
+  const nextCheck = useRef(0) // 렉 줄이기: 멀면 가끔만 확인
 
   const tmp = useMemo(
     () => ({
@@ -256,8 +257,8 @@ export function HoopShoot({ item, rimY }) {
     const store = useJmActivity.getState()
     const s = store.shoot
 
-    // 가까이 있는지: 거리 + 코트 쪽(골대 앞)
-    if (player.current?.parent) {
+    // 가까이 있는지: 거리 + 코트 쪽(골대 앞). 멀리 있고 슛 중이 아니면 0.3초마다만 확인
+    if (player.current?.parent && (t >= nextCheck.current || s.active || s.near === item.id)) {
       updateHoopWorld()
       player.current.getWorldPosition(tmp.me)
       tmp.d.copy(tmp.me).sub(tmp.rim)
@@ -267,6 +268,7 @@ export function HoopShoot({ item, rimY }) {
       const ahead = tmp.d.dot(tmp.forward)
       const side = Math.abs(tmp.d.x * tmp.forward.z - tmp.d.z * tmp.forward.x)
       const dist = tmp.d.length()
+      nextCheck.current = dist > 20 ? t + 0.3 : 0
       const near = !s.active && dist < NEAR_DIST && ahead > 0.8 && side < 4.5
       if (near) {
         if (s.near === item.id) {
