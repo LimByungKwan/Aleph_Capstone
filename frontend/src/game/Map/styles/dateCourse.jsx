@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { hipRoofGeometry } from './geometry.js'
 import { getCirclePlazaTexture, getNeonWingsTexture, getSignTexture, getStripeTexture, getTiledTexture } from './textures.js'
 import { Ball, Box, Cone, Cyl, GEO, Instances, hashString, mat, seeded, texMat } from './kit.jsx'
+import { SEASON_LOOK, useSeason } from '../../seasons.js'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
 // 최적화: 공용 도형·재질(kit.jsx), 반복 물체는 <Instances>, 작은 물체·빛나는 재질은 그림자 끔.
@@ -80,6 +81,8 @@ const CLUSTERS = [
 ]
 
 export function CherryTree({ item }) {
+  const season = useSeason()
+  const colors = season === 'spring' ? BLOSSOM : SEASON_LOOK[season].leaves
   const [w, h] = item.size
   const radius = w / 2
   const trunkH = h * 0.45
@@ -93,7 +96,7 @@ export function CherryTree({ item }) {
         <mesh
           key={i}
           geometry={GEO.ico}
-          material={mat(BLOSSOM[i % BLOSSOM.length], { flat: true })}
+          material={mat(colors[i % colors.length], { flat: true })}
           position={[x * radius, canopyY + y * radius, z * radius]}
           scale={s * radius * 0.78}
         />

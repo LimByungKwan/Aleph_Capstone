@@ -29,7 +29,7 @@ const saved = load()
 
 export const useSettings = create((set, get) => ({
   timeOfDay: saved.timeOfDay ?? DEFAULT_TIME,
-  quality: saved.quality ?? 'high',
+  quality: saved.quality ?? 'low', // 기본은 낮음 (혜진 님 FPS 최적화 기준)
   showZones: saved.showZones ?? SHOW_ZONES,
   setTimeOfDay: (timeOfDay) => {
     set({ timeOfDay })

@@ -31,11 +31,17 @@ import { zones } from './data/mapData.js'
 import { useSettings } from './settingsStore.js'
 import { live } from './timeOfDay.js'
 import SettingsPanel from './SettingsPanel.jsx'
+import SeasonPicker from './SeasonPicker.jsx'
+import SeasonalWeather from './Map/SeasonalWeather.jsx'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
 export default function Scene() {
   const [playing, setPlaying] = useState(!FREE_CAMERA)
+  // 그래픽 품질은 설정창(⚙)과 왼쪽 '고화질' 체크박스가 같은 값을 씀 (기본: 낮음)
+  const highDetail = useSettings((state) => state.quality === 'high')
+  const setQuality = useSettings((state) => state.setQuality)
+  const setHighDetail = (on) => setQuality(on ? 'high' : 'low')
   const playerRef = useRef(null) // 캐릭터 위치를 카메라·센서와 공유
 
   const startPlay = (event) => {
@@ -57,16 +63,16 @@ export default function Scene() {
   return (
     <KeyboardControls map={KEYBOARD_MAP}>
       <div ref={labelLayer} style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <Canvas shadows="percentage" camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
+        <Canvas dpr={highDetail ? [1, 2] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
           <PastelSky />
 
-          {/* 전체 조명 + 그림자 있는 태양광(밤에는 달빛) 1개 — 시간대에 따라 색·세기가 바뀜 */}
+          {/* 전체 조명 + 그림자 있는 태양광(밤에는 달빛) 1개 — 계절·시간대에 따라 색·세기가 바뀜 (그림자는 보고 있는 곳 주변만) */}
           <SkyAmbient />
-          <SunLight />
-          <QualityControl />
+          <SunLight castShadow={highDetail} />
 
-          <MapLayout showStartMarker={!playing} />
+          <MapLayout showStartMarker={!playing} highDetail={highDetail} />
+          {playing && <SeasonalWeather playerRef={playerRef} />}
           <PlaceMarkers />
 
           {/* 물리 엔진(Rapier)은 처음에 잠깐 로딩이 필요해서 Suspense로 감쌈 */}
@@ -88,7 +94,7 @@ export default function Scene() {
           {playing ? <InteractionKeys /> : <OverviewCamera />}
         </Canvas>
 
-        <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
+        <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} highDetail={highDetail} setHighDetail={setHighDetail} />
         <SettingsPanel />
       </div>
     </KeyboardControls>
@@ -102,10 +108,9 @@ const lookTarget = new THREE.Vector3()
 
 const SUN_DISTANCE = Math.hypot(...SUN_POSITION)
 
-function SunLight() {
+function SunLight({ castShadow }) {
   const lightRef = useRef(null)
   const area = useRef(SHADOW_AREA)
-  const highQuality = useSettings((state) => state.quality === 'high')
 
   useFrame(({ camera, controls }) => {
     const light = lightRef.current
@@ -126,6 +131,7 @@ function SunLight() {
     light.target.position.set(x, 0, z)
     light.target.updateMatrixWorld()
 
+    if (!castShadow) return
     const wanted = THREE.MathUtils.clamp(camera.position.distanceTo(lookTarget) * 0.9, SHADOW_MIN_AREA, SHADOW_AREA)
     if (Math.abs(wanted - area.current) > 3) {
       area.current = wanted
@@ -141,7 +147,7 @@ function SunLight() {
       ref={lightRef}
       intensity={1.6}
       color="#fff4e6"
-      castShadow={highQuality}
+      castShadow={castShadow}
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-SHADOW_AREA}
       shadow-camera-right={SHADOW_AREA}
@@ -167,16 +173,6 @@ function SkyAmbient() {
   return <hemisphereLight ref={ref} args={['#fff0f5', '#c2ae98', 0.65]} />
 }
 
-// 그래픽 품질: 낮음이면 화면 해상도를 1배로 (고해상도 화면에서 픽셀 계산이 1/4로 줄어듦)
-function QualityControl() {
-  const quality = useSettings((state) => state.quality)
-  const setDpr = useThree((state) => state.setDpr)
-  useEffect(() => {
-    setDpr(quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, 2))
-  }, [quality, setDpr])
-  return null
-}
-
 // 둘러보기 카메라. 땅 밑으로 못 내려가고, 옆으로 끌면 땅과 평행하게 이동
 function OverviewCamera() {
   const camera = useThree((state) => state.camera)
@@ -199,7 +195,7 @@ function OverviewCamera() {
 }
 
 // 왼쪽 위 안내 + 모드 전환 버튼 + (확인용) 게임 스토어 값
-function HelpPanel({ playing, onStart, onStop }) {
+function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
   const nearbyPlaceId = useGameStore((state) => state.nearbyPlaceId)
   const openPanel = useGameStore((state) => state.openPanel)
   const showZones = useSettings((state) => state.showZones)
@@ -226,6 +222,18 @@ function HelpPanel({ playing, onStart, onStop }) {
         : '왼쪽 드래그: 회전 · 오른쪽 드래그: 이동 · 휠: 확대/축소'}
 
       {showZones && <ZoneLegend />}
+      <SeasonPicker />
+      <label style={{ display: 'block', marginTop: 4, pointerEvents: 'auto' }}>
+        <input
+          type="checkbox"
+          checked={highDetail}
+          onChange={(event) => {
+            setHighDetail(event.currentTarget.checked)
+            event.currentTarget.blur()
+          }}
+        />{' '}
+        고화질 (그림자·고해상도)
+      </label>
 
       {playing && (
         <div style={{ marginTop: 6, fontFamily: 'Consolas, monospace', fontSize: 12 }}>

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { getSignTexture } from './textures.js'
+import { SEASON_LOOK, useSeason } from '../../seasons.js'
 
 // 소품 스타일들. JSON의 size [가로 w, 높이 h, 깊이 d] 기준으로 그려요. 앞면은 +z.
 
@@ -18,9 +19,8 @@ const LEAF_CLUSTERS = [
   [-0.2, 0.35, 0.35, 0.65],
   [0.35, 0.25, -0.05, 0.6],
 ]
-const LEAF_COLORS = ['#4f8f45', '#5fa24f', '#3f7a3a']
-
 export function Tree({ item }) {
+  const colors = SEASON_LOOK[useSeason()].leaves
   const [w, h] = item.size
   const radius = w / 2
   const trunkH = h * 0.5
@@ -38,7 +38,7 @@ export function Tree({ item }) {
       {LEAF_CLUSTERS.map(([x, y, z, s], i) => (
         <mesh key={i} position={[x * radius, canopyY + y * radius, z * radius]}>
           <icosahedronGeometry args={[s * radius * 0.75, 1]} />
-          <meshStandardMaterial color={LEAF_COLORS[i % LEAF_COLORS.length]} flatShading />
+          <meshStandardMaterial color={colors[i % colors.length]} flatShading />
         </mesh>
       ))}
     </group>

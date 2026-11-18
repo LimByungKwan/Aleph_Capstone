@@ -6,33 +6,38 @@ import { CLOUDS_DRIFT, FOG_FAR, FOG_NEAR, SHOW_CLOUDS, SHOW_MOUNTAINS, SKY_COLOR
 import { useSettings } from '../settingsStore.js'
 import { live, snapTimeOfDay, stepTimeOfDay } from '../timeOfDay.js'
 import { seeded } from './styles/kit.jsx'
+import { SEASON_LOOK, useSeason } from '../seasons.js'
 
 // 파스텔 하늘 세트. 인터넷 이미지(HDR) 없이 코드로만 그려요.
-// 시간대(아침/점심/밤)는 설정창에서 바꾸고, 색은 timeOfDay.js의 live 값을 따라 부드럽게 바뀌어요.
+// 하늘색 = 계절(혜진 님 seasons.js) × 시간대(아침/점심/밤, 설정창 ⚙). timeOfDay.js의 live 값을 따라 부드럽게 바뀌어요.
 // 최적화: 하늘 1번 + 구름 1번 + 먼 산 1번 + 바깥 땅 1번 + 별 1번(밤에만) = 그리기 호출 최대 5번, 그림자 없음.
 
 export default function PastelSky() {
+  const season = useSeason()
+  const look = SEASON_LOOK[season]
   return (
     <>
-      <TimeOfDayDriver />
-      <fog attach="fog" args={[SKY_COLORS.fog, FOG_NEAR, FOG_FAR]} />
+      <TimeOfDayDriver season={season} />
+      <fog attach="fog" args={[look.fog ?? SKY_COLORS.fog, FOG_NEAR, FOG_FAR]} />
       <SkyDome />
       <Stars />
-      <OuterGround />
+      <OuterGround color={look.meadow} />
       {SHOW_MOUNTAINS && <Mountains />}
       {SHOW_CLOUDS && <Clouds />}
     </>
   )
 }
 
-// 매 프레임 시간대 값을 목표로 조금씩 옮기고, 안개 색을 맞춤 (가장 먼저 실행)
-function TimeOfDayDriver() {
+// 매 프레임 하늘·빛 값을 (시간대 × 계절) 목표로 조금씩 옮기고, 안개 색을 맞춤 (가장 먼저 실행)
+function TimeOfDayDriver({ season }) {
   const scene = useThree((state) => state.scene)
   useLayoutEffect(() => {
-    snapTimeOfDay(useSettings.getState().timeOfDay)
+    snapTimeOfDay(useSettings.getState().timeOfDay, season)
+    // 처음 한 번만 바로 맞추고, 이후 계절이 바뀌면 부드럽게 전환
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useFrame((_, delta) => {
-    stepTimeOfDay(useSettings.getState().timeOfDay, delta)
+    stepTimeOfDay(useSettings.getState().timeOfDay, season, delta)
     if (scene.fog) scene.fog.color.copy(live.fog)
   }, -1)
   return null
@@ -118,6 +123,7 @@ function SkyDome() {
     [],
   )
   const geometry = useMemo(() => new THREE.SphereGeometry(10, 32, 16), [])
+  // 계절 하늘색은 timeOfDay.js가 live 값에 섞어 주므로 여기서 따로 설정하지 않음
 
   // 하늘은 카메라를 따라다님 (아무리 멀리 가도 하늘 끝에 닿지 않게)
   useFrame(({ camera }) => ref.current?.position.copy(camera.position))
@@ -126,11 +132,11 @@ function SkyDome() {
 }
 
 // ── 맵 바깥 땅 (지평선까지 이어지는 풀밭, 충돌 없음) ──
-function OuterGround() {
+function OuterGround({ color }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
       <planeGeometry args={[2400, 2400]} />
-      <meshStandardMaterial color={SKY_COLORS.outerGround} roughness={1} />
+      <meshStandardMaterial color={color} roughness={1} />
     </mesh>
   )
 }
