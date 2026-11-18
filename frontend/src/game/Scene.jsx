@@ -34,6 +34,7 @@ import { zones } from './data/mapData.js'
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
 export default function Scene() {
   const [playing, setPlaying] = useState(!FREE_CAMERA)
+  const [highDetail, setHighDetail] = useState(false)
   const playerRef = useRef(null) // 캐릭터 위치를 카메라·센서와 공유
 
   const startPlay = (event) => {
@@ -55,15 +56,15 @@ export default function Scene() {
   return (
     <KeyboardControls map={KEYBOARD_MAP}>
       <div ref={labelLayer} style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <Canvas shadows="percentage" camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
+        <Canvas dpr={highDetail ? [1, 2] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
           <PastelSky />
 
           {/* 따뜻한 전체 조명 + 그림자 있는 태양광 1개 (그림자는 보고 있는 곳 주변만) */}
           <hemisphereLight args={['#fff0f5', '#c2ae98', 0.65]} />
-          <SunLight />
+          <SunLight castShadow={highDetail} />
 
-          <MapLayout showStartMarker={!playing} />
+          <MapLayout showStartMarker={!playing} highDetail={highDetail} />
           <PlaceMarkers />
 
           {/* 물리 엔진(Rapier)은 처음에 잠깐 로딩이 필요해서 Suspense로 감쌈 */}
@@ -85,7 +86,7 @@ export default function Scene() {
           {playing ? <InteractionKeys /> : <OverviewCamera />}
         </Canvas>
 
-        <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
+        <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} highDetail={highDetail} setHighDetail={setHighDetail} />
       </div>
     </KeyboardControls>
   )
@@ -96,7 +97,7 @@ export default function Scene() {
 const SHADOW_MIN_AREA = 35
 const lookTarget = new THREE.Vector3()
 
-function SunLight() {
+function SunLight({ castShadow }) {
   const lightRef = useRef(null)
   const area = useRef(SHADOW_AREA)
 
@@ -114,6 +115,7 @@ function SunLight() {
     light.target.position.set(x, 0, z)
     light.target.updateMatrixWorld()
 
+    if (!castShadow) return
     const wanted = THREE.MathUtils.clamp(camera.position.distanceTo(lookTarget) * 0.9, SHADOW_MIN_AREA, SHADOW_AREA)
     if (Math.abs(wanted - area.current) > 3) {
       area.current = wanted
@@ -129,7 +131,7 @@ function SunLight() {
       ref={lightRef}
       intensity={1.6}
       color="#fff4e6"
-      castShadow
+      castShadow={castShadow}
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-SHADOW_AREA}
       shadow-camera-right={SHADOW_AREA}
@@ -164,7 +166,7 @@ function OverviewCamera() {
 }
 
 // 왼쪽 위 안내 + 모드 전환 버튼 + (확인용) 게임 스토어 값
-function HelpPanel({ playing, onStart, onStop }) {
+function HelpPanel({ playing, onStart, onStop, highDetail, setHighDetail }) {
   const nearbyPlaceId = useGameStore((state) => state.nearbyPlaceId)
   const openPanel = useGameStore((state) => state.openPanel)
 
@@ -190,6 +192,17 @@ function HelpPanel({ playing, onStart, onStop }) {
         : '왼쪽 드래그: 회전 · 오른쪽 드래그: 이동 · 휠: 확대/축소'}
 
       {SHOW_ZONES && <ZoneLegend />}
+      <label style={{ display: 'block', marginTop: 4, pointerEvents: 'auto' }}>
+        <input
+          type="checkbox"
+          checked={highDetail}
+          onChange={(event) => {
+            setHighDetail(event.currentTarget.checked)
+            event.currentTarget.blur()
+          }}
+        />{' '}
+        고화질 (그림자·고해상도)
+      </label>
 
       {playing && (
         <div style={{ marginTop: 6, fontFamily: 'Consolas, monospace', fontSize: 12 }}>
