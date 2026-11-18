@@ -23,8 +23,17 @@ import {
 // 공용 styles/index.js에서 ...HJ_STYLES 한 줄로 등록돼요. 다른 구역에서 써도 되지만 수정은 혜진에게.
 // 이름이 다른 사람 style과 겹치지 않게 새 모양은 "hj" 로 시작해요.
 import { HjBlueGate, HjHanokBench, HjSnackSteam, HjStoryCue } from './HjDramaDetails.jsx'
+import { HjCyberGrid, HjCyberTower, HjFloatingCar, HjLunarBase, HjRetroCrew, HjRetroStairs, HjRift, HjSkywalk } from './HjTimeDistrict.jsx'
 
 export const HJ_STYLES = {
+  hjCyberGrid: HjCyberGrid,
+  hjCyberTower: HjCyberTower,
+  hjFloatingCar: HjFloatingCar,
+  hjLunarBase: HjLunarBase,
+  hjRetroCrew: HjRetroCrew,
+  hjRetroStairs: HjRetroStairs,
+  hjRift: HjRift,
+  hjSkywalk: HjSkywalk,
   hjBlueGate: HjBlueGate,
   hjHanokBench: HjHanokBench,
   hjSnackSteam: HjSnackSteam,

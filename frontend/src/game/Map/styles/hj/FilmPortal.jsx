@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { usePortalStore } from '../../../../components/movieZone/portalStore.js'
 import { getSwirlTexture } from './hjTextures.js'
+import { WarpBooth } from './HjTimeDistrict.jsx'
 
 // [3. 개발 > 기초개발/서비스] '영화 속으로 입장' 포털 (혜진 구역 전용 style: "filmPortal")
 // - 바닥에 빛나는 원 + 천천히 도는 소용돌이
@@ -63,7 +64,7 @@ export default function FilmPortal({ item }) {
         <circleGeometry args={[radius * 0.97, 48]} />
         <meshBasicMaterial map={swirl} color={swirl ? '#ffffff' : '#f2b48c'} transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </mesh>
-
+      {item.warpHub && <WarpBooth radius={radius} />}
     </group>
   )
 }
