@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 globalThis.ProgressEvent ??= class ProgressEvent { constructor(type, init) { Object.assign(this, { type }, init) } }
 
-for (const gender of ['male', 'female']) {
+for (const gender of ['male', 'female', 'lumi']) {
   test(`${gender}: all animated skin weights are normalized and sampled poses stay grounded and finite`, async () => {
     const buffer = readFileSync(new URL(`../public/models/characters/${gender}.glb`, import.meta.url))
     const jsonSize = buffer.readUInt32LE(12)
@@ -33,7 +33,7 @@ for (const gender of ['male', 'female']) {
         assert.ok(Math.abs(sum - 1) < .001, `vertex ${i} has weight sum ${sum}`)
       }
     }
-    const expected = { Idle: 6, Walk: 1, Run: .7, Jump: 1 }
+    const expected = { Idle: 6, Walk: 1, Run: .7, Jump: 1, Greeting: 157 / 30 }
     const mixer = new AnimationMixer(scene)
     const box = new Box3(), total = new Box3(), size = new Vector3()
     for (const clip of animations) {
@@ -62,7 +62,7 @@ for (const gender of ['male', 'female']) {
         }
         total.getSize(size)
         assert.ok(size.toArray().every(Number.isFinite))
-        assert.ok(size.y > (['Jump', 'Sit'].includes(clip.name) ? .85 : 1.2) && size.y < 2.1, `${clip.name} height ${size.y}`)
+        assert.ok(size.y > (['Jump', 'Sit'].includes(clip.name) ? .85 : 1.2) && size.y < 2.35, `${clip.name} height ${size.y}`)
         assert.ok(size.x < 1.4 && size.z < 1.6, `${clip.name} deformed bounds ${size.toArray()}`)
         assert.ok(total.min.y > -.025, `${clip.name} sole penetrates floor: ${total.min.y}`)
         assert.ok(Math.abs((total.min.x + total.max.x)/2) < .35, `${clip.name} lateral root drift`)

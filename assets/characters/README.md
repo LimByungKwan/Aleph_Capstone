@@ -52,3 +52,13 @@ npm run build
 ## 벤치 앉기
 
 Stand To Sit.fbx를 Sit 클립(약 2.23초)으로 추가했습니다. JM 구역 벤치 앞에서 E로 앉고, E 또는 ESC로 일어납니다. 앉은 자세는 끝 프레임을 유지하며, 일어나기는 같은 클립을 역재생합니다.
+
+## AI 가이드 루미
+
+- 게임용: `../../frontend/public/models/characters/lumi.glb`
+- 편집용: `lumi.blend` / 미리보기: `lumi-preview.png`
+- 입력: `루미.fbx`, `기본 자세.fbx`, `Hand Raising.fbx`
+- 뼈대 22개, 키 1.66m, Idle 6초 / Greeting 약 5.23초. 텍스처 내장.
+- 중앙 광장 npc_guide 위치를 유지하며 약 32초에 한 바퀴 회전합니다. 손 들기 동작에 작은 손목 흔들기를 더해 인사하고 잠깐 쉬었다 반복합니다. 걷기·추적 이동은 없습니다.
+- 재생성: `blender --background --python scripts/characters/build_lumi.py`
+- Blender 대기·인사 렌더 확인, Three.js 변형/웨이트/반복 검사 및 빌드 통과. 실제 브라우저 조작 검증은 별도입니다.
