@@ -4,6 +4,7 @@ import SummerShelter from './SummerShelter.jsx'
 import HjBrickBuilding from './HjBuildings.jsx'
 import HjBlossomGate from './HjGate.jsx'
 import HjEntranceGate from './HjEntranceGate.jsx'
+import { HjAnalogHanok, HjAnalogLabel, HjGoldenSet, HjAnalogBooth } from './HjAnalogSet.jsx'
 import { HjBoat, HjBreakwater, HjLighthouse, HjSea } from './HjHarbor.jsx'
 import { HjCrosswalk, HjCurvedRoad } from './HjStreet.jsx'
 import {
@@ -23,10 +24,16 @@ import {
 // 공용 styles/index.js에서 ...HJ_STYLES 한 줄로 등록돼요. 다른 구역에서 써도 되지만 수정은 혜진에게.
 // 이름이 다른 사람 style과 겹치지 않게 새 모양은 "hj" 로 시작해요.
 import { HjBlueGate, HjHanokBench, HjSnackSteam, HjStoryCue } from './HjDramaDetails.jsx'
-import { HjCyberGrid, HjCyberTower, HjFloatingCar, HjLunarBase, HjRetroCrew, HjRetroStairs, HjRift, HjSkywalk } from './HjTimeDistrict.jsx'
+import { HjCyberGrid, HjCyberTower, HjEraBarrier, HjFloatingCar, HjLunarBase, HjRetroCrew, HjRetroStairs, HjRift, HjSkywalk } from './HjTimeDistrict.jsx'
 
 export const HJ_STYLES = {
+  hjAnalogHanok: HjAnalogHanok,
+  hjAnalogLabel: HjAnalogLabel,
+  hjGoldenSet: HjGoldenSet,
+  hjAnalogBooth: HjAnalogBooth,
+  hjBoothWallCollider: () => null,
   hjCyberGrid: HjCyberGrid,
+  hjEraBarrier: HjEraBarrier,
   hjCyberTower: HjCyberTower,
   hjFloatingCar: HjFloatingCar,
   hjLunarBase: HjLunarBase,

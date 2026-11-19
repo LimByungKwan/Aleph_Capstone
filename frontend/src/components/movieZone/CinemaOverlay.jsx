@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { usePortalStore } from './portalStore.js'
+import { useGameStore } from '../../store/gameStore.js'
 
 // [3. 개발 > 프론트엔드] '영화 속으로 입장' 화면 연출 (혜진 영화·드라마 구역)
 // 캐릭터가 포털 원 안에 들어오면:
@@ -12,7 +13,9 @@ export default function CinemaOverlay() {
   const active = usePortalStore((s) => s.active)
   const dismissedId = usePortalStore((s) => s.dismissedId)
   const dismiss = usePortalStore((s) => s.dismiss)
+  const requestWarp = usePortalStore((s) => s.requestWarp)
   const visible = Boolean(active) && dismissedId !== active?.id
+  const lockMovement = visible && (active.warpHub || active.retroScene)
 
   // 사라질 때도 애니메이션이 보이도록 마지막 내용을 잠깐 유지
   const [shown, setShown] = useState(null)
@@ -42,7 +45,57 @@ export default function CinemaOverlay() {
     return () => window.removeEventListener('keydown', onKey)
   }, [visible, dismiss])
 
+  useEffect(() => {
+    if (!lockMovement || useGameStore.getState().inputLocked) return undefined
+    useGameStore.setState({ inputLocked: true })
+    return () => {
+      if (!useGameStore.getState().openPanel) useGameStore.setState({ inputLocked: false })
+    }
+  }, [lockMovement])
+
   if (!shown) return null
+
+  if (shown.retroScene) {
+    return (
+      <div className={`cine ${leaving ? 'cine--leaving' : ''}`} role="dialog"
+        aria-modal="true" aria-labelledby="analog-scene-title">
+        <div className="cine__fade" />
+        <div className="cine__stage">
+          <article className="cine__card ui-interactive">
+            <h2 id="analog-scene-title">{shown.title}</h2>
+            <strong>{shown.speaker}</strong>
+            <p>“{shown.synopsis}”</p>
+            <button type="button" className="ui-btn ui-btn--ink" onClick={dismiss} autoFocus>
+              골목으로 돌아가기
+            </button>
+          </article>
+        </div>
+      </div>
+    )
+  }
+
+  if (shown.warpHub) {
+    return (
+      <div className={`cine-warp ${leaving ? 'cine-warp--leaving' : ''}`} role="dialog"
+        aria-modal="true" aria-labelledby="warp-title">
+        <div className="cine-warp__vortex" aria-hidden="true" />
+        <section className="cine-warp__panel">
+          <h2 id="warp-title">{shown.title}</h2>
+          <p>{shown.synopsis}</p>
+          <div className="cine-warp__actions">
+            {shown.warpDestination && (
+              <button type="button" className="ui-btn ui-btn--ink" onClick={requestWarp} autoFocus>
+                {shown.warpDestination.label}으로 이동
+              </button>
+            )}
+            <button type="button" className="ui-btn" onClick={dismiss} autoFocus={!shown.warpDestination}>
+              이동 취소
+            </button>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className={`cine ${leaving ? 'cine--leaving' : ''}`} role="dialog" aria-modal="false" aria-labelledby="cine-title">
