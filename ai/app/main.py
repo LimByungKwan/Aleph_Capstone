@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from .course import DEFAULT_COUNT, MAX_COUNT, MIN_COUNT, recommend_course
 from .limits import allow_request, llm_calls_today
 from .places import course_candidates
+from .promo import TARGETS, TONES, generate_promo
 
 app = FastAPI(title="SceneWalk AI", version="0.1.0")
 
@@ -46,6 +47,25 @@ class CourseResponse(BaseModel):
     source: str
 
 
+class PromoRequest(BaseModel):
+    shopName: str = Field(..., min_length=1, max_length=40, description="가게 이름")
+    workTitle: str = Field("", max_length=60, description="연결된 가상 작품 (예: 드라마 「여름이 머무는 정류장」)")
+    offer: str = Field("", max_length=40, description="스탬프 쿠폰 혜택 (예: 아메리카노 10% 할인)")
+    menu: str = Field("", max_length=40, description="대표 메뉴")
+    target: str = Field("traveler", description="초대할 손님: " + " | ".join(TARGETS))
+    tone: str = Field("warm", description="분위기: " + " | ".join(TONES))
+    includeReels: bool = Field(False, description="15초 릴스 대본도 만들기")
+
+
+class PromoResponse(BaseModel):
+    captions: list[str]
+    hashtags: list[str]
+    reels: str | None
+    tag: str
+    warnings: list[str]
+    source: str
+
+
 @app.get("/health")
 def health() -> dict:
     return {"ok": True, "places": len(course_candidates()), "llmCallsToday": llm_calls_today()}
@@ -64,3 +84,13 @@ def course(req: CourseRequest, request: Request) -> dict:
     if not allow_request(client_ip(request)):
         raise HTTPException(status_code=429, detail="요청이 너무 많아요. 잠시 후 다시 말을 걸어 주세요.")
     return recommend_course(req.message, req.count)
+
+
+@app.post("/promo", response_model=PromoResponse)
+def promo(req: PromoRequest, request: Request) -> dict:
+    """사장님 홍보문구 (템플릿 방식, 요금 0원)"""
+    if not allow_request(client_ip(request)):
+        raise HTTPException(status_code=429, detail="요청이 너무 많아요. 잠시 후 다시 만들어 주세요.")
+    if not req.shopName.strip():
+        raise HTTPException(status_code=422, detail="가게 이름을 입력해 주세요.")
+    return generate_promo(req.shopName, req.workTitle, req.offer, req.menu, req.target, req.tone, req.includeReels)
