@@ -34,6 +34,7 @@ function emptyDb() {
     coupons: seedCoupons(), // { id, code, userId, shopId, shopName, title, discount, validUntil, issuedAt, usedAt, usedBy }
     promos: [], // { id, shopId, createdAt, input, result }
     shopPromos: {}, // { [shopId]: { text, tag, savedAt } } — 사장님이 "대표 문구"로 등록한 홍보문구
+    playerCharacters: {}, // { [userId]: 'male' | 'female' }
   }
 }
 

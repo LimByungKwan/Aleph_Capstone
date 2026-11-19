@@ -1,0 +1,4 @@
+[
+  { "id": "male", "name": "남자 캐릭터", "model": "models/characters/male.glb", "height": 1.72, "gaitSpeed": { "Walk": 1.49, "Run": 3.91 } },
+  { "id": "female", "name": "여자 캐릭터", "model": "models/characters/female.glb", "height": 1.66, "gaitSpeed": { "Walk": 1.42, "Run": 3.72 } }
+]

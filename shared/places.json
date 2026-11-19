@@ -7,9 +7,9 @@
     "work": null,
     "description": "중앙 광장에서 여행자를 맞이하는 AI 가이드. 촬영지 순서를 안내해 준다.",
     "tags": ["가이드", "시작"],
-    "position": [0, 0, 4],
+    "position": [0, 0, 7.5],
     "radius": 2,
-    "model": null
+    "model": "models/characters/lumi.glb"
   },
   {
     "id": "spot_busstop",
@@ -96,6 +96,42 @@
     "model": null
   },
   {
+    "id": "spot_bk_tower",
+    "type": "spot",
+    "zone": "BK",
+    "name": "별빛 전망대",
+    "work": "드라마 「밤하늘 아래 우리」",
+    "description": "언덕 위 전망대. 엘리베이터를 타고 올라가 도시 야경을 내려다보며 두 주인공이 마음을 고백하던 장면의 촬영지.",
+    "tags": ["데이트", "야경", "전망대", "고백"],
+    "position": [79.6, 9, -74.8],
+    "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "spot_bk_fountain",
+    "type": "spot",
+    "zone": "BK",
+    "name": "소원 분수 광장",
+    "work": "드라마 「밤하늘 아래 우리」",
+    "description": "동전을 던지며 소원을 비는 분수 광장. 두 주인공이 첫 데이트에서 같은 소원을 빌던 장면의 촬영지.",
+    "tags": ["데이트", "분수", "소원", "산책"],
+    "position": [72, 0, 0],
+    "radius": 2,
+    "model": null
+  },
+  {
+    "id": "spot_bk_claw",
+    "type": "spot",
+    "zone": "BK",
+    "name": "한옥 인형뽑기 부스",
+    "work": "드라마 「밤하늘 아래 우리」",
+    "description": "골목 안 한옥 인형뽑기 부스. 주인공이 몇 번이나 실패한 끝에 뽑은 인형을 선물하던 장면의 촬영지.",
+    "tags": ["데이트", "인형뽑기", "선물", "커플"],
+    "position": [59.5, 0, 25.3],
+    "radius": 2,
+    "model": null
+  },
+  {
     "id": "spot_jm_crossing",
     "type": "spot",
     "zone": "JM",
@@ -115,7 +151,7 @@
     "work": "애니메이션 「그대의 이름을」",
     "description": "서로의 이름을 잊어 가던 두 사람이 계단 위아래에서 스쳐 지나가다 돌아보는 클라이맥스 장면의 배경지.",
     "tags": ["애니메이션", "로맨스", "판타지", "계단"],
-    "position": [0, 0, -81],
+    "position": [0, 6.5, -89],
     "radius": 2.5,
     "model": null
   },
@@ -129,6 +165,54 @@
     "tags": ["애니메이션", "요괴", "판타지", "신사"],
     "position": [0, 0, -115],
     "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "spot_jm_sakura_river",
+    "type": "spot",
+    "zone": "JM",
+    "name": "「초속 5미터」 벚꽃 강변길",
+    "work": "애니메이션 「초속 5미터」",
+    "description": "호수에서 흘러나온 강을 따라 벚꽃이 이어지는 산책로. 두 사람이 꽃잎이 떨어지는 속도를 이야기하며 걷던 오프닝 장면의 배경지.",
+    "tags": ["애니메이션", "벚꽃", "산책로", "강"],
+    "position": [-78.3, 0, -75.8],
+    "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "spot_sg_stage",
+    "type": "spot",
+    "zone": "SG",
+    "name": "SUNSET WAVE 야외무대",
+    "work": "K-POP 「SUNGRAY: SUNSET WAVE」",
+    "description": "가상 그룹 SUNGRAY의 투어 「SUNSET WAVE」 첫 공연이 열린 야외무대. 관객석 맨 앞에서 무대를 올려다보는 자리가 팬들의 인증샷 명소다.",
+    "tags": ["K-POP", "콘서트", "무대", "SUNGRAY"],
+    "position": [-83.5, 0, 0],
+    "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "shop_sg_bdaycafe",
+    "type": "cafe",
+    "zone": "SG",
+    "name": "happy birthday yunseul~!!",
+    "work": "K-POP 「SUNGRAY: SUNSET WAVE」",
+    "description": "투어 기간에 멤버 YUNSEUL의 생일을 맞아 팬들이 연 생일카페. 현수막과 케이크, 사진 액자로 꾸며져 있다.",
+    "tags": ["K-POP", "생일카페", "카페", "YUNSEUL"],
+    "position": [-66, 0, -6],
+    "radius": 2,
+    "model": null
+  },
+  {
+    "id": "shop_sg_goods",
+    "type": "cafe",
+    "zone": "SG",
+    "name": "SUNGRAY 공식 팝업스토어",
+    "work": "K-POP 「SUNGRAY: SUNSET WAVE」",
+    "description": "「SUNSET WAVE」 투어 굿즈를 파는 팝업스토어. 인형과 앨범, 네 컷 스티커 사진이 진열되어 있다.",
+    "tags": ["K-POP", "굿즈", "팝업스토어", "앨범"],
+    "position": [-54, 0, -6],
+    "radius": 2,
     "model": null
   }
 ]

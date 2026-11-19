@@ -5,13 +5,14 @@ import { collectStamp, getShopPromo, listMyStamps } from '../../api/client.js'
 import { useUiStore } from './uiStore.js'
 import { TYPE_LABEL, errorText, useAsync } from './common.jsx'
 import { HJ_DIALOGUE, sceneForPlace } from './sceneData.js'
+import LumiCourse from '../course/LumiCourse.jsx'
 import './hj-dialogue.css'
 
 // [3. 개발 > 프론트엔드] 대화창
 // 캐릭터가 지점 근처에서 E를 누르면 gameStore.openPanel이 채워지고, 화면 아래에 이 창이 떠요.
 // - 촬영지·가게: 설명 + [스탬프 찍기] (이미 받았으면 "획득 완료"로 막힘)
 // - 촬영지 스탬프 → 같은 작품 가게 쿠폰 자동 발급 (client.js 규칙)
-// - NPC: 대사 (코스 추천 AI는 병관님 담당 — 연결 자리만 마련)
+// - NPC: 대사 + 코스 추천 (병관님 AI 서버, components/course/LumiCourse.jsx)
 
 const TYPE_SPEED_MS = 22
 
@@ -84,6 +85,8 @@ function DialogContent({ place, onClose }) {
         </blockquote>
       )}
 
+      {isNpc && <LumiCourse />}
+
       <div className="ui-dialog__actions">
         <span className="ui-dialog__hint">ESC 닫기</span>
         {!typed.done && (
@@ -121,10 +124,10 @@ function DialogContent({ place, onClose }) {
   )
 }
 
-// NPC 대사 (병관님 코스 추천 AI가 붙으면 여기 대사를 응답으로 교체)
+// NPC 대사 (아래 입력칸에서 취향을 말하면 루미가 코스를 추천 — LumiCourse.jsx)
 function npcLines(place) {
   return [
-    `안녕하세요! 저는 ${place.name}예요. 이 골목엔 드라마·영화 촬영지가 숨어 있어요.`,
+    `안녕하세요! 저는 ${place.name}예요. 좋아하는 작품이나 분위기를 말해 주시면 걸어서 돌 코스를 골라 드릴게요.`,
     '촬영지에서 스탬프를 찍으면, 같은 작품과 연결된 가게 쿠폰을 드려요.',
     '오른쪽 위 스탬프북에서 모은 스탬프를 확인할 수 있어요. 좋은 산책 되세요!',
   ]

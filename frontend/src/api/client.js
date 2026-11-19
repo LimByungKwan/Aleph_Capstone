@@ -1,6 +1,8 @@
 import places from '@shared/places.json'
+import characters from '@shared/characters.json'
 import { MOCK_USERS, SHOP_OFFERS, dayKey, findPlace, newCouponCode, newId, readDb, writeDb } from './mockDb.js'
 import { generatePromoMock } from '../components/boss/promoMock.js'
+import { requestPromo } from './course.js'
 import { checkPromoRules } from '../components/boss/promoRules.js'
 
 // [3. 개발 > 백엔드 API 연동] 화면이 부르는 API 함수 모음
@@ -27,6 +29,25 @@ function requireUser(userId) {
   const user = MOCK_USERS.find((u) => u.id === userId)
   if (!user) throw new ApiError('UNAUTHORIZED', '로그인이 필요해요.')
   return user
+}
+
+// 캐릭터 카탈로그와 사용자 선택. 실제 서버 연동 시 이 두 함수의 내부만 교체합니다.
+export async function getPlayerCharacter({ userId }) {
+  await wait()
+  requireUser(userId)
+  const id = readDb().playerCharacters?.[userId]
+  return { character: characters.find(character => character.id === id) ?? characters[0] }
+}
+
+export async function setPlayerCharacter({ userId, characterId }) {
+  await wait()
+  requireUser(userId)
+  const character = characters.find(item => item.id === characterId)
+  if (!character) throw new ApiError('INVALID_CHARACTER', '선택할 수 없는 캐릭터예요.')
+  const db = readDb()
+  db.playerCharacters = { ...db.playerCharacters, [userId]: character.id }
+  writeDb(db)
+  return { character }
 }
 
 // 같은 구역 + 같은 작품의 가게 (다른 사람 구역 가게 쿠폰까지 나가지 않게)
@@ -163,13 +184,20 @@ export async function getShopStats({ ownerId }) {
  *   tone:   'warm' | 'bright' | 'plain'
  * 응답: { captions: string[3], hashtags: string[], reels: string | null, tag: string, warnings: string[] }
  * 규칙: 배우 실명·대사 인용·로고 금지 (서버에서도 검사, 화면에서도 검사)
+ * 문구는 병관님 AI 서버(/promo, 템플릿 방식·요금 0원)가 만들고, 서버가 꺼져 있으면 promoMock으로 대신해요.
  */
 export async function generatePromo(input) {
-  await wait()
   const owner = requireUser(input.ownerId)
   if (owner.role !== 'owner') throw new ApiError('NOT_OWNER', '사장님 계정만 쓸 수 있어요.')
   if (!input.shopName?.trim()) throw new ApiError('INVALID_INPUT', '가게 이름을 입력해 주세요.')
-  const result = generatePromoMock(input)
+  let result
+  try {
+    result = await requestPromo(input)
+  } catch (error) {
+    if (error?.code === 'RATE_LIMITED') throw error
+    await wait()
+    result = { ...generatePromoMock(input), source: 'mock' } // AI 서버에 닿지 않으면 화면용 가짜 문구
+  }
   const db = readDb()
   db.promos.push({ id: newId('pr'), shopId: owner.shopId, createdAt: new Date().toISOString(), input, result })
   writeDb(db)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { Ecctrl } from 'ecctrl'
@@ -7,6 +7,7 @@ import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { updatePalaceSeating, usePalaceSeatStore } from '../../components/movieZone/palaceSeating.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
+import CharacterModel from './CharacterModel.jsx'
 
 // 캐릭터 몸 크기 (지름 0.6m, 키 약 1.6m)
 const CAPSULE_RADIUS = 0.3
@@ -71,68 +72,7 @@ export default function Player({ playerRef, showModel = true }) {
       jumpVel={PLAYER_JUMP_SPEED}
       enableToggleRun={false}
     >
-      {showModel && (seated ? <SeatedPlayerModel seat={seated} /> : <PlayerModel />)}
+      {showModel && <CharacterModel playerRef={playerRef} palaceSeat={seated} />}
     </Ecctrl>
-  )
-}
-
-const UP = new THREE.Vector3(0, 1, 0)
-
-function SeatedPlayerModel({ seat }) {
-  const model = useRef(null)
-  const orientation = useMemo(() => ({
-    local: new THREE.Quaternion(),
-    target: new THREE.Quaternion().setFromAxisAngle(UP, seat.yaw),
-  }), [seat.yaw])
-  useFrame(() => {
-    const group = model.current
-    if (!group?.parent) return
-    group.parent.getWorldQuaternion(orientation.local)
-    group.quaternion.copy(orientation.local.invert()).multiply(orientation.target)
-  })
-  return (
-    <group ref={model} position-y={seat.lift}>
-      <mesh position={[0, -0.34, -0.085]} castShadow>
-        <capsuleGeometry args={[0.235, 0.32, 6, 12]} />
-        <meshStandardMaterial color="#f43f5e" />
-      </mesh>
-      <mesh position={[0, 0.062, -0.075]} castShadow>
-        <sphereGeometry args={[0.193, 14, 10]} />
-        <meshStandardMaterial color="#f43f5e" />
-      </mesh>
-      <mesh position={[0, 0.063, 0.109]}>
-        <boxGeometry args={[0.15, 0.095, 0.12]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-      {[-1, 1].map(side => (
-        <group key={side}>
-          <mesh position={[side * 0.16, -0.65, 0.14]} rotation={[Math.PI / 2, side * 0.55, 0]} castShadow>
-            <capsuleGeometry args={[0.125, 0.39, 6, 12]} />
-            <meshStandardMaterial color="#a42948" />
-          </mesh>
-          <mesh position={[side * 0.235, -0.37, 0.02]} rotation={[-0.72, 0, side * 0.19]} castShadow>
-            <capsuleGeometry args={[0.078, 0.29, 5, 10]} />
-            <meshStandardMaterial color="#e73862" />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  )
-}
-
-// 캐릭터 겉모습. 나중에 GLB 캐릭터로 바꿀 때는 이 함수만 교체하면 돼요.
-function PlayerModel() {
-  return (
-    <group>
-      <mesh castShadow>
-        <capsuleGeometry args={[CAPSULE_RADIUS, CAPSULE_HALF_HEIGHT * 2, 8, 16]} />
-        <meshStandardMaterial color="#f43f5e" />
-      </mesh>
-      {/* 바라보는 방향 표시용 "코" */}
-      <mesh position={[0, 0.35, CAPSULE_RADIUS]} castShadow>
-        <boxGeometry args={[0.2, 0.12, 0.2]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-    </group>
   )
 }

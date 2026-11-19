@@ -280,7 +280,7 @@ export default function HjPalaceInterior() {
         : <Box key={seat.id} p={[seat.position[0], ROOM_FLOOR + 0.058, seat.position[2]]}
           s={[0.91, 0.10, 0.73]} c="#843c35" />)}
       {PALACE_SEATS.map(seat => (
-        <mesh key={seat.id} position={[seat.position[0], seat.position[1] + (seat.id === 'throne' ? 0.379 : 0.112), seat.position[2]]}
+        <mesh key={seat.id} position={[seat.position[0], seat.position[1] + seat.surfaceOffset, seat.position[2]]}
           rotation-x={-Math.PI / 2}>
           <planeGeometry args={seat.id === 'throne' ? [1.15, 0.82] : [0.90, 0.71]} />
           <meshStandardMaterial map={rug} roughness={0.86} />

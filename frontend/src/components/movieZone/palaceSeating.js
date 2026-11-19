@@ -19,6 +19,7 @@ const seats = palace ? PALACE_SEATS.map((seat) => {
       palace.position[1] - localX * Math.sin(yaw) + localZ * Math.cos(yaw),
     ],
     yaw: yaw + (seat.id === 'throne' ? Math.PI : 0),
+    surfaceY: (palace.elevation ?? 0) + (y + seat.surfaceOffset) * h / 9,
   }
 }) : []
 

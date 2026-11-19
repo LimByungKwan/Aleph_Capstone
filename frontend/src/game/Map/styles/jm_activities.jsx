@@ -20,15 +20,20 @@ const G = 9.8
 const BALL_R = 0.12
 const RIM_R = 0.23
 const RIM_TUBE = 0.02
-const LAUNCH_ANGLE = THREE.MathUtils.degToRad(55)
 const NEAR_DIST = 7.5 // 골대에서 이 거리 안 + 코트 쪽이면 슛 가능
 const SHOT_TIME = 3.2 // 슛 하나가 끝나기까지(초)
 const FIXED_DT = 1 / 240
 const FIND_PLAYER_EVERY = 1 // 캐릭터를 다시 찾는 간격(초)
+const ZONE_STEPS = 50 // 초록 칸 미리 계산: 힘 0~1을 50칸으로 나눠 던져 봄
 
-// 힘 게이지 → 속도 배율. 거리 2.5~7m에서 0.42~0.6 근처가 들어가는 힘이 되도록 맞춤
-// (같은 계산을 따로 돌려 힘 0~1을 0.02 간격으로 쏴 보고 정함. 1.04: 림 가운데보다 살짝 뒤를 노려야 잘 들어감)
-const powerToFactor = (p) => 1.04 + 0.36 * (p - 0.5)
+// 힘 게이지 → 속도 배율 (게이지 가운데 = 계산상 딱 맞는 속도)
+// 같은 계산을 따로 돌려 정면·30°·55°·75° × 거리 2~7m에서 힘 0~1을 0.02 간격으로 다 던져 보고 맞춤:
+// - 배율 폭 0.08: 들어가는 칸이 어느 자리에서나 최소 5칸(10%) 이상 → 너무 어렵지 않게
+// - AIM_BACK: 림 가운데보다 12cm 뒤를 겨냥 (앞쪽 림에 걸리는 슛이 줄어듦)
+// - 던지는 각도: 가까울수록 높게(2m 63° ~ 5m 이상 52°) → 골대 바로 앞에서도 들어감
+const powerToFactor = (p) => 1.0 + 0.08 * (p - 0.5)
+const AIM_BACK = 0.12
+const launchAngle = (d) => THREE.MathUtils.degToRad(Math.min(64, Math.max(52, 70 - 3.5 * d)))
 
 // 골대 정보(월드 좌표)는 JmHoop이 rimY를 넘겨줌
 export function HoopShoot({ item, rimY }) {
@@ -40,6 +45,7 @@ export function HoopShoot({ item, rimY }) {
   const player = useRef(null)
   const lastLookup = useRef(-Infinity)
   const phase = useRef(0)
+  const nextCheck = useRef(0) // 렉 줄이기: 멀면 가끔만 확인
 
   const tmp = useMemo(
     () => ({
@@ -67,10 +73,13 @@ export function HoopShoot({ item, rimY }) {
         // 캐릭터를 멈추고(ESC로 나가기) — 대화창은 placeId가 places.json에 없어서 뜨지 않음
         game.open({ type: 'jm_shoot', placeId: item.id })
         faceHoop()
+        // 선 자리(거리·각도) 기준으로 실제 들어가는 힘 구간 계산 → 초록 칸
+        useJmActivity.getState().setShoot({ zone: computeZone() })
       }
       if (event.code === 'Space' && s.active === item.id && !shot.current) {
         phase.current = 0
-        useJmActivity.getState().setShoot({ charging: true, power: 0 })
+        // 힘 모으기 시작할 때 선 자리로 초록 칸을 다시 계산 (모드에 들어온 뒤 조금 밀렸어도 맞게)
+        useJmActivity.getState().setShoot({ charging: true, power: 0, zone: computeZone() })
       }
     }
     const up = (event) => {
@@ -122,11 +131,8 @@ export function HoopShoot({ item, rimY }) {
     tmp.forward.set(0, 0, 1).applyQuaternion(tmp.quat)
   }
 
-  function launch(power) {
-    const p = player.current
-    if (!p || !anchor.current) return
-    updateHoopWorld()
-    p.getWorldPosition(tmp.me)
+  // 슛 하나 만들기 (실제 슛·미리 계산 둘 다 이 함수를 씀 → 초록 칸 = 실제 결과)
+  function makeShot(power) {
     const start = tmp.me.clone()
     start.y += 0.75
     // 골대 쪽으로 살짝 앞에서 던짐
@@ -135,15 +141,42 @@ export function HoopShoot({ item, rimY }) {
     const d = toRim.length()
     toRim.normalize()
     start.addScaledVector(toRim, 0.3)
-    const dist = Math.max(0.5, d - 0.3)
+    const dist = Math.max(0.5, d - 0.3 + AIM_BACK)
+    const LAUNCH_ANGLE = launchAngle(d)
     const dy = tmp.rim.y - start.y
-    // 55°로 던졌을 때 림 가운데에 떨어지는 속도: v² = g·d² / (2cos²θ·(d·tanθ − dy))
+    // θ로 던졌을 때 겨냥점에 떨어지는 속도: v² = g·d² / (2cos²θ·(d·tanθ − dy))
     const denom = 2 * Math.cos(LAUNCH_ANGLE) ** 2 * (dist * Math.tan(LAUNCH_ANGLE) - dy)
     const ideal = Math.sqrt((G * dist * dist) / Math.max(denom, 0.01))
     const v = ideal * powerToFactor(power)
     const vel = toRim.multiplyScalar(v * Math.cos(LAUNCH_ANGLE))
     vel.y = v * Math.sin(LAUNCH_ANGLE)
-    shot.current = { pos: start, vel, t: 0, acc: 0, scored: false, prevY: start.y }
+    return { pos: start, vel, t: 0, acc: 0, scored: false, prevY: start.y }
+  }
+
+  // 지금 선 자리에서 힘 0~1을 0.02 간격으로 끝까지 던져 보고 들어가는 힘만 표시 (거리·각도마다 달라짐)
+  function computeZone() {
+    const p = player.current
+    if (!p || !anchor.current) return null
+    updateHoopWorld()
+    p.getWorldPosition(tmp.me)
+    const zone = []
+    for (let i = 0; i <= ZONE_STEPS; i++) {
+      const b = makeShot(i / ZONE_STEPS)
+      while (b.t < SHOT_TIME && !b.scored) {
+        step(b, FIXED_DT)
+        b.t += FIXED_DT
+      }
+      zone.push(b.scored)
+    }
+    return zone
+  }
+
+  function launch(power) {
+    const p = player.current
+    if (!p || !anchor.current) return
+    updateHoopWorld()
+    p.getWorldPosition(tmp.me)
+    shot.current = makeShot(power)
     const s = useJmActivity.getState().shoot
     useJmActivity.getState().setShoot({ shots: s.shots + 1, lastResult: null })
   }
@@ -224,15 +257,28 @@ export function HoopShoot({ item, rimY }) {
     const store = useJmActivity.getState()
     const s = store.shoot
 
-    // 가까이 있는지: 거리 + 코트 쪽(골대 앞)
-    if (player.current?.parent) {
+    // 가까이 있는지: 거리 + 코트 쪽(골대 앞). 멀리 있고 슛 중이 아니면 0.3초마다만 확인
+    if (player.current?.parent && (t >= nextCheck.current || s.active || s.near === item.id)) {
       updateHoopWorld()
       player.current.getWorldPosition(tmp.me)
       tmp.d.copy(tmp.me).sub(tmp.rim)
       tmp.d.y = 0
-      const near = tmp.d.length() < NEAR_DIST && tmp.d.dot(tmp.forward) > 0.8
-      if (near && s.near !== item.id) store.setShoot({ near: item.id })
-      if (!near && s.near === item.id) store.setShoot({ near: null })
+      // 버그 수정: 코트 가운데에 서면 양쪽 골대가 둘 다 "가깝다"고 판단해 안내·슛 대상이 번갈아 바뀌었음
+      // → 골대 앞쪽(코트 안, 옆으로 4.5m 이내)만 인정하고, 둘 다 해당하면 더 가까운 골대 하나만 잡음
+      const ahead = tmp.d.dot(tmp.forward)
+      const side = Math.abs(tmp.d.x * tmp.forward.z - tmp.d.z * tmp.forward.x)
+      const dist = tmp.d.length()
+      nextCheck.current = dist > 20 ? t + 0.3 : 0
+      const near = !s.active && dist < NEAR_DIST && ahead > 0.8 && side < 4.5
+      if (near) {
+        if (s.near === item.id) {
+          if (Math.abs((s.nearDist ?? 0) - dist) > 0.2) store.setShoot({ nearDist: dist })
+        } else if (s.near === null || dist < (s.nearDist ?? Infinity) - 0.3) {
+          store.setShoot({ near: item.id, nearDist: dist })
+        }
+      } else if (s.near === item.id && !s.active) {
+        store.setShoot({ near: null, nearDist: Infinity })
+      }
     }
 
     // 힘 게이지 (0 → 1 → 0 왕복)
@@ -303,10 +349,13 @@ function ShootHud({ hoopId }) {
               🏀 {s.makes} / {SHOOT_GOAL}골 <span style={{ opacity: 0.7, fontWeight: 400 }}>· 시도 {s.shots}</span>
             </div>
             <div style={gauge}>
-              <div style={{ ...sweet }} />
+              {zoneSpans(s.zone).map(([a, b]) => (
+                <div key={a} style={{ ...sweet, left: `${(a / ZONE_STEPS) * 100}%`, width: `${((b - a + 1) / ZONE_STEPS) * 100}%` }} />
+              ))}
               <div style={{ ...gaugeFill, width: `${Math.round(s.power * 100)}%` }} />
             </div>
             <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+              {s.zone && !s.zone.some(Boolean) && '여기서는 넣기 어려워요 — ESC로 나와서 골대 앞쪽으로 옮겨 보세요 · '}
               {s.lastResult === 'make' ? '골인! ' : s.lastResult === 'miss' ? '아깝다! ' : ''}
               <kbd style={kbd}>Space</kbd> 꾹 눌러 힘 조절 → 떼면 슛 · 초록 칸이 정확한 힘 · <kbd style={kbd}>ESC</kbd> 나가기
             </div>
@@ -322,8 +371,19 @@ const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0
 const panel = { width: 320, padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 14 }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }
 const gauge = { position: 'relative', height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }
-// 정확한 힘 구간 (0.42 ~ 0.6)
-const sweet = { position: 'absolute', left: '42%', width: '18%', top: 0, bottom: 0, background: 'rgba(74,222,128,0.55)' }
+// 정확한 힘 구간: 슛 모드 들어갈 때 그 자리에서 미리 던져 본 결과(shoot.zone)로 칠함
+const sweet = { position: 'absolute', top: 0, bottom: 0, background: 'rgba(74,222,128,0.55)' }
+// 들어가는 칸들을 이어진 구간 [시작, 끝]으로 묶음
+function zoneSpans(zone) {
+  const spans = []
+  ;(zone ?? []).forEach((ok, i) => {
+    if (!ok) return
+    const last = spans[spans.length - 1]
+    if (last && last[1] === i - 1) last[1] = i
+    else spans.push([i, i])
+  })
+  return spans
+}
 const gaugeFill = { position: 'absolute', left: 0, top: 0, bottom: 0, background: '#f59e0b', opacity: 0.85 }
 
 // ─────────────────────────────────────────────
@@ -334,14 +394,17 @@ const gaugeFill = { position: 'absolute', left: 0, top: 0, bottom: 0, background
 // ⚠ 실제 작품의 캐릭터·버스 모양은 넣지 않음 (팀 규칙 7번). 비·우산·정류장 분위기만.
 //
 // 가볍게 만든 방법:
-// - 빗줄기 900개를 InstancedMesh 하나로 그림 (그리기 호출 1번), 조명은 새로 안 넣음 (SG 점광원 고정 규칙)
+// - 빗줄기 500개를 InstancedMesh 하나로 그림 (그리기 호출 1번), 조명은 새로 안 넣음 (SG 점광원 고정 규칙)
 // - 비 구역 밖이면 세기 0 → 갱신도 그리기도 안 함
 // - 빗소리는 파일 없이 Web Audio로 만든 잡음 (혜진님 입장 효과음과 같은 방식). 첫 E 누를 때 켬(브라우저 자동재생 정책)
 
-const RAIN_R = 10 // 비 구역 반경 (정류장 중심에서)
-const UMBRELLA_HINT_R = 4.5 // "E 우산" 안내가 뜨는 거리
-const DROPS = 900
-const RAIN_BOX = 18 // 캐릭터 주변 18 × 18m 안에 비
+// 비는 정류장 둘레(반경 RAIN_AREA)에만 내림. 캐릭터가 정류장 가까이(RAIN_R) 와야 시작
+// (처음엔 캐릭터 주변에 내리게 했더니, 애니 구역 입구로 들어올 때 정류장 옆을 지나며 비가 와서 바꿈)
+const RAIN_R = 5 // 비가 시작되는 거리 (정류장 중심에서)
+const UMBRELLA_HINT_R = 5 // "E 우산" 안내가 뜨는 거리
+const DROPS = 500
+const RAIN_AREA = 5.5 // 비가 내리는 둘레 반경 (정류장 중심)
+const RAIN_BOX = RAIN_AREA * 2
 const RAIN_TOP = 9
 const DROP_SPEED = 11
 const CANOPY_R = 0.8
@@ -471,12 +534,14 @@ export function RainStop() {
           let y = drops[i * 3 + 1] - DROP_SPEED * delta
           if (y < 0) y += RAIN_TOP
           drops[i * 3 + 1] = y
-          const x = tmp.me.x + wrap(drops[i * 3] - tmp.me.x, RAIN_BOX)
-          const z = tmp.me.z + wrap(drops[i * 3 + 2] - tmp.me.z, RAIN_BOX)
+          // 정류장 중심 기준 네모 안의 점 → 둥근 둘레 밖은 그리지 않음
+          const x = tmp.stop.x + wrap(drops[i * 3], RAIN_BOX)
+          const z = tmp.stop.z + wrap(drops[i * 3 + 2], RAIN_BOX)
+          const outside = Math.hypot(x - tmp.stop.x, z - tmp.stop.z) > RAIN_AREA
           const wy = groundY + y
           // 세기만큼만 보이고, 우산 아래는 비가 안 옴
           const underUmbrella = r.umbrella && Math.hypot(x - tmp.me.x, z - tmp.me.z) < CANOPY_R && wy < tmp.me.y + CANOPY_Y
-          if (i >= shown || underUmbrella) tmp.m.makeTranslation(0, -100, 0)
+          if (i >= shown || outside || underUmbrella) tmp.m.makeTranslation(0, -100, 0)
           else tmp.m.makeTranslation(x, wy, z)
           mesh.setMatrixAt(i, tmp.m)
         }

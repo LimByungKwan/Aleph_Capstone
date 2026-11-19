@@ -1,6 +1,7 @@
 import { Html } from '@react-three/drei'
 import { mapPlaces } from '../data/mapData.js'
 import Prop from './Prop.jsx'
+import LumiGuide from './LumiGuide.jsx'
 import { PLACE_COLORS, SHOW_PLACE_LABELS } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
 
@@ -27,14 +28,16 @@ function PlaceMarker({ place }) {
       </mesh>
 
       {/* 모델이 있으면 모델, 없으면 기둥 / NPC 캡슐 */}
-      {place.model ? (
+      {place.id === 'npc_guide' && place.model ? (
+        <LumiGuide path={place.model} />
+      ) : place.model ? (
         <Prop item={{ id: place.id, position: [0, 0], size: [1, 1.8, 1], rotationDeg: 0, color, model: place.model }} />
       ) : isNpc ? (
         <mesh position={[0, 0.85, 0]} castShadow>
           <capsuleGeometry args={[0.35, 1.0, 8, 16]} />
           <meshStandardMaterial color={color} />
         </mesh>
-      ) : (
+      ) : place.zone !== 'SG' && ( // SG 지점은 건물 앞이라 기둥 없이 바닥 원과 이름표만
         <mesh position={[0, 1.5, 0]} castShadow>
           <cylinderGeometry args={[0.15, 0.15, 3, 16]} />
           <meshStandardMaterial color={color} />

@@ -5,6 +5,7 @@ import { KeyboardControls, OrbitControls } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import MapLayout from './Map/MapLayout.jsx'
 import PlaceMarkers from './Map/PlaceMarkers.jsx'
+import CourseMarker from './Map/CourseMarker.jsx'
 import Colliders from './Map/Colliders.jsx'
 import { Elevators } from './Map/Terrain.jsx'
 import PastelSky from './Map/PastelSky.jsx'
@@ -71,6 +72,7 @@ export default function Scene() {
           <MapLayout showStartMarker={!playing} highDetail={highDetail} />
           {playing && <SeasonalWeather playerRef={playerRef} />}
           <PlaceMarkers />
+          <CourseMarker />
 
           {/* 물리 엔진(Rapier)은 처음에 잠깐 로딩이 필요해서 Suspense로 감쌈 */}
           <Suspense fallback={null}>

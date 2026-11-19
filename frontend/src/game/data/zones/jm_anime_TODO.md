@@ -29,8 +29,24 @@
 ## 팀에 공유할 것 (PR 전)
 
 - 근접형 작품명 (「슬램 리바운드」, 「그대의 이름을」, 「나츠키 요괴장」 외 6개)
-- 언덕 높이 3m (건물 높이 규칙 6~12m의 예외, 지형)
+- 언덕 높이 6.5m (건물 높이 규칙 6~12m의 예외, 지형). 계단은 terrain "stairs"(경사로 충돌 포함) 양쪽 2개
+- 「그대의 이름을」 재회의 계단: 남쪽 계단 폭 3.2m·길이 13m, 가운데 빨간 난간(jmStairRail, 계단을 두 줄로 나누는 충돌 벽), 양옆 돌 옹벽 4단
+- 애니 구역 서쪽 빈터(K-POP 구역 북쪽, 지민 담당): 호수에서 흘러나온 강(jmRiver) + 남쪽 기슭 산책로(jmPathRibbon) + 다리 2개 + 벚꽃·석등·벤치
+  · 구역 밖(x -40 바깥) 좌표지만 jm_anime.json에 함께 둠. 서쪽 담 두 군데(호수 쪽, 남쪽 정류장 옆)를 엶
+  · 강둑은 투명 벽(jm_river_bank_*)으로 빠지지 않게, 다리 자리만 비움
+  · `shared/places.json`에 촬영지 1곳 추가: spot_jm_sakura_river (「초속 5미터」 벚꽃 강변길) → DB seed도 다시 생성함
+  · 언덕 서쪽 끝 → 강변: 짧은 붉은 난간 계단(terrain stairs + jmBridgeDress "stairs"), 동쪽 끝 → BK 전망대: 흔들다리(terrain deck + "suspension", BK 구역 약 34m)
+  · 강변 소품: 물레방아·노다테 쉼터·꽃놀이 돗자리·나루터와 배(jm_riverside.jsx), 물수제비(jm_skipstone.jsx)
+  · 철길을 서쪽 맵 끝까지 연장(jm_rail_*_w), 강 위 철교(jmRailBridge), 산책로 건널목 신호
+- 옥상 신사 건물(jm_rooftop) 안 계단 3번 → 옥상 (terrain stairs 3개 + jmCollider 벽·층계참·옥상 바닥)
+- 농구 슛·비 오는 정류장 체험 (jm_activities.jsx, jm_activityStore.js)
 - `shared/places.json` 스탬프 지점 3곳 추가
 - `Map/styles/index.js` 등록 2줄
 - `public/fonts` 웹폰트 2개 (OFL)
+- ⚠ 공용 `hub.json` 바닥 크기 변경: `ground` [260,260] 중심 [0,0] → [260,340] 중심 [0,-40] (북쪽 끝 z -130 → -210, 남쪽 끝은 그대로 130)
+  · 애니 구역 뒤편 확장 때문 (구역 좌표 z -40 ~ -120). 다른 구역 좌표는 안 바뀜. BK·SG 구역 북쪽에도 빈 풀밭이 생김
+  · 산넨자카식 계단 거리: 북쪽 담 문(x 11.5~17.5) → 돌계단 4번 + 테라스 3단(terrain platform 1.5/3.0/4.5m) → 꼭대기(6m) 안쪽 신사
+    단마다 마치야 가게 4채(가상 상호 12개), 꼭대기 서쪽에 기요미즈풍 나무 무대(terrain deck), 서쪽 연못 정원·동쪽 대숲 도리이 길에서 옆 계단으로 연결
+  · 서쪽 담에 강변 북쪽 둑 → 연못 정원 문(z -43.5 ~ -48.5)
+- 앉을 수 있는 벤치 `jmBench` (jm_bench.jsx): 애니 구역 벤치 21개. 공용 Player.jsx는 안 고치고 모델만 앉은 자세로 옮김 (캐릭터가 GLB로 바뀌어도 동작)
 - 맵 전체 조명이 어둡게 느껴짐 → 조명은 공용 `Scene.jsx` 라서 병관님과 상의
