@@ -1,0 +1,3 @@
+# 파이썬 캐시·테스트 캐시 (.venv와 .env는 루트 .gitignore에서 제외됨)
+__pycache__/
+.pytest_cache/

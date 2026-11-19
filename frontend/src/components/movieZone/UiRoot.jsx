@@ -8,6 +8,7 @@ import CouponBox from './CouponBox.jsx'
 import CinemaOverlay from './CinemaOverlay.jsx'
 import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
+import { CourseHud } from '../course/LumiCourse.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -28,6 +29,7 @@ export default function UiRoot() {
       <CinemaOverlay />
       {!inCinema && <Hud />}
       {!inCinema && <RoleSwitcher />}
+      {!inCinema && <CourseHud />}
       <SceneHint />
       <DialogBox />
       <BreakwaterScene />

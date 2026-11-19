@@ -1,0 +1,176 @@
+/* 루미 코스 추천 (담당: 병관) — 색은 공통 UI 토큰(ui.css의 --ui-*)을 그대로 씀 */
+
+.lumi-course {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+.lumi-course__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lumi-course__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lumi-course__chip {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--ui-sage-soft);
+  color: var(--ui-sage);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.lumi-course__chip:hover:not(:disabled) {
+  border-color: var(--ui-sage);
+}
+.lumi-course__chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.lumi-course__input {
+  flex: 1 1 220px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ui-text);
+}
+.lumi-course__count {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  color: var(--ui-text);
+}
+.lumi-course__input:focus,
+.lumi-course__count:focus {
+  outline: 3px solid rgba(200, 109, 81, 0.3);
+  border-color: var(--ui-accent);
+}
+.lumi-course__hint,
+.lumi-course__now {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+.lumi-course__error {
+  margin: 0;
+  color: var(--ui-danger);
+  font-size: 13px;
+}
+.lumi-course__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.lumi-course__reply {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.lumi-course__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 34vh;
+  overflow-y: auto;
+}
+.lumi-course__list li {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ui-surface-2);
+}
+.lumi-course__num {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.lumi-course__name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.lumi-course__name small {
+  margin-left: 4px;
+  color: var(--ui-muted);
+  font-weight: 400;
+}
+.lumi-course__reason {
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+
+/* 화면 위 가운데 목적지 안내 */
+.lumi-hud {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 32px);
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.95);
+  box-shadow: var(--ui-shadow);
+  font-size: 14px;
+  animation: ui-rise 0.2s ease-out;
+}
+.lumi-hud__badge {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.lumi-hud__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lumi-hud__text small {
+  margin-left: 4px;
+  color: var(--ui-muted);
+}
+.lumi-hud__close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-surface-2);
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+.lumi-hud__close:hover {
+  color: var(--ui-text);
+}
