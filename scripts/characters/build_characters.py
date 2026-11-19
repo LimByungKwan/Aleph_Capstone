@@ -229,7 +229,7 @@ def bake(rig, mesh, clips, height):
     for track in rig.animation_data.nla_tracks: track.mute = False
     return
 
-def render_preview(mesh, rig, gender):
+def render_preview(mesh, rig, gender, frame_samples=None):
     scene = bpy.context.scene
     scene.render.engine = 'CYCLES'
     scene.cycles.samples = 16
@@ -255,31 +255,32 @@ def render_preview(mesh, rig, gender):
     for track in rig.animation_data.nla_tracks: track.mute=True
     for label in CLIPS:
         rig.animation_data.action=bpy.data.actions[label]
-        for frame in ([1] if label=='Idle' else [1,8,16]):
+        for frame in ([1] if label=='Idle' else (frame_samples or [1,8,16])):
             scene.frame_set(frame)
             scene.render.filepath=str(WORK/gender/f'{label}-{frame}.png')
             bpy.ops.render.render(write_still=True)
 
-clips = sample_clips()
-genders = sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else ['male','female']
-for gender in genders:
-    height=1.72 if gender=='male' else 1.66
-    mesh=prepare_mesh(gender,height)
-    rig=create_rig(height,gender,clips['Idle']['rest'])
-    skin(mesh,rig,gender,height)
-    bake(rig,mesh,clips,height)
-    scene=bpy.context.scene
-    scene.render.fps=clips['Idle']['fps']
-    scene.frame_start=1
-    scene.frame_end=181
-    bpy.ops.object.select_all(action='DESELECT')
-    mesh.select_set(True)
-    rig.select_set(True)
-    bpy.context.view_layer.objects.active=rig
-    bpy.ops.wm.save_as_mainfile(filepath=str(WORK/gender/'rigged.blend'))
-    bpy.ops.export_scene.gltf(filepath=str(OUT/f'{gender}.glb'), export_format='GLB', use_selection=True,
-        export_animations=True, export_animation_mode='NLA_TRACKS', export_nla_strips=True,
-        export_force_sampling=True, export_anim_slide_to_zero=True,
-        export_image_format='JPEG', export_jpeg_quality=90, export_yup=True)
-    print('EXPORTED',gender,(OUT/f'{gender}.glb').stat().st_size,flush=True)
-    render_preview(mesh,rig,gender)
+if __name__ == "__main__":
+    clips = sample_clips()
+    genders = sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else ['male','female']
+    for gender in genders:
+        height=1.72 if gender=='male' else 1.66
+        mesh=prepare_mesh(gender,height)
+        rig=create_rig(height,gender,clips['Idle']['rest'])
+        skin(mesh,rig,gender,height)
+        bake(rig,mesh,clips,height)
+        scene=bpy.context.scene
+        scene.render.fps=clips['Idle']['fps']
+        scene.frame_start=1
+        scene.frame_end=181
+        bpy.ops.object.select_all(action='DESELECT')
+        mesh.select_set(True)
+        rig.select_set(True)
+        bpy.context.view_layer.objects.active=rig
+        bpy.ops.wm.save_as_mainfile(filepath=str(WORK/gender/'rigged.blend'))
+        bpy.ops.export_scene.gltf(filepath=str(OUT/f'{gender}.glb'), export_format='GLB', use_selection=True,
+            export_animations=True, export_animation_mode='NLA_TRACKS', export_nla_strips=True,
+            export_force_sampling=True, export_anim_slide_to_zero=True,
+            export_image_format='JPEG', export_jpeg_quality=90, export_yup=True)
+        print('EXPORTED',gender,(OUT/f'{gender}.glb').stat().st_size,flush=True)
+        render_preview(mesh,rig,gender)

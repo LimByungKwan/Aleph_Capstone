@@ -1,6 +1,7 @@
 import { Html } from '@react-three/drei'
 import places from '@shared/places.json'
 import Prop from './Prop.jsx'
+import LumiGuide from './LumiGuide.jsx'
 import { PLACE_COLORS, SHOW_PLACE_LABELS } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
 
@@ -27,7 +28,9 @@ function PlaceMarker({ place }) {
       </mesh>
 
       {/* 모델이 있으면 모델, 없으면 기둥 / NPC 캡슐 */}
-      {place.model ? (
+      {place.id === 'npc_guide' && place.model ? (
+        <LumiGuide path={place.model} />
+      ) : place.model ? (
         <Prop item={{ id: place.id, position: [0, 0], size: [1, 1.8, 1], rotationDeg: 0, color, model: place.model }} />
       ) : isNpc ? (
         <mesh position={[0, 0.85, 0]} castShadow>

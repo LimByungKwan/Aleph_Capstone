@@ -9,7 +9,7 @@
     "tags": ["가이드", "시작"],
     "position": [0, 0, 7.5],
     "radius": 2,
-    "model": null
+    "model": "models/characters/lumi.glb"
   },
   {
     "id": "spot_busstop",
