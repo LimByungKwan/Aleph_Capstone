@@ -2,6 +2,7 @@ import places from '@shared/places.json'
 import characters from '@shared/characters.json'
 import { MOCK_USERS, SHOP_OFFERS, dayKey, findPlace, newCouponCode, newId, readDb, writeDb } from './mockDb.js'
 import { generatePromoMock } from '../components/boss/promoMock.js'
+import { requestPromo } from './course.js'
 import { checkPromoRules } from '../components/boss/promoRules.js'
 
 // [3. 개발 > 백엔드 API 연동] 화면이 부르는 API 함수 모음
@@ -183,13 +184,20 @@ export async function getShopStats({ ownerId }) {
  *   tone:   'warm' | 'bright' | 'plain'
  * 응답: { captions: string[3], hashtags: string[], reels: string | null, tag: string, warnings: string[] }
  * 규칙: 배우 실명·대사 인용·로고 금지 (서버에서도 검사, 화면에서도 검사)
+ * 문구는 병관님 AI 서버(/promo, 템플릿 방식·요금 0원)가 만들고, 서버가 꺼져 있으면 promoMock으로 대신해요.
  */
 export async function generatePromo(input) {
-  await wait()
   const owner = requireUser(input.ownerId)
   if (owner.role !== 'owner') throw new ApiError('NOT_OWNER', '사장님 계정만 쓸 수 있어요.')
   if (!input.shopName?.trim()) throw new ApiError('INVALID_INPUT', '가게 이름을 입력해 주세요.')
-  const result = generatePromoMock(input)
+  let result
+  try {
+    result = await requestPromo(input)
+  } catch (error) {
+    if (error?.code === 'RATE_LIMITED') throw error
+    await wait()
+    result = { ...generatePromoMock(input), source: 'mock' } // AI 서버에 닿지 않으면 화면용 가짜 문구
+  }
   const db = readDb()
   db.promos.push({ id: newId('pr'), shopId: owner.shopId, createdAt: new Date().toISOString(), input, result })
   writeDb(db)
