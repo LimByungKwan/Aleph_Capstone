@@ -4,6 +4,7 @@ import { Ecctrl } from 'ecctrl'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
+import { useEraWarp } from '../../components/movieZone/useEraWarp.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 
 // 캐릭터 몸 크기 (지름 0.6m, 키 약 1.6m)
@@ -37,6 +38,7 @@ const NO_INPUT = { forward: false, backward: false, leftward: false, rightward: 
 // showModel: 1인칭에서는 내 몸이 카메라를 가리지 않게 숨김
 export default function Player({ playerRef, showModel = true }) {
   const [, getKeys] = useKeyboardControls()
+  useEraWarp(playerRef)
   // 패널이 열려 있으면(inputLocked) 키 입력을 무시 → 캐릭터 정지
   const locked = useGameStore((state) => state.inputLocked)
 

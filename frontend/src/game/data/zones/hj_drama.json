@@ -17,7 +17,8 @@
     {"id": "plaza_coast_link", "style": "gardenPath", "position": [-19.25,-37], "size": [38.5,0.11,2.7], "rotationDeg": 0},
     {"id": "beach_coast_link", "style": "gardenPath", "position": [-47,-25], "size": [18.5,0.112,2.7], "rotationDeg": 0},
     {"id": "retro_market_walk", "style": "gardenPath", "position": [-3.5,14], "size": [12.5,0.13,3.4], "rotationDeg": 0},
-    {"id": "cyber_walk", "style": "gardenPath", "position": [26,15], "size": [16,0.115,2.8], "rotationDeg": 0},
+    {"id": "cyber_walk", "style": "gardenPath", "position": [28,18.4], "size": [10,0.115,2.8], "rotationDeg": 0},
+    {"id": "analog_warp_walk", "style": "gardenPath", "position": [18.1,16.1], "size": [4.3,0.116,3.1], "rotationDeg": 0},
     {"id": "hanok_lawn_w", "color": "#9cc27a", "position": [-36.5,-5], "size": [7,0.05,58], "rotationDeg": 0}
   ],
 
@@ -93,7 +94,11 @@
     {"id": "plaza_lantern_1", "style": "hjLantern", "position": [-5.4,-3], "size": [0.45,0.9,0.45], "collider": [0.45,0.9,0.45], "rotationDeg": 0, "sunsetLight": true},
     {"id": "plaza_lantern_2", "style": "hjLantern", "position": [9.4,15.5], "size": [0.45,0.9,0.45], "collider": [0.45,0.9,0.45], "rotationDeg": 0, "sunsetLight": true},
     {"id": "plaza_lamp", "style": "lamp", "position": [9.6,-3], "size": [0.3,4.5,0.3], "rotationDeg": 180},
-    {"id": "future_grid", "style": "hjCyberGrid", "position": [28.5,-0.5], "size": [21,0.1,66], "collider": false},
+    {"id": "future_grid", "style": "hjCyberGrid", "position": [31.15,-2.6], "size": [19.1,0.1,66.8], "collider": false},
+    {"id": "era_barrier_west", "style": "hjEraBarrier", "position": [21.6,-2.6], "size": [67.2,3.8,0.42], "rotationDeg": 90},
+    {"id": "era_barrier_east", "style": "hjEraBarrier", "position": [40.7,-2.6], "size": [67.2,3.8,0.42], "rotationDeg": 90},
+    {"id": "era_barrier_north", "style": "hjEraBarrier", "position": [31.15,-36], "size": [19.1,3.8,0.42]},
+    {"id": "era_barrier_south", "style": "hjEraBarrier", "position": [31.15,30.8], "size": [19.1,3.8,0.42]},
     {"id": "skywalk_center", "style": "hjSkywalk", "position": [31.5,0.8], "size": [10,6.5,2.4], "rotationDeg": 90, "collider": false},
     {"id": "skywalk_archive", "style": "hjSkywalk", "position": [33,-13.4], "size": [9.5,10.7,1.9], "rotationDeg": 110, "collider": false},
     {"id": "future_police_car", "style": "hjFloatingCar", "position": [30.5,10], "size": [3.1,13,1.4], "phase": 0, "police": true, "collider": false},
@@ -138,12 +143,18 @@
     {"id": "warp_booth_wall_1", "style": "hjBoothWallCollider", "position": [19.367,14.476], "size": [1.4,2.78,0.12], "rotationDeg": -35},
     {"id": "warp_booth_wall_2", "style": "hjBoothWallCollider", "position": [18.476,14.633], "size": [0.12,2.78,1.4], "rotationDeg": -35},
     {"id": "warp_booth_wall_3", "style": "hjBoothWallCollider", "position": [19.524,15.367], "size": [0.12,2.78,1.4], "rotationDeg": -35},
-    {"id": "film_portal", "style": "filmPortal", "position": [19,15], "size": [3.7,0.1,3.7], "elevation": 0.145, "collider": false, "rotationDeg": -35, "warpHub": true,
+    {"id": "film_portal", "style": "filmPortal", "position": [19,15], "size": [3.7,0.1,3.7], "elevation": 0.145, "collider": false, "rotationDeg": -35, "warpHub": true, "warpEra": "7080 골목",
       "portal": {
         "title": "시공간 워프 허브",
-        "work": "가상 영화 「서울, 두 개의 시간」",
-        "synopsis": "오래된 전화 부스에서 수화기를 들면 벽돌 골목의 오후와 네온이 흐르는 미래 서울이 한 장면에 겹친다.",
-        "points": ["왼편 레트로 골목에서 노란 택시와 시장 찾기", "오른편 사이버 서울 타워와 하늘다리 둘러보기", "달 기지의 우주인과 로버 찾기"]
+        "synopsis": "7080 골목에서 네온이 흐르는 2030 미래 구역으로 건너갑니다."
+      }},
+    {"id": "future_warp_wall_back", "style": "hjBoothWallCollider", "position": [26.3,16.16], "size": [1.4,2.78,0.12]},
+    {"id": "future_warp_wall_left", "style": "hjBoothWallCollider", "position": [25.66,16.8], "size": [0.12,2.78,1.4]},
+    {"id": "future_warp_wall_right", "style": "hjBoothWallCollider", "position": [26.94,16.8], "size": [0.12,2.78,1.4]},
+    {"id": "future_film_portal", "style": "filmPortal", "position": [26.3,16.8], "size": [3.7,0.1,3.7], "elevation": 0.145, "collider": false, "rotationDeg": 0, "warpHub": true, "warpEra": "2030 미래 구역",
+      "portal": {
+        "title": "시공간 워프 허브",
+        "synopsis": "2030 미래 구역에서 전구가 켜진 7080 골목으로 돌아갑니다."
       }},
 
     {"id": "blue_gate", "style": "hjBlueGate", "position": [0.3,8.2], "size": [3.1,2.9,0.36], "rotationDeg": 180, "collider": false},
