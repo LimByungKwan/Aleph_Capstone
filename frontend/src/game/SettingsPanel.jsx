@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { TIME_PRESETS } from './config.js'
 import { useSettings } from './settingsStore.js'
 import SeasonPicker from './SeasonPicker.jsx'
+import { characters, usePlayerCharacter } from './Player/characterStore.js'
 
 // 오른쪽 위 ⚙ 설정 버튼 + 설정창 (시간대 / 그래픽 품질 / 구역 표시)
 // 위치: 스탬프북·쿠폰함 버튼 묶음(.ui-hud, 혜진 님 UI) 바로 왼쪽.
@@ -49,6 +50,7 @@ export default function SettingsPanel() {
   const hudWidth = useHudWidth()
   const right = 12 + (hudWidth ? hudWidth + GAP : 0)
   const { timeOfDay, quality, showZones, setTimeOfDay, setQuality, setShowZones } = useSettings()
+  const { character, choose, busy, error } = usePlayerCharacter()
 
   // 버튼을 누른 뒤 포커스가 남으면 Space(점프)가 버튼을 다시 누르므로 바로 해제
   const press = (action) => (event) => {
@@ -70,6 +72,17 @@ export default function SettingsPanel() {
             </button>
           </div>
           <SeasonPicker />
+
+          <div style={styles.label}>캐릭터</div>
+          <div style={styles.segment}>
+            {characters.map(item => (
+              <button key={item.id} type="button" disabled={busy} aria-pressed={character.id === item.id}
+                onClick={press(() => choose(item.id))} style={choice(character.id === item.id)}>
+                {item.name}
+              </button>
+            ))}
+          </div>
+          {error && <div role="alert" style={styles.hint}>{error}</div>}
 
           <div style={styles.label}>시간대</div>
           <div style={styles.segment}>

@@ -6,3 +6,6 @@
 
 # 설치 폴더
 node_modules/
+
+# Local asset-build tools and intermediate renders
+.tmp/

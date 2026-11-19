@@ -1,4 +1,5 @@
 import places from '@shared/places.json'
+import characters from '@shared/characters.json'
 import { MOCK_USERS, SHOP_OFFERS, dayKey, findPlace, newCouponCode, newId, readDb, writeDb } from './mockDb.js'
 import { generatePromoMock } from '../components/boss/promoMock.js'
 import { checkPromoRules } from '../components/boss/promoRules.js'
@@ -27,6 +28,25 @@ function requireUser(userId) {
   const user = MOCK_USERS.find((u) => u.id === userId)
   if (!user) throw new ApiError('UNAUTHORIZED', '로그인이 필요해요.')
   return user
+}
+
+// 캐릭터 카탈로그와 사용자 선택. 실제 서버 연동 시 이 두 함수의 내부만 교체합니다.
+export async function getPlayerCharacter({ userId }) {
+  await wait()
+  requireUser(userId)
+  const id = readDb().playerCharacters?.[userId]
+  return { character: characters.find(character => character.id === id) ?? characters[0] }
+}
+
+export async function setPlayerCharacter({ userId, characterId }) {
+  await wait()
+  requireUser(userId)
+  const character = characters.find(item => item.id === characterId)
+  if (!character) throw new ApiError('INVALID_CHARACTER', '선택할 수 없는 캐릭터예요.')
+  const db = readDb()
+  db.playerCharacters = { ...db.playerCharacters, [userId]: character.id }
+  writeDb(db)
+  return { character }
 }
 
 // 같은 구역 + 같은 작품의 가게 (다른 사람 구역 가게 쿠폰까지 나가지 않게)

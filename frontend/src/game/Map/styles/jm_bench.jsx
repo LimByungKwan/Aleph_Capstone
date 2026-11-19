@@ -10,27 +10,18 @@ import { useJmActivity } from './jm_activityStore.js'
 // 벤치 앞(앉는 쪽, 로컬 +z) 가까이에서 E → 캐릭터가 벤치에 앉음 (카메라는 벤치가 보는 쪽으로) → E 또는 ESC로 일어남
 // 겉모습은 공용 bench와 같게 그림 (공용 props.jsx는 고치지 않음)
 //
-// 앉는 모션을 공용 Player.jsx를 안 고치고 만드는 방법:
-// - 이동은 gameStore.open(...)으로 잠금 (다른 체험과 같은 방식, ESC는 공용 InteractionKeys가 처리)
-// - 물리 몸(캡슐 충돌)은 그 자리에 두고, 눈에 보이는 캐릭터 모델만 벤치 자리로 옮겨 앉은 자세(조금 낮추고 눌러 앉힘 + 살짝 뒤로 기댐)로 바꿈
-// - 일어나면 모델을 원래 자리·크기로 되돌림 → 1인칭(모델 숨김)에서도 문제없음
-// - 나중에 캐릭터가 GLB로 바뀌어도 모델 묶음 전체를 옮기는 방식이라 그대로 동작
+// 물리 캡슐은 유지하고 명명된 캐릭터 모델을 좌판으로 이동합니다.
+// seatProgress로 Sit 클립을 정방향/역방향 재생하고, 실제 골반 높이를 좌판에 맞춥니다.
 
 const SIT_NEAR = 1.7 // 앉는 자리에서 이 거리 안이면 "E 앉기"
 const SEAT_Y = 0.48 // 앉는 판 높이
 const SIT_TIME = 0.45 // 앉기/일어나기 동작 시간(초)
-const SIT_SCALE_Y = 0.66 // 앉으면 몸이 접힌 것처럼 세로로 줄임
-const LEAN = THREE.MathUtils.degToRad(-8) // 등받이 쪽으로 살짝 기댐
 const METAL = '#2b2d30'
 const WOOD = '#9a6b45'
 
-// 캐릭터 겉모습 묶음 찾기: player 아래에서 캡슐 모양 메시의 부모(PlayerModel 그룹)
+// GLB 교체 후에도 안정적으로 찾을 수 있는 모델 이름
 function findModel(player) {
-  let found = null
-  player?.traverse((o) => {
-    if (!found && o.isMesh && o.geometry?.type === 'CapsuleGeometry') found = o.parent
-  })
-  return found
+  return player?.getObjectByName('player-character-model') ?? null
 }
 
 const ease = (t) => t * t * (3 - 2 * t)
@@ -77,6 +68,7 @@ export function JmBench({ item }) {
       s.model = model
       s.saved = { p: model.position.clone(), q: model.quaternion.clone(), s: model.scale.clone() }
     }
+    s.fromProgress = s.model?.userData.seatProgress ?? 0
     s.phase = 'sitting'
     s.t = 0
     // 카메라: 앉은 캐릭터 뒤에서 벤치가 보는 쪽을 바라보게
@@ -88,6 +80,7 @@ export function JmBench({ item }) {
   function restoreModel() {
     const s = sit.current
     if (s.model && s.saved) {
+      s.model.userData.seatProgress = 0
       s.model.position.copy(s.saved.p)
       s.model.quaternion.copy(s.saved.q)
       s.model.scale.copy(s.saved.s)
@@ -127,6 +120,7 @@ export function JmBench({ item }) {
         if (st.active === item.id && state.openPanel?.placeId !== item.id) {
           useJmActivity.getState().setSit({ active: null })
           if (sit.current.phase) {
+            sit.current.fromProgress = sit.current.model?.userData.seatProgress ?? 0
             sit.current.phase = 'standing'
             sit.current.t = 0
           }
@@ -174,15 +168,17 @@ export function JmBench({ item }) {
 
     // 앉기/일어나기 동작: 원래 자리(로컬) ↔ 벤치 자리(월드 → 부모 로컬로 바꿈) 사이를 부드럽게
     if (s.phase && s.model && s.model.parent) {
-      s.t = Math.min(1, s.t + delta / SIT_TIME)
-      const k = ease(s.phase === 'sitting' ? s.t : 1 - s.t)
+      s.t = Math.min(1, s.t + delta / (s.model.userData.sitDuration || SIT_TIME))
+      const start = s.fromProgress ?? 0
+      const k = s.phase === 'sitting' ? start + (1 - start) * ease(s.t) : start * (1 - ease(s.t))
+      s.model.userData.seatProgress = k
       updateSeat()
-      // 앉은 자세의 월드 변환: 판 위에 몸 아래쪽이 닿게(캡슐 키 1.6 × 0.66 / 2), 벤치 방향 + 살짝 기댐
+      // 실제 Sit 마지막 프레임의 골반 높이를 좌판에 맞춥니다.
       const yaw = Math.atan2(tmp.front.x, tmp.front.z)
-      tmp.tq.setFromEuler(tmp.e.set(LEAN, yaw, 0, 'YXZ'))
+      tmp.tq.setFromEuler(tmp.e.set(0, yaw, 0, 'YXZ'))
       tmp.p.copy(tmp.seat).addScaledVector(tmp.front, 0.05)
-      tmp.p.y += 0.8 * SIT_SCALE_Y - 0.05
-      tmp.m.compose(tmp.p, tmp.tq, tmp.s.set(1, SIT_SCALE_Y, 1))
+      tmp.p.y -= s.model.userData.seatHipHeight ?? .45
+      tmp.m.compose(tmp.p, tmp.tq, tmp.s.set(1, 1, 1))
       s.model.parent.updateWorldMatrix(true, false)
       tmp.inv.copy(s.model.parent.matrixWorld).invert()
       tmp.m.premultiply(tmp.inv)
