@@ -4,6 +4,7 @@ import SummerShelter from './SummerShelter.jsx'
 import HjBrickBuilding from './HjBuildings.jsx'
 import HjBlossomGate from './HjGate.jsx'
 import HjEntranceGate from './HjEntranceGate.jsx'
+import { HjAnalogHanok, HjAnalogLabel, HjGoldenSet, HjAnalogBooth } from './HjAnalogSet.jsx'
 import { HjBoat, HjBreakwater, HjLighthouse, HjSea } from './HjHarbor.jsx'
 import { HjCrosswalk, HjCurvedRoad } from './HjStreet.jsx'
 import {
@@ -26,6 +27,11 @@ import { HjBlueGate, HjHanokBench, HjSnackSteam, HjStoryCue } from './HjDramaDet
 import { HjCyberGrid, HjCyberTower, HjFloatingCar, HjLunarBase, HjRetroCrew, HjRetroStairs, HjRift, HjSkywalk } from './HjTimeDistrict.jsx'
 
 export const HJ_STYLES = {
+  hjAnalogHanok: HjAnalogHanok,
+  hjAnalogLabel: HjAnalogLabel,
+  hjGoldenSet: HjGoldenSet,
+  hjAnalogBooth: HjAnalogBooth,
+  hjBoothWallCollider: () => null,
   hjCyberGrid: HjCyberGrid,
   hjCyberTower: HjCyberTower,
   hjFloatingCar: HjFloatingCar,
