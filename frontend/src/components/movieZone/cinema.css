@@ -37,6 +37,7 @@
 }
 .cine-warp__panel h2 { margin-top: 0; }
 .cine-warp__panel p { line-height: 1.65; }
+.cine-warp__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 @keyframes cine-warp-turn { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .cine-warp__vortex { animation: none; }

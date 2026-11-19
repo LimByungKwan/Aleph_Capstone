@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { usePortalStore } from '../../../../components/movieZone/portalStore.js'
 import { seeded } from '../kit.jsx'
+import { layout } from '../../../data/mapData.js'
 import { getSwirlTexture } from './hjTextures.js'
 import { WarpBooth } from './HjTimeDistrict.jsx'
 
@@ -77,8 +78,19 @@ export default function FilmPortal({ item }) {
   const insideRef = useRef(false)
 
   const swirl = getSwirlTexture()
-  const portalInfo = useMemo(() => ({ id: item.id, ...(item.portal ?? {}), warpHub: item.warpHub }),
-    [item.id, item.portal, item.warpHub])
+  const portalInfo = useMemo(() => {
+    const destination = item.warpEra && layout.props.find((prop) =>
+      prop.zone === 'HJ' && prop.warpEra && prop.warpEra !== item.warpEra)
+    const warpDestination = destination ? {
+      label: destination.warpEra,
+      position: [
+        destination.position[0] + Math.sin(THREE.MathUtils.degToRad(destination.rotationDeg ?? 0)) * 2.4,
+        1.1,
+        destination.position[1] + Math.cos(THREE.MathUtils.degToRad(destination.rotationDeg ?? 0)) * 2.4,
+      ],
+    } : null
+    return { id: item.id, ...item.portal, warpHub: item.warpHub, warpDestination }
+  }, [item])
   const playerPosition = useMemo(() => new THREE.Vector3(), [])
 
   useFrame(({ clock }, delta) => {

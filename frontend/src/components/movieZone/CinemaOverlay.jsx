@@ -13,6 +13,7 @@ export default function CinemaOverlay() {
   const active = usePortalStore((s) => s.active)
   const dismissedId = usePortalStore((s) => s.dismissedId)
   const dismiss = usePortalStore((s) => s.dismiss)
+  const requestWarp = usePortalStore((s) => s.requestWarp)
   const visible = Boolean(active) && dismissedId !== active?.id
   const lockMovement = visible && (active.warpHub || active.retroScene)
 
@@ -81,9 +82,16 @@ export default function CinemaOverlay() {
         <section className="cine-warp__panel">
           <h2 id="warp-title">{shown.title}</h2>
           <p>{shown.synopsis}</p>
-          <button type="button" className="ui-btn ui-btn--ink" onClick={dismiss} autoFocus>
-            전화 부스로 돌아가기
-          </button>
+          <div className="cine-warp__actions">
+            {shown.warpDestination && (
+              <button type="button" className="ui-btn ui-btn--ink" onClick={requestWarp} autoFocus>
+                {shown.warpDestination.label}으로 이동
+              </button>
+            )}
+            <button type="button" className="ui-btn" onClick={dismiss} autoFocus={!shown.warpDestination}>
+              이동 취소
+            </button>
+          </div>
         </section>
       </div>
     )

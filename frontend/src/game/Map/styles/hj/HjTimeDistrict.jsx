@@ -103,6 +103,21 @@ export function HjCyberGrid({ item }) {
   )
 }
 
+export function HjEraBarrier({ item }) {
+  const [width, height, depth] = item.size
+  const segments = Math.ceil(width / 3)
+  return (
+    <group>
+      <Box p={[0, 0.44, 0]} s={[width, 0.88, depth]} c="#455566" />
+      <Box p={[0, (height + 0.88) / 2, 0]} s={[width, height - 0.88, depth * 0.44]} m={GLASS} />
+      <Box p={[0, height - 0.025, 0]} s={[width, 0.05, depth * 0.53]} m={CYAN} />
+      <Instances geometry={GEO.box} material={mat('#506879')} items={Array.from({ length: segments + 1 }, (_, index) => ({
+        p: [(index / segments - 0.5) * width, height / 2, 0], s: [0.1, height, depth * 0.7],
+      }))} />
+    </group>
+  )
+}
+
 export function HjRift({ item }) {
   const strips = item.points.slice(1).map(([x, z], index) => {
     const [px, pz] = item.points[index]
