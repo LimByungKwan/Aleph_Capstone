@@ -1,48 +1,5 @@
 /* [3. 개발 > 프론트엔드] '영화 속으로 입장' 레터박스 연출 (ui.css 색 토큰 사용) */
 
-.cine-warp {
-  position: absolute;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  isolation: isolate;
-  pointer-events: auto;
-  color: #ecf5ff;
-  background: radial-gradient(ellipse at center, #16204d, #050817 72%);
-  animation: cine-fade-in 0.45s ease-out both;
-}
-.cine-warp--leaving {
-  pointer-events: none;
-  animation: cine-fade-in 0.45s ease-out reverse both;
-}
-.cine-warp__vortex {
-  position: absolute;
-  z-index: -1;
-  width: min(82vmin, 720px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: repeating-conic-gradient(from 30deg, #55cfff7a, #28144b24 13deg, #bd75ffd9 34deg, #13295428 59deg);
-  mask-image: radial-gradient(transparent 20%, #000 49%, transparent 72%);
-  animation: cine-warp-turn 16s linear infinite;
-}
-.cine-warp__panel {
-  max-width: min(440px, calc(100% - 36px));
-  padding: 24px;
-  border: 1px solid #97b5ff66;
-  border-radius: 18px;
-  background: #10172ce8;
-  text-align: center;
-}
-.cine-warp__panel h2 { margin-top: 0; }
-.cine-warp__panel p { line-height: 1.65; }
-.cine-warp__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-@keyframes cine-warp-turn { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .cine-warp__vortex { animation: none; }
-}
-
 .cine {
   position: absolute;
   inset: 0;

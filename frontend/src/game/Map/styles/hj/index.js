@@ -1,10 +1,11 @@
 import ConfessionWall from './ConfessionWall.jsx'
-import FilmPortal from './FilmPortal.jsx'
 import SummerShelter from './SummerShelter.jsx'
 import HjBrickBuilding from './HjBuildings.jsx'
 import HjBlossomGate from './HjGate.jsx'
 import HjEntranceGate from './HjEntranceGate.jsx'
-import { HjAnalogHanok, HjAnalogLabel, HjGoldenSet, HjAnalogBooth } from './HjAnalogSet.jsx'
+import { HjPortHouse, HjVillageGate, HjVillageWall } from './HjCoastalVillage.jsx'
+import { HjFoxAltar, HjMoonForest } from './HjMoonForest.jsx'
+import { HjAnalogHanok, HjAnalogLabel, HjGoldenSet } from './HjAnalogSet.jsx'
 import { HjBoat, HjBreakwater, HjLighthouse, HjSea } from './HjHarbor.jsx'
 import { HjCrosswalk, HjCurvedRoad } from './HjStreet.jsx'
 import {
@@ -27,10 +28,14 @@ import { HjBlueGate, HjHanokBench, HjSnackSteam, HjStoryCue } from './HjDramaDet
 import { HjCyberGrid, HjCyberTower, HjEraBarrier, HjFloatingCar, HjLunarBase, HjRetroCrew, HjRetroStairs, HjRift, HjSkywalk } from './HjTimeDistrict.jsx'
 
 export const HJ_STYLES = {
+  hjFoxAltar: HjFoxAltar,
+  hjMoonForest: HjMoonForest,
+  hjPortHouse: HjPortHouse,
+  hjVillageGate: HjVillageGate,
+  hjVillageWall: HjVillageWall,
   hjAnalogHanok: HjAnalogHanok,
   hjAnalogLabel: HjAnalogLabel,
   hjGoldenSet: HjGoldenSet,
-  hjAnalogBooth: HjAnalogBooth,
   hjBoothWallCollider: () => null,
   hjCyberGrid: HjCyberGrid,
   hjEraBarrier: HjEraBarrier,
@@ -47,7 +52,6 @@ export const HJ_STYLES = {
   hjStoryCue: HjStoryCue,
   confessionWall: ConfessionWall, // 촬영지 '고백 담벼락' — 붉은 벽돌 + 담쟁이 + 전구줄
   summerShelter: SummerShelter, // 촬영지 '여름 정류장' — 민트·나무 정류장 + 포스터
-  filmPortal: FilmPortal, // '영화 속으로 입장' 포털 (들어가면 레터박스 연출)
 
   hjBlossomGate: HjBlossomGate, // 구역 입구 벚꽃 전구줄 아치
   hjEntranceGate: HjEntranceGate, // 입장 트리거 (밟거나 클릭 → 환영 배너). arch:false면 바닥 띠만

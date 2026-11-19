@@ -56,6 +56,7 @@ export function HjCurvedRoad({ item }) {
       0.35,
     )
     const count = Math.max(8, (item.points?.length ?? 2) * SAMPLES_PER_SEGMENT)
+    if (item.villageTrail) return { road: ribbon(curve, count, -half, half, 0.08) }
     const totalLength = curve.getLength()
     const crossings = (item.crosswalks ?? []).map(([x, z]) => {
       let nearest = 0
@@ -102,14 +103,21 @@ export function HjCurvedRoad({ item }) {
       dashes,
       crosswalks,
     }
-  }, [item.points, item.crosswalks, width, half])
+  }, [item.points, item.crosswalks, item.villageTrail, width, half])
 
-  const textures = useMemo(() => ({ asphalt: tiled('asphalt'), brick: tiled('brick') }), [])
+  const texture = useMemo(() => item.villageTrail ? { stone: tiled('stone') }
+    : { asphalt: tiled('asphalt'), brick: tiled('brick') }, [item.villageTrail])
+
+  if (item.villageTrail) return (
+    <mesh geometry={parts.road} receiveShadow>
+      <meshStandardMaterial map={texture.stone} color="#bdab8e" side={THREE.DoubleSide} />
+    </mesh>
+  )
 
   return (
     <group>
       <mesh geometry={parts.road} receiveShadow>
-        <meshStandardMaterial map={textures.asphalt} side={THREE.DoubleSide} />
+        <meshStandardMaterial map={texture.asphalt} side={THREE.DoubleSide} />
       </mesh>
       {parts.edges.map((g, i) => (
         <mesh key={`e${i}`} geometry={g}>
@@ -133,7 +141,7 @@ export function HjCurvedRoad({ item }) {
       ))}
       {parts.walks.map((g, i) => (
         <mesh key={`w${i}`} geometry={g} receiveShadow>
-          <meshStandardMaterial map={textures.brick} side={THREE.DoubleSide} />
+          <meshStandardMaterial map={texture.brick} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
