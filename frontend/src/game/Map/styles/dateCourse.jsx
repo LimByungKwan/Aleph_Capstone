@@ -109,7 +109,7 @@ function BkNightAmbient() {
 
 const WARM_GLASS = nightGlow(mat('#fff3da', { emissive: '#ffcf8a', emissiveIntensity: 0.55, roughness: 0.3 }), 1.5)
 const TOWER_GLASS = nightGlow(mat('#fff4e0', { emissive: '#ffcf91', emissiveIntensity: 0.65, roughness: 0.2 }), 1.6)
-const LANTERN = nightGlow(mat('#fff1c9', { emissive: '#ffc566', emissiveIntensity: 1.1 }), 2.6)
+export const LANTERN = nightGlow(mat('#fff1c9', { emissive: '#ffc566', emissiveIntensity: 1.1 }), 2.6)
 const BULB = nightGlow(mat('#fff6d8', { emissive: '#ffd27a', emissiveIntensity: 1.6 }), 3.2)
 const WATER = nightGlow(mat('#8fd3f4', { emissive: '#4aa8e0', emissiveIntensity: 0.25, roughness: 0.1 }), 0.7)
 const SPRAY = mat('#e0f4ff', { transparent: true, opacity: 0.55, emissive: '#bfe6ff', emissiveIntensity: 0.4 })
@@ -128,7 +128,7 @@ function roofGeometry(w, d, h, lift) {
   return roofCache.get(key)
 }
 
-function HanokRoof({ w, d, y, h, lift = 0.4 }) {
+export function HanokRoof({ w, d, y, h, lift = 0.4 }) {
   const ridge = Math.abs(w - d) + 0.6
   return (
     <group position={[0, y, 0]}>

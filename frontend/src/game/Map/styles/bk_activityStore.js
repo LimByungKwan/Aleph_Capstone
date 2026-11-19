@@ -23,9 +23,10 @@ export const useBkActivity = create((set, get) => ({
   //   near: 기계 앞인지, active: 조작 중인지
   //   phase: 'move'(집게 움직이기) | 'drop'(내려감) | 'grab'(집기) | 'lift'(올라감) | 'return'(배출구로) | 'release'(놓기)
   //   timeLeft: 이번 판 남은 이동 시간(초), tries/wins: 시도·획득 수, lastResult: 'win' | 'slip' | 'miss' | null
-  claw: { near: false, active: false, phase: 'move', timeLeft: CLAW_TIME, tries: 0, wins: 0, lastResult: null },
+  //   level: 난이도 'easy' | 'normal' | 'hard' (bk_clawMachine.jsx의 CLAW_LEVELS)
+  claw: { near: false, active: false, phase: 'move', timeLeft: CLAW_TIME, tries: 0, wins: 0, lastResult: null, level: 'normal' },
   setClaw: (patch) => set({ claw: { ...get().claw, ...patch } }),
-  startClaw: () => set({ claw: { ...get().claw, active: true, phase: 'move', timeLeft: CLAW_TIME, lastResult: null } }),
+  startClaw: (time = CLAW_TIME) => set({ claw: { ...get().claw, active: true, phase: 'move', timeLeft: time, lastResult: null } }),
   endClaw: () => set({ claw: { ...get().claw, active: false, phase: 'move' } }),
 
   completed: {},

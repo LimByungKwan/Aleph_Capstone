@@ -350,6 +350,7 @@ function Elevator({ tower, playerRef }) {
     // 개발 중 코드가 새로고침 없이 바뀌면(HMR) 예전 모양의 상태가 남아 문이 멈출 수 있음 → 처음 상태로
     if (s.phase === undefined) Object.assign(s, initial())
     const dt = Math.min(delta, 0.05)
+    const prevY = s.y
     const player = playerRef?.current
     let onLift = false
     let callLevel = -1
@@ -433,6 +434,22 @@ function Elevator({ tower, playerRef }) {
     }
 
     body.setNextKinematicTranslation({ x: cx, y: baseY + s.y - 0.15, z: cz })
+
+    // 캐릭터 태우기: 캐릭터는 바닥 위에 스프링처럼 떠 있어서(ecctrl) 발판이 가속·감속하면 통통 튐
+    // → 출발 직전 서 있던 높이를 기억해 두고, 움직이는 동안은 그 높이·발판 속도로 같이 옮김
+    const rider = player?.body
+    if (rider) {
+      const top = baseY + s.y
+      if (s.phase === 'depart' && onLift) s.rideOffset = player.currPos.y - top
+      if (s.phase === 'open' || s.phase === 'opening') s.rideOffset = null
+      const carrying = (s.phase === 'moving' || (s.phase === 'arrive' && s.timer < 0.35)) && onLift && s.rideOffset != null
+      if (carrying) {
+        const pos = rider.translation()
+        const vel = rider.linvel()
+        rider.setTranslation({ x: pos.x, y: top + s.rideOffset, z: pos.z }, true)
+        rider.setLinvel({ x: vel.x, y: s.phase === 'moving' && dt > 0 ? (s.y - prevY) / dt : 0, z: vel.z }, true)
+      }
+    }
 
     // 문 충돌: 문이 거의 다 열렸을 때만 끄고, 닫히기 시작하면 바로 켬
     doorColliders.current.forEach((collider, level) => {
