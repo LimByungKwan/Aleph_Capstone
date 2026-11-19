@@ -1,9 +1,10 @@
 import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { currentTarget, useCourseStore } from '../../store/courseStore.js'
 import { labelLayer } from '../labelLayer.js'
+import { playerPose } from '../../store/playerPose.js'
 
 // 루미 추천 코스의 "다음 목적지" 표시 (담당: 병관)
 // 멀리서도 보이는 빛기둥 + 위아래로 움직이는 화살표 + 이름표. 도착하면 다음 장소로 옮겨감 (courseStore)
@@ -14,8 +15,40 @@ const BEAM_HEIGHT = 60
 export default function CourseMarker() {
   const target = useCourseStore(currentTarget)
   const index = useCourseStore((s) => s.index)
-  if (!target) return null
-  return <Marker key={`${target.placeId}-${index}`} target={target} step={index + 1} />
+  return (
+    <>
+      <PlayerPoseTracker />
+      {target && <Marker key={`${target.placeId}-${index}`} target={target} step={index + 1} />}
+    </>
+  )
+}
+
+// 미니맵용: 캐릭터(Ecctrl name="player") 위치와 카메라 방향을 playerPose에 적어 둠
+const tmpPos = new THREE.Vector3()
+const tmpDir = new THREE.Vector3()
+function PlayerPoseTracker() {
+  const scene = useThree((s) => s.scene)
+  const player = useRef(null)
+  const frame = useRef(0)
+  useFrame(({ camera }) => {
+    // 캐릭터를 아직 못 찾았으면 30프레임마다 한 번만 찾기 (장면 전체를 훑는 일이라)
+    if (!player.current?.parent && frame.current++ % 30 === 0) player.current = scene.getObjectByName('player') ?? null
+    camera.getWorldDirection(tmpDir)
+    const len = Math.hypot(tmpDir.x, tmpDir.z)
+    if (len > 1e-3) {
+      playerPose.dirX = tmpDir.x / len
+      playerPose.dirZ = tmpDir.z / len
+    }
+    if (!player.current) {
+      playerPose.ready = false
+      return
+    }
+    player.current.getWorldPosition(tmpPos)
+    playerPose.ready = true
+    playerPose.x = tmpPos.x
+    playerPose.z = tmpPos.z
+  })
+  return null
 }
 
 function Marker({ target, step }) {
