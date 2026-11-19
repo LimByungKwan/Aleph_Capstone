@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { mat } from '../kit.jsx'
+import HjWalkInRoom from './HjWalkInRoom.jsx'
 import { getSignTexture } from '../textures.js'
 import { getRedBrickTexture, getRetroMuralTexture, getStripeTexture } from './hjTextures.js'
 
@@ -29,12 +31,14 @@ export default function HjBrickBuilding({ item }) {
   const stripe = awning ? getStripeTexture(awning[0], awning[1]) : null
   const mural = item.mural ? getRetroMuralTexture() : null
   const windowsPerFloor = Math.max(1, Math.floor(w / 2.2))
+  const base = item.walkIn ? 2.72 : 0
 
   return (
     <group>
       {/* 몸통 */}
-      <mesh position={[0, h / 2, 0]}>
-        <boxGeometry args={[w, h, d]} />
+      {item.walkIn && <HjWalkInRoom width={w} depth={d} shop material={mat('#ac8167')} />}
+      <mesh position={[0, (h + base) / 2, 0]}>
+        <boxGeometry args={[w, h - base, d]} />
         <meshStandardMaterial map={wallMap} color={wallMap ? '#ffffff' : item.color ?? '#cdbfa8'} roughness={0.95} />
       </mesh>
       {/* 층 띠 */}
@@ -96,11 +100,17 @@ export default function HjBrickBuilding({ item }) {
       )}
 
       {/* 1층 가게: 유리문 + 줄무늬 차양 + 간판 */}
-      <mesh position={[0, 1.2, d / 2 + 0.04]}>
+      {!item.walkIn && <mesh position={[0, 1.2, d / 2 + 0.04]}>
         <boxGeometry args={[w - 1, 2.3, 0.08]} />
         <meshStandardMaterial color="#ffe6b8" emissive="#ffcf8a" emissiveIntensity={0.35} />
-      </mesh>
-      {[-1, 0, 1].map((k) => (
+      </mesh>}
+      {item.walkIn && [-1, 1].map((side) => (
+        <mesh key={side} position={[side * w * 0.31, 1.49, d / 2 + 0.01]}>
+          <boxGeometry args={[w * 0.24, 1.25, 0.08]} />
+          <meshStandardMaterial color="#ffe4af" emissive="#ffbc72" emissiveIntensity={0.5} />
+        </mesh>
+      ))}
+      {!item.walkIn && [-1, 0, 1].map((k) => (
         <mesh key={k} position={[(k * (w - 1)) / 3, 1.2, d / 2 + 0.09]}>
           <boxGeometry args={[0.08, 2.3, 0.04]} />
           <meshStandardMaterial color="#4a3a2e" />

@@ -89,6 +89,7 @@ function breakwaterCurve(item) {
 }
 
 function breakwaterRails(item, curve) {
+  if (item.promenade) return []
   const width = item.width ?? 3
   const count = Math.ceil(curve.getLength() / 0.8)
   const rails = []
@@ -112,7 +113,13 @@ function breakwaterRails(item, curve) {
   }
   const end = curve.getPointAt(1)
   const tangent = curve.getTangentAt(1)
-  rails.push({ p: [end.x, 0.83, end.z], s: [width, 1.18, 0.18], r: [0, Math.atan2(tangent.x, tangent.z), 0] })
+  const yaw = Math.atan2(tangent.x, tangent.z)
+  const endSegments = item.dockAtEnd ? [[-width / 2, -0.75], [0.75, width / 2]] : [[-width / 2, width / 2]]
+  for (const [from, to] of endSegments) {
+    const middle = (from + to) / 2
+    rails.push({ p: [end.x + tangent.z * middle, 0.83, end.z - tangent.x * middle],
+      s: [to - from, 1.18, 0.18], r: [0, yaw, 0] })
+  }
   return rails
 }
 
@@ -136,7 +143,7 @@ export function HjBreakwater({ item }) {
       const p = curve.getPointAt(t)
       const tan = curve.getTangentAt(t)
       const normal = new THREE.Vector3(-tan.z, 0, tan.x)
-      if (t * length < clearStart) continue // 입구 쪽은 돌 없이 비워 둠
+      if (item.promenade || t * length < clearStart || (item.dockAtEnd && t * length > length - 2)) continue
       for (const side of [-1, 1]) {
         const off = side * (width / 2 + 0.5 + rand() * 0.5)
         const x = p.x + normal.x * off
@@ -150,7 +157,7 @@ export function HjBreakwater({ item }) {
         })
       }
     }
-    return { deck: deckGeometry(curve, length, width), rocks: rockList, rails: breakwaterRails(item, curve) }
+    return { deck: deckGeometry(curve, length, width, item.promenade), rocks: rockList, rails: breakwaterRails(item, curve) }
   }, [item, width, clearStart])
 
   // 돌 무늬 한 장 = 2m (UV를 m 단위로 만들어서 반복 0.5)
@@ -180,7 +187,7 @@ export function HjBreakwater({ item }) {
 const DECK_H = 0.24
 const RAMP_START_H = 0.14
 const RAMP = 2.5
-function deckGeometry(curve, length, width) {
+function deckGeometry(curve, length, width, promenade = false) {
   const samples = Math.max(16, Math.round(length * 2))
   const top = []
   const topUv = []
@@ -197,13 +204,13 @@ function deckGeometry(curve, length, width) {
     if (prev) dist += p.distanceTo(prev)
     prev = p
     const k = Math.min(1, dist / RAMP)
-    const h = RAMP_START_H + (DECK_H - RAMP_START_H) * (k * k * (3 - 2 * k)) // 부드러운 경사
+    const h = promenade ? RAMP_START_H + (DECK_H - RAMP_START_H) * (k * k * (3 - 2 * k)) : DECK_H
     const l = p.clone().addScaledVector(n, -width / 2)
     const r = p.clone().addScaledVector(n, width / 2)
     top.push(l.x, h, l.z, r.x, h, r.z)
     topUv.push(-width / 2, dist, width / 2, dist)
-    // 양옆 벽: 위(h) ~ 바닥(0)
-    side.push(l.x, h, l.z, l.x, 0, l.z, r.x, h, r.z, r.x, 0, r.z)
+    const base = promenade ? 0 : -1.2
+    side.push(l.x, h, l.z, l.x, base, l.z, r.x, h, r.z, r.x, base, r.z)
     if (i < samples) {
       const a = i * 2
       topIdx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
@@ -230,6 +237,29 @@ function deckGeometry(curve, length, width) {
 }
 
 // ── 등대 (style: "hjLighthouse") — size [지름, 높이, -]. 빨강·흰 줄무늬 + 도는 불빛
+function LighthouseFoam() {
+  const foam = useRef(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    foam.current.children.forEach((wave, index) => {
+      const phase = (t * 0.36 + index * 0.32) % 1
+      wave.scale.setScalar(0.68 + phase * 0.76)
+      wave.material.opacity = Math.sin(phase * Math.PI) * 0.54
+    })
+  })
+  return (
+    <group ref={foam} position={[-2.05, -0.175, 0.65]}>
+      {[1.25, 1.48, 1.74].map((radius, index) => (
+        <mesh key={radius} rotation={[-Math.PI / 2, 0, 1.25 + index * 0.29]}
+          position-y={index * 0.004} userData={{ noShadow: true }}>
+          <ringGeometry args={[radius - 0.09, radius, 42, 1, 0, Math.PI * 1.12]} />
+          <meshBasicMaterial color="#e2f8ff" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 export function HjLighthouse({ item }) {
   const [diameter, h] = item.size
   const r = diameter / 2
@@ -243,6 +273,7 @@ export function HjLighthouse({ item }) {
   })
   return (
     <group>
+      {item.foam && <LighthouseFoam />}
       {/* 바닥 받침 */}
       <mesh position={[0, 0.4, 0]}>
         <cylinderGeometry args={[r * 1.5, r * 1.7, 0.8, 20]} />
@@ -339,7 +370,7 @@ export function HjHarborCollider({ item }) {
       return { boxes: [deck, ramp, ...rails, ...cabin] }
     }
     const curve = breakwaterCurve(item)
-    const { top, sides } = deckGeometry(curve, curve.getLength(), item.width ?? 3)
+    const { top, sides } = deckGeometry(curve, curve.getLength(), item.width ?? 3, item.promenade)
     const surface = [top.attributes.position.array, new Uint32Array(top.index.array)]
     top.dispose()
     sides.dispose()

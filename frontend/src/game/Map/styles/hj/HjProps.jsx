@@ -114,7 +114,11 @@ export function HjLantern({ item }) {
         <coneGeometry args={[w * 0.62, h * 0.18, 4]} />
         <meshStandardMaterial color="#3b3029" />
       </mesh>
-      {item.light !== false && <pointLight position={[0, h * 0.6, 0]} color="#ffc27a" intensity={2.2} distance={4} decay={2} />}
+      {item.light !== false && (
+        <pointLight position={[0, item.sunsetLight ? h + 0.8 : h * 0.6, 0]}
+          color={item.sunsetLight ? '#ffab58' : '#ffc27a'}
+          intensity={item.sunsetLight ? 19 : 2.2} distance={item.sunsetLight ? 8 : 4} decay={2} />
+      )}
     </group>
   )
 }
@@ -288,6 +292,24 @@ export function HjCar({ item }) {
         <boxGeometry args={[l * 0.55, h * 0.4, w * 0.9]} />
         <meshStandardMaterial color="#2a3340" roughness={0.2} metalness={0.4} />
       </mesh>
+      {item.taxi && (
+        <>
+          <mesh position={[-l * 0.05, h * 0.97, 0]}>
+            <boxGeometry args={[l * 0.59, h * 0.09, w * 0.9]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          <mesh position={[-l * 0.02, h * 1.08, 0]}>
+            <boxGeometry args={[0.38, 0.17, 0.48]} />
+            <meshStandardMaterial color="#fff0ce" emissive="#ffc572" emissiveIntensity={0.7} />
+          </mesh>
+          {[-1, 1].map((side) => (
+            <mesh key={side} position={[side * l / 2, h * 0.24, 0]}>
+              <boxGeometry args={[0.09, 0.12, w * 1.01]} />
+              <meshStandardMaterial color="#b9b5a6" metalness={0.7} roughness={0.37} />
+            </mesh>
+          ))}
+        </>
+      )}
       {[-1, 1].flatMap((sx) =>
         [-1, 1].map((sz) => (
           <mesh key={`${sx}${sz}`} position={[sx * l * 0.32, h * 0.18, sz * w * 0.48]} rotation={[Math.PI / 2, 0, 0]}>

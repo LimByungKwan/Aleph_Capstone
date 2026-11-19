@@ -25,6 +25,18 @@ export const SCENES = {
 
 export const sceneForPlace = (placeId) => SCENES[placeId] ?? null
 
+// 실제 작품명은 촬영 세트 이름표에 쓰고 대화는 프로젝트용으로 새로 작성했어요.
+export const ANALOG_SCENES = {
+  basement: { id: 'analog-basement', retroScene: true, title: '기생충 반지하 계단',
+    speaker: '계단 아래 주민', synopsis: '비가 오면 저 창문으로 거리의 불빛이 내려와. 오늘은 계단 위까지만 물이 차면 좋겠다.' },
+  alley: { id: 'analog-alley', retroScene: true, title: '응답하라 1988 골목',
+    speaker: '골목 친구', synopsis: '가로등 불이 켜지면 집에 가야 하는데, 오늘은 너희랑 한 판만 더 놀고 싶다.' },
+  hanok: { id: 'analog-hanok', retroScene: true, title: '건축학개론 한옥',
+    speaker: '한옥을 찾은 손님', synopsis: '대문을 열었더니 나무 냄새가 그대로더라. 오랜만에 돌아온 기분이었어.' },
+  store: { id: 'analog-store', retroScene: true, title: '7080 추억의 구멍가게',
+    speaker: '구멍가게 주인', synopsis: '외상값은 다음에 가져와. 매일 앉던 평상 자리도 오늘은 비워 뒀어.' },
+}
+
 export const HJ_DIALOGUE = {
   spot_hj_breakwater: [
     { speaker: '해원', line: '노을이 바다 끝에 걸리면, 우리 잠깐만 여기 더 있을래?' },
