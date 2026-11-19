@@ -27,6 +27,10 @@ export const sceneForPlace = (placeId) => SCENES[placeId] ?? null
 
 // 실제 작품명은 촬영 세트 이름표에 쓰고 대화는 프로젝트용으로 새로 작성했어요.
 export const ANALOG_SCENES = {
+  moonForest: { id: 'moon-forest', retroScene: true, title: '달빛 여우 사당',
+    speaker: '숲의 수호자', synopsis: '달이 낮게 뜨는 날엔 숲길이 하나 더 생겨. 길을 잃으면 저 돌여우가 바라보는 쪽으로 걸어.' },
+  moonHanok: { id: 'moon-hanok', retroScene: true, title: '달그림자 한옥',
+    speaker: '한옥지기', synopsis: '밤마다 대문 앞에 발자국이 하나씩 늘더라. 오늘은 겁내지 말라고 등잔을 켜 두었어.' },
   basement: { id: 'analog-basement', retroScene: true, title: '기생충 반지하 계단',
     speaker: '계단 아래 주민', synopsis: '비가 오면 저 창문으로 거리의 불빛이 내려와. 오늘은 계단 위까지만 물이 차면 좋겠다.' },
   alley: { id: 'analog-alley', retroScene: true, title: '응답하라 1988 골목',

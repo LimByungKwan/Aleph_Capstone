@@ -5,7 +5,6 @@ import { labelLayer } from '../../../labelLayer.js'
 import { usePortalStore } from '../../../../components/movieZone/portalStore.js'
 import { ANALOG_SCENES } from '../../../../components/movieZone/sceneData.js'
 import { Box, Cyl, GEO, Instances, mat, seeded } from '../kit.jsx'
-import { WarpBooth } from './HjTimeDistrict.jsx'
 import HjWalkInRoom from './HjWalkInRoom.jsx'
 
 const OAK = '#69402b'
@@ -115,8 +114,4 @@ export function HjAnalogLabel({ item }) {
       }}>📍 {scene.title}</button>
     </Html>
   )
-}
-
-export function HjAnalogBooth() {
-  return <WarpBooth analog />
 }

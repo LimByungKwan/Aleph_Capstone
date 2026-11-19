@@ -9,7 +9,6 @@ export const usePortalStore = create((set, get) => ({
   active: null,
   // 닫기(ESC)를 누른 포털 id — 나갔다 다시 들어오기 전까지 다시 안 띄움
   dismissedId: null,
-  warpRequest: null,
 
   enter: (portal) => {
     if (get().active?.id === portal.id) return
@@ -20,10 +19,4 @@ export const usePortalStore = create((set, get) => ({
     set({ active: null, dismissedId: null })
   },
   dismiss: () => set({ dismissedId: get().active?.id ?? null }),
-  requestWarp: () => {
-    const { active, dismissedId, warpRequest } = get()
-    if (!active?.warpDestination || dismissedId === active.id || warpRequest) return
-    set({ warpRequest: active.warpDestination.position })
-  },
-  finishWarp: () => set({ active: null, dismissedId: null, warpRequest: null }),
 }))

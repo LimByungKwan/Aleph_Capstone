@@ -89,6 +89,7 @@ function breakwaterCurve(item) {
 }
 
 function breakwaterRails(item, curve) {
+  if (item.lookout) return lookoutRails(item, curve)
   if (item.promenade) return []
   const width = item.width ?? 3
   const count = Math.ceil(curve.getLength() / 0.8)
@@ -123,6 +124,52 @@ function breakwaterRails(item, curve) {
   return rails
 }
 
+function lookoutHeight(item, length, distance) {
+  const grade = Math.min(1, distance / (length - item.lookout.landing))
+  return 0.12 + item.lookout.rise * grade
+}
+
+function lookoutRails(item, curve) {
+  const length = curve.getLength()
+  const start = length - item.lookout.landing
+  const height = lookoutHeight(item, length, length)
+  const mid = curve.getPointAt((start + length) / (2 * length))
+  const end = curve.getPointAt(1)
+  return [
+    ...[-1, 1].map(side => ({ p: [mid.x, height + 0.39, mid.z + side * item.width / 2],
+      s: [item.lookout.landing, 0.78, 0.12] })),
+    { p: [end.x, height + 0.39, end.z], s: [0.12, 0.78, item.width] },
+  ]
+}
+
+function LookoutSteps({ item, rails }) {
+  const steps = useMemo(() => {
+    const curve = breakwaterCurve(item)
+    const length = curve.getLength()
+    const run = length - item.lookout.landing
+    const count = Math.ceil(item.lookout.rise / 0.145)
+    const tread = run / count
+    return Array.from({ length: count }, (_, index) => {
+      const point = curve.getPointAt((index + 0.5) * tread / length)
+      const h = lookoutHeight(item, length, (index + 1) * tread)
+      return { p: [point.x, h / 2, point.z], s: [tread, h, item.width],
+        c: index % 3 === 0 ? '#b5aa96' : '#cec2ab' }
+    })
+  }, [item])
+  const [endX, endZ] = item.points.at(-1)
+  const platformHeight = item.lookout.rise + 0.12
+  return (
+    <>
+      <Box p={[endX - item.lookout.landing / 2, platformHeight / 2, endZ]}
+        s={[item.lookout.landing, platformHeight, item.width]} c="#c9bca5" />
+      <Instances geometry={GEO.box} material={mat('#ffffff')} items={steps} />
+      <Instances geometry={GEO.box} material={mat('#a08360')} items={rails} />
+      <Box p={[endX - 1.04, item.lookout.rise + 0.33, endZ + item.width * 0.29]}
+        s={[0.48, 0.43, 1.16]} c={WOOD_DECK} />
+    </>
+  )
+}
+
 // ── 방파제 (style: "hjBreakwater") — item.points [[x,z],...] 따라 콘크리트 길 + 양옆 테트라포드 돌
 // item.clearStart: 시작부터 이 길이(m)만큼은 테트라포드를 두지 않음 (입구가 트이게)
 export function HjBreakwater({ item }) {
@@ -143,7 +190,7 @@ export function HjBreakwater({ item }) {
       const p = curve.getPointAt(t)
       const tan = curve.getTangentAt(t)
       const normal = new THREE.Vector3(-tan.z, 0, tan.x)
-      if (item.promenade || t * length < clearStart || (item.dockAtEnd && t * length > length - 2)) continue
+      if (item.promenade || item.lookout || t * length < clearStart || (item.dockAtEnd && t * length > length - 2)) continue
       for (const side of [-1, 1]) {
         const off = side * (width / 2 + 0.5 + rand() * 0.5)
         const x = p.x + normal.x * off
@@ -157,11 +204,13 @@ export function HjBreakwater({ item }) {
         })
       }
     }
-    return { deck: deckGeometry(curve, length, width, item.promenade), rocks: rockList, rails: breakwaterRails(item, curve) }
+    return { deck: item.lookout ? null : deckGeometry(curve, length, width, item),
+      rocks: rockList, rails: breakwaterRails(item, curve) }
   }, [item, width, clearStart])
 
   // 돌 무늬 한 장 = 2m (UV를 m 단위로 만들어서 반복 0.5)
   const stone = useMemo(() => getTiledTexture('stone', 0.5, 0.5), [])
+  if (item.lookout) return <LookoutSteps item={item} rails={rails} />
 
   return (
     <group>
@@ -187,7 +236,7 @@ export function HjBreakwater({ item }) {
 const DECK_H = 0.24
 const RAMP_START_H = 0.14
 const RAMP = 2.5
-function deckGeometry(curve, length, width, promenade = false) {
+function deckGeometry(curve, length, width, item) {
   const samples = Math.max(16, Math.round(length * 2))
   const top = []
   const topUv = []
@@ -204,12 +253,14 @@ function deckGeometry(curve, length, width, promenade = false) {
     if (prev) dist += p.distanceTo(prev)
     prev = p
     const k = Math.min(1, dist / RAMP)
-    const h = promenade ? RAMP_START_H + (DECK_H - RAMP_START_H) * (k * k * (3 - 2 * k)) : DECK_H
+    const h = item.lookout
+      ? lookoutHeight(item, length, t * length)
+      : item.promenade ? RAMP_START_H + (DECK_H - RAMP_START_H) * (k * k * (3 - 2 * k)) : DECK_H
     const l = p.clone().addScaledVector(n, -width / 2)
     const r = p.clone().addScaledVector(n, width / 2)
     top.push(l.x, h, l.z, r.x, h, r.z)
     topUv.push(-width / 2, dist, width / 2, dist)
-    const base = promenade ? 0 : -1.2
+    const base = item.promenade || item.lookout ? 0 : -1.2
     side.push(l.x, h, l.z, l.x, base, l.z, r.x, h, r.z, r.x, base, r.z)
     if (i < samples) {
       const a = i * 2
@@ -370,7 +421,7 @@ export function HjHarborCollider({ item }) {
       return { boxes: [deck, ramp, ...rails, ...cabin] }
     }
     const curve = breakwaterCurve(item)
-    const { top, sides } = deckGeometry(curve, curve.getLength(), item.width ?? 3, item.promenade)
+    const { top, sides } = deckGeometry(curve, curve.getLength(), item.width ?? 3, item)
     const surface = [top.attributes.position.array, new Uint32Array(top.index.array)]
     top.dispose()
     sides.dispose()
