@@ -285,7 +285,7 @@ function CoinHud() {
 
   // 분수 위치와 상관없이 화면 왼쪽 위(0,0)에 캔버스 크기 그대로 깔기 (지민 님 농구 HUD와 같은 방식)
   return (
-    <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+    <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }} onOcclude={keepVisible}>
       <div style={{ ...hudWrap, width: size.width, height: size.height }}>
         {showHint && (
           <div style={chip}>
@@ -321,3 +321,7 @@ const gauge = { position: 'relative', height: 12, borderRadius: 6, background: '
 // 위쪽 물받이에 들어가는 힘 구간 (약 0.40 ~ 0.60)
 const sweet = { position: 'absolute', left: '40%', width: '20%', top: 0, bottom: 0, background: 'rgba(249,168,212,0.7)' }
 const gaugeFill = { position: 'absolute', left: 0, top: 0, bottom: 0, background: '#e7c35a', opacity: 0.85 }
+
+// drei Html은 화면 고정 위치(calculatePosition)일 때 처음 한 번만 "카메라 뒤인지" 보고 숨긴 채로 굳을 수 있음
+// → onOcclude를 넘기면 스스로 숨기지 않으므로, 아무것도 안 하는 함수로 항상 보이게
+function keepVisible() {}
