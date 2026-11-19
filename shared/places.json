@@ -96,6 +96,42 @@
     "model": null
   },
   {
+    "id": "spot_bk_tower",
+    "type": "spot",
+    "zone": "BK",
+    "name": "별빛 전망대",
+    "work": "드라마 「밤하늘 아래 우리」",
+    "description": "언덕 위 전망대. 엘리베이터를 타고 올라가 도시 야경을 내려다보며 두 주인공이 마음을 고백하던 장면의 촬영지.",
+    "tags": ["데이트", "야경", "전망대", "고백"],
+    "position": [79.6, 9, -74.8],
+    "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "spot_bk_fountain",
+    "type": "spot",
+    "zone": "BK",
+    "name": "소원 분수 광장",
+    "work": "드라마 「밤하늘 아래 우리」",
+    "description": "동전을 던지며 소원을 비는 분수 광장. 두 주인공이 첫 데이트에서 같은 소원을 빌던 장면의 촬영지.",
+    "tags": ["데이트", "분수", "소원", "산책"],
+    "position": [72, 0, 0],
+    "radius": 2,
+    "model": null
+  },
+  {
+    "id": "spot_bk_claw",
+    "type": "spot",
+    "zone": "BK",
+    "name": "한옥 인형뽑기 부스",
+    "work": "드라마 「밤하늘 아래 우리」",
+    "description": "골목 안 한옥 인형뽑기 부스. 주인공이 몇 번이나 실패한 끝에 뽑은 인형을 선물하던 장면의 촬영지.",
+    "tags": ["데이트", "인형뽑기", "선물", "커플"],
+    "position": [59.5, 0, 25.3],
+    "radius": 2,
+    "model": null
+  },
+  {
     "id": "spot_jm_crossing",
     "type": "spot",
     "zone": "JM",

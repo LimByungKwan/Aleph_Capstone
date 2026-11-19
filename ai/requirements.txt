@@ -1,0 +1,14 @@
+# SceneWalk AI 서버 (코스 추천 · 나중에 홍보문구) — Python 3.12
+fastapi==0.165.0
+uvicorn[standard]>=0.30,<1
+langgraph==1.2.22
+pydantic>=2.8,<3
+openai==2.54.0
+python-dotenv>=1,<2
+# LangGraph가 쓰는 네이티브 라이브러리. 최신 버전은 Windows 앱 제어 정책에 DLL이 막히는 PC가 있어 확인된 버전으로 고정
+xxhash==3.6.0
+ormsgpack==1.13.0
+
+# 테스트용
+pytest>=8,<9
+httpx>=0.27,<1
