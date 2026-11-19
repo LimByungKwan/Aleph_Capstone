@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
+import CharacterModel from './CharacterModel.jsx'
 
 // 캐릭터 몸 크기 (지름 0.6m, 키 약 1.6m)
 const CAPSULE_RADIUS = 0.3
@@ -66,24 +67,7 @@ export default function Player({ playerRef, showModel = true }) {
       jumpVel={PLAYER_JUMP_SPEED}
       enableToggleRun={false}
     >
-      {showModel && <PlayerModel />}
+      {showModel && <CharacterModel playerRef={playerRef} />}
     </Ecctrl>
-  )
-}
-
-// 캐릭터 겉모습. 나중에 GLB 캐릭터로 바꿀 때는 이 함수만 교체하면 돼요.
-function PlayerModel() {
-  return (
-    <group>
-      <mesh castShadow>
-        <capsuleGeometry args={[CAPSULE_RADIUS, CAPSULE_HALF_HEIGHT * 2, 8, 16]} />
-        <meshStandardMaterial color="#f43f5e" />
-      </mesh>
-      {/* 바라보는 방향 표시용 "코" */}
-      <mesh position={[0, 0.35, CAPSULE_RADIUS]} castShadow>
-        <boxGeometry args={[0.2, 0.12, 0.2]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-    </group>
   )
 }
