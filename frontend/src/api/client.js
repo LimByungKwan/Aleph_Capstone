@@ -10,17 +10,16 @@ import { checkPromoRules } from '../components/boss/promoRules.js'
 // ⚠ 요청/응답 모양은 "초안"이에요. 셋이 합의 후 확정 (팀 규칙: 합의 없이 변경 X)
 //   - 스탬프·쿠폰·접속자 수: 지민님 API (Supabase)
 //   - 홍보문구 생성: 병관님 AI API
-// 지금은 mockDb(localStorage)로 동작하고, 실제 서버가 준비되면 이 파일 안쪽만 fetch로 바꾸면 돼요.
+// VITE_API_URL이 있으면 지민 서버(server/ → Supabase)를 부르고(serverApi.js), 없으면 아래 mockDb(localStorage)로 동작해요.
+// 함수 이름·응답 모양은 두 모드가 같아요. 서버 모드에서는 userId/ownerId 인자를 쓰지 않고 로그인 토큰으로 사람을 구분해요.
 //
 // 실패하면 ApiError를 던져요. error.code로 화면에서 안내 문구를 고릅니다.
 
-export class ApiError extends Error {
-  constructor(code, message) {
-    super(message)
-    this.name = 'ApiError'
-    this.code = code
-  }
-}
+import { ApiError } from './errors.js'
+import { USE_SERVER } from './session.js'
+import * as server from './serverApi.js'
+
+export { ApiError }
 
 const LATENCY_MS = 250 // 실제 네트워크처럼 살짝 기다림 (로딩 표시 확인용)
 const wait = () => new Promise((resolve) => setTimeout(resolve, LATENCY_MS))
@@ -33,6 +32,7 @@ function requireUser(userId) {
 
 // 캐릭터 카탈로그와 사용자 선택. 실제 서버 연동 시 이 두 함수의 내부만 교체합니다.
 export async function getPlayerCharacter({ userId }) {
+  if (USE_SERVER) return server.getPlayerCharacter({ userId })
   await wait()
   requireUser(userId)
   const id = readDb().playerCharacters?.[userId]
@@ -40,6 +40,7 @@ export async function getPlayerCharacter({ userId }) {
 }
 
 export async function setPlayerCharacter({ userId, characterId }) {
+  if (USE_SERVER) return server.setPlayerCharacter({ userId, characterId })
   await wait()
   requireUser(userId)
   const character = characters.find(item => item.id === characterId)
@@ -65,6 +66,7 @@ function shopsForWork(work, zone) {
  * 규칙: 촬영지 스탬프를 찍으면 "같은 구역 + 같은 작품" 가게 쿠폰이 1장 발급 (가게당 1인 1장)
  */
 export async function collectStamp({ userId, placeId }) {
+  if (USE_SERVER) return server.collectStamp({ userId, placeId })
   await wait()
   requireUser(userId)
   const place = findPlace(placeId)
@@ -112,6 +114,7 @@ export async function collectStamp({ userId, placeId }) {
 
 /** 내 스탬프 목록 — 응답: { stamps: [{ id, placeId, createdAt }] } */
 export async function listMyStamps({ userId }) {
+  if (USE_SERVER) return server.listMyStamps({ userId })
   await wait()
   requireUser(userId)
   return { stamps: readDb().stamps.filter((s) => s.userId === userId) }
@@ -121,6 +124,7 @@ export async function listMyStamps({ userId }) {
 
 /** 내 쿠폰함 — 응답: { coupons: Coupon[] } (최신순) */
 export async function listMyCoupons({ userId }) {
+  if (USE_SERVER) return server.listMyCoupons({ userId })
   await wait()
   requireUser(userId)
   const coupons = readDb()
@@ -136,6 +140,7 @@ export async function listMyCoupons({ userId }) {
  * 에러: NOT_OWNER(사장님 아님), NOT_FOUND(코드 없음), WRONG_SHOP(다른 가게 쿠폰), COUPON_USED(이미 사용)
  */
 export async function redeemCoupon({ ownerId, code }) {
+  if (USE_SERVER) return server.redeemCoupon({ ownerId, code })
   await wait()
   const owner = requireUser(ownerId)
   if (owner.role !== 'owner') throw new ApiError('NOT_OWNER', '사장님 계정만 쿠폰을 사용 처리할 수 있어요.')
@@ -160,6 +165,7 @@ export async function redeemCoupon({ ownerId, code }) {
 
 /** 응답: { issued, used, visitors, recentRedemptions: Coupon[] } */
 export async function getShopStats({ ownerId }) {
+  if (USE_SERVER) return server.getShopStats({ ownerId })
   await wait()
   const owner = requireUser(ownerId)
   if (owner.role !== 'owner') throw new ApiError('NOT_OWNER', '사장님 계정만 볼 수 있어요.')
@@ -187,6 +193,7 @@ export async function getShopStats({ ownerId }) {
  * 문구는 병관님 AI 서버(/promo, 템플릿 방식·요금 0원)가 만들고, 서버가 꺼져 있으면 promoMock으로 대신해요.
  */
 export async function generatePromo(input) {
+  if (USE_SERVER) return server.generatePromo(input)
   const owner = requireUser(input.ownerId)
   if (owner.role !== 'owner') throw new ApiError('NOT_OWNER', '사장님 계정만 쓸 수 있어요.')
   if (!input.shopName?.trim()) throw new ApiError('INVALID_INPUT', '가게 이름을 입력해 주세요.')
@@ -209,6 +216,7 @@ export async function generatePromo(input) {
  * 요청: { ownerId, text, tag }   응답: { shopPromo: { text, tag, savedAt } }
  */
 export async function saveShopPromo({ ownerId, text, tag }) {
+  if (USE_SERVER) return server.saveShopPromo({ ownerId, text, tag })
   await wait()
   const owner = requireUser(ownerId)
   if (owner.role !== 'owner') throw new ApiError('NOT_OWNER', '사장님 계정만 등록할 수 있어요.')
@@ -223,6 +231,7 @@ export async function saveShopPromo({ ownerId, text, tag }) {
 
 /** 가게 대표 문구 — 응답: { shopPromo | null } */
 export async function getShopPromo({ shopId }) {
+  if (USE_SERVER) return server.getShopPromo({ shopId })
   await wait()
   return { shopPromo: readDb().shopPromos?.[shopId] ?? null }
 }

@@ -1,4 +1,5 @@
 import { MOCK_USERS } from '../../api/mockDb.js'
+import { USE_SERVER } from '../../api/session.js'
 import { currentUser, useUiStore } from '../movieZone/uiStore.js'
 import { Toasts } from '../movieZone/common.jsx'
 import '../movieZone/ui.css'
@@ -31,12 +32,15 @@ export function RoleGate({ role, children }) {
   const user = currentUser(userId)
   if (user.role === role) return children
 
-  const target = MOCK_USERS.find((u) => u.role === role)
+  // 서버 모드에서는 계정 전환 버튼 없음 (역할은 DB에서 관리자만 바꿈)
+  const target = USE_SERVER ? null : MOCK_USERS.find((u) => u.role === role)
   const label = role === 'owner' ? '사장님' : '관리자'
   return (
     <div className="ui-card" style={{ maxWidth: 480, margin: '40px auto', textAlign: 'center' }}>
       <h2>{label} 계정으로 들어와 주세요</h2>
-      <p className="ui-sub">지금은 {user.name} 계정이에요. 로그인이 연결되면 역할에 맞는 화면만 보여요.</p>
+      <p className="ui-sub">
+        지금은 {user.name} 계정이에요. {USE_SERVER ? `${label} 계정으로 다시 로그인해 주세요.` : '로그인이 연결되면 역할에 맞는 화면만 보여요.'}
+      </p>
       {target && (
         <button type="button" className="ui-btn ui-btn--primary" onClick={() => setUser(target.id)}>
           {target.name} 계정으로 전환 (시연용)
