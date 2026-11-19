@@ -131,3 +131,14 @@ def test_llm_daily_limit_falls_back_to_rules(monkeypatch):
     assert limits.take_llm_call() is True
     assert limits.take_llm_call() is False  # 한도를 넘으면 LLM 안 부름 → 규칙으로
     limits.reset()
+
+
+def test_llm_off_by_default(monkeypatch):
+    """키가 있어도 LLM_DAILY_LIMIT을 켜지 않으면 OpenAI를 부르지 않음 (요금 0원)"""
+    from app import llm_pick
+
+    monkeypatch.setenv("LLM_API_Key", "sk-test-not-real")
+    monkeypatch.delenv("LLM_DAILY_LIMIT", raising=False)
+    monkeypatch.delenv("SCENEWALK_DISABLE_LLM", raising=False)
+    assert llm_pick.llm_enabled() is False
+    assert llm_pick.pick_with_llm("데이트", 3) is None

@@ -3,7 +3,7 @@
 AI 가이드 NPC '루미'의 **코스 추천 API**. 나중에 사장님 **홍보문구 API**도 여기에 추가한다.
 Python + FastAPI + LangGraph. 맵 장소는 `shared/places.json`에서만 고른다 (없는 장소를 만들지 않음).
 
-장소 고르기는 **OpenAI LLM**(`app/llm_pick.py`, 기본 gpt-4o-mini)이 하고, API 키가 없거나 호출이 실패하면 **키워드 규칙**으로 대신한다.
+기본은 **키워드 규칙**으로 장소를 고른다 (요금 0원). `LLM_DAILY_LIMIT`을 1 이상으로 켜고 키를 넣었을 때만 **OpenAI LLM**(`app/llm_pick.py`, gpt-4o-mini)이 고르고, 실패하면 규칙으로 대신한다.
 응답의 `source`가 `llm`이면 LLM, `rules`면 규칙으로 고른 것. 어느 쪽이든 다음 `validate` 노드가 맵에 없는 장소를 걸러 준다.
 
 LangGraph 흐름 (`app/course.py`): understand → pick → validate → order → reply
@@ -12,6 +12,7 @@ LangGraph 흐름 (`app/course.py`): understand → pick → validate → order �
 `ai/.env` 또는 저장소 맨 위 `.env`에 키를 넣는다 (`.env.example` 참고, ai/.env가 먼저). **절대 커밋하지 않는다.**
 ```
 LLM_API_Key=...
+LLM_DAILY_LIMIT=20        # 기본 0 = OpenAI 안 부름 (요금 0원). 써 볼 때만 켬
 # LLM_MODEL=gpt-4o-mini   (기본값)
 ```
 테스트는 실제 API를 부르지 않는다 (`tests/conftest.py`).
@@ -62,12 +63,14 @@ py -3.12 -m venv .venv
 
 ## 비용 안전장치 (`app/limits.py`)
 - 한 사람(IP)당 1분 5번, 하루 40번까지 추천 → 넘으면 429 (루미가 "잠시 후 다시" 안내)
-- 서버 전체 OpenAI 호출은 하루 200번까지 → 넘으면 그날은 키워드 규칙으로만 추천 (요금 0원, 서버는 계속 응답)
-- 숫자는 환경변수 `RATE_PER_MINUTE`, `RATE_PER_DAY`, `LLM_DAILY_LIMIT`로 바꿈. `LLM_DAILY_LIMIT=0`이면 OpenAI를 아예 안 씀
+- **OpenAI는 기본으로 꺼져 있음** (`LLM_DAILY_LIMIT` 기본 0 → 키가 있어도 안 부름, 요금 0원)
+- 켜면 서버 전체 OpenAI 호출은 하루 `LLM_DAILY_LIMIT`번까지 → 넘으면 그날은 키워드 규칙으로만 추천
+- 숫자는 환경변수 `RATE_PER_MINUTE`, `RATE_PER_DAY`, `LLM_DAILY_LIMIT`로 바꿈
 - `/health`의 `llmCallsToday`로 오늘 OpenAI 호출 수 확인
 
 ## 배포 (Render 무료 플랜)
 Render 무료 Web Service는 카드 등록 없이 쓸 수 있고 요금이 나오지 않는다.
+**요금 0원 배포**: Render에는 OpenAI 키를 넣지 않는다 → 규칙 추천만 동작 (OpenAI 요금도 0원).
 15분 동안 요청이 없으면 잠들고, 다음 첫 요청은 깨어나는 데 1분 가까이 걸린다 (프론트가 90초까지 기다림).
 
 1. `ai/` 폴더가 GitHub `main`에 올라가 있어야 함
@@ -86,8 +89,8 @@ Render 무료 Web Service는 카드 등록 없이 쓸 수 있고 요금이 나�
    | 이름 | 값 |
    |---|---|
    | `PYTHON_VERSION` | `3.12.8` |
-   | `LLM_API_Key` | OpenAI 키 |
    | `ALLOWED_ORIGINS` | `https://aleph-capstone.vercel.app,http://localhost:5173` |
-   | `LLM_DAILY_LIMIT` | `200` (요금을 아예 안 내려면 `0`) |
+
+   (OpenAI를 쓰기로 정했을 때만 `LLM_API_Key`, `LLM_DAILY_LIMIT` 추가. 안 넣으면 요금 0원)
 5. 배포가 끝나면 `https://<서비스이름>.onrender.com/health` 가 `{"ok": true, ...}` 인지 확인
 6. Vercel 프로젝트 → Settings → Environment Variables 에 `VITE_AI_API_URL` = 위 주소 → Redeploy

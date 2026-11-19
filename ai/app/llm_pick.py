@@ -7,7 +7,7 @@
 환경변수 (ai/.env 또는 저장소 맨 위 .env):
   LLM_API_Key         OpenAI API 키 (없으면 LLM을 쓰지 않음)
   LLM_MODEL           기본 gpt-4o-mini (저렴·빠름)
-  LLM_DAILY_LIMIT     하루 LLM 호출 수 (기본 200, limits.py)
+  LLM_DAILY_LIMIT     하루 LLM 호출 수 (기본 0 = OpenAI 안 부름·요금 0원. 쓰려면 1 이상, limits.py)
   SCENEWALK_DISABLE_LLM=1   테스트 등에서 LLM을 끔
 """
 
@@ -20,7 +20,7 @@ import os
 import openai
 from dotenv import load_dotenv
 
-from .limits import take_llm_call
+from .limits import llm_daily_limit, take_llm_call
 from .places import ZONE_NAMES, course_candidates
 
 log = logging.getLogger("scenewalk.llm")
@@ -45,7 +45,8 @@ def _api_key() -> str | None:
 
 
 def llm_enabled() -> bool:
-    return bool(_api_key()) and os.environ.get("SCENEWALK_DISABLE_LLM") != "1"
+    # 키가 있어도 LLM_DAILY_LIMIT이 0(기본)이면 OpenAI를 부르지 않음 → 요금 0원
+    return bool(_api_key()) and llm_daily_limit() > 0 and os.environ.get("SCENEWALK_DISABLE_LLM") != "1"
 
 
 def _get_client() -> openai.OpenAI:
