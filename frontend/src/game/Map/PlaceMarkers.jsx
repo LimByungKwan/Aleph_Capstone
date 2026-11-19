@@ -1,5 +1,5 @@
 import { Html } from '@react-three/drei'
-import places from '@shared/places.json'
+import { mapPlaces } from '../data/mapData.js'
 import Prop from './Prop.jsx'
 import { PLACE_COLORS, SHOW_PLACE_LABELS } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
@@ -9,7 +9,7 @@ const TYPE_LABELS = { spot: '촬영지', cafe: '카페', npc: 'NPC' }
 // shared/places.json을 읽어서 상호작용 지점마다
 // 바닥 원(radius) + 기둥(NPC는 캡슐) + 이름표를 표시
 export default function PlaceMarkers() {
-  return places.map((place) => <PlaceMarker key={place.id} place={place} />)
+  return mapPlaces.map((place) => <PlaceMarker key={place.id} place={place} />)
 }
 
 function PlaceMarker({ place }) {

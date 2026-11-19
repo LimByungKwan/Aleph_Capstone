@@ -65,7 +65,7 @@ export default function CinemaOverlay() {
             <strong>{shown.speaker}</strong>
             <p>“{shown.synopsis}”</p>
             <button type="button" className="ui-btn ui-btn--ink" onClick={dismiss} autoFocus>
-              골목으로 돌아가기
+              둘러보기 계속하기
             </button>
           </article>
         </div>

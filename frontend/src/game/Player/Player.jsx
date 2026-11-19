@@ -1,9 +1,11 @@
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { Ecctrl } from 'ecctrl'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
+import { updatePalaceSeating, usePalaceSeatStore } from '../../components/movieZone/palaceSeating.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 
 // 캐릭터 몸 크기 (지름 0.6m, 키 약 1.6m)
@@ -39,12 +41,15 @@ export default function Player({ playerRef, showModel = true }) {
   const [, getKeys] = useKeyboardControls()
   // 패널이 열려 있으면(inputLocked) 키 입력을 무시 → 캐릭터 정지
   const locked = useGameStore((state) => state.inputLocked)
+  const seated = usePalaceSeatStore((state) => state.seated)
+  useEffect(() => () => usePalaceSeatStore.getState().reset(), [])
 
   useFrame(() => {
     const player = playerRef.current
     if (!player) return
 
-    player.setMovement(locked ? NO_INPUT : getKeys())
+    const sitting = updatePalaceSeating(player, locked)
+    player.setMovement(locked || sitting ? NO_INPUT : getKeys())
 
     // 맵 밖으로 떨어지면 시작 지점으로 리스폰
     if (player.currPos.y < RESPAWN_Y) {
@@ -66,8 +71,52 @@ export default function Player({ playerRef, showModel = true }) {
       jumpVel={PLAYER_JUMP_SPEED}
       enableToggleRun={false}
     >
-      {showModel && <PlayerModel />}
+      {showModel && (seated ? <SeatedPlayerModel seat={seated} /> : <PlayerModel />)}
     </Ecctrl>
+  )
+}
+
+const UP = new THREE.Vector3(0, 1, 0)
+
+function SeatedPlayerModel({ seat }) {
+  const model = useRef(null)
+  const orientation = useMemo(() => ({
+    local: new THREE.Quaternion(),
+    target: new THREE.Quaternion().setFromAxisAngle(UP, seat.yaw),
+  }), [seat.yaw])
+  useFrame(() => {
+    const group = model.current
+    if (!group?.parent) return
+    group.parent.getWorldQuaternion(orientation.local)
+    group.quaternion.copy(orientation.local.invert()).multiply(orientation.target)
+  })
+  return (
+    <group ref={model} position-y={seat.lift}>
+      <mesh position={[0, -0.34, -0.085]} castShadow>
+        <capsuleGeometry args={[0.235, 0.32, 6, 12]} />
+        <meshStandardMaterial color="#f43f5e" />
+      </mesh>
+      <mesh position={[0, 0.062, -0.075]} castShadow>
+        <sphereGeometry args={[0.193, 14, 10]} />
+        <meshStandardMaterial color="#f43f5e" />
+      </mesh>
+      <mesh position={[0, 0.063, 0.109]}>
+        <boxGeometry args={[0.15, 0.095, 0.12]} />
+        <meshStandardMaterial color="#1f2937" />
+      </mesh>
+      {[-1, 1].map(side => (
+        <group key={side}>
+          <mesh position={[side * 0.16, -0.65, 0.14]} rotation={[Math.PI / 2, side * 0.55, 0]} castShadow>
+            <capsuleGeometry args={[0.125, 0.39, 6, 12]} />
+            <meshStandardMaterial color="#a42948" />
+          </mesh>
+          <mesh position={[side * 0.235, -0.37, 0.02]} rotation={[-0.72, 0, side * 0.19]} castShadow>
+            <capsuleGeometry args={[0.078, 0.29, 5, 10]} />
+            <meshStandardMaterial color="#e73862" />
+          </mesh>
+        </group>
+      ))}
+    </group>
   )
 }
 

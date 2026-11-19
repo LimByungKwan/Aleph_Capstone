@@ -8,6 +8,7 @@ import CouponBox from './CouponBox.jsx'
 import CinemaOverlay from './CinemaOverlay.jsx'
 import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
+import PalaceSeatPrompt from './PalaceSeatPrompt.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -29,6 +30,7 @@ export default function UiRoot() {
       {!inCinema && <Hud />}
       {!inCinema && <RoleSwitcher />}
       <SceneHint />
+      {!inCinema && <PalaceSeatPrompt />}
       <DialogBox />
       <BreakwaterScene />
       <EntranceWelcome />

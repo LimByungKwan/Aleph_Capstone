@@ -1,4 +1,5 @@
 import hub from './hub.json'
+import places from '@shared/places.json'
 import { terrainHeightAt } from '../Map/terrain.js'
 
 // 맵 데이터를 한곳에 모아 주는 파일.
@@ -18,6 +19,12 @@ const orderOf = (zone) => {
 export const zones = Object.values(zoneFiles).sort(
   (a, b) => orderOf(a) - orderOf(b) || a.zoneId.localeCompare(b.zoneId),
 )
+
+// [3. 개발 > 프론트엔드] 촬영지가 재배치돼도 기존 스탬프는 공용 장소 ID로 조회합니다.
+const activeIdsByZone = new Map(
+  zones.filter((zone) => zone.mapPlaceIds).map((zone) => [zone.zoneId, new Set(zone.mapPlaceIds)]),
+)
+export const mapPlaces = places.filter((place) => activeIdsByZone.get(place.zone)?.has(place.id) ?? true)
 
 const offsetPoint = ([x, z], [ox, oz]) => [x + ox, z + oz]
 
