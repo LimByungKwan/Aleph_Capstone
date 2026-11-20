@@ -11,7 +11,12 @@
   border-radius: 16px;
   background: rgba(255, 253, 248, 0.94);
   box-shadow: var(--ui-shadow);
-  animation: ui-rise 0.2s ease-out;
+  animation: mm-fade 0.2s ease-out; /* ui-rise는 가운데 정렬용(translateX -50%)이라 따로 */
+}
+@keyframes mm-fade {
+  from {
+    opacity: 0;
+  }
 }
 .mm__head {
   display: flex;
@@ -82,5 +87,19 @@
   .mm {
     transform: scale(0.8);
     transform-origin: bottom right;
+  }
+}
+
+/* 모바일(터치): 오른쪽 아래는 조작 버튼 자리라 미니맵은 오른쪽 위로, 조금 작게 */
+@media (pointer: coarse) {
+  .mm,
+  .mm-toggle {
+    top: calc(112px + env(safe-area-inset-top));
+    bottom: auto;
+    right: max(12px, env(safe-area-inset-right));
+  }
+  .mm {
+    transform: scale(0.72);
+    transform-origin: top right;
   }
 }

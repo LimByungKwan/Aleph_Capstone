@@ -1,4 +1,4 @@
-import { CuboidCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
+import { CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { beachBounds, seabed } from './seabed.js'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
@@ -8,9 +8,16 @@ import { HjHarborCollider } from './styles/hj/HjHarbor.jsx'
 
 // 눈에 보이는 모델과 별개인 "충돌 전용" 박스들.
 // - JSON의 size 그대로 만들어서, 나중에 건물이 GLB로 바뀌어도 충돌 범위는 그대로예요.
-// - 길·인도(roads)는 충돌 없음 → 인도 턱(0.15m)은 그냥 걸어서 넘어감
+// - 길·인도·광장 바닥(roads)도 두께만큼 충돌 → 신발이 바닥 속으로 묻히지 않음
+//   (턱이 0.15m 정도라 캐릭터는 그냥 걸어서 올라감)
 const WALL_HEIGHT = 10
 const WALL_THICKNESS = 1
+// 이보다 얇은 바닥(잔디 줄·페인트 등)은 묻혀도 티가 안 나서 충돌을 안 만듦 (물리 계산 절약)
+const MIN_FLOOR_THICKNESS = 0.05
+// 충돌이 꺼져 있지만(collider: false) 사람이 올라서는 얇은 바닥 소품 → 바닥 충돌을 따로 만듦
+const FLOOR_PROP_STYLES = ['roundPlaza', 'terrace']
+const floorRoads = layout.roads.filter((item) => item.size?.[1] >= MIN_FLOOR_THICKNESS)
+const floorProps = layout.props.filter((item) => FLOOR_PROP_STYLES.includes(item.style) && item.size?.[1] <= 0.4)
 const harborProps = layout.props.filter((item) => item.zone === 'HJ' && (
   item.style === 'hjSea' || item.style === 'hjBreakwater' || (item.style === 'hjBoat' && item.moored)
 ))
@@ -50,6 +57,16 @@ export default function Colliders() {
         ))}
       </RigidBody>
 
+      {/* 길·광장 바닥 (윗면 = 눈에 보이는 바닥 높이) */}
+      <RigidBody type="fixed" colliders={false} name="floors">
+        {floorRoads.map((item) => (
+          <BoxCollider key={item.id} item={{ ...item, collider: undefined }} />
+        ))}
+        {floorProps.map((item) => (
+          <FloorPropCollider key={item.id} item={item} />
+        ))}
+      </RigidBody>
+
       {harborProps.map((item) => <HjHarborCollider key={item.id} item={item} />)}
 
       {/* 건물: 카메라가 벽을 뚫지 않게 막아 주는 투명 박스 (소품은 제외 — 가로등 기둥에 카메라가 걸리지 않게) */}
@@ -80,6 +97,15 @@ function BoxCollider({ item }) {
   if (!box) return null
   const [w, h, d] = box.size
   return <CuboidCollider args={[w / 2, h / 2, d / 2]} position={box.position} rotation={box.rotation} />
+}
+
+// 둥근 광장은 원기둥, 나머지는 상자
+function FloorPropCollider({ item }) {
+  const [x, z] = item.position
+  const [w, h, d] = item.size
+  const y = (item.elevation ?? 0) + h / 2
+  if (item.style === 'roundPlaza') return <CylinderCollider args={[h / 2, Math.min(w, d) / 2]} position={[x, y, z]} />
+  return <CuboidCollider args={[w / 2, h / 2, d / 2]} position={[x, y, z]} rotation={[0, THREE.MathUtils.degToRad(item.rotationDeg ?? 0), 0]} />
 }
 
 function CameraBlocker({ item }) {

@@ -104,7 +104,7 @@ export default function LumiCourse() {
           onKeyDown={keepKeys}
           onKeyUp={keepKeys}
           maxLength={300}
-          placeholder="좋아하는 작품이나 분위기를 말해 주세요"
+          placeholder="루미에게 아무 말이나 걸어 보세요 (취향·기분·궁금한 것)"
           aria-label="루미에게 취향 말하기"
           disabled={loading}
         />

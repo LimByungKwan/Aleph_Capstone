@@ -12,6 +12,7 @@ import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
 import { CourseHud } from '../course/LumiCourse.jsx'
 import Minimap from '../minimap/Minimap.jsx'
+import MobileControls from '../mobile/MobileControls.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -34,6 +35,7 @@ export default function UiRoot() {
       {!inCinema && (USE_SERVER ? <AccountBox /> : <RoleSwitcher />)}
       {!inCinema && <CourseHud />}
       {!inCinema && <Minimap />}
+      {!inCinema && <MobileControls />}
       <SceneHint />
       <DialogBox />
       <BreakwaterScene />
