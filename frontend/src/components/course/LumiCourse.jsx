@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { recommendCourse } from '../../api/course.js'
 import { currentTarget, useCourseStore } from '../../store/courseStore.js'
 import { useGameStore } from '../../store/gameStore.js'
+import { useTutorial } from '../../store/tutorialStore.js'
+import { distanceTo, formatDistance } from '../../store/playerPose.js'
+import { BADGES, useBadges } from '../../store/badges.js'
 import './lumi-course.css'
 
 // 루미 코스 추천 (담당: 병관) — 루미 대화창(DialogBox) 안에 들어가는 부분
@@ -16,6 +19,7 @@ export default function LumiCourse() {
   const target = useCourseStore(currentTarget)
   const hasCourse = useCourseStore((s) => s.course.length > 0)
   const close = useGameStore((s) => s.close)
+  const tutorialTalk = useTutorial((s) => s.step === 'talk')
 
   const [text, setText] = useState('')
   const [count, setCount] = useState(3)
@@ -89,7 +93,8 @@ export default function LumiCourse() {
           </button>
         </p>
       )}
-      <div className="lumi-course__chips">
+      {tutorialTalk && <p className="lumi-course__tut">👆 처음이시죠? 아래 예시 버튼 하나를 눌러 보세요 (루미의 안내 2/3)</p>}
+      <div className={`lumi-course__chips${tutorialTalk ? ' is-tutorial' : ''}`}>
         {EXAMPLES.map((example) => (
           <button key={example} type="button" className="lumi-course__chip" disabled={loading} onClick={() => (setText(example), ask(example))}>
             {example}
@@ -125,6 +130,7 @@ export default function LumiCourse() {
         </p>
       )}
       {error && <p className="lumi-course__error" role="alert">{error}</p>}
+      <MyBadges />
     </form>
   )
 }
@@ -134,11 +140,14 @@ export function CourseHud() {
   const course = useCourseStore((s) => s.course)
   const index = useCourseStore((s) => s.index)
   const clear = useCourseStore((s) => s.clear)
-  if (!course.length) return null
   const done = index >= course.length
   const target = course[index]
+  const dist = useLiveDistance(done ? null : target?.position)
 
   return (
+    <>
+      <Celebration />
+      {course.length > 0 && (
     <div className="lumi-hud ui-interactive" role="status">
       <span className="lumi-hud__badge">루미 코스 {Math.min(index + 1, course.length)}/{course.length}</span>
       {done ? (
@@ -146,11 +155,109 @@ export function CourseHud() {
       ) : (
         <span className="lumi-hud__text">
           다음 목적지 <b>{target.name}</b> <small>{target.zoneName}</small>
+          {dist && <span className="lumi-hud__dist">{dist}</span>}
         </span>
       )}
       <button type="button" className="lumi-hud__close" onClick={(e) => (e.currentTarget.blur(), clear())} aria-label="코스 지우기">
         ✕
       </button>
     </div>
+      )}
+    </>
   )
+}
+
+// 루미 대화창 아래 "내 배지" (받은 배지는 색, 아직 못 받은 배지는 회색 + 받는 방법 안내)
+function MyBadges() {
+  const earned = useBadges((s) => s.earned)
+  const got = (id) => earned.filter((b) => b.id === id)
+  const kinds = BADGES.filter((b) => got(b.id).length).length
+  return (
+    <div className="lumi-badges">
+      <span className="lumi-badges__title">
+        🏅 내 배지 <small>{kinds}/{BADGES.length}</small>
+      </span>
+      <ul className="lumi-badges__list">
+        {BADGES.map((b) => {
+          const mine = got(b.id)
+          return (
+            <li key={b.id} className={mine.length ? 'is-on' : ''} title={mine.length ? `${b.name} · ${b.desc}` : `아직 없어요 · ${b.desc}`}>
+              <span className="lumi-badges__icon" aria-hidden="true">
+                {b.icon}
+              </span>
+              <span className="lumi-badges__name">{b.name}</span>
+              {mine.length > 1 && <span className="lumi-badges__count">×{mine.length}</span>}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+// 코스 완주 색종이 (celebrate 값이 바뀔 때 3초 동안)
+const CONFETTI_COLORS = ['#ff8fb8', '#7cc8ff', '#ffa45c', '#b18cff', '#ffd25e', '#7fd6a4']
+function Celebration() {
+  const celebrate = useCourseStore((s) => s.celebrate)
+  const [pieces, setPieces] = useState(null)
+  useEffect(() => {
+    if (!celebrate) return undefined
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
+    setPieces(
+      Array.from({ length: 70 }, (_, i) => ({
+        id: `${celebrate}-${i}`,
+        left: Math.random() * 100,
+        delay: Math.random() * 0.6,
+        duration: 2 + Math.random() * 1.4,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        size: 6 + Math.random() * 6,
+        spin: (Math.random() * 2 - 1) * 720,
+      })),
+    )
+    const id = setTimeout(() => setPieces(null), 3600)
+    return () => clearTimeout(id)
+  }, [celebrate])
+  if (!pieces) return null
+  return (
+    <div className="lumi-confetti" aria-hidden="true">
+      {pieces.map((p) => (
+        <span
+          key={p.id}
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size * 0.45,
+            background: p.color,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+            '--spin': `${p.spin}deg`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// 남은 거리 글자 (0.25초마다 확인, 바뀔 때만 다시 그림)
+export function useLiveDistance(position) {
+  const [text, setText] = useState('')
+  const last = useRef('')
+  useEffect(() => {
+    if (!position) {
+      last.current = ''
+      setText('')
+      return undefined
+    }
+    const tick = () => {
+      const next = formatDistance(distanceTo(position))
+      if (next !== last.current) {
+        last.current = next
+        setText(next)
+      }
+    }
+    tick()
+    const id = setInterval(tick, 250)
+    return () => clearInterval(id)
+  }, [position])
+  return text
 }

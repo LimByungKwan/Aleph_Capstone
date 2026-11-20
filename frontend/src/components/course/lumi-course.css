@@ -174,3 +174,95 @@
 .lumi-hud__close:hover {
   color: var(--ui-text);
 }
+.lumi-hud__dist {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffe3ee;
+  color: #b8436a;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 내 배지 */
+.lumi-badges {
+  display: grid;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--ui-border);
+}
+.lumi-badges__title {
+  font-size: 13px;
+  font-weight: 700;
+}
+.lumi-badges__title small {
+  margin-left: 4px;
+  color: var(--ui-muted);
+  font-weight: 400;
+}
+.lumi-badges__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lumi-badges__list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface-2);
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.lumi-badges__list li:not(.is-on) .lumi-badges__icon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+.lumi-badges__list li.is-on {
+  border-color: #ffc2d6;
+  background: #fff1f6;
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.lumi-badges__icon {
+  font-size: 15px;
+}
+.lumi-badges__count {
+  color: #b8436a;
+  font-size: 11px;
+}
+
+/* 완주 색종이 */
+.lumi-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.lumi-confetti span {
+  position: absolute;
+  top: -12px;
+  border-radius: 2px;
+  animation-name: lumi-fall;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.5, 1);
+  animation-fill-mode: both;
+}
+@keyframes lumi-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(var(--spin));
+    opacity: 0;
+  }
+}

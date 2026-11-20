@@ -11,6 +11,7 @@ import EntranceWelcome from './EntranceWelcome.jsx'
 import { CourseHud } from '../course/LumiCourse.jsx'
 import Minimap from '../minimap/Minimap.jsx'
 import MobileControls from '../mobile/MobileControls.jsx'
+import Tutorial from '../tutorial/Tutorial.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -34,6 +35,7 @@ export default function UiRoot() {
       {!inCinema && <CourseHud />}
       {!inCinema && <Minimap />}
       {!inCinema && <MobileControls />}
+      {!inCinema && <Tutorial />}
       <SceneHint />
       <DialogBox />
       <BreakwaterScene />
