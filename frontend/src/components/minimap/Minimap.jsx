@@ -3,6 +3,7 @@ import places from '@shared/places.json'
 import { layout, zones } from '../../game/data/mapData.js'
 import { PLACE_COLORS } from '../../game/config.js'
 import { useCourseStore } from '../../store/courseStore.js'
+import { tutorialTarget, useTutorial } from '../../store/tutorialStore.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { playerPose } from '../../store/playerPose.js'
 import './minimap.css'
@@ -136,7 +137,8 @@ function MinimapCanvas({ zoom }) {
       }
 
       // 루미 코스: 지금 가야 할 한 곳만 (도착하면 다음 장소로 바뀜)
-      const remaining = course.slice(index, index + 1)
+      const tutorial = tutorialTarget(useTutorial.getState()) // 튜토리얼 1단계: 루미 위치
+      const remaining = course.length ? course.slice(index, index + 1) : tutorial ? [tutorial] : []
       if (remaining.length) {
         ctx.setLineDash([5, 4])
         ctx.lineWidth = 2.5
@@ -159,7 +161,7 @@ function MinimapCanvas({ zoom }) {
           ctx.font = 'bold 9px system-ui, sans-serif'
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText(String(index + i + 1), x, y + 0.5)
+          ctx.fillText(course.length ? String(index + i + 1) : '!', x, y + 0.5) // 튜토리얼 목적지(루미)는 '!'
         })
       }
 

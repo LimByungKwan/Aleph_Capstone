@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { Ecctrl } from 'ecctrl'
+import { useJoystickStore } from 'ecctrl/input'
+import { useTouchInput } from '../../store/touchInput.js'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -34,6 +36,18 @@ export const KEYBOARD_MAP = [
 
 const NO_INPUT = { forward: false, backward: false, leftward: false, rightward: false, run: false, jump: false }
 
+// 키보드 + 모바일(조이스틱·버튼) 입력 합치기 (모바일 조작: components/mobile/MobileControls.jsx)
+function readInput(keys) {
+  const stick = useJoystickStore.getState().joysticks.default
+  const touch = useTouchInput.getState()
+  return {
+    ...keys,
+    joystick: stick?.active ? { x: stick.x, y: stick.y } : undefined,
+    run: keys.run || touch.run,
+    jump: keys.jump || touch.jump,
+  }
+}
+
 // 조작 가능한 캐릭터.
 // ecctrl 2.x는 키보드를 직접 읽지 않아서, 여기서 매 프레임 키 상태를 읽어 setMovement로 넘겨 줌.
 // playerRef: 카메라·센서가 캐릭터 위치를 알 수 있게 Scene에서 내려받는 ref
@@ -50,7 +64,7 @@ export default function Player({ playerRef, showModel = true }) {
     if (!player) return
 
     const sitting = updatePalaceSeating(player, locked)
-    player.setMovement(locked || sitting ? NO_INPUT : getKeys())
+    player.setMovement(locked || sitting ? NO_INPUT : readInput(getKeys()))
 
     // 맵 밖으로 떨어지면 시작 지점으로 리스폰
     if (player.currPos.y < RESPAWN_Y) {

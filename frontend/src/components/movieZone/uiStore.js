@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { MOCK_USERS } from '../../api/mockDb.js'
+import { USE_SERVER, useSessionStore } from '../../api/session.js'
 
 // [3. 개발 > 기초개발/서비스] 혜진 담당 UI 상태 (gameStore와 분리)
 // - 현재 사용자(역할): 로그인은 지민님 담당이라 지금은 시연용 계정 전환만 해요.
@@ -18,8 +19,12 @@ function loadUserId() {
   }
 }
 
+// [지민] 서버 모드(VITE_API_URL)에서는 로그인한 사람이 현재 사용자 (시연 계정 전환 대신)
+const GUEST = { id: 'guest', name: '손님', role: 'guest' }
+const sessionUserId = () => useSessionStore.getState().user?.id ?? GUEST.id
+
 export const useUiStore = create((set, get) => ({
-  userId: loadUserId(),
+  userId: USE_SERVER ? sessionUserId() : loadUserId(),
   setUser: (userId) => {
     try {
       window.localStorage.setItem(SESSION_KEY, userId)
@@ -46,4 +51,12 @@ export const useUiStore = create((set, get) => ({
   },
 }))
 
-export const currentUser = (userId) => MOCK_USERS.find((u) => u.id === userId) ?? MOCK_USERS[0]
+// 로그인·로그아웃하면 userId가 바뀌어 스탬프·쿠폰 목록이 다시 불러와짐
+if (USE_SERVER) {
+  useSessionStore.subscribe((state, prev) => {
+    if (state.user?.id !== prev.user?.id) useUiStore.setState({ userId: state.user?.id ?? GUEST.id, modal: null })
+  })
+}
+
+export const currentUser = (userId) =>
+  USE_SERVER ? (useSessionStore.getState().user ?? GUEST) : (MOCK_USERS.find((u) => u.id === userId) ?? MOCK_USERS[0])

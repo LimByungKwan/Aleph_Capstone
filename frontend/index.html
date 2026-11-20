@@ -2,7 +2,9 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 모바일: 화면 확대·당겨서 새로고침 막기 (게임 화면이 흔들리지 않게), 노치 영역까지 사용 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <style>html, body { overscroll-behavior: none; } canvas { touch-action: none; }</style>
     <title>SceneWalk AI</title>
   </head>
   <body>
