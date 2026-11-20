@@ -5,6 +5,7 @@ import HjBlossomGate from './HjGate.jsx'
 import HjEntranceGate from './HjEntranceGate.jsx'
 import { HjPortHouse, HjVillageGate, HjVillageWall } from './HjCoastalVillage.jsx'
 import { HjFoxAltar, HjMoonForest } from './HjMoonForest.jsx'
+import HjPalace from './HjPalace.jsx'
 import { HjAnalogHanok, HjAnalogLabel, HjGoldenSet } from './HjAnalogSet.jsx'
 import { HjBoat, HjBreakwater, HjLighthouse, HjSea } from './HjHarbor.jsx'
 import { HjCrosswalk, HjCurvedRoad } from './HjStreet.jsx'
@@ -28,6 +29,7 @@ import { HjBlueGate, HjHanokBench, HjSnackSteam, HjStoryCue } from './HjDramaDet
 import { HjCyberGrid, HjCyberTower, HjEraBarrier, HjFloatingCar, HjLunarBase, HjRetroCrew, HjRetroStairs, HjRift, HjSkywalk } from './HjTimeDistrict.jsx'
 
 export const HJ_STYLES = {
+  hjPalace: HjPalace,
   hjFoxAltar: HjFoxAltar,
   hjMoonForest: HjMoonForest,
   hjPortHouse: HjPortHouse,

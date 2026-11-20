@@ -9,9 +9,9 @@ const AMBER = mat('#ffe2a3', { emissive: '#ffb963', emissiveIntensity: 1.15 })
 // [3. 개발 > 프론트엔드] 달빛 숲을 걷는 길과 여우 사당 촬영 세트.
 export function HjMoonForest() {
   const fireflies = useRef(null)
-  const { trunks, leaves, stones, sparks } = useMemo(() => {
+  const { trunks, leaves, crowns, stones, sparks } = useMemo(() => {
     const rng = seeded(1994)
-    const trunks = [], leaves = [], stones = [], sparks = []
+    const trunks = [], leaves = [], crowns = [], stones = [], sparks = []
     for (const side of [-1, 1]) {
       for (let i = 0; i < 14; i += 1) {
         const z = -29 + i * 4.18 + rng() * 1.2
@@ -28,7 +28,31 @@ export function HjMoonForest() {
         sparks.push({ p: [x * 0.67,1.2 + rng() * 2.2,z], s: [0.04,0.04,0.04] })
       }
     }
-    return { trunks, leaves, stones, sparks }
+    // Leave the lantern path and shrine forecourt clear between uneven rows of trees.
+    function groveTree(x, z, height) {
+      trunks.push({ p: [x, height * 0.40, z], s: [0.19, height * 0.80, 0.20], c: '#524538' })
+      for (let layer = 0; layer < 3; layer += 1) {
+        const spread = 1.35 - layer * 0.24 + rng() * 0.43
+        crowns.push({
+          p: [x + (rng() - 0.5) * 0.9, height * (0.62 + layer * 0.15), z + (rng() - 0.5) * 0.8],
+          s: [spread, height * 0.24, spread * (0.8 + rng() * 0.37)],
+          c: ['#233d33', '#2f4c3a', '#395542', '#456746'][Math.floor(rng() * 4)],
+        })
+      }
+    }
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 15; i += 1) {
+        const z = -29 + i * 4.1 + rng() * 1.6
+        if (side < 0 && z > 11 && z < 19) continue
+        const nearShrine = z > -25.2 && z < -10.3
+        const x = side * ((nearShrine ? 6.5 : 3.8) + rng() * (nearShrine ? 2.55 : 4.35))
+        groveTree(x, z, 3.7 + rng() * 3)
+      }
+    }
+    for (let i = 0; i < 9; i += 1) {
+      groveTree((i - 4) * 2.13 + rng() * 0.6, -27.4 - rng() * 3.6, 4.2 + rng() * 2.45)
+    }
+    return { trunks, leaves, crowns, stones, sparks }
   }, [])
   useFrame(({ clock }) => {
     fireflies.current.position.y = 0.28 * Math.sin(clock.elapsedTime * 1.2)
@@ -37,6 +61,7 @@ export function HjMoonForest() {
     <group>
       <Instances geometry={GEO.cyl8} material={WHITE} items={trunks} />
       <Instances geometry={GEO.cone} material={WHITE} items={leaves} />
+      <Instances geometry={GEO.ico} material={WHITE} items={crowns} />
       <Instances geometry={GEO.rock} material={WHITE} items={stones} />
       <group ref={fireflies}>
         <Instances geometry={GEO.ico} material={AMBER} items={sparks} />

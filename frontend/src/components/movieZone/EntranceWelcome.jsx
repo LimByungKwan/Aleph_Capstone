@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import places from '@shared/places.json'
+import { mapPlaces } from '../../game/data/mapData.js'
 import { listMyStamps } from '../../api/client.js'
 import { useUiStore } from './uiStore.js'
 import { useAsync } from './common.jsx'
@@ -9,7 +9,7 @@ import { useZoneEntryStore } from './zoneEntryStore.js'
 // 게이트 통과/클릭 → 따뜻한 종이색(#F9F6EE) 페이드 + "🎬 영화·드라마 세트장에 입장하셨습니다!" 배너
 // + 이 구역 스탬프 현황 체크 + 짧은 입장 효과음(브라우저 소리 합성, 파일 없음). 4.5초 뒤 자동으로 닫혀요.
 const SHOW_MS = 4500
-const HJ_SPOTS = places.filter((p) => p.zone === 'HJ' && p.type === 'spot')
+const HJ_SPOTS = mapPlaces.filter((p) => p.zone === 'HJ' && p.type === 'spot')
 
 export default function EntranceWelcome() {
   const welcomeAt = useZoneEntryStore((s) => s.welcomeAt)

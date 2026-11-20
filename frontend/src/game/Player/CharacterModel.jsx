@@ -1,7 +1,7 @@
 import { Component, Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
-import { AnimationMixer, LoopOnce, LoopRepeat, MathUtils, Vector3 } from 'three'
+import { AnimationMixer, LoopOnce, LoopRepeat, MathUtils, Quaternion, Vector3 } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { PLAYER_RUN_SPEED, PLAYER_WALK_SPEED } from '../config.js'
@@ -21,7 +21,9 @@ class ModelBoundary extends Component {
   render() { return this.state.failed ? <Placeholder /> : this.props.children }
 }
 
-function AnimatedCharacter({ character, playerRef }) {
+const UP = new Vector3(0, 1, 0)
+
+function AnimatedCharacter({ character, playerRef, palaceSeat }) {
   const { scene, animations } = useGLTF(import.meta.env.BASE_URL + character.model)
   const model = useMemo(() => {
     const object = clone(scene)
@@ -53,6 +55,9 @@ function AnimatedCharacter({ character, playerRef }) {
   const speed = useRef(0)
   const phase = useRef(0)
   const airborne = useRef(false)
+  const palacePose = useMemo(() => ({
+    position: new Vector3(), parentRotation: new Quaternion(), rotation: new Quaternion(), applied: false,
+  }), [])
   const weight = useRef({ Idle: 1, Walk: 0, Run: 0, Jump: 0, Sit: 0 })
 
   useEffect(() => {
@@ -94,7 +99,20 @@ function AnimatedCharacter({ character, playerRef }) {
     let target = inAir
       ? { Idle: 0, Walk: 0, Run: 0, Jump: 1, Sit: 0 }
       : { Idle: 1 - walk, Walk: walk * (1 - run), Run: walk * run, Jump: 0, Sit: 0 }
-    const seatProgress = model.userData.seatProgress ?? 0
+    if (palaceSeat && model.parent) {
+      const [x, , z] = palaceSeat.position
+      palacePose.position.set(x, palaceSeat.surfaceY - (model.userData.seatHipHeight ?? 0.45), z)
+      model.position.copy(model.parent.worldToLocal(palacePose.position))
+      model.parent.getWorldQuaternion(palacePose.parentRotation)
+      palacePose.rotation.setFromAxisAngle(UP, palaceSeat.yaw)
+      model.quaternion.copy(palacePose.parentRotation.invert()).multiply(palacePose.rotation)
+      palacePose.applied = true
+    } else if (palacePose.applied) {
+      model.position.set(0, -1, 0)
+      model.quaternion.identity()
+      palacePose.applied = false
+    }
+    const seatProgress = palaceSeat ? 1 : model.userData.seatProgress ?? 0
     if (seatProgress > 0) target = { Idle: 0, Walk: 0, Run: 0, Jump: 0, Sit: 1 }
     current.Sit.time = Math.min(seatProgress * current.Sit.getClip().duration, current.Sit.getClip().duration - .00001)
     for (const name of ['Idle', 'Walk', 'Run', 'Jump', 'Sit']) {
@@ -119,11 +137,11 @@ function AnimatedCharacter({ character, playerRef }) {
   return <primitive object={model} position={[0, -1, 0]} dispose={null} />
 }
 
-export default function CharacterModel({ playerRef }) {
+export default function CharacterModel({ playerRef, palaceSeat }) {
   const { character } = usePlayerCharacter()
   return <ModelBoundary key={character.id}>
     <Suspense fallback={<Placeholder />}>
-      <AnimatedCharacter character={character} playerRef={playerRef} />
+      <AnimatedCharacter character={character} playerRef={playerRef} palaceSeat={palaceSeat} />
     </Suspense>
   </ModelBoundary>
 }

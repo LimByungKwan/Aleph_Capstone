@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { Ecctrl } from 'ecctrl'
@@ -6,6 +7,7 @@ import { useTouchInput } from '../../store/touchInput.js'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
+import { updatePalaceSeating, usePalaceSeatStore } from '../../components/movieZone/palaceSeating.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 import CharacterModel from './CharacterModel.jsx'
 
@@ -54,12 +56,15 @@ export default function Player({ playerRef, showModel = true }) {
   const [, getKeys] = useKeyboardControls()
   // 패널이 열려 있으면(inputLocked) 키 입력을 무시 → 캐릭터 정지
   const locked = useGameStore((state) => state.inputLocked)
+  const seated = usePalaceSeatStore((state) => state.seated)
+  useEffect(() => () => usePalaceSeatStore.getState().reset(), [])
 
   useFrame(() => {
     const player = playerRef.current
     if (!player) return
 
-    player.setMovement(locked ? NO_INPUT : readInput(getKeys()))
+    const sitting = updatePalaceSeating(player, locked)
+    player.setMovement(locked || sitting ? NO_INPUT : readInput(getKeys()))
 
     // 맵 밖으로 떨어지면 시작 지점으로 리스폰
     if (player.currPos.y < RESPAWN_Y) {
@@ -81,7 +86,7 @@ export default function Player({ playerRef, showModel = true }) {
       jumpVel={PLAYER_JUMP_SPEED}
       enableToggleRun={false}
     >
-      {showModel && <CharacterModel playerRef={playerRef} />}
+      {showModel && <CharacterModel playerRef={playerRef} palaceSeat={seated} />}
     </Ecctrl>
   )
 }
