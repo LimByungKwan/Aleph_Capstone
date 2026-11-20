@@ -30,15 +30,19 @@ export function requestPromo({ shopName, workTitle = '', offer = '', menu = '', 
   return postAi('/promo', { shopName, workTitle, offer, menu, target, tone, includeReels })
 }
 
-async function postAi(path, body) {
+// 오늘의 코스 → 코스 응답 + { date: 'YYYY-MM-DD', title, emoji } (같은 날엔 누구에게나 같은 코스)
+export function getDailyCourse() {
+  return postAi('/daily', null, 'GET')
+}
+
+async function postAi(path, body, method = 'POST') {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   let response
   try {
     response = await fetch(`${AI_API_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      method,
+      ...(method === 'POST' && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
       signal: controller.signal,
     })
   } catch {

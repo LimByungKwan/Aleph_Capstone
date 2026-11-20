@@ -285,3 +285,49 @@
   font-size: 11px;
   font-weight: 700;
 }
+
+/* 오늘의 코스 버튼 */
+.lumi-daily {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ffc2d6;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #fff1f6, #fff8ec);
+  color: var(--ui-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lumi-daily:hover:not(:disabled) {
+  border-color: #ff8fb8;
+}
+.lumi-daily:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.lumi-daily__icon {
+  font-size: 24px;
+}
+.lumi-daily b {
+  display: block;
+  font-size: 14px;
+}
+.lumi-daily small {
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.lumi-course__daily-title {
+  margin: 0;
+  color: #b8436a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.lumi-course__reply.is-flagged {
+  padding: 10px 12px;
+  border-left: 4px solid var(--ui-warn);
+  border-radius: 10px;
+  background: #fff8e6;
+}

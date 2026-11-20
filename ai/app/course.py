@@ -23,6 +23,7 @@ from langgraph.graph import END, START, StateGraph
 
 from .llm_pick import pick_with_llm
 from .places import START_XZ, ZONE_NAMES, course_candidates, place_by_id
+from .safety import check_message
 from .smalltalk import bridge_line, detect_talk, offtopic_line, talk_effects, talk_line
 
 MIN_COUNT = 2
@@ -79,6 +80,7 @@ FIRST_OPENING = "처음이시라면 골고루 둘러보는 코스를 추천해�
 
 
 class CourseState(TypedDict, total=False):
+    rules_only: bool  # True면 LLM을 부르지 않음 (오늘의 코스처럼 항상 같은 결과가 필요할 때)
     message: str
     count: int
     themes: list[str]
@@ -222,7 +224,9 @@ def pick_with_rules(state: CourseState) -> CourseState:
         return {"picks": _short_course(ranked), "source": "rules"}
 
     picks: list[dict] = []
-    if ranked and ranked[0]["score"] > 0:
+    # 취향을 하나도 못 찾은 "골고루" 코스인지 (아무거나·처음 왔어요·모르는 말 등)
+    mixed = not (ranked and ranked[0]["score"] > 0)
+    if not mixed:
         picks = [s for s in ranked if s["score"] > 0][:count]
     # 취향을 못 알아들었거나 부족하면: 구역마다 대표 촬영지 하나씩 고르게 섞어서 채움
     if len(picks) < count:
@@ -246,6 +250,12 @@ def pick_with_rules(state: CourseState) -> CourseState:
             anchors = [(known[p["id"]]["position"][0], known[p["id"]]["position"][2]) for p in picks[: count - 1]] or [START_XZ]
             cafes = [c for c in cafes if c["score"] > -5]
             cafes.sort(key=lambda s: min(math.dist(a, (known[s["id"]]["position"][0], known[s["id"]]["position"][2])) for a in anchors))
+        elif mixed:
+            # 골고루 코스: 이미 고른 곳과 다른 구역의 (먹고 쉴 수 있는) 가게로 → 바로 옆 가게로 끝나지 않게
+            known = place_by_id()
+            kept = {p["zone"] for p in picks[: count - 1]}
+            is_food = lambda c: any(t in FOOD_TAGS for t in known[c["id"]].get("tags", []))  # noqa: E731
+            cafes.sort(key=lambda c: (c["zone"] in kept, not is_food(c), -c["score"]))
         else:
             cafes.sort(key=lambda s: (s["zone"] not in zones, -s["score"]))
         if cafes:
@@ -297,7 +307,7 @@ def prefer_theme_zone(picks: list[dict], state: CourseState) -> list[dict]:
 
 def pick(state: CourseState) -> CourseState:
     """LLM으로 먼저 고르고, 안 되면 규칙으로. 너무 적게 골랐으면 규칙 결과로 채움"""
-    result = pick_with_llm(state.get("message", ""), state["count"])
+    result = None if state.get("rules_only") else pick_with_llm(state.get("message", ""), state["count"])
     if not result or not result["picks"]:
         return pick_with_rules(state)
     picks = [{"id": p["id"], "score": 0, "reason": p["reason"]} for p in result["picks"]][: state["count"]]
@@ -419,9 +429,17 @@ def build_graph():
 _GRAPH = build_graph()
 
 
-def recommend_course(message: str, count: int = DEFAULT_COUNT) -> dict:
+def recommend_course(message: str, count: int = DEFAULT_COUNT, rules_only: bool = False) -> dict:
     """취향 문장 → { reply, course, nextPlaceId, themes }"""
-    result = _GRAPH.invoke({"message": message, "count": count})
+    # 부적절한 말은 코스 추천보다 먼저 (LLM이 켜져 있어도 이런 말은 밖으로 보내지 않음) — safety.py
+    flagged = check_message(message)
+    if flagged and not flagged["course"]:
+        return {"reply": flagged["reply"], "course": [], "nextPlaceId": None, "themes": [], "source": "rules", "flagged": flagged["category"]}
+    if flagged:  # 힘든 마음: 상담 안내 + 조용히 걸을 코스
+        calm = recommend_course("기분 전환하고 싶어 우울해", count, rules_only=True)
+        steps = " → ".join(f"{n + 1}. {c['name']}" for n, c in enumerate(calm["course"]))
+        return {**calm, "reply": f"{flagged['reply']} {steps}.", "flagged": flagged["category"]}
+    result = _GRAPH.invoke({"message": message, "count": count, "rules_only": rules_only})
     course = result.get("course", [])
     return {
         "reply": result.get("reply", ""),
