@@ -383,7 +383,7 @@
     {"id": "jm_river_bank_64", "style": "jmCollider", "position": [-125.67, 30.02], "size": [0.3, 1.5, 2.25], "rotationDeg": -42.9},
     {"id": "jm_stairs_wall_w", "style": "jmSlopeWall", "position": [-2.05, 4.25], "size": [0.3, 7.6, 13.5], "collider": [0.3, 7.6, 13.5], "rotationDeg": 0, "wall": {"bottom": 1.6, "top": 7.4}},
     {"id": "jm_stairs_wall_e", "style": "jmSlopeWall", "position": [2.05, 4.25], "size": [0.3, 7.6, 13.5], "collider": [0.3, 7.6, 13.5], "rotationDeg": 0, "wall": {"bottom": 1.6, "top": 7.4}},
-    {"id": "jm_hilltop_path", "style": "jmPathRibbon", "position": [0, 0], "size": [70, 0.05, 3], "collider": false, "rotationDeg": 0, "elevation": 6.5, "ribbon": {"points": [[-40, -5], [40, -5]], "width": 2.4}},
+    {"id": "jm_hilltop_path", "style": "jmPathRibbon", "position": [0, 0], "size": [70, 0.05, 3], "collider": false, "rotationDeg": 0, "elevation": 6.56, "ribbon": {"points": [[-40, -5], [40, -5]], "width": 2.4}},
     {"id": "jm_hilltop_lantern_1", "style": "jmLantern", "position": [-33, -3.55], "size": [0.8, 2.2, 0.8], "rotationDeg": 0, "onTerrain": true},
     {"id": "jm_hilltop_lantern_2", "style": "jmLantern", "position": [-21, -6.45], "size": [0.8, 2.2, 0.8], "rotationDeg": 0, "onTerrain": true},
     {"id": "jm_hilltop_lantern_3", "style": "jmLantern", "position": [-9, -3.55], "size": [0.8, 2.2, 0.8], "rotationDeg": 0, "onTerrain": true},
