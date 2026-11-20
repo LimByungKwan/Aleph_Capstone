@@ -142,3 +142,71 @@ def test_llm_off_by_default(monkeypatch):
     monkeypatch.delenv("SCENEWALK_DISABLE_LLM", raising=False)
     assert llm_pick.llm_enabled() is False
     assert llm_pick.pick_with_llm("데이트", 3) is None
+
+
+def test_tired_gives_short_course_with_rest_stop():
+    """'귀찮아 집에 가고 싶어' → 동문서답 대신 짧은 코스 (촬영지 1곳 + 바로 옆 가게)"""
+    result = recommend_course("귀찮아 집에 가고 싶어", 4)
+    assert "지치셨군요" in result["reply"] and "처음이시라면" not in result["reply"]
+    assert len(result["course"]) == 2
+    assert result["course"][0]["type"] == "spot" and result["course"][-1]["type"] == "cafe"
+    assert result["course"][0]["zone"] == result["course"][1]["zone"]  # 멀리 걷지 않게 같은 구역
+
+
+def test_hungry_picks_food_places_only():
+    result = recommend_course("배고파", 3)
+    assert "출출하시군요" in result["reply"]
+    assert all(c["type"] == "cafe" for c in result["course"])
+    assert "shop_sg_goods" not in ids(result)  # 굿즈 팝업스토어는 먹을 곳이 아님
+
+
+def test_bored_picks_minigame_places():
+    result = recommend_course("너무 심심해", 3)
+    assert "심심하셨군요" in result["reply"]
+    assert {"spot_bk_claw", "spot_bk_fountain"} <= set(ids(result))
+
+
+def test_sad_and_greeting_and_offtopic_replies():
+    assert "마음이 조금 무거운" in recommend_course("오늘 좀 우울해", 3)["reply"]
+    assert recommend_course("안녕", 3)["reply"].startswith("안녕하세요")
+    assert recommend_course("안녕 케이팝 좋아해", 3)["reply"].startswith("안녕하세요, 반가워요! K-POP 좋아하시는군요")
+    offtopic = recommend_course("오늘 점심 뭐였지", 3)["reply"]
+    assert "골고루" in offtopic and "처음이시라면" not in offtopic
+    assert recommend_course("아무거나 추천해줘", 3)["reply"].startswith("처음이시라면")
+
+
+def test_mood_with_taste_keeps_both():
+    result = recommend_course("피곤한데 애니 보고 싶어", 3)
+    assert "지치셨군요" in result["reply"] and "애니메이션 취향도" in result["reply"]
+    assert result["course"][0]["zone"] == "JM" and len(result["course"]) == 2
+
+
+def test_small_talk_is_answered_before_course():
+    """아무 말이나 해도 그 말에 먼저 대답하고 코스를 추천"""
+    cases = {
+        "넌 누구야?": "루미",
+        "너 AI야?": "AI 가이드",
+        "스탬프는 어떻게 모아?": "E를 누르면",
+        "여기 어디야": "중앙 광장",
+        "오늘 날씨 어때": "날씨",
+        "루미 너무 귀엽다": "",
+        "웃긴 얘기 해줘": "",
+    }
+    for message, expected in cases.items():
+        result = recommend_course(message, 3)
+        assert expected in result["reply"], message
+        assert "처음이시라면" not in result["reply"] and "잘 모르지만" not in result["reply"], message
+        assert len(result["course"]) == 3, message
+
+
+def test_small_talk_effects():
+    bye = recommend_course("잘 가", 4)
+    assert "벌써 가시게요" in bye["reply"] and len(bye["course"]) == 2
+    assert recommend_course("안녕히 계세요", 3)["reply"].startswith("벌써 가시게요")  # '안녕'이지만 작별 인사
+    angry = recommend_course("너 바보야", 3)
+    assert "마음에 안 드셨나요" in angry["reply"] and "spot_bk_tower" in ids(angry)  # 기분 전환 코스
+    solo = recommend_course("나 솔로야", 3)
+    assert any(c["zone"] == "BK" for c in solo["course"])  # 데이트 구역
+    assert recommend_course("예쁜 곳 추천해줘", 3)["reply"].startswith("처음이시라면")  # 루미 칭찬이 아님
+    both = recommend_course("넌 누구야? 배고파", 3)
+    assert "루미" in both["reply"] and "출출하시군요" in both["reply"]

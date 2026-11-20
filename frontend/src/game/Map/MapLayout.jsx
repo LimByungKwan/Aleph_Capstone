@@ -30,6 +30,9 @@ for (const item of layout.roads) {
 // [3. 개발 > 렌더링 최적화] 작은 장식만 묶어서 멀리서는 생략해요.
 const CELL_SIZE = 24
 const DETAIL_DISTANCE = 95
+// 고화질: 생략 거리를 이만큼 늘림 (예전엔 고화질이면 맵 전체를 한꺼번에 그려서 렉이 심했음)
+// 120~170m 밖의 벤치·가로등은 화면에서 몇 픽셀이라 생략해도 티가 안 남
+const HIGH_DETAIL_FAR = 1.4
 // 전망대(BK 타워 전망층, 높이 약 25m)처럼 높은 곳에서는 맵 전체가 보이도록 거리 생략을 끔 (땅 위에서는 그대로 생략)
 const OVERLOOK_HEIGHT = 18
 const detailStyles = /^(bench|bins|vending|lamp|hjLantern|hjMailbox|hjBicycle|hjAFrameSign|hjCafeSet|hjFruitCart|hjPetals|hjStringLights)$/
@@ -113,6 +116,7 @@ function DistantBuildings({ groupRef }) {
 // 바닥, 구역 표시, 길, 도로 표시, 건물, 소품, 시작 지점을 배치
 export default function MapLayout({ showStartMarker = true, highDetail = false }) {
   const [startX, startZ] = layout.playerStart
+  const far = highDetail ? HIGH_DETAIL_FAR : 1
   const detailedBuildings = useRef(null)
   const distantBuildings = useRef(null)
   useFrame(({ camera }) => {
@@ -136,7 +140,7 @@ export default function MapLayout({ showStartMarker = true, highDetail = false }
 
       <group ref={detailedBuildings}>
         {Array.from(buildingCells, ([key, cell]) => (
-          <DetailCell key={key} cell={cell} alwaysVisible={highDetail || showStartMarker} maxDistance={100} />
+          <DetailCell key={key} cell={cell} alwaysVisible={showStartMarker} maxDistance={100 * far} />
         ))}
       </group>
       <DistantBuildings groupRef={distantBuildings} />
@@ -144,9 +148,9 @@ export default function MapLayout({ showStartMarker = true, highDetail = false }
         <Prop key={prop.id} item={prop} />
       ))}
       {Array.from(propCells, ([key, cell]) => (
-        <DetailCell key={key} cell={cell} alwaysVisible={highDetail || showStartMarker} maxDistance={75} />
+        <DetailCell key={key} cell={cell} alwaysVisible={showStartMarker} maxDistance={75 * far} />
       ))}
-      {Array.from(detailCells, ([key, cell]) => <DetailCell key={key} cell={cell} alwaysVisible={highDetail} />)}
+      {Array.from(detailCells, ([key, cell]) => <DetailCell key={key} cell={cell} alwaysVisible={false} maxDistance={DETAIL_DISTANCE * far} />)}
 
       {/* 시작 지점: 반투명 초록 캡슐 (둘러보기 중에만. 플레이 중엔 캐릭터가 여기 서 있음) */}
       {showStartMarker && (

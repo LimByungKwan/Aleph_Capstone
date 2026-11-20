@@ -23,6 +23,7 @@ from langgraph.graph import END, START, StateGraph
 
 from .llm_pick import pick_with_llm
 from .places import START_XZ, ZONE_NAMES, course_candidates, place_by_id
+from .smalltalk import bridge_line, detect_talk, offtopic_line, talk_effects, talk_line
 
 MIN_COUNT = 2
 MAX_COUNT = 5
@@ -39,11 +40,51 @@ THEMES: dict[str, dict] = {
     "romance": {"label": "로맨스", "words": ["로맨스", "로맨틱", "설레", "고백", "사랑"]},
 }
 
+# 기분·상황 → (찾을 단어들, 루미의 첫마디, 고르는 방식)
+# 취향(THEMES)이 아니라 "귀찮아", "배고파"처럼 지금 상태를 말해도 동문서답하지 않고 맞춰서 추천
+MOODS: dict[str, dict] = {
+    "tired": {
+        "words": ["귀찮", "피곤", "힘들", "지쳤", "지친", "지쳐", "졸려", "졸리", "집에 가", "집에가", "집 가고", "집가고", "쉬고 싶", "쉬고싶", "다리 아", "걷기 싫", "걷기싫", "멀리 가기 싫"],
+        "opening": "많이 지치셨군요! 그럼 멀리 걷지 않고 광장 근처에서 가볍게 들렀다가 쉬어 갈 수 있는 짧은 코스로 골라 봤어요.",
+    },
+    "hungry": {
+        "words": ["배고", "배가 고", "출출", "먹고 싶", "먹고싶", "뭐 먹", "뭐먹", "밥", "간식", "목말라", "목 말라", "커피 마시", "달달한"],
+        "opening": "출출하시군요! 맛있는 걸 먹으며 쉬어 갈 수 있는 가게 위주로 골라 봤어요.",
+    },
+    "bored": {
+        "words": ["심심", "지루", "재미없", "재미 없", "놀거리", "놀 거리", "놀고 싶", "놀고싶", "게임", "신나는"],
+        "opening": "심심하셨군요! 구경하고 놀 거리가 있는 곳으로 골라 봤어요.",
+        "tags": ["인형뽑기", "분수", "소원", "무대", "콘서트"],  # 직접 해 볼 수 있는 것 (미니게임·공연)
+        "tags_more": ["굿즈", "팝업스토어", "스포츠", "벽화"],
+    },
+    "sad": {
+        "words": ["우울", "슬퍼", "슬프", "외로", "속상", "기분이 안", "기분 안", "울적", "꿀꿀", "힘든 하루", "위로"],
+        "opening": "마음이 조금 무거운 날이군요. 천천히 걸으며 기분 전환하기 좋은 곳으로 골라 봤어요.",
+        "tags": ["벚꽃", "산책로", "산책", "야경", "전망대", "바다", "휴식", "소원", "등대"],
+    },
+    "greeting": {
+        "words": ["안녕", "하이", "hello", "hi", "반가", "처음 왔", "처음왔"],
+        "opening": "안녕하세요, 반가워요! 처음 오셨다면 구역마다 대표 촬영지를 하나씩 골고루 둘러보는 코스를 추천해요.",
+    },
+    "thanks": {
+        "words": ["고마", "감사", "땡큐", "thank"],
+        "opening": "천만에요! 이번에도 걸어 볼 만한 곳을 골고루 골라 드릴게요.",
+    },
+}
+# 먹고 쉴 수 있는 가게 (굿즈 팝업스토어처럼 먹을 게 없는 가게는 빼고)
+FOOD_TAGS = ["카페", "분식", "커피", "디저트", "생일카페", "휴식"]
+# "추천해줘", "아무거나"처럼 코스를 달라는 말 (취향은 없음) → "처음이시라면"
+GENERIC_WORDS = ["추천", "아무", "코스", "골라", "어디", "모르", "뭐 하", "뭐하", "가볼", "가 볼", "둘러"]
+FIRST_OPENING = "처음이시라면 골고루 둘러보는 코스를 추천해요!"
+
 
 class CourseState(TypedDict, total=False):
     message: str
     count: int
     themes: list[str]
+    talk: str  # 잡담 종류 (smalltalk.TALKS의 키), 없으면 ''
+    short: bool  # 짧은 2곳 코스 (지쳤거나 곧 갈 때)
+    mood: str  # MOODS의 키, 'generic'(추천만 원함), 'offtopic'(코스와 관련 없는 말), 없으면 ''
     keywords: list[str]
     picks: list[dict]  # [{id, score, reason}]
     greeting: str  # LLM이 만든 첫 문장 (규칙일 때는 없음)
@@ -59,7 +100,35 @@ def understand(state: CourseState) -> CourseState:
     # 2글자 이상 단어 (장소 이름·작품명·태그와 맞춰 볼 키워드)
     keywords = [w for w in re.findall(r"[0-9a-zA-Z가-힣]+", text) if len(w) >= 2]
     count = max(MIN_COUNT, min(MAX_COUNT, int(state.get("count") or DEFAULT_COUNT)))
-    return {"themes": themes, "keywords": keywords, "count": count}
+    talk = detect_talk(text)
+    effects = talk_effects(talk)
+    if talk == "compliment":
+        themes = [t for t in themes if t != "romance"]  # "루미 사랑해"는 로맨스 취향이 아님
+    themes += [t for t in effects.get("themes", []) if t not in themes]
+    mood = detect_mood(text, themes, keywords)
+    if talk:
+        if mood in ("offtopic", "generic") or (talk == "bye" and mood == "greeting"):
+            mood = ""  # 잡담에 대답했으니 "잘 모르지만…"은 빼기
+        mood = mood or effects.get("mood", "")
+    short = mood == "tired" or bool(effects.get("short"))
+    if short:
+        count = MIN_COUNT  # 짧게: 가까운 촬영지 1곳 + 쉬어 갈 가게
+    return {"themes": themes, "talk": talk, "short": short, "mood": mood, "keywords": keywords, "count": count}
+
+
+def detect_mood(text: str, themes: list[str], keywords: list[str]) -> str:
+    for key, mood in MOODS.items():
+        if any(word in text for word in mood["words"]):
+            return key
+    if themes:
+        return ""
+    # 장소 이름·태그와 맞는 단어가 있으면 취향으로 봄 (예: "벚꽃", "등대")
+    for place in course_candidates():
+        if any(score_place(place, [], [w])[0] > 0 for w in keywords):
+            return ""
+    if any(word in text for word in GENERIC_WORDS):
+        return "generic"
+    return "offtopic"
 
 
 # ── 2. 장소 고르기 (규칙) ──────────────────────────
@@ -93,16 +162,64 @@ def score_place(place: dict, themes: list[str], keywords: list[str]) -> tuple[fl
     return score, reasons
 
 
+def mood_bonus(place: dict, mood: str, score: float, reasons: list[str]) -> tuple[float, list[str]]:
+    """기분에 맞춰 점수 더하기 (지침 → 가까운 곳, 배고픔 → 가게, 심심·우울 → 맞는 태그)"""
+    tags = place.get("tags", [])
+    food = place["type"] == "cafe" and any(t in FOOD_TAGS for t in tags)
+    if mood == "tired":
+        if place["type"] == "cafe" and not food:
+            return score - 5, reasons  # 앉아 쉴 수 없는 가게(굿즈 팝업 등)는 빼기
+        dist = math.dist(START_XZ, (place["position"][0], place["position"][2]))
+        bonus = max(0.0, 4 - dist / 30)  # 광장에서 가까울수록
+        if bonus > 0:
+            score += bonus
+            reasons = (["잠깐 앉아 쉬어 가기 좋은 가게"] if food else ["광장에서 가까워 금방 다녀올 수 있는 곳"]) + reasons
+    elif mood == "hungry":
+        if food:
+            score += 4
+            kind = next((t for t in tags if t in ("분식", "생일카페", "디저트", "커피")), "카페")
+            reasons = [f"{kind}에서 출출함을 달래기 좋은 곳"] + reasons
+        elif place["type"] == "cafe":
+            score -= 5  # 먹을 게 없는 가게는 빼기
+    elif mood in ("bored", "sad"):
+        hits = [t for t in tags if t in MOODS[mood]["tags"]]
+        more = [t for t in tags if t in MOODS[mood].get("tags_more", [])]
+        if hits or more:
+            score += 3.5 if hits else 1.5
+            tag = (hits or more)[0]
+            reasons = ([f"{tag}(으)로 놀 거리가 있는 곳"] if mood == "bored" else [f"{tag} 덕분에 기분 전환하기 좋은 곳"]) + reasons
+    return score, reasons
+
+
+def _short_course(ranked: list[dict]) -> list[dict]:
+    """지쳤을 때: 가장 알맞은 촬영지 1곳 + 그 바로 옆에서 앉아 쉴 수 있는 가게 1곳"""
+    known = place_by_id()
+    xz = lambda s: (known[s["id"]]["position"][0], known[s["id"]]["position"][2])  # noqa: E731
+    spot = next(s for s in ranked if s["type"] != "cafe")
+    cafes = [s for s in ranked if s["type"] == "cafe" and any(t in FOOD_TAGS for t in known[s["id"]].get("tags", []))]
+    picks = [spot]
+    if cafes:
+        cafe = min(cafes, key=lambda c: math.dist(xz(spot), xz(c)))
+        near = math.dist(xz(spot), xz(cafe)) < 40
+        picks.append({**cafe, "reasons": ["바로 근처라 잠깐 앉아 쉬어 가기 좋은 가게" if near else "가까운 가게 중에 앉아 쉬어 가기 좋은 곳"]})
+    return [{"id": p["id"], "score": p["score"], "reason": (p["reasons"] or ["광장에서 가까워 금방 다녀올 수 있는 곳"])[0]} for p in picks]
+
+
 def pick_with_rules(state: CourseState) -> CourseState:
     themes = state.get("themes", [])
     keywords = state.get("keywords", [])
     count = state["count"]
     scored = []
+    mood = state.get("mood", "")
     for place in course_candidates():
         score, reasons = score_place(place, themes, keywords)
+        score, reasons = mood_bonus(place, mood, score, reasons)
         scored.append({"id": place["id"], "score": score, "reasons": reasons, "zone": place["zone"], "type": place["type"]})
     # 점수 높은 순, 같으면 맵 데이터 순서 (항상 같은 결과)
     ranked = sorted(scored, key=lambda s: -s["score"])
+
+    if state.get("short"):
+        return {"picks": _short_course(ranked), "source": "rules"}
 
     picks: list[dict] = []
     if ranked and ranked[0]["score"] > 0:
@@ -119,11 +236,18 @@ def pick_with_rules(state: CourseState) -> CourseState:
             picks.append({**s, "reasons": s["reasons"] or ["처음 오셨다면 꼭 들러 볼 대표 촬영지"]})
             taken.add(s["id"])
             zones_used.add(s["zone"])
-    # 3곳 이상이면 마지막에 쿠폰을 쓸 카페 하나는 넣기 (스탬프 → 쿠폰 흐름)
-    if count >= 3 and not any(p["type"] == "cafe" for p in picks):
+    # 3곳 이상이면(지쳤을 때는 2곳이어도) 마지막에 쿠폰을 쓸 카페 하나는 넣기 (스탬프 → 쿠폰 흐름)
+    if (count >= 3 or mood == "tired") and not any(p["type"] == "cafe" for p in picks):
         zones = [p["zone"] for p in picks]
         cafes = [s for s in ranked if s["type"] == "cafe"]
-        cafes.sort(key=lambda s: (s["zone"] not in zones, -s["score"]))
+        if mood == "tired":
+            # 지쳤으면 방금 고른 곳 바로 옆 가게로 (멀리 걷지 않게)
+            known = place_by_id()
+            anchors = [(known[p["id"]]["position"][0], known[p["id"]]["position"][2]) for p in picks[: count - 1]] or [START_XZ]
+            cafes = [c for c in cafes if c["score"] > -5]
+            cafes.sort(key=lambda s: min(math.dist(a, (known[s["id"]]["position"][0], known[s["id"]]["position"][2])) for a in anchors))
+        else:
+            cafes.sort(key=lambda s: (s["zone"] not in zones, -s["score"]))
         if cafes:
             picks = picks[: count - 1] + [{**cafes[0], "reasons": cafes[0]["reasons"] or ["스탬프를 모은 뒤 쿠폰을 쓰기 좋은 가게"]}]
     return {"picks": [{"id": p["id"], "score": p["score"], "reason": (p["reasons"] or ["추천 장소"])[0]} for p in picks], "source": "rules"}
@@ -239,10 +363,37 @@ def reply(state: CourseState) -> CourseState:
     if not course:
         return {"reply": "음… 지금은 추천할 장소를 찾지 못했어요. 좋아하는 작품이나 분위기를 조금 더 알려 주세요!"}
     labels = [THEMES[k]["label"] for k in state.get("themes", [])]
-    if state.get("greeting"):
+    mood = state.get("mood", "")
+    talk = state.get("talk", "")
+    message = state.get("message", "")
+    if talk and not state.get("greeting"):
+        # 잡담에 먼저 대답 → (기분·취향이 있으면 그 말, 없으면 넘어가는 말) → 코스
+        line = talk_line(talk, message)
+        if talk_effects(talk).get("bridged"):
+            rest = ""
+        elif mood in MOODS:
+            rest = MOODS[mood]["opening"]
+        elif labels:
+            rest = f"{'·'.join(labels[:2])} 좋아하시는군요! 그쪽으로 골라 봤어요."
+        else:
+            rest = bridge_line(message)
+        opening = f"{line} {rest} ".replace("  ", " ")
+    elif state.get("greeting"):
         opening = state["greeting"].rstrip() + " "
+    elif mood in ("greeting", "thanks") and labels:
+        hello = "안녕하세요, 반가워요!" if mood == "greeting" else "천만에요!"
+        opening = f"{hello} {'·'.join(labels[:2])} 좋아하시는군요! "
+    elif mood in MOODS:
+        opening = MOODS[mood]["opening"] + " "
+        labels = [l for l in labels if not (mood == "hungry" and l == "카페")]
+        if labels:
+            opening += f"{'·'.join(labels[:2])} 취향도 같이 담았어요. "
+    elif labels:
+        opening = f"{'·'.join(labels[:2])} 좋아하시는군요! "
+    elif mood == "offtopic":
+        opening = offtopic_line(message) + " "
     else:
-        opening = f"{'·'.join(labels[:2])} 좋아하시는군요! " if labels else "처음이시라면 골고루 둘러보는 코스를 추천해요! "
+        opening = FIRST_OPENING + " "
     steps = " → ".join(f"{i + 1}. {c['name']}" for i, c in enumerate(course))
     first = course[0]
     closing = f"먼저 {first['zoneName']}의 '{first['name']}'부터 가 볼까요? 지도에 표시해 둘게요."
