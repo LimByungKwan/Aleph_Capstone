@@ -29,6 +29,7 @@
 
   "buildings": [
     { "id": "sg_stage", "style": "stage", "position": [-7.5, 0], "size": [22, 10, 11], "rotationDeg": 90, "model": null },
+    { "id": "sg_cheer", "style": "cheerSpot", "position": [6, 5], "size": [0.5, 1.5, 0.5], "rotationDeg": 0, "model": null },
     { "id": "sg_ent", "style": "agencyLobby", "position": [-27, 0], "size": [20, 12, 14], "rotationDeg": 90, "color": "#d6cee0", "model": null, "signs": [{ "text": "SUNGRAY 엔터테인먼트", "bg": "#30223b", "awning": "#845879", "fg": "#f4daf7" }] },
     { "id": "sg_dorm", "style": "artistLounge", "position": [-26, -27], "size": [16, 10, 10], "rotationDeg": 0, "color": "#e2d6c9", "model": null, "signs": [{ "text": "아티스트 레지던스", "bg": "#4e4748", "awning": "#8ba99c", "fg": "#fff0ce" }] },
     { "id": "sg_studio", "style": "soundStudio", "position": [-26, 27], "size": [16, 8, 10], "rotationDeg": 180, "color": "#c8d9d7", "model": null, "signs": [{ "text": "물결 레코딩 스튜디오", "bg": "#214951", "awning": "#41646c", "fg": "#ddfff6" }] },
