@@ -13,6 +13,9 @@ import EntranceWelcome from './EntranceWelcome.jsx'
 import { CourseHud } from '../course/LumiCourse.jsx'
 import Minimap from '../minimap/Minimap.jsx'
 import MobileControls from '../mobile/MobileControls.jsx'
+import Tutorial from '../tutorial/Tutorial.jsx'
+import BadgeBook, { BadgeButton } from '../badges/BadgeBook.jsx'
+import { PhotoButton, PhotoPreview } from '../photo/PhotoButton.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -36,12 +39,15 @@ export default function UiRoot() {
       {!inCinema && <CourseHud />}
       {!inCinema && <Minimap />}
       {!inCinema && <MobileControls />}
+      {!inCinema && <Tutorial />}
       <SceneHint />
       <DialogBox />
       <BreakwaterScene />
       <EntranceWelcome />
       {modal === 'stampbook' && <StampBook onClose={closeModal} />}
       {modal === 'coupons' && <CouponBox onClose={closeModal} />}
+      {modal === 'badges' && <BadgeBook onClose={closeModal} />}
+      <PhotoPreview />
       <Toasts />
     </div>
   )
@@ -76,6 +82,8 @@ function Hud() {
       <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), openModal('coupons'))}>
         🎟 쿠폰함 {usable > 0 && <span className="ui-count">{usable}</span>}
       </button>
+      <BadgeButton onOpen={() => openModal('badges')} />
+      <PhotoButton />
       {user.role === 'owner' && (
         <a className="ui-btn" href="#/owner">
           🧑‍🍳 사장님 화면

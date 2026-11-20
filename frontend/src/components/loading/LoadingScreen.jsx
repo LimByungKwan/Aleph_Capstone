@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { useLoadState } from '../../store/loadState.js'
+import { wakeAiServer } from '../../api/course.js'
 import './loading-screen.css'
 
 // 첫 접속 로딩 화면 (담당: 병관)
@@ -40,6 +41,7 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     shown.current = performance.now()
+    wakeAiServer() // 로딩하는 동안 AI 서버(루미)도 미리 깨움
   }, [])
 
   // 다운로드가 잠깐 멈춘 걸 "끝"으로 착각하지 않게, 조용한 시간이 이어질 때만 완료

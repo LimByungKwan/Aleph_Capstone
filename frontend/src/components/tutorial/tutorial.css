@@ -1,0 +1,118 @@
+/* 튜토리얼 안내 띠 (담당: 병관) — 색은 공통 UI 토큰(ui.css의 --ui-*) */
+
+.tut {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, calc(100% - 32px));
+  padding: 10px 12px 10px 10px;
+  border: 2px solid #ff8fb8;
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.97);
+  box-shadow: 0 10px 28px rgba(200, 109, 81, 0.25);
+  transform: translateX(-50%);
+  animation: tut-in 0.35s ease-out;
+}
+.tut--below-hud {
+  top: 108px; /* 위쪽 "루미 코스" 안내 아래로 */
+}
+.tut--touch {
+  top: auto;
+  bottom: calc(210px + env(safe-area-inset-bottom)); /* 휴대폰: 조이스틱·버튼 위 */
+}
+.tut--done {
+  border-color: var(--ui-ok);
+}
+@keyframes tut-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+.tut__lumi {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ffe3ee;
+  font-size: 22px;
+  animation: tut-bob 1.6s ease-in-out infinite;
+}
+@keyframes tut-bob {
+  50% {
+    translate: 0 -3px;
+  }
+}
+.tut__body {
+  flex: 1;
+  min-width: 0;
+}
+.tut__step {
+  color: #d9577f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tut__text {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.tut__text b {
+  color: var(--ui-accent);
+}
+.tut__skip {
+  flex: none;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-surface-2);
+  color: var(--ui-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tut__skip:hover {
+  color: var(--ui-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tut,
+  .tut__lumi {
+    animation: none;
+  }
+}
+
+/* 루미 대화창 안 2단계 안내 + 예시 버튼 강조 */
+.lumi-course__tut {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #ffe3ee;
+  color: #b8436a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.lumi-course__chips.is-tutorial .lumi-course__chip {
+  border-color: #ff8fb8;
+  animation: tut-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tut-pulse {
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.35);
+  }
+}
+.tut__dist {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ffe3ee;
+  color: #b8436a;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

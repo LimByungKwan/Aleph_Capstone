@@ -8,3 +8,17 @@ export const playerPose = {
   dirX: 0, // 카메라가 보는 방향 (바닥 평면, 길이 1)
   dirZ: -1,
 }
+
+// 캐릭터에서 목적지까지 남은 거리 (바닥 기준 m, 높이 차이는 뺌). 캐릭터가 없으면 null
+export function distanceTo(position) {
+  if (!playerPose.ready || !position) return null
+  return Math.hypot(position[0] - playerPose.x, position[2] - playerPose.z)
+}
+
+// 화면에 보여 줄 글자: 10m 아래는 "곧 도착", 1km 넘으면 km
+export function formatDistance(meters) {
+  if (meters == null) return ''
+  if (meters < 10) return '곧 도착'
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)}km`
+  return `${Math.round(meters)}m`
+}
