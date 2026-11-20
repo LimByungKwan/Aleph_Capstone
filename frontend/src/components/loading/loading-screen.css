@@ -1,0 +1,262 @@
+/* 첫 접속 로딩 화면 (담당: 병관) — 게임 하늘색(파스텔) + 공통 UI 색(테라코타·종이색) */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&display=swap');
+
+.ld {
+  --ld-ink: #2c2a29;
+  --ld-muted: #7a736d;
+  --ld-accent: #c86d51;
+  --ld-paper: rgba(255, 253, 248, 0.86);
+  position: fixed;
+  inset: 0;
+  z-index: 16777300; /* 게임 UI(.ui-root)와 이름표보다 위 */
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #a9d8f5 0%, #d6eaf8 48%, #fde8d7 78%, #f8d3c5 100%);
+  color: var(--ld-ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  transition: opacity 0.7s ease, visibility 0.7s;
+}
+.ld,
+.ld * {
+  box-sizing: border-box;
+}
+.ld.is-fading {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* ── 떠다니는 구름 ── */
+.ld__sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ld__cloud {
+  position: absolute;
+  width: 180px;
+  height: 56px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  filter: blur(1px);
+  animation: ld-drift 38s linear infinite;
+}
+.ld__cloud::before,
+.ld__cloud::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: inherit;
+}
+.ld__cloud::before {
+  width: 80px;
+  height: 80px;
+  left: 28px;
+  top: -38px;
+}
+.ld__cloud::after {
+  width: 60px;
+  height: 60px;
+  left: 92px;
+  top: -24px;
+}
+.ld__cloud--1 {
+  top: 14%;
+  left: -20%;
+}
+.ld__cloud--2 {
+  top: 34%;
+  left: -40%;
+  transform: scale(0.7);
+  animation-duration: 52s;
+  animation-delay: -18s;
+  opacity: 0.8;
+}
+.ld__cloud--3 {
+  top: 72%;
+  left: -30%;
+  transform: scale(1.2);
+  animation-duration: 64s;
+  animation-delay: -40s;
+  opacity: 0.6;
+}
+@keyframes ld-drift {
+  to {
+    translate: 160vw 0;
+  }
+}
+
+/* ── 가운데 카드 ── */
+.ld__card {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 30px 28px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 24px;
+  background: var(--ld-paper);
+  box-shadow: 0 24px 60px rgba(120, 104, 84, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  text-align: center;
+  animation: ld-rise 0.6s ease-out both;
+}
+@keyframes ld-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* 구역 색 핀 4개가 차례로 콩콩 */
+.ld__pins {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  height: 34px;
+  margin-bottom: 6px;
+}
+.ld__pin {
+  width: 18px;
+  height: 18px;
+  margin-top: 12px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--c);
+  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.55);
+  transform: rotate(-45deg);
+  animation: ld-hop 1.2s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes ld-hop {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  30% {
+    translate: 0 -12px;
+  }
+}
+
+.ld__title {
+  margin: 0;
+  font-family: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+  font-size: clamp(34px, 9vw, 46px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.ld__title span {
+  color: var(--ld-accent);
+}
+.ld__sub {
+  margin: 6px 0 22px;
+  color: var(--ld-muted);
+  font-size: 14px;
+}
+
+/* 진행 막대 + 걷는 사람 */
+.ld__bar {
+  position: relative;
+  height: 10px;
+  margin: 26px 6px 0;
+  border-radius: 999px;
+  background: rgba(200, 109, 81, 0.15);
+}
+.ld__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff8fb8, #c86d51);
+  transition: width 0.4s ease;
+}
+.ld__walker {
+  position: absolute;
+  bottom: 6px;
+  font-size: 22px;
+  line-height: 1;
+  transform: translateX(-50%) scaleX(-1); /* 오른쪽을 보고 걷게 */
+  transition: left 0.4s ease;
+  animation: ld-step 0.5s ease-in-out infinite alternate;
+}
+@keyframes ld-step {
+  to {
+    translate: 0 -2px;
+  }
+}
+.ld__meta {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 6px 0;
+  color: var(--ld-muted);
+  font-size: 13px;
+}
+.ld__pct {
+  color: var(--ld-ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 구역 이름 칩 */
+.ld__zones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ld__zones li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+}
+.ld__zones li::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+/* 루미의 팁 (바뀔 때마다 살짝 페이드) */
+.ld__tip {
+  min-height: 42px;
+  margin: 18px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: left;
+  animation: ld-tip 0.5s ease-out;
+}
+.ld__tip b {
+  margin-right: 4px;
+  color: var(--ld-accent);
+}
+@keyframes ld-tip {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (max-width: 420px) {
+  .ld__card {
+    padding: 24px 18px 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld__cloud,
+  .ld__pin,
+  .ld__walker,
+  .ld__tip,
+  .ld__card {
+    animation: none;
+  }
+}

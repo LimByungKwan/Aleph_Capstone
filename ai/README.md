@@ -94,3 +94,9 @@ Render 무료 Web Service는 카드 등록 없이 쓸 수 있고 요금이 나�
    (OpenAI를 쓰기로 정했을 때만 `LLM_API_Key`, `LLM_DAILY_LIMIT` 추가. 안 넣으면 요금 0원)
 5. 배포가 끝나면 `https://<서비스이름>.onrender.com/health` 가 `{"ok": true, ...}` 인지 확인
 6. Vercel 프로젝트 → Settings → Environment Variables 에 `VITE_AI_API_URL` = 위 주소 → Redeploy
+
+## 외부 API 키 (확장 계획용, `app/external.py`)
+- `TOUR_API_KEY`(한국관광공사 TourAPI), `KAKAO_REST_API_KEY`(카카오 맵)를 `.env`에서 **읽기만** 한다. 지금은 어디에도 호출하지 않는다 (기획서: 작품·가게는 가상, 실제 위치 기능 없음 → 요금·규칙 문제 없음).
+- `/health`의 `externalKeys`로 키가 들어 있는지만 확인 (`{"tourApi": true, "kakao": true}`). 키 값은 응답·로그에 절대 넣지 않는다.
+- 나중에 "실제 성지 연결" 단계에서 이 키로 **서버에서만** 호출한다 (브라우저로 키가 나가지 않게).
+- Render에는 실제로 쓸 때만 환경변수로 추가한다.

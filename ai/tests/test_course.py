@@ -210,3 +210,12 @@ def test_small_talk_effects():
     assert recommend_course("예쁜 곳 추천해줘", 3)["reply"].startswith("처음이시라면")  # 루미 칭찬이 아님
     both = recommend_course("넌 누구야? 배고파", 3)
     assert "루미" in both["reply"] and "출출하시군요" in both["reply"]
+
+
+def test_health_shows_external_key_status_but_never_values(monkeypatch):
+    monkeypatch.setenv("TOUR_API_KEY", "tour-secret-value")
+    monkeypatch.delenv("KAKAO_REST_API_KEY", raising=False)
+    monkeypatch.delenv("KAKAO_API_KEY", raising=False)
+    res = client.get("/health")
+    assert res.json()["externalKeys"] == {"tourApi": True, "kakao": False}
+    assert "tour-secret-value" not in res.text
