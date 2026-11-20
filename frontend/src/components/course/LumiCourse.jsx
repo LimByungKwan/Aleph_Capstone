@@ -5,12 +5,19 @@ import { useGameStore } from '../../store/gameStore.js'
 import { useTutorial } from '../../store/tutorialStore.js'
 import { distanceTo, formatDistance } from '../../store/playerPose.js'
 import { BADGES, useBadges } from '../../store/badges.js'
+import { unvisitedZone, useLumiMemory } from '../../store/lumiMemory.js'
 import './lumi-course.css'
 
 // 루미 코스 추천 (담당: 병관) — 루미 대화창(DialogBox) 안에 들어가는 부분
 // 취향을 입력하면 AI 서버(ai/)가 코스를 골라 주고, 지도에 다음 목적지가 표시돼요.
 
-const EXAMPLES = ['연인이랑 야경 보는 데이트', '애니메이션 성지순례', 'K-POP 굿즈랑 무대', '드라마 촬영지 산책']
+const ZONE_INFO = {
+  BK: { name: '데이트 코스 구역', short: '데이트', example: '연인이랑 야경 보는 데이트' },
+  JM: { name: '애니메이션 구역', short: '애니메이션', example: '애니메이션 성지순례' },
+  SG: { name: 'K-POP 구역', short: 'K-POP', example: 'K-POP 굿즈랑 무대' },
+  HJ: { name: '영화·드라마 구역', short: '영화·드라마', example: '드라마 촬영지 산책' },
+}
+const EXAMPLES = Object.values(ZONE_INFO).map((z) => z.example)
 const COUNTS = [2, 3, 4, 5]
 
 export default function LumiCourse() {
@@ -20,6 +27,10 @@ export default function LumiCourse() {
   const hasCourse = useCourseStore((s) => s.course.length > 0)
   const close = useGameStore((s) => s.close)
   const tutorialTalk = useTutorial((s) => s.step === 'talk')
+  const memory = useLumiMemory()
+  const suggestZone = unvisitedZone(memory)
+  // 안 가 본 구역 예시를 맨 앞에 (추천 표시)
+  const examples = suggestZone ? [ZONE_INFO[suggestZone].example, ...EXAMPLES.filter((e) => e !== ZONE_INFO[suggestZone].example)] : EXAMPLES
 
   const [text, setText] = useState('')
   const [count, setCount] = useState(3)
@@ -85,6 +96,7 @@ export default function LumiCourse() {
 
   return (
     <form className="lumi-course" onSubmit={(e) => (e.preventDefault(), ask(text))}>
+      <p className="lumi-course__hello">{greeting(memory, suggestZone)}</p>
       {hasCourse && target && (
         <p className="lumi-course__now">
           지금 코스: <b>{target.name}</b>(으)로 가는 중이에요.{' '}
@@ -95,8 +107,9 @@ export default function LumiCourse() {
       )}
       {tutorialTalk && <p className="lumi-course__tut">👆 처음이시죠? 아래 예시 버튼 하나를 눌러 보세요 (루미의 안내 2/3)</p>}
       <div className={`lumi-course__chips${tutorialTalk ? ' is-tutorial' : ''}`}>
-        {EXAMPLES.map((example) => (
+        {examples.map((example, i) => (
           <button key={example} type="button" className="lumi-course__chip" disabled={loading} onClick={() => (setText(example), ask(example))}>
+            {i === 0 && suggestZone && memory.visits > 1 && <span className="lumi-course__new">추천</span>}
             {example}
           </button>
         ))}
@@ -260,4 +273,15 @@ export function useLiveDistance(position) {
     return () => clearInterval(id)
   }, [position])
   return text
+}
+
+// 루미의 첫 인사: 처음 온 사람 / 다시 온 사람 (store/lumiMemory.js)
+function greeting(memory, suggestZone) {
+  const { visits, lastZones } = memory
+  if (visits <= 1 && !lastZones.length) return '처음 오셨네요! 반가워요 😊 좋아하는 작품이나 지금 기분을 편하게 말해 주세요.'
+  const last = lastZones.map((z) => ZONE_INFO[z]?.short).filter(Boolean)
+  const parts = [`또 오셨네요! ${visits}번째 방문이에요.`]
+  if (last.length) parts.push(`지난번엔 ${last.slice(0, 2).join('·')} 코스였죠?`)
+  parts.push(suggestZone ? `이번엔 아직 안 가 본 ${ZONE_INFO[suggestZone].name} 어때요?` : '골목을 거의 다 둘러보셨네요! 오늘 기분을 말해 주시면 새 코스를 골라 드릴게요.')
+  return parts.join(' ')
 }
