@@ -3,8 +3,9 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { currentTarget, useCourseStore } from '../../store/courseStore.js'
+import { tutorialTarget, useTutorial } from '../../store/tutorialStore.js'
 import { labelLayer } from '../labelLayer.js'
-import { playerPose } from '../../store/playerPose.js'
+import { distanceTo, formatDistance, playerPose } from '../../store/playerPose.js'
 
 // 루미 추천 코스의 "다음 목적지" 표시 (담당: 병관)
 // 멀리서도 보이는 빛기둥 + 위아래로 움직이는 화살표 + 이름표. 도착하면 다음 장소로 옮겨감 (courseStore)
@@ -13,12 +14,14 @@ const COLOR = '#ff6fa3'
 const BEAM_HEIGHT = 60
 
 export default function CourseMarker() {
-  const target = useCourseStore(currentTarget)
+  const courseTarget = useCourseStore(currentTarget)
   const index = useCourseStore((s) => s.index)
+  const tutorial = useTutorial(tutorialTarget) // 튜토리얼 1단계: 루미 위에 빛기둥
+  const target = courseTarget ?? tutorial
   return (
     <>
       <PlayerPoseTracker />
-      {target && <Marker key={`${target.placeId}-${index}`} target={target} step={index + 1} />}
+      {target && <Marker key={`${target.placeId}-${index}`} target={target} step={courseTarget ? index + 1 : null} />}
     </>
   )
 }
@@ -54,9 +57,17 @@ function PlayerPoseTracker() {
 function Marker({ target, step }) {
   const arrow = useRef()
   const beam = useRef()
+  const distText = useRef()
+  const shownDist = useRef('')
   const [x, y, z] = target.position
 
   useFrame(({ clock }) => {
+    // 남은 거리: 글자가 바뀔 때만 DOM을 고침 (매 프레임 화면을 다시 그리지 않게)
+    const text = formatDistance(distanceTo(target.position))
+    if (distText.current && text !== shownDist.current) {
+      shownDist.current = text
+      distText.current.textContent = text ? ` · ${text}` : ''
+    }
     const t = clock.elapsedTime
     if (arrow.current) {
       arrow.current.position.y = 4.6 + Math.sin(t * 3) * 0.35
@@ -95,7 +106,8 @@ function Marker({ target, step }) {
             boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
           }}
         >
-          {step}. {target.name}
+          {step ? `${step}. ` : ''}{target.name}
+          <span ref={distText} style={{ fontWeight: 600, opacity: 0.95 }} />
         </div>
       </Html>
     </group>
