@@ -1,0 +1,20 @@
+{
+  "name": "scenewalk-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SceneWalk AI 로그인·스탬프·쿠폰 API (담당: 지민)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

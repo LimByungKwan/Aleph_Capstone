@@ -1,0 +1,52 @@
+/* [지민] 로그인 화면 — 혜진님 ui.css 색·버튼·입력칸을 그대로 쓰고 배치만 추가 */
+.auth-page {
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.auth-card {
+  width: min(420px, 100%);
+  padding: 28px 24px;
+  box-shadow: var(--ui-shadow);
+}
+.auth-brand {
+  margin: 0 0 6px;
+  color: var(--ui-accent);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.auth-title {
+  margin: 0 0 4px;
+  font-family: var(--ui-serif);
+  font-size: 26px;
+}
+.auth-card form {
+  margin-top: 20px;
+}
+.auth-submit {
+  width: 100%;
+  min-height: 46px;
+}
+.auth-switch {
+  display: block;
+  margin: 16px auto 0;
+  border: none;
+  background: none;
+  color: var(--ui-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.auth-switch:hover {
+  color: var(--ui-text);
+}
+.auth-account .ui-btn {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.auth-account small {
+  opacity: 0.8;
+}

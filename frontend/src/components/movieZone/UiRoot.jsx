@@ -1,6 +1,8 @@
 import { MOCK_USERS } from '../../api/mockDb.js'
 import { listMyCoupons, listMyStamps } from '../../api/client.js'
 import { currentUser, useUiStore } from './uiStore.js'
+import { USE_SERVER } from '../../api/session.js'
+import { AccountBox } from '../auth/LoginPage.jsx'
 import { Toasts, useAsync } from './common.jsx'
 import DialogBox from './DialogBox.jsx'
 import StampBook from './StampBook.jsx'
@@ -31,7 +33,7 @@ export default function UiRoot() {
     <div className="ui-root">
       <CinemaOverlay />
       {!inCinema && <Hud />}
-      {!inCinema && <RoleSwitcher />}
+      {!inCinema && (USE_SERVER ? <AccountBox /> : <RoleSwitcher />)}
       {!inCinema && <CourseHud />}
       {!inCinema && <Minimap />}
       {!inCinema && <MobileControls />}
