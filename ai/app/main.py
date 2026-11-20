@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .course import DEFAULT_COUNT, MAX_COUNT, MIN_COUNT, recommend_course
+from .external import key_status
 from .limits import allow_request, llm_calls_today
 from .places import course_candidates
 from .promo import TARGETS, TONES, generate_promo
@@ -68,7 +69,8 @@ class PromoResponse(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "places": len(course_candidates()), "llmCallsToday": llm_calls_today()}
+    # externalKeys: 외부 API 키가 들어 있는지만 (값은 안 보여 줌, 아직 호출하는 곳 없음 — external.py)
+    return {"ok": True, "places": len(course_candidates()), "llmCallsToday": llm_calls_today(), "externalKeys": key_status()}
 
 
 def client_ip(request: Request) -> str:

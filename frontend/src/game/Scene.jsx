@@ -15,6 +15,7 @@ import FollowCamera from './Player/FollowCamera.jsx'
 import PlaceSensors from './Interaction/PlaceSensors.jsx'
 import FootSplashes from './Player/FootSplashes.jsx'
 import InteractionKeys from './Interaction/InteractionKeys.jsx'
+import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { useGameStore } from '../store/gameStore.js'
 import {
   CAMERA_MAX_ZOOM_OUT,
@@ -61,6 +62,8 @@ export default function Scene() {
   return (
     <KeyboardControls map={KEYBOARD_MAP}>
       <div ref={labelLayer} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        {/* 첫 접속 로딩 화면 (모델·텍스처 다운로드 + 셰이더 준비가 끝나면 사라짐) */}
+        <LoadingScreen />
         {/* 고화질도 화면 해상도는 최대 1.5배까지 (2배면 그려야 할 픽셀이 1.8배 늘어 렉의 주원인) */}
         <Canvas dpr={highDetail ? [1, 1.5] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
