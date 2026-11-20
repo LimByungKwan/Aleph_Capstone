@@ -7,11 +7,21 @@ import places from '@shared/places.json'
 const STORAGE_KEY = 'scenewalk-mock-db-v3' // 저장 모양이 바뀌면 숫자를 올려서 새로 시작
 
 // 시연용 계정 (로그인은 지민님 담당 — 지금은 순례객·사장님 역할만 흉내)
-// 관리자 화면은 성근님 담당이라 여기엔 없어요.
 export const MOCK_USERS = [
   { id: 'u_pilgrim', name: '순례객 하늘', role: 'pilgrim' },
   { id: 'u_owner_snack', name: '정류장 분식 사장님', role: 'owner', shopId: 'shop_hj_snack' },
+  { id: 'u_admin', name: '운영 관리자', role: 'admin' }, // [성근] 관리자 화면(#/admin) 시연용
 ]
+
+// [성근] 관리자 7일 그래프가 비어 보이지 않게 넣는 샘플 접속 기록 (어제~6일 전, 오늘은 실제 기록만)
+// shortcut: DB를 처음 만든 날 기준이라 며칠 지나면 샘플이 7일 밖으로 밀려남, 서버 통계 붙으면 삭제
+function seedVisits() {
+  const perDay = [15, 27, 22, 9, 18, 12] // 6일 전 → 어제
+  return perDay.flatMap((count, i) => {
+    const day = dayKey(Date.now() - (6 - i) * 86_400_000)
+    return Array.from({ length: count }, (_, n) => ({ userId: `sample_${i}_${n}`, day, sample: true }))
+  })
+}
 
 // 가게별 쿠폰 혜택 (가상 가게, places.json의 가게 id 기준). discount = 티켓 왼쪽에 크게 보이는 짧은 표기
 export const SHOP_OFFERS = {
@@ -35,6 +45,7 @@ function emptyDb() {
     promos: [], // { id, shopId, createdAt, input, result }
     shopPromos: {}, // { [shopId]: { text, tag, savedAt } } — 사장님이 "대표 문구"로 등록한 홍보문구
     playerCharacters: {}, // { [userId]: 'male' | 'female' }
+    visits: seedVisits(), // [성근] { userId, day: 'YYYY-MM-DD' } — 한 사람당 하루 1건
   }
 }
 

@@ -236,7 +236,58 @@ export async function getShopPromo({ shopId }) {
   return { shopPromo: readDb().shopPromos?.[shopId] ?? null }
 }
 
-// (일일 접속자 수·관리자 통계 API는 성근님 담당이라 여기엔 없어요.)
+// ───────────────────────── 관리자 통계 (성근) ─────────────────────────
+
+/** 게임에 들어올 때 부름. 같은 사람은 하루 1번만 기록 — 응답: { counted: boolean } */
+export async function logVisit({ userId }) {
+  // shortcut: 서버에 접속 기록 라우트가 아직 없어 서버 모드는 건너뜀, /admin/stats 작업 때 서버 기록 추가
+  if (USE_SERVER) return { counted: false }
+  const db = readDb()
+  const day = dayKey()
+  if (db.visits.some((v) => v.userId === userId && v.day === day)) return { counted: false }
+  db.visits.push({ userId, day })
+  writeDb(db)
+  return { counted: true }
+}
+
+const countBy = (items, keyOf) => items.reduce((map, item) => map.set(keyOf(item), (map.get(keyOf(item)) ?? 0) + 1), new Map())
+const byCountDesc = (a, b) => b.count - a.count
+
+/**
+ * 요청: { adminId }
+ * 응답: { todayVisitors, totalStamps, couponsIssued, couponsUsed,
+ *         dailyVisitors: [{ day, count }] (최근 7일, 오래된 날부터, 빈 날 0),
+ *         stampsByZone: [{ zone, count }] (많은 순), topPlaces: [{ placeId, name, zone, count }] (최대 5, 많은 순) }
+ * 사용률은 화면에서 couponsUsed / couponsIssued로 계산해요.
+ */
+export async function getAdminStats({ adminId }) {
+  if (USE_SERVER) throw new ApiError('NOT_READY', '서버 통계는 아직 연결 전이에요. mock 모드에서 확인해 주세요.')
+  await wait()
+  const admin = requireUser(adminId)
+  if (admin.role !== 'admin') throw new ApiError('NOT_ADMIN', '관리자 계정만 볼 수 있어요.')
+  const db = readDb()
+  const visitsPerDay = countBy(db.visits, (v) => v.day)
+  const dailyVisitors = Array.from({ length: 7 }, (_, i) => {
+    const day = dayKey(Date.now() - (6 - i) * 86_400_000)
+    return { day, count: visitsPerDay.get(day) ?? 0 }
+  })
+  const stampedPlaces = db.stamps.map((s) => findPlace(s.placeId)).filter(Boolean) // places.json에서 빠진 장소는 제외
+  return {
+    todayVisitors: visitsPerDay.get(dayKey()) ?? 0,
+    totalStamps: db.stamps.length,
+    couponsIssued: db.coupons.length,
+    couponsUsed: db.coupons.filter((c) => c.usedAt).length,
+    dailyVisitors,
+    stampsByZone: [...countBy(stampedPlaces, (p) => p.zone)].map(([zone, count]) => ({ zone, count })).sort(byCountDesc),
+    topPlaces: [...countBy(stampedPlaces, (p) => p.id)]
+      .map(([placeId, count]) => {
+        const place = findPlace(placeId)
+        return { placeId, name: place.name, zone: place.zone, count }
+      })
+      .sort(byCountDesc)
+      .slice(0, 5),
+  }
+}
 
 // '2026-11-30' → '2026.11.30'
 export function formatDate(day) {
