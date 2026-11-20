@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -6,6 +6,8 @@ import { currentTarget, useCourseStore } from '../../store/courseStore.js'
 import { tutorialTarget, useTutorial } from '../../store/tutorialStore.js'
 import { labelLayer } from '../labelLayer.js'
 import { distanceTo, formatDistance, playerPose } from '../../store/playerPose.js'
+import { usePhotoStore } from '../../store/photoStore.js'
+import { composePhoto, whereAmI } from '../../components/photo/composePhoto.js'
 
 // 루미 추천 코스의 "다음 목적지" 표시 (담당: 병관)
 // 멀리서도 보이는 빛기둥 + 위아래로 움직이는 화살표 + 이름표. 도착하면 다음 장소로 옮겨감 (courseStore)
@@ -21,6 +23,7 @@ export default function CourseMarker() {
   return (
     <>
       <PlayerPoseTracker />
+      <PhotoCapturer />
       {target && <Marker key={`${target.placeId}-${index}`} target={target} step={courseTarget ? index + 1 : null} />}
     </>
   )
@@ -29,6 +32,28 @@ export default function CourseMarker() {
 // 미니맵용: 캐릭터(Ecctrl name="player") 위치와 카메라 방향을 playerPose에 적어 둠
 const tmpPos = new THREE.Vector3()
 const tmpDir = new THREE.Vector3()
+// 인증샷: 📸 버튼 요청이 오면 지금 장면을 한 번 그린 직후 이미지로 꺼냄
+// (그린 직후에 꺼내야 까만 화면이 안 나옴 — 다음 프레임이 되면 화면 버퍼가 비워짐)
+function PhotoCapturer() {
+  const { gl, scene, camera } = useThree()
+  const request = usePhotoStore((s) => s.request)
+  useEffect(() => {
+    if (!request) return
+    const { done, fail } = usePhotoStore.getState()
+    try {
+      gl.render(scene, camera)
+      const src = gl.domElement.toDataURL('image/png')
+      const info = whereAmI()
+      composePhoto(src, info)
+        .then((url) => done({ url, ...info }))
+        .catch(fail)
+    } catch {
+      fail()
+    }
+  }, [request, gl, scene, camera])
+  return null
+}
+
 function PlayerPoseTracker() {
   const scene = useThree((s) => s.scene)
   const player = useRef(null)
