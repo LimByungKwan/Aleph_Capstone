@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { recommendCourse } from '../../api/course.js'
+import { getDailyCourse, recommendCourse } from '../../api/course.js'
 import { currentTarget, useCourseStore } from '../../store/courseStore.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { useTutorial } from '../../store/tutorialStore.js'
@@ -46,30 +46,55 @@ export default function LumiCourse() {
     return () => clearTimeout(id)
   }, [loading])
 
-  const ask = async (message) => {
-    const trimmed = message.trim()
-    if (!trimmed || loading) return
+  const load = async (request, meta) => {
+    if (loading) return
     setLoading(true)
     setError('')
     try {
-      const data = await recommendCourse({ message: trimmed, count })
+      const data = await request()
       setResult(data)
-      setCourse(data.course)
+      // 루미가 코스를 주지 않은 대답(부적절한 말 등)이면 지금 걷던 코스는 그대로 둠
+      if (data.course?.length) setCourse(data.course, meta?.(data) ?? null)
     } catch (e) {
       setError(e.message || '코스를 고르지 못했어요.')
     } finally {
       setLoading(false)
     }
   }
+  const ask = (message) => {
+    const trimmed = message.trim()
+    if (trimmed) load(() => recommendCourse({ message: trimmed, count }))
+  }
+  // 🎁 오늘의 코스: 완주하면 날짜별 배지 (store/badges.js가 meta.daily를 봄)
+  const askDaily = () => load(getDailyCourse, (data) => ({ daily: data.date }))
+  const dailyDone = useBadges((s) => s.earned.some((b) => b.id === 'daily' && b.note === todayKey()))
 
   // 입력칸에서 누른 키가 게임(이동·E·미니게임)으로 새지 않게. ESC는 대화창 닫기로 보냄
   const keepKeys = (event) => {
     if (event.key !== 'Escape') event.stopPropagation()
   }
 
+  if (result && !result.course?.length) {
+    return (
+      <div className="lumi-course">
+        <p className={`lumi-course__reply${result.flagged ? ' is-flagged' : ''}`}>{result.reply}</p>
+        <div className="lumi-course__row">
+          <button type="button" className="ui-btn ui-btn--primary" onClick={() => (setResult(null), setText(''))}>
+            다시 말하기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (result) {
     return (
       <div className="lumi-course">
+        {result.title && (
+          <p className="lumi-course__daily-title">
+            {result.emoji} 오늘의 코스 · {result.title}
+          </p>
+        )}
         <p className="lumi-course__reply">{result.reply}</p>
         <ol className="lumi-course__list">
           {result.course.map((c, i) => (
@@ -97,6 +122,13 @@ export default function LumiCourse() {
   return (
     <form className="lumi-course" onSubmit={(e) => (e.preventDefault(), ask(text))}>
       <p className="lumi-course__hello">{greeting(memory, suggestZone)}</p>
+      <button type="button" className="lumi-daily" onClick={askDaily} disabled={loading}>
+        <span className="lumi-daily__icon" aria-hidden="true">🎁</span>
+        <span>
+          <b>오늘의 코스</b>
+          <small>{dailyDone ? '오늘은 이미 완주했어요! 다시 걸어도 좋아요' : '매일 바뀌는 루미의 추천 · 완주하면 오늘의 배지'}</small>
+        </span>
+      </button>
       {hasCourse && target && (
         <p className="lumi-course__now">
           지금 코스: <b>{target.name}</b>(으)로 가는 중이에요.{' '}
@@ -284,4 +316,9 @@ function greeting(memory, suggestZone) {
   if (last.length) parts.push(`지난번엔 ${last.slice(0, 2).join('·')} 코스였죠?`)
   parts.push(suggestZone ? `이번엔 아직 안 가 본 ${ZONE_INFO[suggestZone].name} 어때요?` : '골목을 거의 다 둘러보셨네요! 오늘 기분을 말해 주시면 새 코스를 골라 드릴게요.')
   return parts.join(' ')
+}
+
+// 한국 날짜 YYYY-MM-DD (서버의 오늘의 코스 날짜와 같은 기준)
+function todayKey() {
+  return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10)
 }

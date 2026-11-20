@@ -219,3 +219,16 @@ def test_health_shows_external_key_status_but_never_values(monkeypatch):
     res = client.get("/health")
     assert res.json()["externalKeys"] == {"tourApi": True, "kakao": False}
     assert "tour-secret-value" not in res.text
+
+
+def test_mixed_course_spreads_over_three_zones():
+    """'골고루' 코스는 장소 3곳이 모두 다른 구역 (바로 옆 가게로 끝나지 않게)"""
+    import math
+
+    for message in ["아무거나 골고루 추천해줘", "안녕", "오늘 점심 뭐였지"]:
+        result = recommend_course(message, 3)
+        zones = [c["zone"] for c in result["course"]]
+        assert len(set(zones)) == 3, (message, zones)
+        assert result["course"][-1]["type"] == "cafe"
+        stops = [(c["position"][0], c["position"][2]) for c in result["course"]]
+        assert min(math.dist(a, b) for a, b in zip(stops, stops[1:])) > 30, message

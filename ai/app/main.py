@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .course import DEFAULT_COUNT, MAX_COUNT, MIN_COUNT, recommend_course
+from .daily import daily_course
 from .external import key_status
 from .limits import allow_request, llm_calls_today
 from .places import course_candidates
@@ -46,6 +47,13 @@ class CourseResponse(BaseModel):
     nextPlaceId: str | None
     themes: list[str]
     source: str
+    flagged: str | None = None  # 부적절한 말이었으면 종류 (safety.py) — 이때 course는 비어 있을 수 있음
+
+
+class DailyResponse(CourseResponse):
+    date: str  # 한국 날짜 YYYY-MM-DD
+    title: str
+    emoji: str
 
 
 class PromoRequest(BaseModel):
@@ -86,6 +94,12 @@ def course(req: CourseRequest, request: Request) -> dict:
     if not allow_request(client_ip(request)):
         raise HTTPException(status_code=429, detail="요청이 너무 많아요. 잠시 후 다시 말을 걸어 주세요.")
     return recommend_course(req.message, req.count)
+
+
+@app.get("/daily", response_model=DailyResponse)
+def daily() -> dict:
+    """오늘의 코스 (한국 날짜 기준, 같은 날엔 누구에게나 같은 코스, 요금 0원)"""
+    return daily_course()
 
 
 @app.post("/promo", response_model=PromoResponse)
