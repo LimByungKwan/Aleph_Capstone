@@ -16,6 +16,7 @@ import MobileControls from '../mobile/MobileControls.jsx'
 import Tutorial from '../tutorial/Tutorial.jsx'
 import BadgeBook, { BadgeButton } from '../badges/BadgeBook.jsx'
 import { PhotoButton, PhotoPreview } from '../photo/PhotoButton.jsx'
+import SoundDirector, { SoundToggle } from '../sound/SoundDirector.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -48,6 +49,7 @@ export default function UiRoot() {
       {modal === 'coupons' && <CouponBox onClose={closeModal} />}
       {modal === 'badges' && <BadgeBook onClose={closeModal} />}
       <PhotoPreview />
+      <SoundDirector />
       <Toasts />
     </div>
   )
@@ -84,6 +86,7 @@ function Hud() {
       </button>
       <BadgeButton onOpen={() => openModal('badges')} />
       <PhotoButton />
+      <SoundToggle />
       {user.role === 'owner' && (
         <a className="ui-btn" href="#/owner">
           🧑‍🍳 사장님 화면
