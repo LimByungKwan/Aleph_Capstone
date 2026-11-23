@@ -11,6 +11,7 @@ import CinemaOverlay from './CinemaOverlay.jsx'
 import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
 import PalaceSeatPrompt from './PalaceSeatPrompt.jsx'
+import PalaceTour from './PalaceTour.jsx'
 import { CourseHud } from '../course/LumiCourse.jsx'
 import Minimap from '../minimap/Minimap.jsx'
 import MobileControls from '../mobile/MobileControls.jsx'
@@ -44,6 +45,7 @@ export default function UiRoot() {
       {!inCinema && <Tutorial />}
       <SceneHint />
       {!inCinema && <PalaceSeatPrompt />}
+      <PalaceTour enabled={!inCinema && !modal} />
       <DialogBox />
       <BreakwaterScene />
       <EntranceWelcome />

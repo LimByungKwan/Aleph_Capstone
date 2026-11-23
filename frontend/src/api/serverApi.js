@@ -11,7 +11,10 @@ import { checkPromoRules } from '../components/boss/promoRules.js'
 
 const loggedIn = () => Boolean(useSessionStore.getState().session)
 
-// ── 캐릭터 선택: 서버에 저장할 만큼 중요하지 않아서 브라우저에 사용자별로 저장 ──
+// ── 캐릭터 선택·꾸미기: 계정(profiles.appearance)에 저장 → 다른 기기에서 로그인해도 유지 ──
+// 브라우저 저장(localStorage)은 캐시로 같이 둔다
+//   - 고르면 바로 반영 (Render 무료 서버가 잠들어 있어도 50초 기다리지 않음), 서버 저장은 뒤에서
+//   - 서버가 아직 꾸미기 기능 전이거나 실패해도 이 브라우저에서는 그대로 동작
 const CHARACTER_KEY = 'scenewalk-character-v1'
 function readCharacters() {
   try {
@@ -20,21 +23,62 @@ function readCharacters() {
     return {}
   }
 }
-
-export async function getPlayerCharacter({ userId }) {
-  const id = readCharacters()[userId]
-  return { character: characters.find((c) => c.id === id) ?? characters[0] }
-}
-
-export async function setPlayerCharacter({ userId, characterId }) {
-  const character = characters.find((c) => c.id === characterId)
-  if (!character) throw new ApiError('INVALID_CHARACTER', '선택할 수 없는 캐릭터예요.')
+function cacheCharacter(userId, id) {
   try {
-    window.localStorage.setItem(CHARACTER_KEY, JSON.stringify({ ...readCharacters(), [userId]: character.id }))
+    window.localStorage.setItem(CHARACTER_KEY, JSON.stringify({ ...readCharacters(), [userId]: id }))
   } catch {
     // 저장 못 해도 이번 접속에서는 동작
   }
+}
+const findCharacter = (id) => characters.find((c) => c.id === id)
+
+export async function getAppearance() {
+  if (!loggedIn()) return { appearance: {} }
+  return authRequest('/me/appearance')
+}
+
+export function saveAppearance({ patch }) {
+  return authRequest('/me/appearance', { method: 'PATCH', body: { appearance: patch } })
+}
+
+export async function getPlayerCharacter({ userId }) {
+  let id = readCharacters()[userId]
+  try {
+    const { appearance } = await getAppearance()
+    if (findCharacter(appearance.characterId)) {
+      id = appearance.characterId
+      cacheCharacter(userId, id)
+    }
+  } catch (error) {
+    console.warn('[character] 서버에서 못 불러와서 이 브라우저 값 사용', error)
+  }
+  return { character: findCharacter(id) ?? characters[0] }
+}
+
+export async function setPlayerCharacter({ userId, characterId }) {
+  const character = findCharacter(characterId)
+  if (!character) throw new ApiError('INVALID_CHARACTER', '선택할 수 없는 캐릭터예요.')
+  cacheCharacter(userId, character.id)
+  if (loggedIn()) {
+    saveAppearance({ patch: { characterId: character.id } }).catch((error) =>
+      console.warn('[character] 서버 저장 실패 — 이 브라우저에는 저장됨', error),
+    )
+  }
   return { character }
+}
+
+// ── 커플 타로 기록 (Supabase tarot_readings) ──
+export async function listTarotReadings({ limit = 10 } = {}) {
+  if (!loggedIn()) return { readings: [] }
+  return authRequest(`/me/tarot-readings?limit=${encodeURIComponent(limit)}`)
+}
+
+export function saveTarotReading({ spread, cards, summary, detail }) {
+  return authRequest('/me/tarot-readings', { method: 'POST', body: { spread, cards, summary, detail } })
+}
+
+export function deleteTarotReading({ readingId }) {
+  return authRequest(`/me/tarot-readings/${encodeURIComponent(readingId)}`, { method: 'DELETE' })
 }
 
 // ── 스탬프 ──

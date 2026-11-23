@@ -1,25 +1,24 @@
 import { create } from 'zustand'
 import { layout } from '../../game/data/mapData.js'
-import { PALACE_SEATS, THRONE_ROOM_POSITION } from './palaceInteriorLayout.js'
+import { ROOM_SCALE, THRONE } from '../../game/Map/styles/hj/gyeongbokgungLayout.js'
+import { PALACE_SEATS } from './palaceInteriorLayout.js'
 
-const palace = layout.props.find(item => item.id === 'HJ/haewol_palace')
+const palace = layout.props.find(item => item.id === 'HJ/gyeongbokgung')
 const SIT_RADIUS = 1.12
 const STANDING_OFFSET = 0.91
 
 const seats = palace ? PALACE_SEATS.map((seat) => {
-  const [w, h, d] = palace.size
-  const [x, y, z] = seat.position.map((value, axis) => value + THRONE_ROOM_POSITION[axis])
-  const yaw = (palace.rotationDeg ?? 0) * Math.PI / 180
-  const [localX, localZ] = [x * w / 53, z * d / 53]
+  const [x, y, z] = seat.position.map((value, axis) => value * ROOM_SCALE[axis])
+  const yFloor = THRONE.elevation + y
   return {
     ...seat,
     position: [
-      palace.position[0] + localX * Math.cos(yaw) + localZ * Math.sin(yaw),
-      (palace.elevation ?? 0) + y * h / 9 + STANDING_OFFSET,
-      palace.position[1] - localX * Math.sin(yaw) + localZ * Math.cos(yaw),
+      palace.position[0] + THRONE.x + x,
+      yFloor + STANDING_OFFSET,
+      palace.position[1] + THRONE.z + z,
     ],
-    yaw: yaw + (seat.id === 'throne' ? Math.PI : 0),
-    surfaceY: (palace.elevation ?? 0) + (y + seat.surfaceOffset) * h / 9,
+    yaw: seat.id === 'throne' ? Math.PI : 0,
+    surfaceY: yFloor + seat.surfaceOffset * ROOM_SCALE[1],
   }
 }) : []
 

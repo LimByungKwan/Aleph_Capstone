@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore.js'
 import { usePalaceSeatStore } from './palaceSeating.js'
 import { useUiStore } from './uiStore.js'
+import { usePalaceTour } from './palaceTourStore.js'
 
 export default function PalaceSeatPrompt() {
   const nearby = usePalaceSeatStore(state => state.nearby)
@@ -9,7 +10,8 @@ export default function PalaceSeatPrompt() {
   const toggle = usePalaceSeatStore(state => state.toggle)
   const modal = useUiStore(state => state.modal)
   const locked = useGameStore(state => state.inputLocked)
-  const available = !modal && !locked && Boolean(nearby || seated)
+  const tourOpen = usePalaceTour(state => state.open)
+  const available = !modal && !locked && !tourOpen && Boolean(nearby || seated)
 
   useEffect(() => {
     if (!available) return undefined

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import places from '@shared/places.json'
-import { layout, zones } from '../../game/data/mapData.js'
+import { layout, mapPlaces, southGroundExtension, zones } from '../../game/data/mapData.js'
 import { PLACE_COLORS } from '../../game/config.js'
+import { CHANNELS, COURTS, HALLS, PONDS, WALKS } from '../../game/Map/styles/hj/gyeongbokgungLayout.js'
+import { STREET, STREET_ALLEYS, STREET_BUILDINGS, streetFootprint } from '../../game/Map/styles/hj/gyeongseongLayout.js'
 import { useCourseStore } from '../../store/courseStore.js'
 import { tutorialTarget, useTutorial } from '../../store/tutorialStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -125,7 +126,7 @@ function MinimapCanvas({ zoom }) {
 
       // 촬영지·가게 점
       const dot = Math.max(2.5, Math.min(4, scale * 1.6))
-      for (const p of places) {
+      for (const p of mapPlaces) {
         const [x, y] = toScreen(p.position[0], p.position[2])
         ctx.beginPath()
         ctx.arc(x, y, dot, 0, Math.PI * 2)
@@ -236,9 +237,13 @@ function getBaseMap() {
   const [gx, gz] = layout.ground.center
   const minX = gx - gw / 2
   const minZ = gz - gd / 2
+  const annexSouth = southGroundExtension
+    ? southGroundExtension.position[1] + southGroundExtension.size[2] / 2
+    : 0
+  const worldH = Math.max(gd, annexSouth - minZ)
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(gw * BASE_SCALE)
-  canvas.height = Math.round(gd * BASE_SCALE)
+  canvas.height = Math.round(worldH * BASE_SCALE)
   const ctx = canvas.getContext('2d')
   const S = BASE_SCALE
   const px = (x) => (x - minX) * S
@@ -282,12 +287,29 @@ function getBaseMap() {
     box(building, 'rgba(120, 92, 78, 0.85)')
   }
 
+  // [3. 개발 > 프론트엔드] 3D 경복궁과 같은 좌표로 연못·산책길·전각을 표시합니다.
+  if (southGroundExtension) {
+    const [x, z] = southGroundExtension.position
+    const draw = ([dx, dz, w, d], color) => box({ position: [x + dx, z + dz], size: [w, d] }, color)
+    box(southGroundExtension, '#7b8551')
+    draw([0, STREET.z, STREET.w, STREET.d], '#9c876f')
+    draw([STREET.x, STREET.z, STREET.roadWidth, STREET.d], '#b8aa95')
+    for (const alley of STREET_ALLEYS) draw(alley, '#b8aa95')
+    for (const rect of COURTS) draw(rect, '#d6c6a8')
+    for (const rect of WALKS) draw(rect, '#b4ae9a')
+    for (const rect of CHANNELS) draw(rect, '#80a6a3')
+    for (const { x: dx, z: dz, w, d } of PONDS) draw([dx, dz, w, d], '#567e82')
+    for (const { x: dx, z: dz, w, d } of HALLS) draw([dx, dz, w, d], '#4c5553')
+    for (const building of STREET_BUILDINGS) draw(streetFootprint(building), '#775643')
+  }
+
   // '전체' 보기: 광장(0,0)에서 가장 먼 구역 모서리까지 원 안에 들어가게
   const allRadius = Math.max(
+    annexSouth,
     ...zones.flatMap(({ origin: [ox, oz], size: [w, d] }) => [
       Math.hypot(Math.abs(ox) + w / 2, Math.abs(oz) + d / 2) * 0.82, // 모서리는 조금 잘려도 됨 (원이라)
     ]),
   )
-  baseMap = { canvas, minX, minZ, worldW: gw, worldH: gd, allRadius }
+  baseMap = { canvas, minX, minZ, worldW: gw, worldH, allRadius }
   return baseMap
 }
