@@ -31,7 +31,7 @@ export const useBkActivity = create((set, get) => ({
 
   // tarot: 커플 타로 텐트 (bk_tarotBooth.jsx)
   //   near: 텐트 앞인지 → "E 커플 타로", active: 타로 화면이 열려 있는지
-  tarot: { near: false, active: false },
+  tarot: { near: false, active: false, spot: null }, // spot: 텐트 앞 [x, z] (같이 볼 사람 찾기용)
   setTarot: (patch) => set({ tarot: { ...get().tarot, ...patch } }),
 
   // scope: SKY 전망대 망원경 (bk_telescope.jsx)
