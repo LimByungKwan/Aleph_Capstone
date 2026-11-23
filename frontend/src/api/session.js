@@ -154,3 +154,22 @@ export async function updateName(name) {
 export function wakeServer() {
   if (USE_SERVER) fetch(`${API_URL}/health`).catch(() => {})
 }
+
+// 새로고침·재접속 때 저장된 사용자 정보(역할·이름)를 서버에서 다시 받음
+// 이유: 로그인할 때 받은 user를 localStorage에 그대로 쓰면, 관리자가 SQL로 역할을 바꿔도
+//       로그아웃→로그인 전까지 예전 역할(순례객)로 보임 (11/23 혜진·지민 관리자 지정 때 발생)
+// 실패해도 저장된 값으로 계속 동작 (토큰이 완전히 만료됐으면 authRequest가 로그아웃 처리)
+export async function refreshUser() {
+  if (!USE_SERVER || !useSessionStore.getState().session) return
+  try {
+    const { user } = await authRequest('/me')
+    const { session } = useSessionStore.getState()
+    if (!session) return
+    save({ session, user })
+    useSessionStore.setState({ user })
+  } catch {
+    // 서버가 잠들어 있거나 네트워크 문제 → 다음 접속 때 다시 시도
+  }
+}
+
+if (saved) refreshUser()
