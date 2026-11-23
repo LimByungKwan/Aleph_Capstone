@@ -28,7 +28,9 @@ function fakeQuery(token, table) {
     order() { return query },
     limit(n) { extra.limit = n; return query },
     delete() { extra.op = 'delete'; return query },
+    update(values) { extra.op = 'update'; extra.values = values; return query },
     maybeSingle() {
+      if (extra.op) calls.push({ token, table, filters, ...extra })
       return Promise.resolve({ data: (tableRows[table] ?? [])[0] ?? null, error: null })
     },
     then(resolve) {
@@ -202,6 +204,37 @@ describe('회원가입 · 로그인', () => {
   test('만료된 refresh 토큰은 401', async () => {
     const res = await api('POST', '/auth/refresh', { body: { refreshToken: 'old' } })
     assert.equal(res.status, 401)
+  })
+})
+
+describe('닉네임 바꾸기', () => {
+  test('토큰 없이 바꾸면 401, DB는 부르지 않음', async () => {
+    const res = await api('PATCH', '/me', { body: { name: '새이름' } })
+    assert.equal(res.status, 401)
+    assert.equal(calls.length, 0)
+  })
+
+  test('이름만 내 토큰으로 바꾸고, 역할·가게를 같이 보내도 무시', async () => {
+    tableRows = { profiles: [{ display_name: '새이름', role: 'pilgrim', shop_id: null }] }
+    const res = await api('PATCH', '/me', { token: GOOD_TOKEN, body: { name: '  새이름  ', role: 'admin', shopId: 'shop_hj_snack' } })
+    assert.equal(res.status, 200)
+    assert.deepEqual(res.body.user, { id: USER.id, email: USER.email, name: '새이름', role: 'pilgrim', shopId: null })
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, table: 'profiles', filters: [['id', USER.id]], op: 'update', values: { display_name: '새이름' } })
+  })
+
+  test('빈 이름·21자 이상·문자열 아님은 DB까지 가지 않고 400', async () => {
+    for (const name of ['', '   ', 'ㄱ'.repeat(21), 123, null]) {
+      const res = await api('PATCH', '/me', { token: GOOD_TOKEN, body: { name } })
+      assert.equal(res.status, 400, String(name))
+      assert.equal(res.body.error.code, 'INVALID_INPUT')
+    }
+    assert.equal(calls.length, 0)
+  })
+
+  test('한글·이모지 20자까지는 허용', async () => {
+    tableRows = { profiles: [{ display_name: '가'.repeat(19) + '🎌', role: 'admin', shop_id: null }] }
+    const res = await api('PATCH', '/me', { token: GOOD_TOKEN, body: { name: '가'.repeat(19) + '🎌' } })
+    assert.equal(res.status, 200)
   })
 })
 

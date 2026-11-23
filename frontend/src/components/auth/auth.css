@@ -51,6 +51,25 @@
 .auth-account small {
   opacity: 0.8;
 }
+/* 닉네임 바꾸기 입력칸 */
+form.auth-account {
+  flex-wrap: wrap;
+}
+.auth-name-input {
+  width: 9.5em;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  background: transparent;
+  color: inherit;
+}
+.auth-name-error {
+  flex-basis: 100%;
+  color: #c0392b;
+}
 
 /* 맵 위에 뜨는 로그인 창 (손님이 스탬프를 받으려 할 때) */
 .auth-overlay {

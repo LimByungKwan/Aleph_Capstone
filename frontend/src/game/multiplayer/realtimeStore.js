@@ -103,10 +103,10 @@ export function sendCharacter(id) {
   sendRaw({ t: 'char', characterId: id })
 }
 
-// 로그인·로그아웃 → 다시 연결 (서버가 새 토큰으로 이름을 다시 정함)
+// 로그인·로그아웃·닉네임 변경 → 다시 연결 (서버가 토큰으로 DB에서 이름을 다시 읽음)
 if (USE_SERVER) {
   useSessionStore.subscribe((state, prev) => {
-    if (state.user?.id === prev.user?.id || !wanted) return
+    if ((state.user?.id === prev.user?.id && state.user?.name === prev.user?.name) || !wanted) return
     ws?.close() // onclose가 다시 연결함
     retryMs = 1000
   })
