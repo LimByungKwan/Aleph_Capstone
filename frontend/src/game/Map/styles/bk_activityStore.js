@@ -29,6 +29,11 @@ export const useBkActivity = create((set, get) => ({
   startClaw: (time = CLAW_TIME) => set({ claw: { ...get().claw, active: true, phase: 'move', timeLeft: time, lastResult: null } }),
   endClaw: () => set({ claw: { ...get().claw, active: false, phase: 'move' } }),
 
+  // tarot: 커플 타로 텐트 (bk_tarotBooth.jsx)
+  //   near: 텐트 앞인지 → "E 커플 타로", active: 타로 화면이 열려 있는지
+  tarot: { near: false, active: false },
+  setTarot: (patch) => set({ tarot: { ...get().tarot, ...patch } }),
+
   completed: {},
   complete: (activityId) => {
     if (get().completed[activityId]) return false // 이미 완료 → 다시 처리하지 않음
