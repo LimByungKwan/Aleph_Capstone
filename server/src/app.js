@@ -186,6 +186,22 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     res.json({ user: profileJson(req.user, profile) })
   })
 
+  // 닉네임 바꾸기 — 이름만 받는다. 역할·가게는 보내도 무시 (DB 트리거 guard_profile_update도 한 번 더 막음)
+  // 이름 변경은 감사 로그에 남기지 않음 (audit_write는 역할·가게 변경만 기록)
+  app.patch('/me', requireAuth, async (req, res) => {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : ''
+    if (!name || [...name].length > 20) throw new HttpError(400, 'INVALID_INPUT', '닉네임은 1~20자로 입력해 주세요.')
+    const { data, error } = await req.db
+      .from('profiles')
+      .update({ display_name: name })
+      .eq('id', req.user.id)
+      .select('display_name, role, shop_id')
+      .maybeSingle()
+    if (error) throw fromDbError(error)
+    if (!data) throw new HttpError(404, 'NOT_FOUND', '프로필을 찾지 못했어요. 다시 로그인해 주세요.')
+    res.json({ user: profileJson(req.user, data) })
+  })
+
   // ── 캐릭터 꾸미기 ──
   // client.js getAppearance / saveAppearance: { appearance } — 항목(characterId·색·옷 …)은 화면이 정함
   app.get('/me/appearance', requireAuth, async (req, res) => {

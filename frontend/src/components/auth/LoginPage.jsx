@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { closeLogin, login, logout, openLogin, signup, useSessionStore, wakeServer } from '../../api/session.js'
+import { closeLogin, login, logout, openLogin, signup, updateName, useSessionStore, wakeServer } from '../../api/session.js'
 import '../movieZone/ui.css'
 import '../movieZone/ui-components.css'
 import './auth.css'
@@ -144,12 +144,78 @@ export function AccountBox() {
       </div>
     )
   }
+  return <AccountInfo user={user} />
+}
+
+// 로그인한 사람: 이름 · 역할 · 닉네임 바꾸기(✎) · 로그아웃
+function AccountInfo({ user }) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(user.name)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const roleLabel = { pilgrim: '순례객', owner: '사장님', admin: '관리자' }[user.role] ?? ''
+
+  function startEdit(event) {
+    event.currentTarget.blur()
+    setName(user.name)
+    setError('')
+    setEditing(true)
+  }
+
+  async function save(event) {
+    event.preventDefault()
+    const next = name.trim()
+    if (!next) return setError('1~20자로 입력해 주세요.')
+    if (next === user.name) return setEditing(false)
+    setBusy(true)
+    setError('')
+    try {
+      await updateName(next)
+      setEditing(false)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // 입력칸에 친 W·A·S·D·E·Space가 캐릭터 조작으로 새지 않게 막음
+  const stop = (event) => {
+    if (event.key === 'Escape') setEditing(false)
+    event.stopPropagation()
+  }
+
+  if (editing) {
+    return (
+      <form className="ui-role ui-interactive auth-account" onSubmit={save} onKeyDown={stop} onKeyUp={stop}>
+        <input
+          className="auth-name-input"
+          aria-label="새 닉네임"
+          maxLength={20}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={busy}
+          autoFocus
+        />
+        <button type="submit" className="ui-btn ui-btn--primary" disabled={busy}>
+          {busy ? '저장 중…' : '저장'}
+        </button>
+        <button type="button" className="ui-btn" onClick={() => setEditing(false)} disabled={busy}>
+          취소
+        </button>
+        {error && <small className="auth-name-error" role="alert">{error}</small>}
+      </form>
+    )
+  }
+
   return (
     <div className="ui-role ui-interactive auth-account">
       <span>
         {user.name} <small>· {roleLabel}</small>
       </span>
+      <button type="button" className="ui-btn" onClick={startEdit} title="닉네임 바꾸기" aria-label="닉네임 바꾸기">
+        ✎
+      </button>
       <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), logout())}>
         로그아웃
       </button>

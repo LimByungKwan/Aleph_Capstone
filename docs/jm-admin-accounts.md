@@ -1,11 +1,22 @@
-# 관리자 계정 만들기 (담당: 지민)
+# 팀원 테스트 계정 만들기 — 관리자·사장님·순례객 (담당: 지민)
 
-> 기준일: 2026-11-23. 팀원 4명이 각자 관리자 계정을 하나씩 갖는 방법.
+> 기준일: 2026-11-23. 팀원 4명이 각자 **역할별 계정**을 갖고 세 화면을 모두 테스트하는 방법.
+> 배포 사이트: https://aleph-capstone.vercel.app (11/23부터 로그인 켜짐)
 
 ## 한 줄 요약
 
-**각자 앱에서 평범하게 가입한다 → 지민이 Supabase에서 역할을 관리자로 바꾼다 → 다시 로그인한다.**
+**각자 앱에서 계정 2개(본계정 + `+owner` 계정)를 가입한다 → 지민이 Supabase에서 역할을 바꾼다 → 다시 로그인한다.**
 공용 계정 하나를 돌려 쓰지 않는다.
+
+| 테스트할 역할 | 쓸 계정 | 누가 역할을 바꾸나 |
+|---|---|---|
+| 관리자 (`admin`) | 본계정 `내이름@gmail.com` | 지민 (SQL) |
+| 사장님 (`owner`) | 두 번째 계정 `내이름+owner@gmail.com` | 지민 (SQL, 가게 지정) |
+| 순례객 (`pilgrim`) | 로그인 없이 둘러보기 / 필요하면 `내이름+pilgrim@gmail.com` 하나 더 가입 | 바꿀 필요 없음 (가입하면 자동으로 순례객) |
+
+**`+owner` 주소란?** Gmail은 `내이름+아무거나@gmail.com`으로 온 메일도 `내이름@gmail.com` 메일함에 넣어 준다.
+그래서 **실제로 쓰는 메일함 하나로** 계정을 여러 개 만들 수 있고, 비밀번호 재설정 메일도 내 메일함으로 온다.
+(Gmail·Outlook은 됨. 네이버 메일은 `+`가 안 되니 다른 실제 주소를 쓰기)
 
 ## 왜 각자 하나씩인가 (공용 계정을 쓰지 않는 이유)
 
@@ -23,18 +34,19 @@
 
 ## 순서
 
-### 1. 각자: 앱에서 가입 (2분)
+### 1. 각자: 앱에서 가입 2번 (5분)
 
-1. 사이트에서 오른쪽 아래 **로그인 → 회원가입하기**
-2. 이메일·비밀번호(6자 이상)·닉네임 입력
-   - **이메일은 실제로 받을 수 있는 주소**를 쓰자 (나중에 비밀번호 재설정 메일을 받으려면 필요)
-   - **닉네임**은 멀티 접속에서 머리 위 이름표로 보인다 (예: `병관`, `혜진`)
+1. https://aleph-capstone.vercel.app 오른쪽 위 **로그인 → 회원가입하기**
+2. **본계정**: 이메일 `내이름@gmail.com`, 비밀번호(6자 이상), 닉네임 `병관` 처럼
+3. 로그아웃 → 다시 **회원가입하기**
+4. **사장님 계정**: 이메일 `내이름+owner@gmail.com`, 닉네임 `병관(사장님)` 처럼
+   - **이메일은 실제로 받는 메일함**이어야 한다 (비밀번호 재설정 메일을 받으려면 필요)
+   - **닉네임**은 멀티 접속에서 머리 위 이름표로 보인다
    - 비밀번호는 다른 사이트와 다르게. 누구에게도 보내지 않는다
-3. 가입한 **이메일 주소만** 지민에게 알려 준다 (비밀번호는 알려 주지 않음)
+   - 가입하면 인증 메일 없이 **바로 로그인**된다 (지금은 이메일 인증을 꺼 둠 — 아래 "이메일 인증" 참고)
+5. 가입한 **이메일 주소 2개만** 지민에게 알려 준다 (비밀번호는 알려 주지 않음)
 
-> 배포 사이트에 아직 로그인 기능이 안 켜져 있으면(Vercel `VITE_API_URL` 미설정) 로컬에서 서버 모드로 가입한다.
-> `frontend/.env.local` 에 `VITE_API_URL=https://scenewalk-api.onrender.com` 한 줄을 넣고 `npm run dev` (주소 `http://localhost:5173`).
-> Render 환경변수 `ALLOWED_ORIGINS`에 `http://localhost:5173`이 있어야 접속된다. 안 되면 지민에게 말하기.
+> 첫 가입·로그인이 1분 가까이 걸릴 수 있다. Render 무료 서버가 잠들어 있다가 깨어나는 중이라 정상이다.
 
 ### 2. 지민: 관리자로 바꾸기 (Supabase 대시보드)
 
@@ -57,7 +69,38 @@ where u.email in ('지민@메일', '병관@메일', '혜진@메일', '성근@메
 ```
 
 - `update` 결과가 4행보다 적으면 그 사람이 아직 가입을 안 했거나 이메일 오타
-- 사장님 계정(`owner`)은 다르다. `role = 'owner'`와 함께 `shop_id`도 넣어야 한다 (제약 `owner_has_shop`)
+
+이어서 **사장님 계정**. 사장님은 `role = 'owner'`와 함께 `shop_id`(가게)도 꼭 넣어야 한다 (제약 `owner_has_shop`).
+한 가게에 사장님이 여러 명이어도 DB상 문제없다. 기본은 각자 자기 구역 가게로 묶는다:
+
+| 팀원 | 가게 `shop_id` | 가게 이름 |
+|---|---|---|
+| 병관 | `cafe_soran` | 소란 커피 |
+| 혜진 | `shop_hj_snack` | 정류장 분식 (쿠폰 있음 — 시연 4번 가게) |
+| 성근 | `shop_sg_bdaycafe` | happy birthday yunseul~!! |
+| 지민 | `shop_sg_goods` | SUNGRAY 공식 팝업스토어 (애니 구역엔 가게가 없어서) |
+
+```sql
+-- 사장님 지정 (가게와 함께 바꿔야 함)
+update public.profiles p
+set role = 'owner', shop_id = v.shop_id
+from (values
+  ('병관+owner@메일', 'cafe_soran'),
+  ('혜진+owner@메일', 'shop_hj_snack'),
+  ('성근+owner@메일', 'shop_sg_bdaycafe'),
+  ('지민+owner@메일', 'shop_sg_goods')
+) as v(email, shop_id)
+join auth.users u on u.email = v.email
+where p.id = u.id;
+
+-- 확인: 본계정 4줄은 admin, +owner 4줄은 owner + 가게
+select u.email, p.display_name, p.role, p.shop_id
+from public.profiles p
+join auth.users u on u.id = p.id
+order by p.role, u.email;
+```
+
+- 쿠폰 화면까지 보려면 그 가게에 쿠폰(`shop_offers`)이 있어야 한다. 지금 쿠폰이 있는 가게는 `shop_hj_snack` 하나뿐이다
 
 ### 3. 각자: 로그아웃 → 다시 로그인
 
@@ -65,6 +108,7 @@ where u.email in ('지민@메일', '병관@메일', '혜진@메일', '성근@메
 - 오른쪽 아래 이름 옆에 **관리자** 표시
 - 오른쪽 위 **📊 관리자 화면** 버튼, 주소 `#/admin`
 - ⚙ 설정에 계절·시간대·구역 테두리가 보임 (일반 사용자에게는 안 보임)
+- `+owner` 계정은 이름 옆에 **사장님** 표시, 자기 가게의 사장님 화면이 열림
 
 ## 관리자가 할 수 있는 것 / 없는 것
 
@@ -79,11 +123,23 @@ where u.email in ('지민@메일', '병관@메일', '혜진@메일', '성근@메
 - 캡스톤이 끝나면 관리자 권한을 거둔다 (계정은 남기고 역할만 되돌림):
 
 ```sql
-update public.profiles set role = 'pilgrim'
-where id in (select id from auth.users where email in ('병관@메일', '혜진@메일', '성근@메일'));
+-- 관리자·사장님 모두 순례객으로 (사장님은 가게도 같이 비워야 제약에 안 걸림)
+update public.profiles set role = 'pilgrim', shop_id = null
+where id in (select id from auth.users where email in (
+  '병관@메일', '혜진@메일', '성근@메일',
+  '병관+owner@메일', '혜진+owner@메일', '성근+owner@메일', '지민+owner@메일'
+));
 ```
 
 - 테스트 계정 `jm-test-pilgrim`, `jm-test-ui` 는 11/30 리허설 뒤 삭제 예정. 시연용 사장님 계정(`jm-demo-owner`)은 지우지 않는다.
+
+## 이메일 인증 (지금은 꺼 둠, 11/23 결정)
+
+- 지금 설정: 가입하면 인증 메일 없이 바로 로그인 (Supabase `mailer_autoconfirm: true`)
+- 끈 이유: Supabase 무료 기본 메일 발송기는 **우리 Supabase 조직 멤버에게만, 시간당 몇 통**만 보낸다.
+  켜 두면 팀원·심사위원이 한꺼번에 가입할 때 인증 메일이 안 가서 시연이 막힐 수 있다
+- 그래서 "실제로 받는 메일 주소로 가입"은 **약속(이 문서)으로** 지킨다. 시스템이 막아 주지는 않는다
+- 시연 뒤 켜려면: 무료 Gmail SMTP(하루 약 500통)를 Supabase에 연결 → Authentication 설정에서 Confirm email 켜기
 
 ## 문제가 생기면
 

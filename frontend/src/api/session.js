@@ -141,6 +141,15 @@ export async function signup({ email, password, name }) {
   return data.user
 }
 
+/** 닉네임 바꾸기 (1~20자). 멀티 접속 이름표는 realtimeStore가 이름 변경을 보고 다시 연결해서 바뀜 */
+export async function updateName(name) {
+  const { user } = await authRequest('/me', { method: 'PATCH', body: { name } })
+  const { session } = useSessionStore.getState()
+  save({ session, user })
+  useSessionStore.setState({ user })
+  return user
+}
+
 /** Render 서버 미리 깨우기 (로그인 화면이 뜰 때 한 번) */
 export function wakeServer() {
   if (USE_SERVER) fetch(`${API_URL}/health`).catch(() => {})

@@ -10,6 +10,7 @@ import { JM_SKIP_STYLES } from './jm_skipstone.jsx'
 import { JM_BRIDGE_STYLES } from './jm_bridges.jsx'
 import { JM_RIVERSIDE_STYLES } from './jm_riverside.jsx'
 import { JM_BENCH_STYLES } from './jm_bench.jsx'
+import { JM_KYOTO_STYLES } from './jm_kyoto.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -41,6 +42,7 @@ const NO_MERGE = new Set([
   'jmZoneLight', // 조명
   'jmGroundCover', // 이미 인스턴스 한 번에 그림
   'jmPathRibbon', // 이미 메시 하나
+  'jmCrossing', // 깜빡이는 경보등
 ])
 
 const JM_STYLES_RAW = {
@@ -71,6 +73,8 @@ const JM_STYLES_RAW = {
   ...JM_BENCH_STYLES,
   // 공용 난간(props.jsx Fence)을 애니 구역에서는 합쳐서 그림 (공용 파일은 그대로)
   jmFence: Fence,
+  // 교토 온천 마을: 여관·수로·가스등·도리이 터널·건널목·포장마차·붉은 다리 (jm_kyoto.jsx)
+  ...JM_KYOTO_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)
