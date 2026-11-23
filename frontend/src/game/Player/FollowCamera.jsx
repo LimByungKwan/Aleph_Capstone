@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CameraControls, CameraControlsImpl } from '@react-three/drei'
+import { Spherical } from 'three'
 import { PLAYER_SPAWN, PLAYER_START_FORWARD } from './Player.jsx'
 import { CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE } from '../config.js'
 
@@ -44,6 +45,7 @@ export default function FollowCamera({ playerRef }) {
   // 올려다볼수록 캐릭터 쪽으로 당겨서 땅 위(UPLOOK_GAP)에 머물게 함. 내려다볼 때 거리는 기억해 두고 되돌림
   const wantedDistance = useRef(CAMERA_MAX_DISTANCE)
   const pulledIn = useRef(false) // 이 코드가 거리를 줄여 둔 상태 (그때 거리는 사용자가 원한 값이 아님)
+  const goal = useMemo(() => new Spherical(), [])
   useFrame(() => {
     const player = playerRef.current
     const controls = controlsRef.current
@@ -52,12 +54,15 @@ export default function FollowCamera({ playerRef }) {
     controls.moveTo(x, y + LOOK_HEIGHT, z, true)
 
     const polar = controls.polarAngle
-    if (!pulledIn.current) wantedDistance.current = controls.distance // 휠로 바꾼 거리 기억
+    // controls.distance는 벽 충돌로 줄어든 거리라서 쓰면 안 됨(줄어든 값을 기억 → 다시 당김 → 머리까지 붙음).
+    // getSpherical()은 충돌 보정 전 목표 거리 = 사용자가 휠로 정한 거리
+    const target = controls.getSpherical(goal).radius
+    if (!pulledIn.current) wantedDistance.current = target
     const fit = polar > Math.PI / 2 ? (FEET_TO_TARGET - UPLOOK_GAP) / -Math.cos(polar) : Infinity
     const distance = Math.max(0.3, Math.min(wantedDistance.current, fit))
     pulledIn.current = distance < wantedDistance.current
     controls.minDistance = Math.min(CAMERA_MIN_DISTANCE, distance)
-    if (Math.abs(controls.distance - distance) > 0.01) controls.dollyTo(distance, false)
+    if (Math.abs(target - distance) > 0.01) controls.dollyTo(distance, false)
   })
 
   return (
