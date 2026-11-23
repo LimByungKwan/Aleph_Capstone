@@ -21,15 +21,18 @@ let tableRows
 
 function fakeQuery(token, table) {
   const filters = []
+  const extra = {}
   const query = {
     select() { return query },
     eq(column, value) { filters.push([column, value]); return query },
     order() { return query },
+    limit(n) { extra.limit = n; return query },
+    delete() { extra.op = 'delete'; return query },
     maybeSingle() {
       return Promise.resolve({ data: (tableRows[table] ?? [])[0] ?? null, error: null })
     },
     then(resolve) {
-      calls.push({ token, table, filters })
+      calls.push({ token, table, filters, ...extra })
       resolve({ data: tableRows[table] ?? [], error: null })
     },
   }
@@ -199,6 +202,119 @@ describe('회원가입 · 로그인', () => {
   test('만료된 refresh 토큰은 401', async () => {
     const res = await api('POST', '/auth/refresh', { body: { refreshToken: 'old' } })
     assert.equal(res.status, 401)
+  })
+})
+
+describe('캐릭터 꾸미기', () => {
+  test('토큰 없이 저장하면 401, DB는 부르지 않음', async () => {
+    const res = await api('PATCH', '/me/appearance', { body: { appearance: { hat: 'red' } } })
+    assert.equal(res.status, 401)
+    assert.equal(calls.length, 0)
+  })
+
+  test('보낸 항목을 로그인한 사람 토큰으로 DB 함수에 그대로 넘김', async () => {
+    rpcHandler = () => ({ data: { characterId: 'female', hat: 'red' }, error: null })
+    const res = await api('PATCH', '/me/appearance', { token: GOOD_TOKEN, body: { appearance: { hat: 'red' } } })
+    assert.equal(res.status, 200)
+    assert.deepEqual(res.body, { appearance: { characterId: 'female', hat: 'red' } })
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, rpc: 'save_appearance', args: { p_patch: { hat: 'red' } } })
+  })
+
+  test('객체가 아니거나 너무 크면 DB까지 가지 않고 400', async () => {
+    for (const appearance of ['female', ['a'], null, { big: 'x'.repeat(2100) }]) {
+      const res = await api('PATCH', '/me/appearance', { token: GOOD_TOKEN, body: { appearance } })
+      assert.equal(res.status, 400, JSON.stringify(appearance).slice(0, 20))
+      assert.equal(res.body.error.code, 'INVALID_INPUT')
+    }
+    assert.equal(calls.length, 0)
+  })
+
+  test('DB가 TOO_LARGE를 던지면 400 TOO_LARGE', async () => {
+    rpcHandler = () => ({ data: null, error: { message: 'TOO_LARGE', details: '꾸미기 정보가 너무 커요.' } })
+    const res = await api('PATCH', '/me/appearance', { token: GOOD_TOKEN, body: { appearance: { a: 1 } } })
+    assert.equal(res.status, 400)
+    assert.equal(res.body.error.code, 'TOO_LARGE')
+  })
+
+  test('불러오기: 저장된 값, 없으면 {}', async () => {
+    tableRows = { profiles: [{ appearance: { characterId: 'male' } }] }
+    assert.deepEqual((await api('GET', '/me/appearance', { token: GOOD_TOKEN })).body, { appearance: { characterId: 'male' } })
+    tableRows = {}
+    assert.deepEqual((await api('GET', '/me/appearance', { token: GOOD_TOKEN })).body, { appearance: {} })
+  })
+
+  test('화면 주소에서 PATCH 미리 요청(CORS preflight) 허용', async () => {
+    const res = await fetch(base + '/me/appearance', {
+      method: 'OPTIONS',
+      headers: { origin: 'https://aleph-capstone.vercel.app', 'access-control-request-method': 'PATCH', 'access-control-request-headers': 'authorization,content-type' },
+    })
+    assert.ok(res.status < 300)
+    assert.match(res.headers.get('access-control-allow-methods') ?? '', /PATCH/)
+  })
+})
+
+describe('커플 타로 기록', () => {
+  const READING_ID = '11111111-1111-4111-8111-111111111111'
+  const body = { spread: 'couple', cards: ['major_06', 'major_17'], summary: '서로의 속도를 맞춰 가는 시기예요.', detail: { questionIds: ['q03'] } }
+
+  test('토큰 없이 저장하면 401, DB는 부르지 않음', async () => {
+    const res = await api('POST', '/me/tarot-readings', { body })
+    assert.equal(res.status, 401)
+    assert.equal(calls.length, 0)
+  })
+
+  test('저장: 로그인한 사람 토큰으로 DB 함수에 넘기고 201 { reading }', async () => {
+    const reading = { id: READING_ID, ...body, createdAt: '2026-11-24T00:00:00Z' }
+    rpcHandler = () => ({ data: reading, error: null })
+    const res = await api('POST', '/me/tarot-readings', { token: GOOD_TOKEN, body })
+    assert.equal(res.status, 201)
+    assert.deepEqual(res.body, { reading })
+    assert.deepEqual(calls[0], {
+      token: GOOD_TOKEN,
+      rpc: 'save_tarot_reading',
+      args: { p_spread: 'couple', p_cards: ['major_06', 'major_17'], p_summary: body.summary, p_detail: { questionIds: ['q03'] } },
+    })
+  })
+
+  test('detail을 빼면 {}로 넘김', async () => {
+    rpcHandler = () => ({ data: {}, error: null })
+    await api('POST', '/me/tarot-readings', { token: GOOD_TOKEN, body: { ...body, detail: undefined } })
+    assert.deepEqual(calls[0].args.p_detail, {})
+  })
+
+  test('모양이 틀리면 DB까지 가지 않고 400', async () => {
+    for (const bad of [{ ...body, spread: 1 }, { ...body, cards: 'major_00' }, { ...body, cards: [1] }, { ...body, summary: null }, { ...body, detail: ['x'] }]) {
+      const res = await api('POST', '/me/tarot-readings', { token: GOOD_TOKEN, body: bad })
+      assert.equal(res.status, 400)
+      assert.equal(res.body.error.code, 'INVALID_INPUT')
+    }
+    assert.equal(calls.length, 0)
+  })
+
+  test('DB가 TOO_MANY_REQUESTS를 던지면 429', async () => {
+    rpcHandler = () => ({ data: null, error: { message: 'TOO_MANY_REQUESTS', details: '잠시 뒤에 다시 시도해 주세요.' } })
+    const res = await api('POST', '/me/tarot-readings', { token: GOOD_TOKEN, body })
+    assert.equal(res.status, 429)
+    assert.equal(res.body.error.code, 'TOO_MANY_REQUESTS')
+  })
+
+  test('목록: 내 기록만, 화면 모양(createdAt)으로, limit은 1~30', async () => {
+    tableRows = { tarot_readings: [{ id: READING_ID, spread: 'couple', cards: ['major_06'], summary: 's', detail: null, created_at: '2026-11-24T00:00:00Z' }] }
+    const res = await api('GET', '/me/tarot-readings?limit=999', { token: GOOD_TOKEN })
+    assert.deepEqual(res.body, { readings: [{ id: READING_ID, spread: 'couple', cards: ['major_06'], summary: 's', detail: {}, createdAt: '2026-11-24T00:00:00Z' }] })
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, table: 'tarot_readings', filters: [['user_id', USER.id]], limit: 30 })
+    await api('GET', '/me/tarot-readings', { token: GOOD_TOKEN })
+    assert.equal(calls[1].limit, 10)
+  })
+
+  test('삭제: 내 기록이면 { ok: true }, 없으면 404, id가 UUID가 아니면 400', async () => {
+    tableRows = { tarot_readings: [{ id: READING_ID }] }
+    const ok = await api('DELETE', `/me/tarot-readings/${READING_ID}`, { token: GOOD_TOKEN })
+    assert.deepEqual(ok.body, { ok: true })
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, table: 'tarot_readings', filters: [['id', READING_ID], ['user_id', USER.id]], op: 'delete' })
+    tableRows = {}
+    assert.equal((await api('DELETE', `/me/tarot-readings/${READING_ID}`, { token: GOOD_TOKEN })).status, 404)
+    assert.equal((await api('DELETE', '/me/tarot-readings/not-a-uuid', { token: GOOD_TOKEN })).status, 400)
   })
 })
 

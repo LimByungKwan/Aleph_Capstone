@@ -51,6 +51,93 @@ export async function setPlayerCharacter({ userId, characterId }) {
   return { character }
 }
 
+// [지민] 캐릭터 꾸미기 (색·옷·모자 …) — 항목 이름과 값은 화면에서 자유롭게 정해요
+//   캐릭터 종류(남/여)는 위 get/setPlayerCharacter를 쓰세요. 'characterId' 키는 그쪽이 쓰는 이름이라 피해 주세요
+//   서버 모드: 계정에 저장 → 다른 기기에서 로그인해도 유지 / mock 모드: 이 브라우저에 저장
+
+/** 응답: { appearance: { [항목]: 값 } } (저장한 적 없으면 {}) */
+export async function getAppearance({ userId }) {
+  if (USE_SERVER) return server.getAppearance()
+  await wait()
+  requireUser(userId)
+  return { appearance: readDb().appearances?.[userId] ?? {} }
+}
+
+/**
+ * 보낸 항목만 바꾸고 나머지는 유지해요. 값을 null로 보내면 그 항목 삭제
+ *   saveAppearance({ userId, patch: { hat: 'red' } })
+ * 응답: { appearance } (저장된 전체) — 에러: INVALID_INPUT(객체 아님), TOO_LARGE(2KB 초과)
+ */
+export async function saveAppearance({ userId, patch }) {
+  if (USE_SERVER) return server.saveAppearance({ patch })
+  await wait()
+  requireUser(userId)
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new ApiError('INVALID_INPUT', '꾸미기 값을 확인해 주세요.')
+  const db = readDb()
+  const merged = { ...db.appearances?.[userId], ...patch }
+  const next = Object.fromEntries(Object.entries(merged).filter(([, value]) => value !== null && value !== undefined))
+  if (new TextEncoder().encode(JSON.stringify(next)).length > 2048) throw new ApiError('TOO_LARGE', '꾸미기 정보가 너무 커요.')
+  db.appearances = { ...db.appearances, [userId]: next }
+  writeDb(db)
+  return { appearance: next }
+}
+
+// [지민] 커플 타로 결과 기록 (타로 화면·AI: 병관) — "지난번 카드와 비교"용
+//   서버 모드: 계정에 저장 (Supabase tarot_readings) → 다른 기기에서도 보임 / mock 모드: 이 브라우저에 저장
+//   ⚠ 두 사람이 직접 쓴 답 원문은 넣지 마세요 (두 번째 사람은 계정 주인이 아님). 카드 id·해석 요약·질문 id 정도만
+//   TarotReading: { id, spread, cards: string[], summary, detail: {}, createdAt }
+
+const TAROT_ID_RE = /^[a-z0-9_]{1,40}$/
+const TAROT_KEEP = 30 // 사람마다 최근 30개만 보관 (DB와 같음)
+
+/** 응답: { readings: TarotReading[] } 최신순 (limit 기본 10, 최대 30) */
+export async function listTarotReadings({ userId, limit = 10 }) {
+  if (USE_SERVER) return server.listTarotReadings({ limit })
+  await wait()
+  requireUser(userId)
+  const n = Math.min(Math.max(Number.parseInt(limit, 10) || 10, 1), TAROT_KEEP)
+  return { readings: (readDb().tarotReadings?.[userId] ?? []).slice(0, n) }
+}
+
+/**
+ * 결과 저장
+ *   saveTarotReading({ userId, spread: 'couple', cards: ['major_06', 'major_17'], summary: '…', detail: { questionIds: ['q03'] } })
+ * 응답: { reading } — 에러: INVALID_INPUT(형식), TOO_LARGE(detail 4KB 초과), 서버 모드만 TOO_MANY_REQUESTS(1시간 20번)
+ * 규칙: spread·카드 id는 영문 소문자·숫자·_ / 카드 1~10장 / summary 1~1000자 / detail은 객체
+ */
+export async function saveTarotReading({ userId, spread, cards, summary, detail }) {
+  if (USE_SERVER) return server.saveTarotReading({ spread, cards, summary, detail })
+  await wait()
+  requireUser(userId)
+  const text = typeof summary === 'string' ? summary.trim() : ''
+  const extra = detail ?? {}
+  if (typeof spread !== 'string' || !/^[a-z0-9_]{1,30}$/.test(spread)) throw new ApiError('INVALID_INPUT', '타로 종류(spread)를 확인해 주세요.')
+  if (!Array.isArray(cards) || cards.length < 1 || cards.length > 10 || !cards.every((c) => typeof c === 'string' && TAROT_ID_RE.test(c))) {
+    throw new ApiError('INVALID_INPUT', '카드는 1~10장, 영문 소문자·숫자·_ id로 보내 주세요.')
+  }
+  if (text.length < 1 || text.length > 1000) throw new ApiError('INVALID_INPUT', '해석 요약은 1~1000자로 보내 주세요.')
+  if (typeof extra !== 'object' || Array.isArray(extra)) throw new ApiError('INVALID_INPUT', 'detail은 객체로 보내 주세요.')
+  if (new TextEncoder().encode(JSON.stringify(extra)).length > 4096) throw new ApiError('TOO_LARGE', '타로 기록이 너무 커요.')
+  const reading = { id: newId('tarot'), spread, cards: [...cards], summary: text, detail: extra, createdAt: new Date().toISOString() }
+  const db = readDb()
+  db.tarotReadings = { ...db.tarotReadings, [userId]: [reading, ...(db.tarotReadings?.[userId] ?? [])].slice(0, TAROT_KEEP) }
+  writeDb(db)
+  return { reading }
+}
+
+/** 기록 삭제 — 응답: { ok: true } / 에러: NOT_FOUND */
+export async function deleteTarotReading({ userId, readingId }) {
+  if (USE_SERVER) return server.deleteTarotReading({ readingId })
+  await wait()
+  requireUser(userId)
+  const db = readDb()
+  const list = db.tarotReadings?.[userId] ?? []
+  if (!list.some((r) => r.id === readingId)) throw new ApiError('NOT_FOUND', '없는 타로 기록이에요.')
+  db.tarotReadings = { ...db.tarotReadings, [userId]: list.filter((r) => r.id !== readingId) }
+  writeDb(db)
+  return { ok: true }
+}
+
 // 같은 구역 + 같은 작품의 가게 (다른 사람 구역 가게 쿠폰까지 나가지 않게)
 function shopsForWork(work, zone) {
   return places.filter((p) => p.type === 'cafe' && p.work && p.work === work && p.zone === zone)

@@ -39,6 +39,11 @@ npm test                 # 가짜 Supabase로 라우트 테스트 (실제 DB 안
 | `POST /auth/login` | `{ email, password }` | `{ session: { accessToken, refreshToken, expiresAt }, user: { id, email, name, role, shopId } }` | `INVALID_LOGIN` 401, `EMAIL_NOT_CONFIRMED` 403 |
 | `POST /auth/refresh` | `{ refreshToken }` | `{ session }` | `UNAUTHORIZED` 401 |
 | 🔒 `GET /me` | | `{ user }` | |
+| 🔒 `GET /me/appearance` | | `{ appearance }` (없으면 `{}`) | |
+| 🔒 `PATCH /me/appearance` | `{ appearance: { 항목: 값 } }` 보낸 항목만 바꿈, 값이 null이면 삭제 | `{ appearance }` (저장된 전체) | `INVALID_INPUT` 400, `TOO_LARGE` 400 (2KB 초과) |
+| 🔒 `GET /me/tarot-readings?limit=10` | | `{ readings: [{ id, spread, cards, summary, detail, createdAt }] }` 최신순, 최대 30 | |
+| 🔒 `POST /me/tarot-readings` | `{ spread, cards: string[], summary, detail? }` 답 원문은 넣지 않기 | 201 `{ reading }` | `INVALID_INPUT` 400, `TOO_LARGE` 400 (detail 4KB 초과), `TOO_MANY_REQUESTS` 429 (1시간 20번) |
+| 🔒 `DELETE /me/tarot-readings/:readingId` | | `{ ok: true }` | `NOT_FOUND` 404 |
 | 🔒 `POST /stamps` | `{ placeId }` | `{ stamp, issuedCoupons }` | `ALREADY_STAMPED` 409, `NOT_STAMPABLE` 400, `NOT_FOUND` 404 |
 | 🔒 `GET /stamps/me` | | `{ stamps: [{ id, placeId, createdAt }] }` | |
 | 🔒 `GET /coupons/me` | | `{ coupons }` (최신순) | |
