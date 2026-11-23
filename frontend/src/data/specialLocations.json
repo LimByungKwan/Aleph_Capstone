@@ -1,0 +1,334 @@
+{
+  "dataset_version": "1.0.0",
+  "project": "SceneWalk AI - Joseon & Colonial Filming Location Time Detective",
+  "guardrail_policy": {
+    "strict_grounding": true,
+    "fallback_rejection_ko": "제공된 국가유산청·한국관광공사 공식 기록에서 확인할 수 없는 내용입니다. 지정된 8대 특별 개방 구역의 역사 및 촬영지 정보만 안내해 드릴 수 있습니다.",
+    "fallback_rejection_en": "This information cannot be verified in the official Korea Heritage Service or Korea Tourism Organization records provided. I can only guide you through verified history and filming locations for the 8 restricted-access spots."
+  },
+  "spots": [
+    {
+      "id": "geunjeongjeon_throne",
+      "order": 1,
+      "era": "joseon",
+      "era_label": "조선 시대 (경복궁)",
+      "title": "근정전 어좌(임금의 자리) 내부",
+      "mechanic_type": "angle_scan",
+      "restriction_fact": "실제 경복궁 근정전 내부는 국보 제223호 문화재 보존 및 내부 목조 구조 보호를 위해 일반 관람객의 진입이 엄격히 통제되며, 외부 월대와 회랑 밖에서만 내부를 조망할 수 있습니다.",
+      "grounding_facts": [
+        "경복궁 근정전은 조선 왕실의 정전으로 왕의 즉위식, 문무백관의 조하, 외국 사신 접견 등 국가의 중대한 의식이 거행되던 중심 건물이다.",
+        "어좌 뒤편에는 해와 달, 다섯 봉우리를 그린 일월오봉도가 배치되어 왕권의 존엄과 우주의 질서를 상징한다.",
+        "일제강점기 조선총독부 청사 건립으로 정면의 흥례문과 광화문 축이 가로막히며 정전으로서의 공간적 위상이 크게 훼손되었다가 이후 복원 사업을 거쳤다."
+      ],
+      "filming_behind": "궁중 사극에서 왕의 즉위식이나 어전 회의 장면을 촬영할 때 문화재청의 엄격한 특별 촬영 허가를 받거나, 용인 대장금파크·문경새재 오픈세트장에서 내부 어좌를 정밀 재현해 촬영합니다.",
+      "restoration_mechanic": {
+        "type": "angle_scan",
+        "action_cue": "마우스를 드래그해 어좌 정면(광화문·북악산 축) 방향으로 시점을 돌려 옛 왕도의 중심 시야를 스캔하세요.",
+        "target_yaw_deg": 0,
+        "completion_message": "왕도의 정남향 중심축 시야 스캔 및 공간 복원이 완료되었습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "왕이 앉아 문무백관을 내려다보는 바로 그 사극 명장면의 시점입니다! 실제 촬영에서는 문화재 보호 때문에 용인 대장금파크 세트장을 주로 활용하는데, 이곳에서는 어좌 바로 앞에서 카메라 앵글을 직접 경험할 수 있습니다.",
+        "history_explorer": "국보 제223호 근정전 내부의 중심인 어좌와 일월오봉도는 조선 왕조의 통치 철학을 집약한 공간입니다. 실제 현장에서는 훼손 방지를 위해 출입이 통제되지만, 가상 복원을 통해 정전의 위계적 공간 구성을 온전히 살필 수 있습니다.",
+        "foreign_tourist_en": "Welcome inside Geunjeongjeon Hall, the main throne hall of Gyeongbokgung Palace, normally closed to the public to protect National Treasure No. 223. Stand at the royal throne featured in countless K-historical dramas, and visit Yongin Daejanggeum Park or Gyeongbokgung in a rented Hanbok to experience the real filming atmosphere!"
+      },
+      "o2o_location": {
+        "real_spot_name": "경복궁 근정전 / 용인 대장금파크",
+        "kakao_map_url": "https://map.kakao.com/link/search/경복궁 근정전"
+      },
+      "sources": [
+        "국가유산청 궁능유적본부 경복궁관리소",
+        "한국관광공사 TourAPI 촬영지 관광 DB"
+      ]
+    },
+    {
+      "id": "gyeonghoeru_2f",
+      "order": 2,
+      "era": "joseon",
+      "era_label": "조선 시대 (경복궁)",
+      "title": "경회루 2층 누각 내부",
+      "mechanic_type": "era_slider",
+      "restriction_fact": "국보 제224호 경회루는 목조 누각 보존과 안전을 위해 평소 2층 내부 출입이 제한되며, 정해진 기간에 사전 특별관람 예약을 완료한 인원만 해설사와 동행해 입장할 수 있습니다.",
+      "grounding_facts": [
+        "경회루는 연못 안에 조성된 2층 목조 누각으로, 나라에 경사가 있거나 외국 사신이 왔을 때 연회를 베풀던 공간이다.",
+        "1층은 네모난 연못과 돌기둥이, 2층은 탁 트인 마루가 하늘과 인왕산·북악산 풍경을 끌어들이는 차경(借景) 건축의 정수를 보여준다.",
+        "일제강점기에는 총독부 행사 및 박람회 공간으로 변형·방치되며 본래의 왕실 연회 공간으로서의 기능을 상실했다."
+      ],
+      "filming_behind": "사극에서 왕과 신하의 비밀 독대, 달빛 아래 연회, 서정적인 로맨스 장면을 연출할 때 대표적으로 모티브가 되는 수변 누각 로케이션입니다.",
+      "restoration_mechanic": {
+        "type": "era_slider",
+        "action_cue": "슬라이더를 오른쪽 끝(100%)까지 밀어 일제강점기 방치·변형된 누각을 조선 연회 원형으로 복원하세요.",
+        "before_label": "일제강점기 행사장 변형 및 방치 상태",
+        "after_label": "조선 시대 사신 접대 및 왕실 연회 원형",
+        "completion_message": "경회루 2층 누각의 조선 시대 연회 원형 복원이 완료되었습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "연못 위에 떠 있는 2층 누각에서 인왕산을 바라보는 이 뷰는 사극 속 로맨스와 비밀 회동 씬의 단골 구도입니다. 실제 경복궁 특별관람 기간을 노리거나 수원 화성행궁의 수변 정자에서도 비슷한 감성을 만날 수 있습니다.",
+        "history_explorer": "국보 제224호 경회루 2층은 지붕 처마가 액자처럼 인왕산의 능선을 담아내는 조선 건축의 백미입니다. 일제강점기 박람회 등으로 훼손되었던 공간이 어떻게 본래의 개방적 누각 구조로 되살아났는지 비교해 보세요.",
+        "foreign_tourist_en": "Gyeonghoeru Pavilion (National Treasure No. 224) is a two-story wooden pavilion floating on a serene pond, famous for royal banquets and secret palace scenes in K-dramas. While 2nd-floor entry normally requires advance reservation, you can freely explore its panoramic mountain view here."
+      },
+      "o2o_location": {
+        "real_spot_name": "경복궁 경회루 / 수원 화성행궁",
+        "kakao_map_url": "https://map.kakao.com/link/search/경복궁 경회루"
+      },
+      "sources": [
+        "국가유산청 궁능유적본부 경복궁관리소",
+        "한국관광공사 TourAPI 촬영지 관광 DB"
+      ]
+    },
+    {
+      "id": "geoncheonggung_inner",
+      "order": 3,
+      "era": "joseon",
+      "era_label": "조선 시대 (경복궁)",
+      "title": "건청궁(곤녕합) 내부",
+      "mechanic_type": "fact_check",
+      "restriction_fact": "경복궁 가장 북쪽 깊숙한 곳에 자리한 건청궁은 1895년 명성황후 시해 사건(을미사변)이 발생한 역사의 현장으로, 내부 유구 보존과 엄숙한 공간 관리를 위해 일반인의 내부 출입이 통제됩니다.",
+      "grounding_facts": [
+        "건청궁은 1873년 고종이 정치적 자립을 도모하며 사대부 가옥 양식을 도입해 건립한 궁궐 안의 사가 형태 전각이다.",
+        "1887년 건청궁 앞 향원정 연못의 물을 이용해 한국 최초로 전기 발전기를 가동하고 전등을 점등한 근대화의 출발점이기도 하다.",
+        "1895년 을미사변 당시 명성황후가 곤녕합에서 시해되었으며, 일제강점기인 1909년 철거되었다가 2007년 현재 모습으로 복원되었다."
+      ],
+      "filming_behind": "구한말과 조선 후기를 다룬 시대극에서 왕실 내부의 은밀한 일상과 격변기의 비극적 긴장감을 동시에 담아내는 모티브 공간입니다.",
+      "restoration_mechanic": {
+        "type": "fact_check",
+        "action_cue": "아래 3가지 기록 중 실제 국가유산청 사료와 다른 '드라마적 허구(잘못된 연출)' 1개를 클릭해 걷어내세요.",
+        "options": [
+          {
+            "id": "opt_1",
+            "text": "1887년 한국 최초로 전등을 점등해 불을 밝힌 근대 문물 도입의 현장이었다.",
+            "is_error": false
+          },
+          {
+            "id": "opt_2",
+            "text": "드라마 속 설정처럼 조선 초기부터 왕세자들의 비밀 검술 수련과 무기고로 사용되었다.",
+            "is_error": true
+          },
+          {
+            "id": "opt_3",
+            "text": "일제강점기 철거되었다가 고증을 거쳐 2007년 현재의 모습으로 복원되었다.",
+            "is_error": false
+          }
+        ],
+        "completion_message": "드라마적 허구를 걸러내고 구한말 건청궁의 실제 역사 기록을 복원했습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "향원정 연못 너머 고요하게 자리한 건청궁은 구한말 시대극에서 왕과 왕비의 가장 사적인 공간이자 비극의 무대로 묘사됩니다. 문경새재 오픈세트장에서도 구한말 왕실 세트 동선을 함께 둘러볼 수 있습니다.",
+        "history_explorer": "건청궁은 한국 최초의 전등 점등이라는 근대적 빛과 을미사변이라는 비극이 공존하는 공간입니다. 일제강점기 완전 철거의 아픔을 딛고 2007년 복원된 곤녕합 내부 구조를 확인해 보세요.",
+        "foreign_tourist_en": "Located at the quietest northern edge of Gyeongbokgung, Geoncheonggung was both the site of Korea's first electric light in 1887 and the tragic 1895 assassination of Empress Myeongseong. Access inside is strictly restricted in real life to preserve this historic site."
+      },
+      "o2o_location": {
+        "real_spot_name": "경복궁 건청궁 / 문경새재 오픈세트장",
+        "kakao_map_url": "https://map.kakao.com/link/search/경복궁 건청궁"
+      },
+      "sources": [
+        "국가유산청 궁능유적본부 경복궁관리소",
+        "국사편찬위원회 한국사데이터베이스"
+      ]
+    },
+    {
+      "id": "gwanghwamun_axis",
+      "order": 4,
+      "era": "joseon",
+      "era_label": "조선 시대 (경복궁)",
+      "title": "광화문 월대 & 육조거리 중심축",
+      "mechanic_type": "era_slider",
+      "restriction_fact": "일제강점기 조선총독부 청사 건립으로 광화문이 강제 철거·이축되고 월대가 매몰되면서, 오랫동안 본래의 정남향 왕도 중심축과 의례용 출입 공간이 차단되어 있었습니다.",
+      "grounding_facts": [
+        "광화문 월대는 왕과 백성이 소통하고 국가 주요 의례가 펼쳐지던 궁궐 정문 앞의 격식 있는 기단 공간이다.",
+        "일제강점기인 1927년 총독부는 조선총독부 청사를 가린다는 이유로 광화문을 건춘문 북쪽으로 강제 이건하고 월대를 훼손했다.",
+        "고증을 통한 복원 사업을 거쳐 2023년 광화문 월대와 현판이 본래의 제자리와 위상을 되찾았다."
+      ],
+      "filming_behind": "사극 오프닝에서 왕의 어가 행렬과 도성 육조거리의 웅장한 스케일을 한 프레임에 담는 대표 시그니처 촬영 축입니다.",
+      "restoration_mechanic": {
+        "type": "era_slider",
+        "action_cue": "슬라이더를 오른쪽 끝(100%)까지 밀어 일제강점기 강제 이축된 광화문과 사라진 월대를 제자리로 복원하세요.",
+        "before_label": "1927년 일제강점기 강제 이축 및 월대 훼손 상태",
+        "after_label": "정남향 왕도 중심축과 복원된 광화문 월대",
+        "completion_message": "광화문 월대와 육조거리 정남향 중심축 복원이 완료되었습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "사극 첫 화에서 카메라가 웅장하게 훑고 지나가는 왕의 행차 장면의 바로 그 구도입니다! 복원된 광화문 월대 앞에서 촬영하면 드라마 포스터 같은 인생샷을 남길 수 있습니다.",
+        "history_explorer": "광화문 월대 복원은 단순한 건축 수리를 넘어, 일제강점기 총독부 건립으로 단절되었던 경복궁과 육조거리의 도시 축을 회복한 상징적 사건입니다.",
+        "foreign_tourist_en": "Gwanghwamun Woldae is the ceremonial royal platform in front of Gyeongbokgung's main gate. Dismantled and relocated during the Japanese colonial era in 1927, its original grand axis was finally restored in 2023."
+      },
+      "o2o_location": {
+        "real_spot_name": "경복궁 광화문 월대 / 서울역사박물관",
+        "kakao_map_url": "https://map.kakao.com/link/search/경복궁 광화문"
+      },
+      "sources": [
+        "국가유산청 광화문 월대 복원 기록",
+        "한국관광공사 TourAPI 촬영지 관광 DB"
+      ]
+    },
+    {
+      "id": "former_governor_hall",
+      "order": 5,
+      "era": "colonial",
+      "era_label": "일제강점기 (경성)",
+      "title": "옛 조선총독부(중앙청) 내부 홀 (철거 전 가상 복원)",
+      "mechanic_type": "era_slider",
+      "restriction_fact": "일제강점기 경복궁 근정전 앞마당(흥례문 일대)을 가로막고 세워졌던 옛 조선총독부 건물은 1995년 역사 바로세우기 사업으로 철거되어 현실에서는 존재하지 않는 소실 공간입니다.",
+      "grounding_facts": [
+        "조선총독부 청사는 1916년 착공해 1926년 완공된 네오르네상스 양식의 석조 건물로, 경복궁의 정면 시야를 의도적으로 차단하도록 배치되었다.",
+        "광복 이후 중앙청 및 국립중앙박물관 등으로 사용되다가 민족정기 회복과 경복궁 원형 복원을 위해 1995년 철거가 시작되어 1996년 완료되었다.",
+        "현재 철거된 첨탑 부재 일부는 천안 독립기념관 야외 전시장에 보존되어 식민 통치 청산의 역사 교육 자료로 활용되고 있다."
+      ],
+      "filming_behind": "1920~40년대 일제강점기 배경 독립운동·첩보 시대극에서 총독부 내부 집무실과 중앙 홀의 긴장감 넘치는 장면을 연출할 때 합천영상테마파크 세트장 등이 활용됩니다.",
+      "restoration_mechanic": {
+        "type": "era_slider",
+        "action_cue": "슬라이더를 오른쪽 끝(100%)까지 밀어 경복궁을 가로막던 총독부 청사를 철거하고 원래의 경복궁 전경을 복원하세요.",
+        "before_label": "1926~1995년 경복궁 정면을 가로막던 총독부 청사",
+        "after_label": "총독부 철거 후 되찾은 경복궁과 북악산 본래 전경",
+        "completion_message": "조선총독부 철거 및 경복궁 본래 전경 복원 시뮬레이션이 완료되었습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "일제강점기 시대극에서 긴장감이 최고조에 달하는 총독부 내부 홀 장면을 가상으로 재현했습니다. 실제 시대극 촬영은 경남 합천영상테마파크의 대규모 근대 세트장에서 주로 진행됩니다.",
+        "history_explorer": "현실에서는 1995년 철거되어 볼 수 없는 공간을 가상으로 복원해, 당시 경복궁의 중심축이 어떻게 훼손되었는지 직관적으로 체감할 수 있도록 구성했습니다.",
+        "foreign_tourist_en": "Built in 1926 directly in front of Gyeongbokgung's main halls to block the palace view, the former Japanese Government-General Building was demolished in 1995 to restore Korea's historical heritage. Visit Hapcheon Image Theme Park to see similar 1930s film sets in real life."
+      },
+      "o2o_location": {
+        "real_spot_name": "합천영상테마파크 (일제강점기 시대극 세트장)",
+        "kakao_map_url": "https://map.kakao.com/link/search/합천영상테마파크"
+      },
+      "sources": [
+        "국사편찬위원회 한국사데이터베이스",
+        "한국관광공사 TourAPI 촬영지 관광 DB"
+      ]
+    },
+    {
+      "id": "gyeongseong_station_vip",
+      "order": 6,
+      "era": "colonial",
+      "era_label": "일제강점기 (경성)",
+      "title": "경성역(구 서울역) VIP 귀빈실 & 2층",
+      "mechanic_type": "fact_check",
+      "restriction_fact": "사적 제284호로 지정되어 현재 '문화역서울284'로 운영되는 구 서울역의 일부 귀빈실과 상층부 비공개 구역은 근대 문화재 보호를 위해 일반 관람객의 자유 출입이 제한됩니다.",
+      "grounding_facts": [
+        "옛 경성역(구 서울역)은 1925년 준공된 붉은 벽돌과 화강암 구조의 비잔틴·르네상스 절충 양식 근대 건축물이다.",
+        "1층에는 1·2등 대합실과 귀빈실이, 2층에는 당시 최고급 양식당이 자리해 근대 경성 교통과 도시 문화의 관문 역할을 했다.",
+        "오늘날 시대극에서는 1920~30년대 경성역 플랫폼과 귀빈실 분위기를 재현하기 위해 논산 선샤인랜드나 합천 세트장에서 촬영이 자주 이루어진다."
+      ],
+      "filming_behind": "1920~30년대 경성 기차역을 배경으로 한 시대극에서 독립운동가들의 은밀한 접선, 첩보 작전, 이별 장면을 촬영하는 대표 로케이션입니다.",
+      "restoration_mechanic": {
+        "type": "fact_check",
+        "action_cue": "아래 3가지 기록 중 실제 국가유산청 사료와 다른 '드라마적 허구(잘못된 연출)' 1개를 클릭해 걷어내세요.",
+        "options": [
+          {
+            "id": "opt_1",
+            "text": "1925년 붉은 벽돌과 화강암으로 준공된 근대 경성의 대표 관문 건축물이다.",
+            "is_error": false
+          },
+          {
+            "id": "opt_2",
+            "text": "드라마 속 연출처럼 귀빈실 벽난로 뒤에 독립군 비밀 사령부로 직통하는 지하 터널이 있었다.",
+            "is_error": true
+          },
+          {
+            "id": "opt_3",
+            "text": "현재는 사적 제284호 문화역서울284로 보존되어 근대 건축 문화 공간으로 활용된다.",
+            "is_error": false
+          }
+        ],
+        "completion_message": "드라마적 연출을 구분해 내고 실제 경성역(문화역서울284) 건축 기록을 복원했습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "트렌치코트를 입은 주인공들이 기차 시간을 기다리며 비밀 서류를 주고받는 시대극 명장면의 무대입니다! 실제 촬영지로 인기 있는 논산 선샤인랜드 1950 스튜디오에서 근대 기차역 감성을 직접 체험해 보세요.",
+        "history_explorer": "1925년 완공된 옛 경성역은 화려한 근대 건축 양식 이면에 식민지 수탈과 근대화가 교차하던 공간이었습니다. 일반 공개가 제한된 귀빈실 구역의 건축적 특징을 살펴보세요.",
+        "foreign_tourist_en": "Completed in 1925, the old Gyeongseong Station (now Culture Station Seoul 284) is an iconic red-brick landmark of modern Korean architecture. While VIP rooms are restricted to protect the heritage interior, you can step inside its 1930s cinematic atmosphere right here."
+      },
+      "o2o_location": {
+        "real_spot_name": "논산 선샤인랜드 (1950 스튜디오) / 문화역서울284",
+        "kakao_map_url": "https://map.kakao.com/link/search/논산 선샤인랜드"
+      },
+      "sources": [
+        "국가유산청 문화역서울284 기록",
+        "한국관광공사 TourAPI 촬영지 관광 DB"
+      ]
+    },
+    {
+      "id": "gyeongseong_press_salon",
+      "order": 7,
+      "era": "colonial",
+      "era_label": "일제강점기 (경성)",
+      "title": "경성 모던 다방 & 신문사 2층 인쇄실",
+      "mechanic_type": "angle_scan",
+      "restriction_fact": "1920~30년대 경성 도심에 자리했던 근대 상가와 언론사 2층 다락·인쇄실은 도시 개발로 소실되었거나 목조 노후화 안전 문제로 내부 출입이 통제된 비공개 공간입니다.",
+      "grounding_facts": [
+        "1920~30년대 경성에서는 근대 지식인과 예술가들이 다방과 신문사를 거점으로 문학·예술 활동과 물산장려·언론 계몽 운동을 전개했다.",
+        "일제의 엄격한 언론 검열 속에서도 2층 인쇄실과 등사기를 통해 민족의식을 알리는 출판물과 호외가 제작되었다.",
+        "오늘날 서울 정동길과 익선동 일대에는 당시 근대 건축의 흔적과 개화기 의상 체험 문화가 남아 있어 시대극 촬영 및 관광 명소로 사랑받는다."
+      ],
+      "filming_behind": "모던 보이·모던 걸의 낭만적인 다방 씬과 2층 비밀 인쇄실에서 밤새 호외를 찍어내는 독립운동 씬이 교차하는 시대극 핵심 실내 세트 모티브입니다.",
+      "restoration_mechanic": {
+        "type": "angle_scan",
+        "action_cue": "마우스를 드래그해 창밖 경성 전차 거리와 2층 비밀 인쇄기 방향을 바라보며 숨겨진 언론 항일 단서를 스캔하세요.",
+        "target_yaw_deg": 90,
+        "completion_message": "경성 모던 거리와 2층 비밀 인쇄실의 역사 단서 스캔이 완료되었습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "1층은 클래식 음악이 흐르는 모던 다방, 2층은 독립신문을 찍어내는 비밀 인쇄실! 시대극에서 가장 매력적인 반전 공간 구도를 직접 체험하고, 실제 서울 정동길이나 익선동에서 개화기 의상 스냅도 즐겨보세요.",
+        "history_explorer": "일제강점기 검열과 탄압 속에서도 기록과 언론으로 시대를 깨우려 했던 근대 지식인들의 공간을 재구성했습니다. 창밖 전차 거리 풍경과 실내 인쇄 공간의 대비를 확인해 보세요.",
+        "foreign_tourist_en": "In 1930s Gyeongseong, stylish modern cafes served as gathering spots for artists and undercover independence activists printing secret newspapers upstairs. Visit Seoul's Jeongdong-gil or Ikseon-dong to walk through surviving modern-era streets."
+      },
+      "o2o_location": {
+        "real_spot_name": "서울 정동길 / 익선동 근대 거리",
+        "kakao_map_url": "https://map.kakao.com/link/search/서울 정동길"
+      },
+      "sources": [
+        "국사편찬위원회 한국사데이터베이스",
+        "한국관광공사 TourAPI 촬영지 관광 DB"
+      ]
+    },
+    {
+      "id": "seodaemun_prison_wall",
+      "order": 8,
+      "era": "colonial",
+      "era_label": "일제강점기 (경성)",
+      "title": "서대문형무소 옥사 격벽장",
+      "mechanic_type": "fact_check",
+      "restriction_fact": "서대문형무소역사관의 일부 옥사와 격벽장은 근대 문화재 보존 및 시설 안전 관리를 위해 내부 진입이 제한되거나 관람 동선이 통제되는 구역이 있습니다.",
+      "grounding_facts": [
+        "서대문형무소는 1908년 경성감옥으로 개소하여 일제강점기 수많은 독립운동가들이 수감되고 고초를 겪은 항일 독립운동의 성지이다.",
+        "격벽장은 수감자들이 운동하는 시간조차 서로 대화를 나누거나 얼굴을 보지 못하도록 부채꼴 모양의 높은 벽으로 칸을 나눈 감시 시설이다.",
+        "일제 패망 후 일부 시설이 철거되었으나 옥사와 사형장, 격벽장 등이 보존되어 오늘날 독립운동사를 기리는 역사관으로 운영되고 있다."
+      ],
+      "filming_behind": "독립운동가들의 옥중 투쟁과 꺾이지 않는 신념을 다루는 시대극·영화에서 가장 묵직한 울림을 주는 실제 역사 로케이션입니다.",
+      "restoration_mechanic": {
+        "type": "fact_check",
+        "action_cue": "아래 3가지 기록 중 실제 사료와 다른 '드라마적 허구(잘못된 연출)' 1개를 클릭해 걷어내세요.",
+        "options": [
+          {
+            "id": "opt_1",
+            "text": "수감자 간의 소통과 시선 교환을 차단하기 위해 부채꼴 벽으로 구획한 감시용 운동 시설이었다.",
+            "is_error": false
+          },
+          {
+            "id": "opt_2",
+            "text": "드라마 속 연출처럼 수감자들이 자유롭게 모여 연극과 체육 대회를 열던 개방형 광장이었다.",
+            "is_error": true
+          },
+          {
+            "id": "opt_3",
+            "text": "1908년 개소 이래 수많은 독립운동가들이 수감되었던 항일 독립운동사의 현장이다.",
+            "is_error": false
+          }
+        ],
+        "completion_message": "극적 연출과 실제 역사를 구분하고 서대문형무소 격벽장의 진실을 복원했습니다!"
+      },
+      "persona_guides": {
+        "drama_fan": "독립운동 영화나 드라마에서 수감자들이 벽 너머로 신호를 주고받던 가슴 뭉클한 장면의 실제 공간입니다. 실제 서대문형무소역사관에 방문하시면 붉은 벽돌 옥사의 생생한 울림을 직접 느끼실 수 있습니다.",
+        "history_explorer": "부채꼴 모양으로 설계된 격벽장은 감시자 한 명이 모든 수감자를 동시에 통제할 수 있도록 만든 근대 감옥 건축의 억압적 구조를 보여줍니다. 실제 역사 기록과 드라마적 연출의 차이를 확인해 보세요.",
+        "foreign_tourist_en": "Built in 1908, Seodaemun Prison imprisoned thousands of Korean independence activists during Japanese colonial rule. Its fan-shaped partition walls (Gyeokbyeokjang) were designed to isolate prisoners even during brief exercise hours."
+      },
+      "o2o_location": {
+        "real_spot_name": "서대문형무소역사관",
+        "kakao_map_url": "https://map.kakao.com/link/search/서대문형무소역사관"
+      },
+      "sources": [
+        "국가유산청 문화유산 포털",
+        "서대문형무소역사관 사료 DB"
+      ]
+    }
+  ]
+}

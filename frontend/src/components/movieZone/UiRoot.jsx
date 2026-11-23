@@ -12,6 +12,8 @@ import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
 import PalaceSeatPrompt from './PalaceSeatPrompt.jsx'
 import PalaceTour from './PalaceTour.jsx'
+import SpecialAccess from './SpecialAccess.jsx'
+import { selectTimePass, timePassCount, useSpecialAccess, useTimePass } from './specialAccessStore.js'
 import { CourseHud } from '../course/LumiCourse.jsx'
 import Minimap from '../minimap/Minimap.jsx'
 import MobileControls from '../mobile/MobileControls.jsx'
@@ -33,6 +35,8 @@ export default function UiRoot() {
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
   const inCinema = usePortalStore((s) => Boolean(s.active) && s.dismissedId !== s.active?.id)
+  const specialPanel = useSpecialAccess((s) => s.panel)
+  const specialEra = useSpecialAccess((s) => s.era)
 
   return (
     <div className="ui-root">
@@ -42,10 +46,11 @@ export default function UiRoot() {
       {!inCinema && <CourseHud />}
       {!inCinema && <Minimap />}
       {!inCinema && <MobileControls />}
-      {!inCinema && <Tutorial />}
+      {!inCinema && !specialEra && <Tutorial />}
       <SceneHint />
       {!inCinema && <PalaceSeatPrompt />}
-      <PalaceTour enabled={!inCinema && !modal} />
+      <PalaceTour enabled={!inCinema && !modal && !specialPanel} />
+      <SpecialAccess enabled={!inCinema && !modal} />
       <DialogBox />
       <BreakwaterScene />
       <EntranceWelcome />
@@ -78,12 +83,15 @@ function Hud() {
   const user = currentUser(userId)
   const stamps = useAsync(() => listMyStamps({ userId }), [userId])
   const coupons = useAsync(() => listMyCoupons({ userId }), [userId])
-  const usable = coupons.data?.coupons.filter((c) => !c.usedAt).length ?? 0
+  const timePass = useTimePass((state) => selectTimePass(state,userId))
+  const totalStamps = (stamps.data?.stamps.length ?? 0) + timePassCount(timePass)
+  const usable = (coupons.data?.coupons.filter((c) => !c.usedAt).length ?? 0)
+    + Number(Boolean(timePass.couponIssuedAt)) + Number(Boolean(timePass.legacyCouponIssuedAt))
 
   return (
     <nav className="ui-hud ui-interactive" aria-label="내 메뉴">
       <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), openModal('stampbook'))}>
-        📖 스탬프북 <span className="ui-count">{stamps.data?.stamps.length ?? 0}</span>
+        📖 스탬프북 <span className="ui-count">{totalStamps}</span>
       </button>
       <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), openModal('coupons'))}>
         🎟 쿠폰함 {usable > 0 && <span className="ui-count">{usable}</span>}

@@ -3,6 +3,7 @@ import { useGameStore } from '../../store/gameStore.js'
 import { usePalaceSeatStore } from './palaceSeating.js'
 import { useUiStore } from './uiStore.js'
 import { usePalaceTour } from './palaceTourStore.js'
+import { useSpecialAccess } from './specialAccessStore.js'
 
 export default function PalaceSeatPrompt() {
   const nearby = usePalaceSeatStore(state => state.nearby)
@@ -11,7 +12,8 @@ export default function PalaceSeatPrompt() {
   const modal = useUiStore(state => state.modal)
   const locked = useGameStore(state => state.inputLocked)
   const tourOpen = usePalaceTour(state => state.open)
-  const available = !modal && !locked && !tourOpen && Boolean(nearby || seated)
+  const specialPanel = useSpecialAccess(state => state.panel)
+  const available = !modal && !locked && !tourOpen && !specialPanel && Boolean(nearby || seated)
 
   useEffect(() => {
     if (!available) return undefined

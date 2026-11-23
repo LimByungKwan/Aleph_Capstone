@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 
 from fastapi import FastAPI, HTTPException, Request
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 from .audition import router as audition_router
 from .course import DEFAULT_COUNT, MAX_COUNT, MIN_COUNT, recommend_course
 from .daily import daily_course
+from .docent import load_docent_spots, narrate
 from .external import key_status
 from .limits import allow_request, llm_calls_today
 from .places import course_candidates
@@ -102,6 +104,19 @@ def course(req: CourseRequest, request: Request) -> dict:
 def daily() -> dict:
     """오늘의 코스 (한국 날짜 기준, 같은 날엔 누구에게나 같은 코스, 요금 0원)"""
     return daily_course()
+
+
+@app.get("/docent/{location_id}")
+def docent(location_id: str, request: Request) -> dict:
+    try:
+        spot = load_docent_spots().get(location_id)
+    except (OSError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=503, detail="도슨트 자료집을 읽을 수 없어요.") from error
+    if spot is None:
+        raise HTTPException(status_code=404, detail="등록된 관람 장소가 아니에요.")
+    if not allow_request(f"docent:{client_ip(request)}"):
+        raise HTTPException(status_code=429, detail="잠시 후 다시 시도해 주세요.")
+    return {"narration": narrate(spot)}
 
 
 @app.post("/promo", response_model=PromoResponse)
