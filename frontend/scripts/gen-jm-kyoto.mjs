@@ -3,10 +3,13 @@
 //
 // 큰 틀 (구역 좌표, 북쪽 = z 마이너스)
 //   남쪽 입구(0,40) → 천 개의 도리이 터널 → 수로를 낀 온천 거리(여관이 양쪽으로)
-//   → 맵 뒷부분 산넨자카식 계단 거리(옛 데이터, 단 4개) → 꼭대기 큰 여관 「湯灯屋」(높이 6)
-//   수로 거리 중간에서 갈래 4개가 갈라지고, 갈래 끝마다 애니메이션 장면이 있어요
-//     서1 「슬램 리바운드」 노면전차 건널목 + 농구장      동1 비 오는 버스 정류장 + 하레야 잡화점 + 전망 무대(BK 전망대 흔들다리)
-//     서2 호수 → 「초속 5미터」 벚꽃 강변 (옛 강변을 그대로 씀)  동2 「나츠키 요괴장」 대나무 숲 여우 신사
+//   → 맵 뒷부분 산넨자카식 계단 거리(옛 데이터, 단 3개 1.5 → 4.5m) → 고개(6m)
+//   → 골짜기(0m, 개울과 붉은 다리)로 내려갔다가 → 중턱(5m) → 꼭대기(10m) 큰 여관 「湯灯屋」
+//   장면 자리(스탬프) 4곳: ① 계단 거리 첫 단 서쪽 골목 끝 ② 셋째 단 동쪽 골목 끝 ③ 골짜기 개울가 ④ 중턱 쉼터
+//   작품은 아직 미정 → 지금은 빈 마당 + 간판(jmSceneSpot)만. 작품이 정해지면 여기에 장면 소품을 채움
+//   수로 거리의 갈래 4개는 풍경만 남김(옛 애니 장면·스탬프는 11/23에 뺌): 서1 마치야 골목 / 동1 잡화점 + 전망 무대(BK 흔들다리)
+//   / 서2 호수 → 벚꽃 강변 / 동2 대나무 숲 산책길
+// 북쪽 끝은 hub.json 바닥을 60m 늘려서 구역 좌표 z -185까지 써요.
 // 옛 강변·호수·전망대 다리·계단 거리는 scripts/jm-kyoto-keep.json 에서 가져와요.
 
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -121,32 +124,15 @@ ryokan('jm_ryokan_matsu', [11.5, -32], [10, 12, 9], -90, 3, { text: '松の湯',
 ryokan('jm_ryokan_yuzuriha', [11.5, -41], [8, 10, 9], -90, 3, { text: 'ゆずりは', bg: '#4a2f1b' }, { color: '#5e3d2a' })
 
 // ─────────────────────────────────────────────
-// 3. 서1 갈래: 「슬램 리바운드」 노면전차 건널목 + 농구장
+// 3. 서1 갈래: 마치야 골목 (끝에 벤치 쉼터)
 // ─────────────────────────────────────────────
-road('jm_branch_w1', 'stone', [-27, -6], [40, 0.06, 4])
-road('jm_tram_bed', null, [-26, 1], [3, 0.04, 38], { color: '#8d8478' })
-road('jm_tram_rail_w', null, [-26.7, 1], [0.12, 0.045, 38], { color: '#5b5550' })
-road('jm_tram_rail_e', null, [-25.3, 1], [0.12, 0.045, 38], { color: '#5b5550' })
-for (const [i, z] of [[1, 19.6], [2, -17.6]]) prop(`jm_tram_stop_${i}`, null, [-26, z], [2.4, 0.9, 0.5], { color: '#f2c94c' })
-prop('jm_crossing', 'jmCrossing', [-26, -6], [5.2, 3.2, 0.4], { rotationDeg: 90, collider: false })
-wall('jm_crossing_post_n', [-24.7, -8.6], [0.3, 3, 0.3])
-wall('jm_crossing_post_s', [-27.3, -3.4], [0.3, 3, 0.3])
-prop('jm_poster_rebound', 'jmPosterBoard', [-29.8, -9.4], [1.6, 3, 0.3], { collider: [1.7, 3, 0.3], poster: { theme: 'crossing', title: '「슬램 리바운드」', subtitle: '전차가 지나가는 건널목 · 오프닝' } })
+road('jm_branch_w1', 'stone', [-19, -6], [24, 0.06, 4])
+prop('jm_w1_bench', 'jmBench', [-30, -8.4], [1.8, 0.5, 0.5])
+tree('jm_w1_sakura', 'jmSakura', [-33.5, -5.5])
+stoneLantern('jm_w1_lantern', [-30.5, -3.4])
 prop('jm_machiya_tram_n', 'jmMachiya', [-20.5, -12.6], [7, 7, 7], { signs: [{ text: '古典堂 書店', bg: '#3f2a1d', fg: '#f5e6c8' }] })
 prop('jm_machiya_tram_s', 'jmMachiya', [-20.5, 0.6], [7, 7, 7], { rotationDeg: 180, signs: [{ text: '豆腐 ひかり', bg: '#f5f0e6', fg: '#1e3a5f' }] })
 prop('jm_vending_tram', 'jmVendingRow', [-30, -2.6], [3, 1.9, 0.8], { rotationDeg: 180 })
-// 농구장 (긴 쪽이 남북)
-prop('jm_court', null, [-41, -6], [9.6, 0.06, 15.6], { color: '#9a5b3b', collider: false })
-prop('jm_court_lines', 'jmCourtLines', [-41, -6], [15, 0.02, 9], { rotationDeg: 90, collider: false })
-prop('jm_hoop_n', 'jmHoop', [-41, -11.8], [1.8, 3.6, 1.2], { collider: [0.3, 3.6, 0.3] })
-prop('jm_hoop_s', 'jmHoop', [-41, -0.2], [1.8, 3.6, 1.2], { rotationDeg: 180, collider: [0.3, 3.6, 0.3] })
-prop('jm_ball_1', 'jmBall', [-40, -7], [0.3, 0.3, 0.3], { collider: false })
-prop('jm_ball_2', 'jmBall', [-42.5, -4.2], [0.3, 0.3, 0.3], { collider: false })
-prop('jm_court_bench', 'jmBench', [-35.4, -12], [1.8, 0.5, 0.5], { rotationDeg: -90 })
-prop('jm_court_fence_w', 'jmFence', [-46.2, -6], [15.6, 1.6, 0.1], { rotationDeg: 90 })
-prop('jm_court_fence_n', 'jmFence', [-41, -14], [9.6, 1.6, 0.1])
-prop('jm_court_fence_s', 'jmFence', [-41, 2], [9.6, 1.6, 0.1])
-light('jm_light_court', [-41, -6], { light: { distance: 22 } })
 
 // ─────────────────────────────────────────────
 // 4. 서2 갈래: 호수 → 「초속 5미터」 벚꽃 강변 (호수·강은 옛 데이터 그대로)
@@ -156,20 +142,13 @@ prop('jm_sign_river', 'jmArrowSign', [-16.6, -18.8], [1.6, 2.1, 0.2], { signs: [
 for (const [i, x, z] of [[1, -18, -17.5], [2, -30.5, -17.8], [3, -35.5, -24.6], [4, -13.6, -26.2]]) tree(`jm_lake_tree_${i}`, i % 2 ? 'jmSakura' : 'jmMaple', [x, z])
 
 // ─────────────────────────────────────────────
-// 5. 동1 갈래: 비 오는 버스 정류장 + 하레야 잡화점 + 전망 무대
+// 5. 동1 갈래: 하레야 잡화점 + 전망 무대
 // ─────────────────────────────────────────────
 road('jm_branch_e1', 'asphalt', [18.5, -6], [23, 0.06, 4.4])
-prop('jm_bus_stop', 'jmBusStop', [21, -2.4], [3, 2.6, 1.6], { rotationDeg: 180, signs: [{ text: '湯灯町 入口' }] })
 shop('jm_shop_hare', [21, -13], [8, 7, 7], 0, { look: 'zakka', enterable: true, sign: { text: '晴れ屋 雑貨店', bg: '#fff4d6', fg: '#1e40af' } })
 prop('jm_vending_bus', 'jmVendingRow', [16.4, -2.6], [3, 1.9, 0.8], { rotationDeg: 180 })
-prop('jm_poster_busstop', 'jmPosterBoard', [25.6, -2.6], [1.6, 3, 0.3], { rotationDeg: 180, collider: [1.7, 3, 0.3], poster: { theme: 'busstop', title: '비 오는 정류장', subtitle: '우산을 쓰고 버스를 기다려요' } })
-prop('jm_teruteru', 'jmTeruTeru', [25.2, -8.9], [2.6, 2.6, 0.1], { collider: false })
-wall('jm_teruteru_pillar_l', [23.9, -8.9], [0.12, 2.6, 0.12])
-wall('jm_teruteru_pillar_r', [26.5, -8.9], [0.12, 2.6, 0.12])
 prop('jm_pole_1', 'jmUtilityPole', [16, -8.6], [0.4, 8, 0.4], { collider: [0.35, 8, 0.35], wire: 12.6 })
 prop('jm_pole_2', 'jmUtilityPole', [28.6, -8.6], [0.4, 8, 0.4], { collider: [0.35, 8, 0.35] })
-prop('jm_puddle_1', 'jmPuddle', [19, -5.4], [2.4, 0.02, 1.6], { collider: false, rotationDeg: 15 })
-prop('jm_puddle_2', 'jmPuddle', [25.5, -6.6], [1.8, 0.02, 1.2], { collider: false, rotationDeg: -10 })
 // 전망 무대 (기요미즈 무대 느낌) — 동쪽 흔들다리가 BK 전망대로 이어짐
 terrain.push({ type: 'platform', id: 'jm_stage', rect: [31, -13, 43, 1], height: 6.5, surface: 'paver', lights: true,
   rails: [{ edge: 'north' }, { edge: 'west' }, { edge: 'south', gaps: [[35.3, 38.7]] }, { edge: 'east', gaps: [[-6.4, -3.6]] }] })
@@ -182,38 +161,29 @@ for (const [i, x, z] of [[1, 32.5, -0.8], [2, 41.5, -11.5]]) stoneLantern(`jm_st
 for (const [i, x, z] of [[1, 27.5, -15.5], [2, 44, 6], [3, 24.5, 12]]) tree(`jm_stage_maple_${i}`, 'jmMaple', [x, z])
 
 // ─────────────────────────────────────────────
-// 6. 동2 갈래: 「나츠키 요괴장」 대나무 숲 여우 신사
+// 6. 동2 갈래: 대나무 숲 산책길 (끝에 벤치 쉼터)
 // ─────────────────────────────────────────────
 road('jm_branch_e2', 'stone', [18.5, -24], [23, 0.06, 3.5])
-prop('jm_shrine_torii', 'jmTorii', [17.6, -24], [5, 5.2, 0.8], { rotationDeg: 90, collider: false })
-wall('jm_shrine_torii_pillar_n', [17.6, -26], [0.5, 5, 0.5])
-wall('jm_shrine_torii_pillar_s', [17.6, -22], [0.5, 5, 0.5])
-buildings.push({ id: 'jm_shrine', style: 'jmShrine', position: [33.2, -24], size: [10, 8, 7], rotationDeg: -90, model: null })
+prop('jm_e2_bench', 'jmBench', [31.2, -24], [1.8, 0.5, 0.5], { rotationDeg: -90 })
+prop('jm_e2_hokora', 'jmHokora', [33.6, -27], [0.9, 1.6, 0.7], { rotationDeg: -90 })
 for (const [i, x] of [[1, 20.5], [2, 24]]) {
   stoneLantern(`jm_shrine_lantern_n${i}`, [x, -26.2])
   stoneLantern(`jm_shrine_lantern_s${i}`, [x, -21.8])
 }
-prop('jm_fox_n', 'jmFox', [27.6, -26.4], [0.9, 1.8, 0.9], { rotationDeg: -90 })
-prop('jm_fox_s', 'jmFox', [27.6, -21.6], [0.9, 1.8, 0.9], { rotationDeg: -90, mirror: true })
-prop('jm_chozuya', 'jmChozuya', [23, -19.6], [1.8, 2.2, 1.4], { rotationDeg: 180 })
-prop('jm_ema', 'jmEma', [23, -28.4], [2, 1.8, 0.3])
-prop('jm_poster_shrine', 'jmPosterBoard', [20.2, -28.6], [1.6, 3, 0.3], { collider: [1.7, 3, 0.3], poster: { theme: 'shrine', title: '「나츠키 요괴장」', subtitle: '대나무 숲 여우 신사 · 엔딩' } })
-prop('jm_shrine_hokora', 'jmHokora', [38.8, -27.5], [0.9, 1.6, 0.7], { rotationDeg: -90 })
 for (let i = 0; i < 7; i++) {
   bamboo(`jm_shrine_bamboo_n${i + 1}`, [17 + i * 3.6, -17.6])
   bamboo(`jm_shrine_bamboo_s${i + 1}`, [17 + i * 3.6, -31])
 }
 for (const [i, x, z] of [[1, 38.8, -17.6], [2, 39.5, -34.5], [3, 19, -35.5]]) tree(`jm_shrine_ginkgo_${i}`, 'jmGinkgo', [x, z])
-light('jm_light_shrine', [26, -24], { light: { distance: 20 } })
 
 // ─────────────────────────────────────────────
-// 7. 북쪽(맵 뒷부분): 산넨자카식 계단 거리 → 꼭대기 큰 여관 「湯灯屋」
+// 7. 북쪽(맵 뒷부분): 산넨자카식 계단 거리 → 고개 → 골짜기 → 중턱 → 꼭대기 큰 여관 「湯灯屋」
 //    옛 계단 거리(단 4개: 1.5 → 3 → 4.5 → 6m, 마치야 12채, 서쪽 정원·연못, 동쪽 대나무·도리이 계단)를
-//    온천 거리 축(x = 0)에 맞춰 x -14.5, z -6 옮겨서 그대로 씀. 꼭대기 신사 자리에 큰 여관을 올림
+//    온천 거리 축(x = 0)에 맞춰 x -14.5, z -6 옮겨서 그대로 씀. 옛 꼭대기 단(6m)은 고개가 됨
 // ─────────────────────────────────────────────
 const ZAKA_DX = -14.5
 const ZAKA_DZ = -6
-const MAP_NORTH = -124.8 // 땅 끝(-125) 안쪽
+const MAP_NORTH = -184.8 // 땅 끝(-185, hub.json 바닥) 안쪽
 const mv = ([x, z]) => [r2(x + ZAKA_DX), r2(z + ZAKA_DZ)]
 const mv3 = ([x, z, h]) => [r2(x + ZAKA_DX), r2(z + ZAKA_DZ), h]
 function shiftZaka(item) {
@@ -229,34 +199,103 @@ function shiftZaka(item) {
 roads.push(...keep.zaka.roads.map(shiftZaka))
 terrain.push(...keep.zaka.terrain.map(shiftZaka))
 buildings.push(...keep.zaka.buildings.map(shiftZaka))
-props.push(...keep.zaka.props.map(shiftZaka))
+// 장면 자리 골목을 내려고 빼는 옛 항목: 골목 쪽 대나무 울타리(아래에서 틈을 두고 다시 놓음), 장면 자리와 겹치는 나무·노다테
+const ZAKA_DROP = new Set(['jm_zaka_fence_t1_w', 'jm_zaka_fence_t1_w_2', 'jm_zaka_fence_t3_e', 'jm_zaka_fence_t3_e_2', 'jm_zaka_maple_10', 'jm_zaka_nodate', 'jm_zaka_bamboo_7'])
+props.push(...keep.zaka.props.filter((item) => !ZAKA_DROP.has(item.id)).map(shiftZaka))
 
 // 온천 거리 끝 → 계단 거리 입구(도리이) 잇는 바닥 + 수로 끝 돌막이
 road('jm_zaka_link', 'stone', [0, -46], [14, 0.08, 4])
 prop('jm_canal_end_wall', null, [0, -44.2], [5, 0.46, 0.4], { color: '#9d978c' })
-prop('jm_poster_kimi', 'jmPosterBoard', [-6.6, -50.5], [1.6, 3, 0.3], { rotationDeg: 30, collider: [1.7, 3, 0.3], poster: { theme: 'stairs', title: '「그대의 이름을」', subtitle: '계단 위아래에서 돌아보던 장면' } })
 for (const side of [-1, 1]) gasLamp(`jm_zaka_link_lamp_${side < 0 ? 'w' : 'e'}`, [side * 5.6, -47])
 
-// 꼭대기 단(높이 6, x -11.5~15.5, z -124.8~-107) 위 큰 여관 — 마을 어디서나 보이는 상징
-const TOP = 6
-// 건물(buildings)은 100m 밖에서 생략되므로 소품(props)으로 둠: 16m보다 큰 소품은 늘 그려져서 거리 어디서나 보임 (충돌은 size 그대로)
-prop('jm_grand_ryokan', 'jmGrandRyokan', [3, -118.8], [22, 12, 11], { model: null, elevation: TOP, signs: [{ text: '湯灯屋' }] })
-for (const [i, x] of [[1, -4.5], [2, 9.5]]) stoneLantern(`jm_ryokan_lantern_${i}`, [x, -109.2], { elevation: TOP })
-for (const [i, x] of [[1, -9.6], [2, 14.2]]) gasLamp(`jm_ryokan_lamp_${i}`, [x, -108.4], { elevation: TOP })
-prop('jm_ryokan_fox_w', 'jmFox', [-1.6, -110.3], [0.9, 1.8, 0.9], { mirror: true, elevation: TOP })
-prop('jm_ryokan_fox_e', 'jmFox', [7.6, -110.3], [0.9, 1.8, 0.9], { elevation: TOP })
 
 // 거리 조명 (가까운 것만 켜짐)
 light('jm_light_street_s', [0, -12])
 light('jm_light_street_n', [0, -36])
 light('jm_light_zaka', [0, -78], { elevation: 3 })
-light('jm_light_ryokan', [2, -104], { elevation: TOP })
+
+// ─────────────────────────────────────────────
+// 7-1. 장면 자리 ①②: 계단 거리 상점 사이 골목 → 같은 높이의 작은 마당
+//      (울타리는 상점 틈 자리만 비우고 다시 놓음)
+// ─────────────────────────────────────────────
+const fence = (id, position, len, elevation, rotationDeg = 90) => prop(id, 'jmBambooFence', position, [len, 1.1, 0.1], { rotationDeg, elevation })
+fence('jm_zaka_fence_t1_w_a', [-11.3, -58.25], 5.5, 1.5)
+fence('jm_zaka_fence_t1_w_b', [-11.3, -68.05], 8.9, 1.5)
+fence('jm_zaka_fence_t3_e_a', [11.3, -92.25], 5.5, 4.5)
+fence('jm_zaka_fence_t3_e_b', [11.3, -102.3], 9.4, 4.5)
+terrain.push({ type: 'platform', id: 'jm_scene1_yard', rect: [-22, -65.5, -11.5, -59], height: 1.5, surface: 'stone', rails: [{ edge: 'west' }, { edge: 'north' }, { edge: 'south' }] })
+terrain.push({ type: 'platform', id: 'jm_scene2_yard', rect: [11.5, -100, 22, -93], height: 4.5, surface: 'stone', rails: [{ edge: 'east' }, { edge: 'north' }, { edge: 'south' }] })
+const sceneSpot = (n, position, size, rotationDeg, elevation = 0) =>
+  prop(`jm_scene_${n}`, 'jmSceneSpot', position, size, { rotationDeg, elevation, collider: false, signs: [{ text: `장면 자리 ${n}` }, { text: '작품 준비 중' }] })
+sceneSpot(1, [-17, -62.25], [6, 0.1, 9], 90, 1.5)
+sceneSpot(2, [17, -96.5], [6, 0.1, 9], -90, 4.5)
+
+// ─────────────────────────────────────────────
+// 7-2. 고개 (옛 꼭대기 단, 높이 6) — 북쪽으로 골짜기가 내려다보임
+// ─────────────────────────────────────────────
+const PASS = 6
+fence('jm_pass_fence_n_w', [-7.05, -125.2], 8.9, PASS, 0)
+fence('jm_pass_fence_n_e', [9.05, -125.2], 12.9, PASS, 0)
+prop('jm_pass_stone', 'jmStoneMonument', [9, -110.5], [2, 2.4, 0.5], { rotationDeg: -20, elevation: PASS, signs: [{ text: '湯灯峠' }] })
+for (const [i, x] of [[1, -4], [2, 4]]) stoneLantern(`jm_pass_lantern_${i}`, [x, -122.6], { elevation: PASS })
+prop('jm_pass_bench', 'jmBench', [11.5, -118], [1.8, 0.5, 0.5], { rotationDeg: -90, elevation: PASS })
+tree('jm_pass_maple', 'jmMaple', [12.5, -123], { elevation: PASS })
+// 고개 → 골짜기 내리막 계단 (계단 거리와 반대로 북쪽으로 내려감)
+terrain.push({ type: 'stairs', id: 'jm_pass_stairs', from: [0, -139, 0], to: [0, -125.4, PASS], width: 5 })
+for (const side of [-1, 1]) {
+  prop(`jm_pass_rail_${side < 0 ? 'w' : 'e'}`, 'jmStairRail', [side * 2.65, -132.2], [0.12, 7.1, 13.6], { rotationDeg: 180, collider: [0.12, 7.1, 13.6], rail: { bottom: 0, top: PASS } })
+}
+
+// ─────────────────────────────────────────────
+// 7-3. 골짜기 (높이 0): 동서로 흐르는 개울 + 붉은 다리, 양쪽 강가 집 → 장면 자리 ③
+// ─────────────────────────────────────────────
+prop('jm_valley_stream_w', 'jmCanal', [-24, -144], [6, 0.1, 44], { rotationDeg: 90, collider: [5.2, 1, 44] })
+prop('jm_valley_stream_e', 'jmCanal', [24, -144], [6, 0.1, 44], { rotationDeg: 90, collider: [5.2, 1, 44] })
+prop('jm_valley_stream_bridge', 'jmCanal', [0, -144], [6, 0.1, 4], { rotationDeg: 90, collider: false, curb: false })
+road('jm_valley_bridge', null, [0, -144], [3.2, 0.14, 7], { color: '#7a5236' })
+prop('jm_valley_bridge_rail', 'jmBridgeRail', [0, -144], [3.2, 0.1, 7], { collider: false })
+road('jm_valley_path_s', 'stone', [0, -138.5], [10, 0.06, 3])
+road('jm_valley_path_n', 'stone', [-2, -150.5], [48, 0.06, 3])
+for (const [i, x, z] of [[1, -3.8, -140.4], [2, 3.8, -140.4], [3, -3.8, -148.4], [4, 3.8, -148.4]]) gasLamp(`jm_valley_lamp_${i}`, [x, z])
+prop('jm_valley_house_sw', 'jmMachiya', [-17, -133], [7, 7, 7], { rotationDeg: 180, signs: [{ text: '宿 せせらぎ', bg: '#2b2f4a', fg: '#f5efe0' }] })
+prop('jm_valley_house_se', 'jmMachiya', [17, -133], [7, 7, 7], { rotationDeg: 180, sugidama: true, signs: [{ text: '甘味 川辺', bg: '#7c2d12', fg: '#fde68a' }] })
+prop('jm_valley_house_nw', 'jmMachiya', [-38, -155], [7, 7, 7], { signs: [{ text: '蕎麦 谷風', bg: '#3f2a1d', fg: '#f5e6c8' }] })
+for (const [i, x, z, s] of [[1, -30, -137, 'jmMaple'], [2, 30, -137, 'jmMaple'], [3, -8, -129, 'jmSakura'], [4, 8, -129, 'jmSakura'], [5, -46, -149, 'jmMaple'], [6, 44, -150, 'jmGinkgo'], [7, 34, -157, 'jmMaple']]) tree(`jm_valley_tree_${i}`, s, [x, z])
+light('jm_light_valley', [0, -145])
+sceneSpot(3, [20, -153.5], [12, 0.1, 8], 0)
+
+// ─────────────────────────────────────────────
+// 7-4. 중턱 (높이 5) → 장면 자리 ④, 그리고 꼭대기(높이 10) 큰 여관 「湯灯屋」
+// ─────────────────────────────────────────────
+const MID = 5
+const TOP = 10
+terrain.push({ type: 'stairs', id: 'jm_mid_stairs', from: [-24, -149, 0], to: [-24, -160, MID], width: 3.6 })
+terrain.push({ type: 'platform', id: 'jm_mid_terrace', rect: [-34, -170, 20, -160], height: MID, surface: 'stone', lights: true,
+  rails: [{ edge: 'south', gaps: [[-25.8, -22.2]] }, { edge: 'west' }, { edge: 'east' }, { edge: 'north', gaps: [[-20, 20]] }] })
+bamboo('jm_mid_bamboo_1', [-31, -167.5], { elevation: MID })
+bamboo('jm_mid_bamboo_2', [-31, -163], { elevation: MID })
+tree('jm_mid_maple', 'jmMaple', [18, -167], { elevation: MID })
+for (const [i, x] of [[1, -19.5], [2, 9.5]]) gasLamp(`jm_mid_lamp_${i}`, [x, -161.6], { elevation: MID })
+sceneSpot(4, [-6, -165], [12, 0.1, 7], 0, MID)
+terrain.push({ type: 'stairs', id: 'jm_top_stairs', from: [14, -161, MID], to: [14, -170, TOP], width: 3.6 })
+terrain.push({ type: 'platform', id: 'jm_ryokan_top', rect: [-20, -184.8, 24, -170], height: TOP, surface: 'stone', lights: true,
+  rails: [{ edge: 'south', gaps: [[12.2, 15.8]] }, { edge: 'west' }, { edge: 'east' }, { edge: 'north' }] })
+// 건물(buildings)은 100m 밖에서 생략되므로 소품(props)으로 둠: 16m보다 큰 소품은 늘 그려져서 마을 어디서나 보임 (충돌은 size 그대로)
+prop('jm_grand_ryokan', 'jmGrandRyokan', [2, -180], [22, 12, 8], { model: null, elevation: TOP, signs: [{ text: '湯灯屋' }] })
+for (const [i, x] of [[1, -4], [2, 8]]) stoneLantern(`jm_ryokan_lantern_${i}`, [x, -172.6], { elevation: TOP })
+prop('jm_ryokan_fox_w', 'jmFox', [-1, -173.6], [0.9, 1.8, 0.9], { mirror: true, elevation: TOP })
+prop('jm_ryokan_fox_e', 'jmFox', [5, -173.6], [0.9, 1.8, 0.9], { elevation: TOP })
+for (const [i, x] of [[1, -16], [2, 20]]) gasLamp(`jm_ryokan_lamp_${i}`, [x, -172], { elevation: TOP })
+tree('jm_ryokan_maple', 'jmMaple', [-16.5, -181], { elevation: TOP })
+tree('jm_ryokan_sakura', 'jmSakura', [20.5, -181], { elevation: TOP })
+light('jm_light_ryokan', [2, -174], { elevation: TOP })
 
 // ─────────────────────────────────────────────
 // 8. 옛 데이터에서 가져오는 것: 호수·서쪽 벚꽃 강변·BK 전망대 흔들다리
 // ─────────────────────────────────────────────
 terrain.push(...keep.terrain)
-props.push(...keep.props)
+// 물수제비(옛 「초속 5미터」 체험)와 작품 포스터는 뺌 — 강변 풍경만 남김
+props.push(...keep.props.filter((item) => item.id !== 'jm_skip_spot' && item.id !== 'jm_poster_byousoku_river'))
 
 // 겹치는 id 검사
 const ids = new Set()

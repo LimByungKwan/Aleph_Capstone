@@ -405,7 +405,52 @@ export function JmStoneMonument({ item }) {
   )
 }
 
+// ── 장면 자리 (작품이 정해지기 전 빈 마당) ─────────────
+// size [가로, _, 깊이]. 돌 마당 + 나무 테두리 + 뒤쪽(-z) 간판(signs[0] 큰 글씨, signs[1] 작은 글씨) + 네 귀퉁이 등불
+// 작품이 정해지면 이 마당 위에 장면 소품을 올리면 돼요. 앞(+z)에서 다가오도록 rotationDeg로 돌림
+export function JmSceneSpot({ item }) {
+  const [w, , d] = item.size
+  const title = item.signs?.[0]?.text ?? '장면 자리'
+  const sub = item.signs?.[1]?.text
+  return (
+    <group>
+      <Box p={[0, 0.03, 0]} s={[w, 0.06, d]} c="#cdbf9f" />
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Box p={[0, 0.08, (side * d) / 2]} s={[w + 0.2, 0.12, 0.18]} c={DARK_WOOD} />
+          <Box p={[(side * w) / 2, 0.08, 0]} s={[0.18, 0.12, d]} c={DARK_WOOD} />
+        </group>
+      ))}
+      {[-1, 1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <group key={`${sx}${sz}`} position={[sx * (w / 2 - 0.4), 0, sz * (d / 2 - 0.4)]}>
+            <Box p={[0, 0.45, 0]} s={[0.16, 0.9, 0.16]} c={DARK_WOOD} />
+            <Box p={[0, 1.05, 0]} s={[0.3, 0.32, 0.3]} m={LAMP_GLOW} />
+          </group>
+        )),
+      )}
+      <group position={[0, 0, -d / 2 + 0.6]}>
+        {[-1, 1].map((side) => (
+          <Box key={side} p={[side * 1.5, 1.2, 0]} s={[0.14, 2.4, 0.14]} c={DARK_WOOD} />
+        ))}
+        <Box p={[0, 2.5, 0]} s={[3.6, 0.14, 0.3]} c={ROOF} />
+        <mesh position={[0, 1.75, 0.08]}>
+          <planeGeometry args={[2.8, 0.75]} />
+          <GlowMaterial glow={0.5} map={getJpSignTexture(title, '#f3e6c8', '#5b1a12', 2.8 / 0.75)} side={THREE.DoubleSide} />
+        </mesh>
+        {sub && (
+          <mesh position={[0, 1.15, 0.08]}>
+            <planeGeometry args={[2.2, 0.42]} />
+            <GlowMaterial glow={0.35} map={getJpSignTexture(sub, '#3d2a1e', '#f3e6c8', 2.2 / 0.42)} side={THREE.DoubleSide} />
+          </mesh>
+        )}
+      </group>
+    </group>
+  )
+}
+
 export const JM_KYOTO_STYLES = {
+  jmSceneSpot: JmSceneSpot,
   jmRyokan: JmRyokan,
   jmGrandRyokan: JmGrandRyokan,
   jmCanal: JmCanal,
