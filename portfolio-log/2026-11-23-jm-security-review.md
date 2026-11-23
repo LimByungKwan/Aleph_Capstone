@@ -42,3 +42,51 @@
   - 피드백은 받는 쪽 구조를 모르고 쓰인 경우가 많다. 코드 근거와 대조하지 않으면 이미 있는 걸 다시 만들게 된다.
   - "막혔다"를 증명하는 방법은 구조마다 다르다. RLS는 에러가 아니라 빈 결과로 막는다.
   - 면접 대비 한 줄: "MySQL이라면 RLS가 없어서 서버에서 역할을 검사하고, DB 계정에는 프로시저 실행 권한만 GRANT하겠다."
+
+---
+
+# (같은 날 이어서) 권한 우회 매트릭스 · 감사 로그 · 로그인 시도 제한 · 구성도
+
+- 목표: 위에서 좁힌 보안 작업 중 코드로 할 수 있는 것을 끝내고, "막힌다"를 테스트로 증명한다.
+
+## A. AI가 한 일
+- 권한 우회 매트릭스 테스트: 모든 public 테이블(12개) × 역할 5종(비로그인·순례객·다른 가게 사장님·그 가게 사장님·관리자) × 읽기/INSERT/UPDATE/DELETE를 한 파일로 자동 점검. 테이블 목록을 DB에서 읽어 돌리므로 새 테이블이 생겨도 자동으로 검사 대상이 됨 — 증거: `supabase/tests/jm_security_matrix_test.sql`
+  - 결과: 남의 데이터 읽기 0건, 직접 INSERT 42501, 직접 UPDATE·DELETE 0행, 비로그인은 쓰기 함수 8개 모두 permission denied, 관리자는 접속 기록·통계를 볼 수 있음(막기만 하다 필요한 사람이 못 보는 실수도 확인)
+  - 실수 방지 점검 4개: RLS 꺼진 테이블 0개, search_path 안 고정된 SECURITY DEFINER 함수 0개, 비로그인이 실행 가능한 SECURITY DEFINER 함수는 정책용 2개뿐, security_invoker 없는 뷰 0개
+- 일부러 구멍 내서 테스트가 잡는지 확인(뮤테이션 테스트) — 증거: 로컬 PGlite 실행 출력(대화 기록)
+
+| 일부러 낸 구멍 | 테스트 결과 |
+|---|---|
+| stamps RLS 끄기 | FAIL: 남의 스탬프 1건 보임 |
+| coupons 전체 공개 정책 | FAIL: 남의 쿠폰 1건 보임 |
+| shop_promos INSERT 허용 정책 | FAIL: INSERT가 42501이 아님 |
+| save_appearance를 비로그인에게 열기 | FAIL: permission denied가 아님 |
+| collect_stamp의 search_path 고정 해제 | FAIL: search_path 고정 안 된 함수 |
+| daily_visitors 뷰 security_invoker 해제 | FAIL: 순례객이 방문자 통계를 봄 |
+| RLS 없는 새 테이블 추가 | FAIL: RLS가 꺼진 테이블: new_feature |
+| tarot_readings에 "누구나 삭제" 정책 | 통과 — 실제 구멍이 아님. Postgres는 SELECT로 볼 수 없는 행은 지우지 못하게 해서 남의 타로 기록은 여전히 안전 |
+
+- access_logs 점검: 로그인 기록(누가·언제)만 남고 쓰기 작업은 기록되지 않음을 확인. 쿠폰 사용은 `coupons.used_by/used_at`과 `redeem_requests`로 이미 남지만, **역할 변경은 흔적이 전혀 없고** 가게 문구는 덮어써서 이전 내용이 사라짐
+- 감사 로그 추가: 역할·가게 변경, 가게 문구 저장(이전/이후), 쿠폰 사용을 트리거로 자동 기록. 관리자만 읽고, 관리자도 고치기·지우기·가짜 넣기 불가. 바뀐 칸만 저장(개인정보 최소) — 증거: `supabase/migrations/20261125120000_jm_audit_log.sql`, `supabase/tests/jm_audit_log_test.sql`
+  - 처음 작성 때 실수: SECURITY DEFINER 함수 안에서 `current_user`는 호출한 사람이 아니라 함수 주인이 됨. 세션의 `role` 설정으로 바꿔서 "SQL Editor(postgres)"와 "로그인한 사장님(authenticated)"을 구분하게 고침
+  - 뮤테이션: 트리거 제거 → FAIL, 관리자 삭제 정책 추가 → FAIL, 전체 공개 정책 → FAIL
+- 로그인 시도 제한 추가: 서버 코드를 읽다가 발견한 구멍. 로그인은 전부 Render 서버를 거쳐 Supabase로 가서, Supabase의 IP 제한에는 모든 사용자가 서버 IP 하나로 보임 → 공격자만 골라 막을 수 없고, 한 명이 몰아서 시도하면 모두가 막힐 수 있음. 실제 사용자 IP(Render 프록시 1단 신뢰) 기준 15분 30번, 이메일 기준 실패 15분 5번(성공 시 초기화), 초과 시 429 + Retry-After, 막힌 요청은 Supabase까지 안 감 — 증거: `server/src/rateLimit.js`, `server/test/rateLimit.test.js`
+- 실제 구성도: 운영하지 않는 Nginx 대신 실제 경로(브라우저 → Vercel / Render → Supabase)와 구간별 방어·근거·알려진 한계를 정리 — 증거: `docs/jm-architecture.md`
+- 검증: SQL 테스트 5개 파일(core·appearance·tarot·매트릭스·감사 로그) 로컬 PGlite에서 모두 통과, 서버 테스트 36개 통과
+
+## B. 사용자가 직접 한 일
+- 위임: "이제 너가 다 해줘"로 남은 작업 진행을 맡김
+- 실제 DB 적용 승인과 Supabase 대시보드 로그인 (비밀번호 입력은 사용자가 직접)
+
+## C. AI 판단과 달리 사용자가 결정한 일
+- 없음
+
+## 결과와 배운 점
+- 결과
+  - 실제 Supabase 적용(같은 날, 지민 로그인 후 함께 진행): 먼저 읽기 전용 조회로 상태 확인 → appearance·tarot은 이미 적용돼 있어서 감사 로그 migration만 실행. 이어서 커밋 `3563ca8`의 검증 SQL(감사 로그·권한 매트릭스)을 GitHub 원본 그대로 불러와 실제 DB에서 실행해 둘 다 통과. 끝나고 다시 조회해서 테스트 사용자 0명, 감사 로그 0건, 감사 트리거 3개, 기존 프로필 2명 그대로임을 확인(검증이 흔적을 남기지 않음)
+  - 감사 로그 첫 실제 기록: 시연용 사장님 계정(비밀번호는 사용자가 직접 입력해 생성)을 SQL Editor에서 정류장 분식 사장님으로 지정 → `role_change`, `actor_db = postgres`, `{"role":"pilgrim","shop_id":null} → {"role":"owner","shop_id":"shop_hj_snack"}`로 남는 것을 확인
+  - 서버의 로그인 시도 제한은 main에 병합되고 Render가 다시 배포해야 적용됨
+- 배운 점
+  - "막혔다"를 증명하려면, 일부러 구멍을 냈을 때 테스트가 실패하는지까지 봐야 한다. 안 그러면 아무것도 검사하지 않는 테스트도 통과한다.
+  - 프록시를 하나 끼우면 뒤쪽 서비스가 보는 IP가 바뀐다. IP 기반 방어는 "누구의 IP를 보고 있나"부터 확인해야 한다.
+  - SECURITY DEFINER 안에서는 `current_user`가 바뀐다. 감사 기록에서 "누가"를 잘못 남기기 쉬운 지점이다.

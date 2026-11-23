@@ -1,6 +1,6 @@
 import characters from '@shared/characters.json'
 import { ApiError } from './errors.js'
-import { authRequest, publicRequest, useSessionStore } from './session.js'
+import { authRequest, openLogin, publicRequest, useSessionStore } from './session.js'
 import { requestPromo } from './course.js'
 import { generatePromoMock } from '../components/boss/promoMock.js'
 import { checkPromoRules } from '../components/boss/promoRules.js'
@@ -82,7 +82,16 @@ export function deleteTarotReading({ readingId }) {
 }
 
 // ── 스탬프 ──
+// 손님(비로그인)은 맵·체험은 그대로 즐기고, 스탬프를 받으려는 순간에만 로그인 창을 띄운다
+// (스탬프 버튼이 있는 화면들을 하나하나 고치지 않고 여기 한 곳에서 막음)
 export function collectStamp({ placeId }) {
+  if (!loggedIn()) {
+    openLogin({
+      title: '로그인하고 스탬프를 찍어요',
+      reason: '처음이라면 아래 회원가입하기로 바로 시작할 수 있어요. 모은 스탬프는 계정에 저장돼요.',
+    })
+    return Promise.reject(new ApiError('LOGIN_REQUIRED', '스탬프는 로그인하면 모을 수 있어요.'))
+  }
   return authRequest('/stamps', { method: 'POST', body: { placeId } })
 }
 
