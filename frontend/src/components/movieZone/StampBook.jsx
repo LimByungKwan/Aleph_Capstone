@@ -2,6 +2,8 @@ import places from '@shared/places.json'
 import { formatTime, listMyStamps } from '../../api/client.js'
 import { useUiStore } from './uiStore.js'
 import { LoadingBlock, Modal, TYPE_LABEL, errorText, useAsync } from './common.jsx'
+import { SPECIAL_LOCATIONS } from './specialLocations.js'
+import { selectTimePass, TIME_BADGE_COUNT, timePassCount, useTimePass } from './specialAccessStore.js'
 
 // [3. 개발 > 프론트엔드] 스탬프북: 스탬프를 찍을 수 있는 모든 장소 + 내가 받은 것 표시
 const STAMPABLE = places.filter((p) => p.type !== 'npc')
@@ -11,9 +13,24 @@ export default function StampBook({ onClose }) {
   const { data, loading, error, reload } = useAsync(() => listMyStamps({ userId }), [userId])
   const byPlace = new Map((data?.stamps ?? []).map((s) => [s.placeId, s]))
   const done = STAMPABLE.filter((p) => byPlace.has(p.id)).length
+  const timePass = useTimePass((state) => selectTimePass(state,userId))
 
   return (
     <Modal title="📖 스탬프북" onClose={onClose} labelledBy="ui-stampbook-title">
+      <section className="special-stampbook" aria-label="시간 탐정 스탬프">
+        <h3>시간 탐정 스탬프 {timePassCount(timePass)} / {SPECIAL_LOCATIONS.length}</h3>
+        {timePassCount(timePass) >= TIME_BADGE_COUNT && <p className="restoration-badge" data-restored="true">🏅 시대 탐정 배지</p>}
+        <div className="ui-stamps">
+          {SPECIAL_LOCATIONS.map(({ id, short }) => (
+            <article key={id} className={`ui-stamp ${timePass.stamps[id] ? 'ui-stamp--done' : ''}`}>
+              <div className="ui-stamp__seal" aria-hidden="true">{timePass.stamps[id] ? '시간\n탐정' : '?'}</div>
+              <div className="ui-stamp__name">{short}</div>
+              <div className="ui-stamp__meta">{timePass.stamps[id] ? `${formatTime(timePass.stamps[id])} 획득`
+                : timePass.restored[id] ? '복원 완료 · 스탬프 획득 가능' : '미획득'}</div>
+            </article>
+          ))}
+        </div>
+      </section>
       {loading && !data ? (
         <LoadingBlock rows={2} />
       ) : error ? (

@@ -12,6 +12,7 @@ import GyeongseongStreetLife from './GyeongseongStreetLife.jsx'
 import GyeongseongStation from './GyeongseongStation.jsx'
 import { StreetSurface, useStreetScans } from './GyeongseongMaterial.jsx'
 import { streetRoadTexture, streetStuccoTexture } from './gyeongseongSurfaces.js'
+import ArchitecturalMasonry from './ArchitecturalMasonry.jsx'
 
 const WOOD = '#483329'
 const SLATE = '#484b49'
@@ -88,10 +89,18 @@ function ShopAwning({ width, face, kind }) {
   return <Instances geometry={GEO.box} material={DETAILS} items={panels} castShadow />
 }
 
-function Shop({ building, materials, roofMaterial, scans }) {
+function Shop({ building, materials, roofMaterial, scans, brick }) {
   const { x, z, yaw, w, d, h, paint, name, kind } = building
   const { opening, walls } = streetShell(building)
   const zFace = -d / 2
+  const pressWalls = useMemo(() => {
+    if (!building.press) return null
+    const { walls, opening, doorHeight } = streetShell(building)
+    return [
+      ...walls.map(wall => ({ ...wall, base:wall.base ?? 0, top:(wall.base ?? 0)+wall.h })),
+      { x:0,z:zFace+.13,w:opening,d:.25,base:doorHeight,top:h },
+    ]
+  }, [building,h,zFace])
   const roof = useMemo(() => kind === 'restaurant' ? tiledRoof(w + 1.4, d + 1.2, 1.33) : null, [w, d, kind])
   useEffect(() => () => roof?.dispose(), [roof])
   const large = kind === 'cinema' || kind === 'restaurant'
@@ -103,13 +112,17 @@ function Shop({ building, materials, roofMaterial, scans }) {
     <group name={name} position={[x, STREET_FLOOR, z]} rotation-y={yaw * Math.PI / 180}>
       <Box p={[0, -.0575, 0]} s={[w + .20,.115,d + .20]} c="#a09281" />
       <Box p={[0,-.07,-d / 2 - .23]} s={[opening+.20,.09,.42]} c="#a39480" />
-      {walls.map((wall, index) => <Box key={index} p={[wall.x, wall.h/2, wall.z]} s={[wall.w,wall.h,wall.d]} c={paint} castShadow />)}
-      <Box p={[0,(2.48 + h)/2,zFace+.13]} s={[opening,h-2.48,.25]} c={paint} castShadow />
+      {pressWalls
+        ? <ArchitecturalMasonry parts={pressWalls} material={brick} repeatX={2.42} repeatY={1.37} />
+        : <>
+          {walls.map((wall, index) => <Box key={index} p={[wall.x, (wall.base ?? 0) + wall.h/2, wall.z]} s={[wall.w,wall.h,wall.d]} c={paint} castShadow />)}
+          <Box p={[0,(2.48 + h)/2,zFace+.13]} s={[opening,h-2.48,.25]} c={paint} castShadow />
+        </>}
       {[-1,1].map((side) => (
         <group key={side}>
           <Box p={[side * (opening / 2 + .09),1.23,zFace-.045]} s={[.18,2.46,.21]} c={WOOD} />
           {!masonry && <Box p={[side * (w / 2 - .15),h * .48,zFace-.087]} s={[.31,h*.95,.22]} c="#7e5c46" />}
-          {!masonry && <StreetSurface scan={facadeScan} p={[side*(opening+wing)/2,lower/2,zFace-.016]}
+          {!pressWalls && !masonry && <StreetSurface scan={facadeScan} p={[side*(opening+wing)/2,lower/2,zFace-.016]}
             w={wing} h={lower} rotation={[0,Math.PI,0]} />}
           {!masonry && lower < h && (
             <mesh position={[side*(opening+wing)/2,(h+lower)/2,zFace-.015]} rotation-y={Math.PI} receiveShadow>
@@ -130,7 +143,7 @@ function Shop({ building, materials, roofMaterial, scans }) {
           <Box p={[0,h-.15,0]} s={[w+.48,.22,d+.42]} c={kind === 'cinema' ? '#a29986' : '#6f5949'} />
           <Box p={[0,h-.52,0]} s={[w+.21,.086,d+.21]} c="#b49b7c" />
           {roof ? <mesh geometry={roof} material={roofMaterial} position-y={h} castShadow />
-            : <Box p={[0,h+.03,0]} s={[w+.33,.21,d+.31]} c={SLATE} castShadow />}
+            : <Box p={[0,h+.03,0]} s={[w+.33,.21,d+.31]} c={SLATE} name={building.press ? 'camera-blocker' : undefined} castShadow />}
         </>
       )}
       {kind === 'cinema' && (
@@ -188,7 +201,7 @@ function StreetTram({ materials }) {
 
 const STREET_LAMPS = [[-13.7,22.1],[-2.5,23.75],[-13.45,29.25],[-2.5,30],[-13.3,40.85],[-2.63,44.25],[21.5,34.3]]
 
-export default function GyeongseongStreet({ roofMaterial }) {
+export default function GyeongseongStreet({ roofMaterial, brick }) {
   const scans = useStreetScans()
   const materials = useMemo(() => ({
     road: streetRoadTexture(),
@@ -246,8 +259,8 @@ export default function GyeongseongStreet({ roofMaterial }) {
       <StreetEntry roofMaterial={roofMaterial} />
       {STREET_BUILDINGS.map((building) => {
         if (building.kind === 'stop') return <TramStop key={building.name} building={building} materials={materials} />
-        if (building.kind === 'station') return <GyeongseongStation key={building.name} building={building} materials={materials} scans={scans} />
-        return <Shop key={building.name} building={building} materials={materials} roofMaterial={roofMaterial} scans={scans} />
+        if (building.kind === 'station') return <GyeongseongStation key={building.name} building={building} materials={materials} scans={scans} brick={brick} />
+        return <Shop key={building.name} building={building} materials={materials} roofMaterial={roofMaterial} scans={scans} brick={brick} />
       })}
       <StreetTram materials={materials} />
       {STREET_LAMPS.map(([x,z], index) => (

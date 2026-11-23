@@ -28,17 +28,9 @@
       "port": 4000
     },
     {
-      "name": "scenewalk-ai",
-      "runtimeExecutable": "ai/.venv/Scripts/python.exe",
-      "runtimeArgs": [
-        "-m",
-        "uvicorn",
-        "app.main:app",
-        "--app-dir",
-        "ai",
-        "--port",
-        "8000"
-      ],
+      "name": "ai-server",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--app-dir", "ai", "--port", "8000"],
       "port": 8000
     }
   ]

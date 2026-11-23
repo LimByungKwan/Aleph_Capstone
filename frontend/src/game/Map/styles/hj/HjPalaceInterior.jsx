@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { THRONE_DOOR_WIDTH } from './gyeongbokgungLayout.js'
 import { CanvasTexture, DoubleSide, PlaneGeometry, RepeatWrapping, SRGBColorSpace } from 'three'
 import { PALACE_SEATS, ROOM_FLOOR } from '../../../../components/movieZone/palaceInteriorLayout.js'
 import { Box, Cyl, GEO, Instances, mat } from '../kit.jsx'
@@ -213,7 +214,7 @@ function PaintedBeam({ position, rotation = 0, length, map }) {
 }
 
 // [3. 개발 > 프론트엔드] 열린 정전 내부와 어좌 세트. 충돌 벽은 HJ 구역 데이터의 대응 조각을 사용합니다.
-export default function HjPalaceInterior() {
+export default function HjPalaceInterior({ timber }) {
   const { band, screen, rug, tiles, lattice } = useMemo(() => {
     const band = paintedTexture(512, 96, paintDancheong)
     band.wrapS = RepeatWrapping
@@ -243,12 +244,12 @@ export default function HjPalaceInterior() {
         <meshStandardMaterial color="#39352b" side={DoubleSide} />
       </mesh>
       <Box name="camera-blocker" p={[0, 1.72, 3.18]} s={[13.2, 3.44, 0.20]} c={WOOD} />
-      <Box name="camera-blocker" p={[0, 3.03, -3.18]} s={[2.68, 0.83, 0.20]} c={GREEN} />
+      <Box name="camera-blocker" p={[0, 3.03, -3.18]} s={[THRONE_DOOR_WIDTH, 0.83, 0.20]} c={GREEN} />
       {[-1, 1].map(side => (
         <group key={side}>
           <Box name="camera-blocker" p={[side * 6.50, 1.72, 0]} s={[0.20, 3.44, 6.56]} c={WOOD} />
-          <Box name="camera-blocker" p={[side * 3.97, 1.72, -3.18]} s={[5.26, 3.44, 0.20]} c={WOOD} />
-          <Box p={[side * 1.44, 1.29, -3.30]} s={[0.15, 2.58, 0.16]} c={GREEN} />
+          <Box name="camera-blocker" p={[side * (13.2+THRONE_DOOR_WIDTH)/4, 1.72, -3.18]} s={[(13.2-THRONE_DOOR_WIDTH)/2, 3.44, 0.20]} c={WOOD} />
+          <Box p={[side * (THRONE_DOOR_WIDTH/2+.075), 1.29, -3.30]} s={[0.15, 2.58, 0.16]} c={GREEN} />
           <Box p={[side * 4.10, 1.45, -3.30]} s={[3.7, 1.50, 0.08]} m={PAPER_LIGHT} />
           {[-2.3, -0.78, 0.75, 2.24].map(z => (
             <group key={z}>
@@ -259,7 +260,7 @@ export default function HjPalaceInterior() {
           {[-1.83, 1.43].map(z => (
             <group key={z}>
               <Cyl p={[side * 3.15, 0.125, z]} rad={0.43} h={0.12} c={STONE} geo={GEO.cyl8} />
-              <Cyl p={[side * 3.15, 1.55, z]} rad={0.27} h={2.78} c="#913e30" />
+              <Cyl p={[side * 3.15, 1.55, z]} rad={0.27} h={2.78} m={timber} />
               <Box p={[side * 3.15, 2.9, z]} s={[0.78, 0.16, 0.58]} c="#91533d" />
             </group>
           ))}
@@ -286,8 +287,6 @@ export default function HjPalaceInterior() {
           <meshStandardMaterial map={rug} roughness={0.86} />
         </mesh>
       ))}
-      <pointLight position={[0, 2.28, 0.1]} color="#ffe3b5" intensity={17} distance={8.5} />
-      <pointLight position={[0, 1.83, 1.19]} color="#f6bb7d" intensity={10} distance={5.7} />
     </group>
   )
 }

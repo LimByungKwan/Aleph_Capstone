@@ -1,0 +1,18 @@
+{
+  "id": "sungray-01",
+  "title": "썬그레이 오디션 연습곡 1",
+  "notes": [
+    { "midi": 60, "start": 0.0, "duration": 0.5 },
+    { "midi": 62, "start": 0.5, "duration": 0.5 },
+    { "midi": 64, "start": 1.0, "duration": 0.5 },
+    { "midi": 67, "start": 1.5, "duration": 1.0 },
+    { "midi": 65, "start": 3.0, "duration": 0.5 },
+    { "midi": 64, "start": 3.5, "duration": 0.5 },
+    { "midi": 62, "start": 4.0, "duration": 1.0 },
+    { "midi": 64, "start": 5.5, "duration": 0.5 },
+    { "midi": 62, "start": 6.0, "duration": 0.5 },
+    { "midi": 60, "start": 6.5, "duration": 0.5 },
+    { "midi": 62, "start": 7.0, "duration": 0.5 },
+    { "midi": 60, "start": 7.5, "duration": 1.5 }
+  ]
+}
