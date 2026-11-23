@@ -7,6 +7,7 @@ import { getCirclePlazaTexture, getNeonWingsTexture, getSignTexture, getStripeTe
 import { Ball, Box, Cone, Cyl, GEO, Instances, hashString, mat, seeded, texMat } from './kit.jsx'
 import SeasonalTree from './SeasonalTree.jsx'
 import { live } from '../../timeOfDay.js'
+import { TowerTelescopes } from './bk_telescope.jsx'
 import { FountainCoinToss } from './bk_coinToss.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
@@ -1686,7 +1687,7 @@ export function GreenhouseCafe({ item }) {
 
 // ════════════════════════════════════════════
 // 전망 타워 꾸미기 (Terrain.jsx의 TowerMesh 안에서 그림, 타워 로컬 좌표: 문은 +z, 엘리베이터 출구는 전망층 -z)
-// 전망층: 바닥 무늬, 바깥을 보는 벤치 4개, 망원경 3개, 하트 포토 프레임, 화분, 사랑의 자물쇠 난간, 매달린 전등
+// 전망층: 바닥 무늬, 바깥을 보는 벤치 4개, 망원경 2개(중앙 광장 쪽·애니 구역 쪽), 하트 포토 프레임, 화분, 사랑의 자물쇠 난간, 매달린 전등
 // 1층 홀: 매표 부스, 벤치, 화분, 카펫, 입구 간판 / 바깥: 기둥 LED 띠(밤에 분홍빛), 전망층 아래 전구 링
 // 최적화: 간판 말고는 전부 모양 1개로 합치고 실내 재질(INTERIOR_MAT) 공유 → 그리기 호출 약 7번, 그림자 없음
 // ════════════════════════════════════════════
@@ -1704,7 +1705,7 @@ const TD = {
   lamp: '#fff1c9',
 }
 const DECK_SEATS = [0.25, 0.75, 1.25, 1.75].map((k) => k * Math.PI) // 벤치 (사이사이)
-const DECK_SCOPES = [0, 0.5, 1.5].map((k) => k * Math.PI) // 망원경 (π = 엘리베이터 출구 앞은 하트 프레임)
+export const DECK_SCOPES = [0, 1.5 * Math.PI] // 망원경 2대: 중앙 광장 쪽(0) · 애니메이션 구역 여우 신사 쪽(1.5π). 실제로 볼 수 있음 → bk_telescope.jsx. π = 엘리베이터 출구 앞은 하트 프레임
 const LED = nightGlow(mat('#ffd1e3', { emissive: '#ff7eb6', emissiveIntensity: 0.35 }), 2.6)
 
 // 로컬 조각들을 타워 원 둘레(각도 a, 반지름 r, 높이 y)로 옮김. 조각의 +z가 바깥을 향함 (turn으로 더 돌릴 수 있음)
@@ -1767,7 +1768,7 @@ function towerDecorGeometry(T) {
 
   // ── 바깥을 보는 벤치 4개 (등받이가 안쪽)
   DECK_SEATS.forEach((a) => P.push(...atRing(benchParts(), a, 5.4, deck)))
-  // ── 동전 망원경 3개
+  // ── 동전 망원경 (중앙 광장 쪽·애니 구역 쪽)
   DECK_SCOPES.forEach((a) => P.push(...atRing(scopeParts(), a, 6.25, deck)))
   // ── 화분 (벤치와 망원경 사이)
   range(8).forEach((i) => {
@@ -1976,6 +1977,8 @@ export function TowerDecor({ T }) {
       <mesh geometry={geometry} material={INTERIOR_MAT} />
       <Instances geometry={GEO.box} material={LED} items={leds} />
       <AntennaLeds T={T} />
+      {/* 전망층 망원경을 실제로 볼 수 있게 (E → 망원경 화면) */}
+      <TowerTelescopes T={T} angles={DECK_SCOPES} />
       {/* 1층 입구 간판 (문 위, 바깥쪽) */}
       <mesh
         geometry={GEO.plane}

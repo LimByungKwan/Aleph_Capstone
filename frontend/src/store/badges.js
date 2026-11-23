@@ -14,7 +14,9 @@ export const BADGES = [
   // 커플 타로 (데이트 코스 입구 텐트) — 결과 받을 때 bk_tarotRecord.js가 줌, 미션 완료는 아래 코스 완주에서
   { id: 'tarot_first', icon: '🔮', name: '커플 타로 첫 점', desc: '데이트 코스 타로 텐트에서 처음으로 카드를 펼쳤어요' },
   { id: 'tarot_match', icon: '💞', name: '서로를 잘 아는 사이', desc: '커플 타로에서 서로의 답을 80% 이상 맞혔어요' },
-  { id: 'tarot_mission', icon: '🗺️', name: '타로 미션 완료', desc: '타로 카드가 알려 준 데이트 미션 장소에 도착했어요' },
+  { id: 'telescope', icon: '🔭', name: '전망대 망원경 탐험가', desc: 'SKY 전망대 망원경으로 명소 5곳을 찾았어요' },
+  { id: 'shooting_star', icon: '🌠', name: '별똥별 소원', desc: '전망대 망원경으로 별똥별 3개를 잡고 소원을 빌었어요' },
+  { id: 'tarot_mission', icon: '🗺️', name: '타로 데이트 코스 완주', desc: '타로 카드가 짜 준 데이트 코스를 끝까지 걸었어요' },
 ]
 
 const KEY = 'scenewalk.badges'
@@ -47,7 +49,8 @@ export const useBadges = create((set, get) => ({
 
 // 완주한 코스로 받을 배지 고르기
 function badgesFor(course, meta) {
-  if (meta?.tarot) return [['tarot_mission']] // 타로 미션은 장소 하나라 코스 완주 배지는 주지 않음
+  if (meta?.tarot) return [['tarot_mission']] // 타로 코스는 데이트 코스 구역 안 짧은 코스라 일반 코스 완주 배지는 주지 않음
+  if (meta?.telescope) return [] // 망원경으로 찾은 한 곳 길 안내는 배지 없음
   const zones = new Set(course.map((c) => c.zone))
   const ids = [['first_course']]
   if (course.length && [...zones].every((z) => z === 'BK')) ids.push(['date_course'])
@@ -66,7 +69,12 @@ useCourseStore.subscribe((state, prev) => {
     toast(`📍 ${state.index}/${total} 도착! 다음은 '${next.name}'이에요`, 'ok')
     return
   }
-  toast(state.meta?.tarot ? '🗺️ 타로 미션 장소 도착! 카드가 말한 데이트를 해 보세요' : `🎉 코스 완주! ${total}곳을 모두 걸었어요`, 'ok')
+  const done = state.meta?.tarot
+    ? '🗺️ 타로 데이트 코스 완주! 카드가 말한 미션도 해 보세요'
+    : state.meta?.telescope
+      ? '🔭 망원경으로 찾은 곳에 도착했어요!'
+      : `🎉 코스 완주! ${total}곳을 모두 걸었어요`
+  toast(done, 'ok')
   const { award } = useBadges.getState()
   for (const [id, note] of badgesFor(state.course, state.meta)) {
     const badge = BADGES.find((b) => b.id === id)
