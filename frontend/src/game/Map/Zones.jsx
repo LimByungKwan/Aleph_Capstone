@@ -54,7 +54,7 @@ function borders(zone) {
   return edges
 }
 
-const themeBorders = zones.map((zone) => ({ zone, items: borders(zone) }))
+const themeBorders = zones.filter((zone) => !zone.customGrounds).map((zone) => ({ zone, items: borders(zone) }))
 
 export default function Zones() {
   const showZones = useSettings((state) => state.showZones)
