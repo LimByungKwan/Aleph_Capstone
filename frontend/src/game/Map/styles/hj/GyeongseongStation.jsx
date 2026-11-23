@@ -4,6 +4,7 @@ import { Box, Cyl, GEO, Instances, mat } from '../kit.jsx'
 import { ArchOpening, StreetSign } from './GyeongseongMasonry.jsx'
 import { StreetSurface } from './GyeongseongMaterial.jsx'
 import { STREET_FLOOR, streetShell } from './gyeongseongLayout.js'
+import ArchitecturalMasonry from './ArchitecturalMasonry.jsx'
 
 const STONE = '#c1b69d'
 const MORTAR = '#968876'
@@ -52,7 +53,7 @@ function StationRoof({ w, d, h }) {
   }, [w,h])
   return (
     <>
-      <Box p={[0,h-.11,0]} s={[w+.32,.21,d+.25]} c={STONE} castShadow />
+      <Box p={[0,h-.11,0]} s={[w+.32,.21,d+.25]} c={STONE} name="camera-blocker" castShadow />
       <Box p={[0,h+.15,0]} s={[w+.29,.30,d+.23]} c="#696d62" castShadow />
       <Box p={[0,h+.41,0]} s={[5.23,.43,d+.19]} c="#ab9983" />
       <Cyl p={[0,h+.72,0]} rad={2.12} h={.59} c="#737b69" />
@@ -113,17 +114,21 @@ function StationInterior({ w, d, h, materials, scans }) {
         </group>
       ))}
       <StreetSign text="열차 안내" p={[-5.04,2.95,wall-.104]} w={1.89} h={.35} background="#625340" />
-      <StreetSign text="정문 · 경성 거리" p={[5.04,2.95,wall-.104]} w={1.88} h={.35} background="#625340" />
+      <StreetSign text="2층 관람실 ↑" p={[6.97,2.04,-2.74]} w={1.47} h={.29} background="#625340" />
       <pointLight position={[0,3.38,-.15]} color="#ffcd8b" intensity={13} distance={8.5} />
     </group>
   )
 }
 
-export default function GyeongseongStation({ building, materials, scans }) {
-  const { x,z,w,d,h,yaw,paint } = building
-  const { opening, doorHeight, walls } = streetShell(building)
+export default function GyeongseongStation({ building, materials, scans, brick }) {
+  const { x,z,w,d,h,yaw } = building
+  const { opening, doorHeight } = streetShell(building)
   const face = -d/2
   const wing = (w-opening)/2
+  const brickWalls = useMemo(() => [
+    ...streetShell(building).walls.map(wall => ({ ...wall, base:0,top:wall.h })),
+    { x:0,z:face+.13,w:opening,d:.25,base:doorHeight,top:h },
+  ], [building,face,opening,doorHeight,h])
   const stonework = useMemo(() => {
     const parts = []
     for (const x of [-w/2+.20,-5.29,-2.29,2.29,5.29,w/2-.20]) {
@@ -150,12 +155,9 @@ export default function GyeongseongStation({ building, materials, scans }) {
     <group name="1932 경성역 · 100일의 거짓말 테마" position={[x,STREET_FLOOR,z]} rotation-y={yaw*Math.PI/180}>
       <Box p={[0,-.057,0]} s={[w+.20,.114,d+.20]} c={MORTAR} />
       <Box p={[0,-.073,face-.23]} s={[opening+.2,.09,.42]} c={STONE} />
-      {walls.map((wall, i) => <Box key={i} p={[wall.x,wall.h/2,wall.z]} s={[wall.w,wall.h,wall.d]} c={paint} castShadow />)}
-      <Box p={[0,(h+doorHeight)/2,face+.13]} s={[opening,h-doorHeight,.25]} c={paint} castShadow />
+      <ArchitecturalMasonry parts={brickWalls} material={brick} repeatX={2.42} repeatY={1.37} />
       {[-1,1].map((side) => (
         <group key={side}>
-          <StreetSurface scan={scans.brick} p={[side*(opening+wing)/2,h/2,face-.014]} w={wing} h={h} rotation={[0,Math.PI,0]} />
-          <StreetSurface scan={scans.brick} p={[side*(w/2+.01),h/2,0]} w={d} h={h} rotation={[0,side*Math.PI/2,0]} />
           <StreetSurface scan={scans.stone} p={[side*(opening+wing)/2,.346,face-.019]} w={wing} h={.69} rotation={[0,Math.PI,0]} />
           {[3.77,6.70].map((at) => (
             <group key={at}>
@@ -173,13 +175,19 @@ export default function GyeongseongStation({ building, materials, scans }) {
           ))}
         </group>
       ))}
-      <StreetSurface scan={scans.brick} p={[0,(h+doorHeight)/2,face-.016]} w={opening} h={h-doorHeight} rotation={[0,Math.PI,0]} />
-      <StreetSurface scan={scans.brick} p={[0,h/2,d/2+.01]} w={w} h={h} />
       <Instances geometry={GEO.box} material={TRIM} items={stonework} castShadow />
       <ArchOpening x={0} y={3.87} face={face-.110} radius={1.32} rise={.36} material={materials.glass} />
       <Box p={[0,3.2,face-.22]} s={[4.24,.68,.32]} c="#625848" />
       <StreetSign text="경성역" p={[0,3.2,face-.39]} w={3.99} h={.52} background="#344840" />
       <StationRoof w={w} d={d} h={h} />
+      <Cyl p={[0,5.39,face-.136]} rad={.50} h={.15} r={[Math.PI/2,0,0]} c="#a79b86" />
+      <Cyl p={[0,5.39,face-.222]} rad={.41} h={.031} r={[Math.PI/2,0,0]} c="#e7d9ba" />
+      <Instances geometry={GEO.box} material={TRIM} items={Array.from({ length:12 },(_,i) => ({
+        p:[Math.sin(i*Math.PI/6)*.342,5.39+Math.cos(i*Math.PI/6)*.342,face-.244],
+        r:[0,0,-i*Math.PI/6],s:[.026,.059,.018],c:'#625143',
+      }))} />
+      <Box p={[.098,5.45,face-.255]} s={[.23,.025,.022]} r={[0,0,.52]} c="#463d34" />
+      <Box p={[-.018,5.50,face-.255]} s={[.027,.23,.022]} r={[0,0,.18]} c="#463d34" />
       <StationInterior w={w} d={d} h={h} materials={materials} scans={scans} />
       <Box p={[-2.42,2.15,face-.231]} s={[.22,.42,.28]} m={materials.lamp} />
       <Box p={[2.42,2.15,face-.231]} s={[.22,.42,.28]} m={materials.lamp} />

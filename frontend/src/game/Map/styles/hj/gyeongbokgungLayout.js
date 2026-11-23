@@ -6,6 +6,9 @@ export const AXIS = -8
 export const THRONE = { name: '근정전', x: AXIS, z: -11.65, w: 15.8, d: 8.9, h: 4.25, upper: true, elevation: .95 }
 export const ROOM_SCALE = [1.02, 1, 1.24]
 export const MAIN_GATE = { name: '광화문', x: AXIS, z: -43.8, w: 17, d: 5.4 }
+export const MAIN_ARCH_RADIUS = 1.91
+export const GWANGHWAMUN_WOLDAE = { x: AXIS, z: -48.56, w: 6.4, d: 4.23, base: 0, top: .23 }
+export const THRONE_DOOR_WIDTH = 3.72
 export const FILM_ENTRANCE = { x: AXIS, z: -51.2, post: 3.25, boardX: AXIS + 5.92, boardZ: -50.9 }
 export const HALLS = [
   THRONE,
@@ -20,7 +23,7 @@ export const PONDS = [{ x: -29.15, z: -11.9, w: 17.2, d: 18.7, entry: 1 }]
 export const CHANNELS = [[-17.95,-29.2,14.2,1.8], [2.0,-29.2,14.2,1.8]]
 export const POND_SURFACE = .166
 export const BRIDGES = [
-  { x: -21.3, z: -11.9, w: 6.2, d: 2.7, top: .28, name: '경회루 다리' },
+  { x: -21.3, z: -11.9, w: 6.2, d: 3.85, top: .28, name: '경회루 다리' },
   { x: AXIS, z: -29.2, w: 5.8, d: 3.5, top: .24, vertical: true, name: '영제교' },
 ]
 export const DECK = { x: -29.4, z: -11.9, w: 12.55, d: 9.8, top: .44 }
@@ -83,7 +86,7 @@ export const THRONE_PLATFORMS = [
 export const THRONE_STAIRS = Array.from({ length: 5 }, (_, index) => ({
   x: AXIS, z: THRONE.z - 9.05 + index * .59, w: 4.7, d: .69, top: .25 + index * .144,
 })).concat(Array.from({ length: 4 }, (_, index) => ({
-  x: AXIS, z: THRONE.z - 6.08 + index * .34, w: 3.25, d: .37, top: .61 + index * .102,
+  x: AXIS, z: THRONE.z - 6.08 + index * .34, w: 4.05, d: .37, top: .61 + index * .102,
 })))
 
 export const PALACE_DRAMA_SETS = [
@@ -123,7 +126,7 @@ export const TOUR_SIGNS = [
 ]
 
 export function pondEdges({ x, z, w, d, entry, alongZ = false, bothBanks = false }) {
-  const gap = 2.86
+  const gap = 4.01
   const length = ((alongZ ? w : d) - gap) / 2
   return [
     { x: x - (alongZ ? w / 2 : 0), z: z - (alongZ ? 0 : d / 2), length: alongZ ? d : w, vertical: alongZ },
@@ -179,10 +182,11 @@ function roomColliders(add) {
     add(THRONE.x + x * sx, THRONE.z + z * sz, w * sx, h * sy, d * sz, THRONE.elevation + y * sy, blocksCamera)
   put(0, 0, 13.2, .12, 6.56, -.055)
   put(0, 3.18, 13.2, 3.44, .20, 0, true)
-  put(0, -3.18, 2.68, .83, .20, 2.615, true)
+  const wingWidth = (13.2 - THRONE_DOOR_WIDTH) / 2
+  put(0, -3.18, THRONE_DOOR_WIDTH, .83, .20, 2.615, true)
   for (const side of [-1, 1]) {
     put(side * 6.50, 0, .20, 3.44, 6.56, 0, true)
-    put(side * 3.97, -3.18, 5.26, 3.44, .20, 0, true)
+    put(side * (wingWidth + THRONE_DOOR_WIDTH) / 2, -3.18, wingWidth, 3.44, .20, 0, true)
     for (const z of [-1.83, 1.43]) put(side * 3.15, z, .52, 2.78, .52, .16)
     put(side * 2.60, -1.86, .42, .94, .41, .065)
     put(side * 2.75, 1.61, .42, .94, .41, .065)
@@ -217,8 +221,13 @@ export function palaceGroundsColliders(item) {
     }
     if (closed) add(x, z, w, 2.7, .30, FLOOR, true)
   }
-  for (const [lo, hi] of [[-8.5, -6.67], [-4.16, -1.68], [1.68, 4.16], [6.67, 8.5]]) {
+  for (const [lo, hi] of [[-8.5, -6.67], [-4.16, -MAIN_ARCH_RADIUS], [MAIN_ARCH_RADIUS, 4.16], [6.67, 8.5]]) {
     add(MAIN_GATE.x + (lo + hi) / 2, MAIN_GATE.z, hi - lo, 3.13, MAIN_GATE.d, FLOOR, true)
+  }
+  deck(GWANGHWAMUN_WOLDAE, 0)
+  for (const side of [-1, 1]) {
+    const { x,z,w,d,top } = GWANGHWAMUN_WOLDAE
+    add(x + side*(w/2-.12),z,.24,.55,d,top)
   }
   for (const hall of HALLS) {
     if (hall === THRONE) continue

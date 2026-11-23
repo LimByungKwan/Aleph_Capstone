@@ -47,6 +47,7 @@ function PlaceMarker({ place }) {
       {SHOW_PLACE_LABELS && (
         <Html portal={labelLayer} position={[0, labelHeight, 0]} center style={{ pointerEvents: 'none' }}>
           <div
+            className="map-place-label"
             style={{
               padding: '3px 8px',
               borderRadius: 6,

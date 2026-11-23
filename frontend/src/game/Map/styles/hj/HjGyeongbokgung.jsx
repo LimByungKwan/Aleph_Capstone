@@ -13,6 +13,9 @@ import { palaceMaps, tiledRoof } from './gyeongbokgungMaterials.js'
 import PalaceNightLighting from './PalaceNightLighting.jsx'
 import PalaceFilmEntrance, { PalaceActivityYards, PalaceDramaMarkers } from './PalaceFilmEntrance.jsx'
 import GyeongseongStreet from './GyeongseongStreet.jsx'
+import SpecialAccessScene from './SpecialAccessScene.jsx'
+import { specialArchitectureMaterials } from './specialArchitectureMaterials.js'
+import ArchitecturalMasonry from './ArchitecturalMasonry.jsx'
 import {
   FLOOR, AXIS, BRIDGES, COURTS, DECK, GATES, HALLS,
   PONDS, ROOM_SCALE, THRONE, THRONE_PLATFORMS, THRONE_STAIRS, TOUR_SIGNS, WALLS, WALKS,
@@ -25,6 +28,7 @@ const RED = '#9f4937'
 const STONE = '#afa792'
 const IVORY = '#dcd0b7'
 const GREEN = '#3f6c5b'
+const THRONE_STONE = [...THRONE_PLATFORMS, ...THRONE_STAIRS].map(part => ({ ...part, base: 0 }))
 const DANCHEONG = ['#285855', '#47927b', '#dfaa56', '#af503f', '#367282']
 const MASONRY = ['#948b7b', '#a9a28e', '#b5a993', '#c2b59d']
 const LANTERNS = [
@@ -65,30 +69,33 @@ function buildArchitecture() {
     box([x, (top + bottom) / 2, z], [w, top - bottom, d], color)
   }
 
-  function facade({ x, z, w, d, h, y, bays, elevated = false, open = false }) {
+  function facade({ x, z, w, d, h, y, bays, elevated = false, open = false, openSides = false, throne = false }) {
     for (const side of [-1, 1]) {
       const face = z + side * d * (open ? .48 : .423)
       const pitch = w * 0.91 / bays
       const r = [0, side < 0 ? Math.PI : 0, 0]
       for (let i = 0; i <= bays; i += 1) {
         const px = x + (i - bays / 2) * pitch
-        column(px, y + h * 0.48, face, elevated ? 0.147 : 0.13, h * 0.96, RED)
-        column(px, y + 0.08, face, 0.205, 0.16, IVORY)
-        DANCHEONG.forEach((c, layer) => ornaments.push({
-          p: [px, y + h - 0.48 + layer * 0.065, face + side * 0.11],
-          s: [0.28 + layer * 0.075, 0.065, 0.22 + layer * 0.078], c,
-        }))
-        for (let petal = 0; petal < 6; petal += 1) {
-          const angle = petal * Math.PI / 3
-          flowers.push({
-            p: [px + 0.035 * Math.cos(angle), y + h - 0.27 + 0.035 * Math.sin(angle), face + side * 0.318],
-            s: [0.022, 0.022, 0.01], c: petal % 2 ? '#f3c482' : '#d3745d',
-          })
+        if (!throne || side > 0 || Math.abs(px - x) > 2.03) {
+          column(px, y + h * 0.48, face, elevated ? 0.147 : 0.17, h * 0.96, RED)
+          column(px, y + 0.08, face, 0.205, 0.16, IVORY)
+          DANCHEONG.forEach((c, layer) => ornaments.push({
+            p: [px, y + h - 0.48 + layer * 0.065, face + side * 0.11],
+            s: [0.28 + layer * 0.075, 0.065, 0.22 + layer * 0.078], c,
+          }))
+          for (let petal = 0; petal < 6; petal += 1) {
+            const angle = petal * Math.PI / 3
+            flowers.push({
+              p: [px + 0.035 * Math.cos(angle), y + h - 0.27 + 0.035 * Math.sin(angle), face + side * 0.318],
+              s: [0.022, 0.022, 0.01], c: petal % 2 ? '#f3c482' : '#d3745d',
+            })
+          }
         }
         if (i === bays) continue
         const mid = px + pitch / 2
         bands.push({ p: [mid, y + h - .31, face + side * .195], s: [pitch, .38, 1], r })
-        if (open && side === -1 && i === Math.floor(bays / 2)) continue
+        if (openSides || (throne && side === -1 && Math.abs(mid - x) < 2.22)
+          || (open && side === -1 && i === Math.floor(bays / 2))) continue
         const windowWidth = pitch * 0.69
         const windowHeight = h * .51
         const winY = y + h * .49
@@ -158,7 +165,7 @@ function buildArchitecture() {
         box([x + w * .295, y + .09, z + d * .15], [Math.min(.65, w * .18), .09, .41], '#984c49')
       }
     }
-    facade({ x, z, w, d, h, y, bays: hall === THRONE ? 7 : hallBays(w), open: true })
+    facade({ x, z, w, d, h, y, bays: hall === THRONE ? 7 : hallBays(w), open: true, throne: hall === THRONE })
     roof(x, y + h, z, w + 1.22, d + 1.08, d * 0.21)
     if (upper) {
       const upperHeight = hall === THRONE ? 2.18 : 1.42
@@ -168,8 +175,6 @@ function buildArchitecture() {
       roof(x, upperBase + upperHeight, z, w * .88, d * .9, d * .21)
     }
   }
-  for (const platform of THRONE_PLATFORMS) slab(platform, '#c8c3b4')
-  for (const step of THRONE_STAIRS) slab(step, '#b9b4a7')
 
   for (const { x, z, length, vertical, type } of WALLS) {
     const gallery = type === 'gallery'
@@ -230,18 +235,8 @@ function buildArchitecture() {
   slab(DECK, '#c5bea9')
   slab({ ...DECK, w: DECK.w + 0.13, d: DECK.d + 0.13 }, '#ddd1b7', DECK.top - 0.07)
   const pavilion = { x: DECK.x, z: DECK.z, w: 12.75, d: 8.43, y: DECK.top }
-  for (const side of [-1, 1]) {
-    for (let i = -3; i <= 3; i += 1) {
-      const x = pavilion.x + i * 1.87
-      const z = pavilion.z + side * 3.55
-      column(x, 1.43, z, .195, 1.98, '#d7cebc')
-      column(x, .60, z, .26, .31, '#bfb7a5')
-    }
-  }
-  box([pavilion.x, 2.46, pavilion.z], [13.3, 0.29, 8.75], '#853c2e')
-  facade({ ...pavilion, y: 2.62, h: 1.8, bays: 6, elevated: true })
-  box([pavilion.x, 3.49, pavilion.z], [11.65, 1.74, 6.95], '#84432e')
-  roof(pavilion.x, 4.48, pavilion.z, 14.63, 10.35, 2.23)
+  facade({ ...pavilion, y: 2.62, h: 2.69, bays: 6, elevated: true, open: true, openSides: true })
+  roof(pavilion.x, 5.40, pavilion.z, 14.63, 10.35, 2.23)
 
   for (const pond of PONDS) {
     for (const { x, z, length, vertical } of pondEdges(pond)) {
@@ -413,7 +408,7 @@ export default function HjGyeongbokgung({ item }) {
       courts: paving(COURTS, 0.154, 5.4),
       walks: paving(WALKS, 0.174, 3.6),
       forecourt: paving([[AXIS, -13.5, 28.8, 19]], .158, 5.9),
-      stone: pavingTexture(true), sand: pavingTexture(false), maps,
+      stone: pavingTexture(true), sand: pavingTexture(false), maps, architecture: specialArchitectureMaterials(),
       materials: {
         roof: new MeshStandardMaterial({ map: maps.tile, bumpMap: maps.tile, bumpScale: .04, roughness: .87,
           vertexColors: true, side: DoubleSide }),
@@ -434,6 +429,7 @@ export default function HjGyeongbokgung({ item }) {
     model.sand.dispose()
     Object.values(model.maps).forEach((map) => map.dispose())
     Object.values(model.materials).forEach((material) => material.dispose())
+    Object.values(model.architecture).forEach((material) => { material.map.dispose(); material.dispose() })
   }, [model])
 
   useFrame(({ camera }) => {
@@ -456,6 +452,7 @@ export default function HjGyeongbokgung({ item }) {
         <meshStandardMaterial map={model.stone} color="#d6ccaf" roughness={.97} />
       </mesh>
       <GyeongbokgungWater />
+      <ArchitecturalMasonry parts={THRONE_STONE} material={model.architecture.woldae_stone} />
       <mesh geometry={model.roof} material={model.materials.roof} />
       <Instances geometry={GEO.box} material={PARTS} items={model.blocks} castShadow />
       <Instances geometry={GEO.cyl8} material={PARTS} items={model.posts} castShadow />
@@ -463,15 +460,16 @@ export default function HjGyeongbokgung({ item }) {
       <Instances geometry={GEO.plane} material={model.materials.lattice} items={model.shutters} />
       <Instances geometry={GEO.plane} material={model.materials.dancheong} items={model.bands} />
       <Instances geometry={GEO.plane} material={model.materials.masonry} items={model.masonry} />
-      <Gwanghwamun materials={model.materials} />
+      <Gwanghwamun materials={model.materials} stone={model.architecture.woldae_stone} />
       <PalaceFilmEntrance materials={model.materials} />
       <PalaceDramaMarkers />
       <PalaceActivityYards />
       <PalaceTerraceDetails />
-      <GyeongseongStreet roofMaterial={model.materials.roof} />
+      <GyeongseongStreet roofMaterial={model.materials.roof} brick={model.architecture.red_brick} />
+      <SpecialAccessScene materials={model.materials} surfaces={model.architecture} />
       <PalacePlanting />
       <group position={[THRONE.x, THRONE.elevation, THRONE.z]} scale={ROOM_SCALE}>
-        <HjPalaceInterior />
+        <HjPalaceInterior timber={model.architecture.timber} />
       </group>
       <PalaceNightLighting lanterns={LANTERNS} materials={model.materials} />
       <group ref={trim}>
@@ -493,7 +491,7 @@ export default function HjGyeongbokgung({ item }) {
             <PalacePlaque x={0} z={.052} y={.96} name={name} w={1.28} rotation={0} />
           </group>
         ))}
-        <PalacePlaque x={DECK.x} z={DECK.z - 3.66} y={4.17} name="경회루" />
+        <PalacePlaque x={DECK.x} z={DECK.z - 4.02} y={5.08} name="경회루" />
 
       </group>
     </group>
