@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { updatePalaceSeating, usePalaceSeatStore } from '../../components/movieZone/palaceSeating.js'
+import { usePalaceTour } from '../../components/movieZone/palaceTourStore.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 import CharacterModel from './CharacterModel.jsx'
 
@@ -63,8 +64,10 @@ export default function Player({ playerRef, showModel = true }) {
     const player = playerRef.current
     if (!player) return
 
-    const sitting = updatePalaceSeating(player, locked)
-    player.setMovement(locked || sitting ? NO_INPUT : readInput(getKeys()))
+    const tour = usePalaceTour.getState()
+    const paused = locked || tour.open || Boolean(tour.activeActivity)
+    const sitting = updatePalaceSeating(player, paused)
+    player.setMovement(paused || sitting ? NO_INPUT : readInput(getKeys()))
 
     // 맵 밖으로 떨어지면 시작 지점으로 리스폰
     if (player.currPos.y < RESPAWN_Y) {
