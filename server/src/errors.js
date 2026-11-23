@@ -16,6 +16,7 @@ export class HttpError extends Error {
 const DB_CODE_STATUS = {
   UNAUTHORIZED: 401,
   NOT_OWNER: 403,
+  NOT_ADMIN: 403,
   FORBIDDEN: 403,
   WRONG_SHOP: 403,
   NOT_FOUND: 404,

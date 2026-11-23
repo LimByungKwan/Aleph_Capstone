@@ -351,6 +351,30 @@ describe('커플 타로 기록', () => {
   })
 })
 
+describe('관리자 통계', () => {
+  test('토큰 없이 부르면 401, DB는 부르지 않음', async () => {
+    const res = await api('GET', '/admin/stats')
+    assert.equal(res.status, 401)
+    assert.equal(calls.length, 0)
+  })
+
+  test('로그인한 사람 토큰으로 get_admin_stats를 부르고 결과를 그대로 돌려줌', async () => {
+    const stats = { todayVisitors: 2, totalStamps: 5, couponsIssued: 1, couponsUsed: 0, dailyVisitors: [], stampsByZone: [], topPlaces: [] }
+    rpcHandler = () => ({ data: stats, error: null })
+    const res = await api('GET', '/admin/stats', { token: GOOD_TOKEN })
+    assert.equal(res.status, 200)
+    assert.deepEqual(res.body, stats)
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, rpc: 'get_admin_stats', args: undefined })
+  })
+
+  test('관리자가 아니면 DB가 던진 NOT_ADMIN → 403', async () => {
+    rpcHandler = () => ({ data: null, error: { message: 'NOT_ADMIN', details: '관리자 계정만 볼 수 있어요.' } })
+    const res = await api('GET', '/admin/stats', { token: GOOD_TOKEN })
+    assert.equal(res.status, 403)
+    assert.deepEqual(res.body, { error: { code: 'NOT_ADMIN', message: '관리자 계정만 볼 수 있어요.' } })
+  })
+})
+
 describe('기타', () => {
   test('예상 못 한 DB 에러는 내부 내용을 숨기고 500', async () => {
     rpcHandler = () => ({ data: null, error: { message: 'relation "public.secret" does not exist' } })

@@ -304,6 +304,11 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
 
   // ── 사장님 ──
   // client.js getShopStats: { issued, used, visitors, recentRedemptions }
+  // 관리자 통계 (화면: 성근 #/admin). 관리자 검사·집계는 DB 함수 get_admin_stats가 함 → 아니면 403 NOT_ADMIN
+  app.get('/admin/stats', requireAuth, async (req, res) => {
+    res.json(await rpc(req.db, 'get_admin_stats'))
+  })
+
   app.get('/shop/stats', requireAuth, async (req, res) => {
     res.json(await rpc(req.db, 'get_shop_stats'))
   })
