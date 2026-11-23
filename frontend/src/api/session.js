@@ -36,16 +36,34 @@ function save(value) {
 
 const saved = USE_SERVER ? loadSaved() : null
 
-/** user: { id, email, name, role: 'pilgrim'|'owner'|'admin', shopId } */
+/**
+ * user: { id, email, name, role: 'pilgrim'|'owner'|'admin', shopId }
+ * loginPrompt: 로그인 창이 열려 있으면 { title, reason } (닫혀 있으면 null)
+ *   판단: 처음엔 로그인 없이 맵을 둘러보고, 스탬프처럼 "기록이 남는 행동"을 할 때만 로그인 창을 띄움
+ */
 export const useSessionStore = create(() => ({
   user: saved?.user ?? null,
   session: saved?.session ?? null,
+  loginPrompt: null,
 }))
+
+/**
+ * 로그인 창 열기
+ * @param {{ title?: string, reason?: string }} [prompt] title: 창 제목, reason: 그 아래 한 줄 (왜 로그인이 필요한지)
+ */
+export function openLogin({ title = '', reason = '' } = {}) {
+  if (!USE_SERVER) return
+  useSessionStore.setState({ loginPrompt: { title, reason } })
+}
+
+export function closeLogin() {
+  useSessionStore.setState({ loginPrompt: null })
+}
 
 function setLoggedIn(session, user) {
   const value = { session, user: user ?? useSessionStore.getState().user }
   save(value)
-  useSessionStore.setState(value)
+  useSessionStore.setState({ ...value, loginPrompt: null })
 }
 
 export function logout() {
