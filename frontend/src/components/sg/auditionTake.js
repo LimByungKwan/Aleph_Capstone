@@ -1,9 +1,9 @@
 // 썬그레이 오디션 녹음 → wav 변환 → AI 서버 업로드. 담당: 성근(SG)
 // 흐름: const { stream } = await detectMicMode()  (micMode.js)
-//       const take = recordTake(stream, 12)        // 곡 9초 + 여유. take.stop()으로 먼저 끝낼 수 있음
+//       const take = recordTake(stream, songEnd + 2.5)
 //       const wav = await take.done                // 녹음이 끝나면 마이크(stream)는 여기서 이미 닫혀 있음
-//       const { songId, duration } = await uploadTake('sungray-01', wav)
-// 서버는 ai/app/audition.py (POST /audition/upload, 3MB·1~16초 wav만 받음)
+//       const { score, notes, feedback } = await uploadTake('sungray-01', wav)  // 화면: AuditionPanel.jsx
+// 서버는 ai/app/audition.py (3MB·곡 끝+6초까지 wav를 받음)
 
 import { ApiError } from '../../api/errors.js'
 
@@ -79,5 +79,27 @@ export async function uploadTake(songId, wav) {
     const { detail } = await response.json().catch(() => ({}))
     throw new ApiError('BAD_TAKE', detail || '녹음을 확인할 수 없어요. 다시 도전해 주세요.')
   }
+  throw new ApiError('AI_ERROR', '심사 서버에서 문제가 생겼어요. 다시 한번 해 주세요.')
+}
+
+export async function submitKeyboard(songId, presses) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  let response
+  try {
+    response = await fetch(`${AI_API_URL}/audition/keyboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songId, presses }),
+      signal: controller.signal,
+    })
+    if (response.ok) return await response.json()
+  } catch {
+    throw new ApiError('AI_OFFLINE', '심사 서버가 지금 쉬는 중이에요. 잠시 후 다시 도전해 주세요.')
+  } finally {
+    clearTimeout(timer)
+  }
+  if (response.status === 429) throw new ApiError('RATE_LIMITED', '도전이 너무 잦아요. 1분쯤 뒤에 다시 해 주세요.')
+  if (response.status === 400 || response.status === 422) throw new ApiError('BAD_TAKE', '키 입력을 확인할 수 없어요. 다시 도전해 주세요.')
   throw new ApiError('AI_ERROR', '심사 서버에서 문제가 생겼어요. 다시 한번 해 주세요.')
 }

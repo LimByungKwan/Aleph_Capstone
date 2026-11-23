@@ -42,7 +42,8 @@ def test_valid_wav_returns_song_and_duration():
     assert body["songId"] == "sungray-01" and body["duration"] == 9.0
     # 무음 → 모든 음 안 들림, 점수 0, LLM은 테스트에서 꺼져 있어 규칙 문장
     assert body["score"] == 0 and body["offset"] is None and body["source"] == "rule"
-    assert {n["status"] for n in body["notes"]} == {"missed"} and body["feedback"]["comment"]
+    assert {n["status"] for n in body["notes"]} == {"missed"} and len(body["feedback"]["judges"]) == 3
+    assert body["mode"] == "sing"
 
 
 def test_melody_unavailable_is_503(monkeypatch):
@@ -63,7 +64,20 @@ def test_not_wav_is_400():
 
 def test_too_short_or_too_long_is_400():
     assert post(data=make_wav(0.5)).status_code == 400
-    assert post(data=make_wav(20, rate=8000)).status_code == 400  # 작은 파일이어도 길이로 막힘
+    end = MELODY[-1]["start"] + MELODY[-1]["duration"]
+    assert post(data=make_wav(end + 6.01, rate=8000)).status_code == 400
+
+
+def test_long_song_recording_fits_byte_and_time_limits(monkeypatch):
+    end = MELODY[-1]["start"] + MELODY[-1]["duration"]
+    wav = make_wav(end + 6)
+    assert len(wav) < audition.MAX_BYTES
+    monkeypatch.setattr(audition, "judge_take", lambda *_: {
+        "mode": "sing", "score": 0, "offset": None, "notes": [], "source": "rule",
+        "feedback": {"judges": [{"role": r, "line": "연습해 봐요."} for r in ["프로듀서", "보컬 트레이너", "안무가"]], "tips": ["다시 불러 봐요."]},
+    })
+    assert post(data=wav).status_code == 200
+    assert post(data=make_wav(end + 2.5)).status_code == 200
 
 
 def test_over_3mb_is_413_before_reading_form():

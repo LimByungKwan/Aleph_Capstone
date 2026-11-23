@@ -22,7 +22,7 @@
     {"id": "sg_cafe_walk", "style": "brick", "position": [18, -5], "size": [19, 0.04, 2]},
     { "id": "sg_entry", "style": "asphalt", "position": [30, 0], "size": [20, 0.02, 6], "rotationDeg": 0 },
     { "id": "sg_audience", "style": "tile", "position": [5.5, 0], "size": [15, 0.02, 22], "rotationDeg": 0 },
-    { "id": "sg_alley_floor", "style": "brick", "position": [26, 19.5], "size": [5, 0.02, 33], "rotationDeg": 0 }
+    { "id": "sg_alley_floor", "style": "brick", "position": [26, 14], "size": [5, 0.02, 22], "rotationDeg": 0 }
   ],
 
   "markings": [],
@@ -38,19 +38,19 @@
     { "id": "sg_bdaycafe", "style": "bdayCafe", "position": [19, -12], "size": [10, 7, 8], "rotationDeg": 0, "color": "#fff1f7", "umbrella": "#f472b6", "model": null,
       "signs": [{ "text": "카페 물비늘", "bg": "#fff1f5", "fg": "#db2777" }] },
 
-    { "id": "sg_alley_w1", "style": "practiceRoom", "position": [20.5, 13], "size": [8, 7, 6], "rotationDeg": 90, "color": "#d8d0e8", "model": null,
+    { "id": "sg_alley_w1", "style": "practiceRoom", "position": [20.5, 12.5], "size": [8, 7, 6], "rotationDeg": 90, "color": "#d8d0e8", "model": null,
       "signs": [{ "text": "24시 별밤 연습실", "bg": "#1e1b4b", "fg": "#a5b4fc", "awning": "#6366f1" }] },
-    { "id": "sg_alley_w2", "style": "videoShop", "position": [20.5, 22], "size": [8, 9, 6], "rotationDeg": 90, "color": "#c9c2d6", "model": null,
+    { "id": "sg_alley_w2", "style": "videoShop", "position": [20.5, 20.5], "size": [8, 9, 6], "rotationDeg": 90, "color": "#c9c2d6", "model": null,
       "signs": [{ "text": "레트로 비디오", "bg": "#111827", "fg": "#f472b6", "awning": "#db2777" }] },
-    { "id": "sg_alley_w3", "style": "snackBar", "position": [20.5, 31], "size": [8, 8, 6], "rotationDeg": 90, "color": "#e4dccf", "model": null,
-      "signs": [{ "text": "골목 분식", "bg": "#fff7ed", "fg": "#ea580c", "awning": "#f97316" }] },
-    { "id": "sg_alley_e1", "style": "coinKaraoke", "position": [31.5, 13], "size": [8, 8, 6], "rotationDeg": -90, "color": "#cfd6e4", "model": null,
+    { "id": "sg_alley_e1", "style": "coinKaraoke", "position": [31.5, 12.5], "size": [8, 8, 6], "rotationDeg": -90, "color": "#cfd6e4", "model": null,
       "signs": [{ "text": "네온 코인노래방", "bg": "#0f172a", "fg": "#22d3ee", "awning": "#0891b2" }] },
-    { "id": "sg_alley_e2", "style": "recordShop", "position": [31.5, 22], "size": [8, 6.5, 6], "rotationDeg": -90, "color": "#e8d5e4", "model": null,
-      "signs": [{ "text": "한밤 레코드", "bg": "#1c1917", "fg": "#fbbf24", "awning": "#b45309" }] },
-    { "id": "sg_alley_e3", "style": "photoStudio", "position": [31.5, 31], "size": [8, 10, 6], "rotationDeg": -90, "color": "#d5dde8", "model": null,
+    { "id": "sg_alley_e3", "style": "photoStudio", "position": [31.5, 20.5], "size": [8, 10, 6], "rotationDeg": -90, "color": "#d5dde8", "model": null,
       "signs": [{ "text": "구름 사진관", "bg": "#f0f9ff", "fg": "#0369a1", "awning": "#38bdf8" }] },
-    { "id": "sg_alley_end", "position": [26, 36], "size": [5, 6, 0.6], "rotationDeg": 180, "color": "#4c1d95", "model": null }
+    { "id": "sg_audition", "style": "auditionSet", "position": [26, 29], "size": [11, 6.5, 8], "rotationDeg": 180, "collider": false, "model": null },
+    { "id": "sg_audition_wall_w", "position": [20.7, 29], "size": [0.4, 6.5, 8], "rotationDeg": 0, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_wall_e", "position": [31.3, 29], "size": [0.4, 6.5, 8], "rotationDeg": 0, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_wall_back", "position": [26, 32.8], "size": [11, 6.5, 0.4], "rotationDeg": 0, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_pylon", "style": "auditionPylon", "position": [36, 5.5], "size": [4.5, 9, 0.5], "rotationDeg": 90, "collider": [0.5, 9, 0.5], "model": null }
   ],
 
   "props": [
@@ -81,9 +81,10 @@
     {"id": "sg_walk_sign0", "style": "signPost", "position": [11, 10], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "촬영 골목 · 해변 산책로", "bg": "#365762", "fg": "#fff2da"}]},
     {"id": "sg_walk_sign1", "style": "signPost", "position": [4.8, 40], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "물비늘 해수욕장", "bg": "#365762", "fg": "#fff2da"}]},
     {"id": "sg_walk_sign2", "style": "signPost", "position": [-19, 40], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "SUNGRAY 선셋 데크", "bg": "#365762", "fg": "#fff2da"}]},
-    { "id": "sg_alley_lamp1", "style": "lamp", "position": [23.8, 17.5], "size": [0.3, 4.5, 0.3], "rotationDeg": 90 },
-    { "id": "sg_alley_lamp2", "style": "lamp", "position": [28.2, 26.5], "size": [0.3, 4.5, 0.3], "rotationDeg": -90 },
-    { "id": "sg_alley_vending", "style": "vending", "position": [24.1, 33], "size": [1, 1.9, 0.8], "rotationDeg": 90, "color": "#9b5cff" },
-    { "id": "sg_alley_bins", "style": "bins", "position": [28.3, 10], "size": [1.8, 1.1, 0.6], "rotationDeg": -90 }
+    { "id": "sg_alley_lamp1", "style": "lamp", "position": [23.8, 16.5], "size": [0.3, 4.5, 0.3], "rotationDeg": 90 },
+    { "id": "sg_alley_lamp2", "style": "lamp", "position": [28.2, 16.5], "size": [0.3, 4.5, 0.3], "rotationDeg": -90 },
+    { "id": "sg_audition_gate", "style": "auditionGate", "position": [26, 5.5], "size": [7, 7.5, 0.6], "rotationDeg": 180, "collider": false },
+    { "id": "sg_dome", "style": "kpopDome", "position": [0, 0], "size": [84.5, 18, 90], "rotationDeg": 0, "collider": false },
+    { "id": "sg_dome_show", "style": "kpopDomeShow", "position": [0, 0], "size": [84.5, 38, 90], "rotationDeg": 0, "collider": false }
   ]
 }

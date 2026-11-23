@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import os
 import urllib.request
 from functools import lru_cache
@@ -40,9 +41,9 @@ def check_melody(notes: list) -> list[dict]:
     prev_end = 0.0
     for n in notes:
         midi, start, duration = n.get("midi"), n.get("start"), n.get("duration")
-        if not (isinstance(midi, int) and 0 <= midi <= 127):
+        if not (type(midi) is int and 0 <= midi <= 127):
             raise ValueError(f"midi 오류: {n}")
-        if not (isinstance(start, (int, float)) and isinstance(duration, (int, float)) and duration > 0):
+        if not (type(start) in (int, float) and type(duration) in (int, float) and math.isfinite(start) and math.isfinite(duration) and duration > 0):
             raise ValueError(f"시간 오류: {n}")
         if start < prev_end:
             raise ValueError(f"순서가 뒤섞이거나 겹침: {n}")
@@ -79,6 +80,7 @@ def judge_notes(midi: np.ndarray, voiced: np.ndarray, notes: list[dict]) -> dict
     start = singing_start(voiced)
     offset = None if start is None else start - notes[0]["start"]
     results = []
+    voiced_frames = expected_frames = 0
     for i, n in enumerate(notes, 1):
         row = {"index": i, "target": n["midi"], "sung": None, "deviation": None, "status": "missed"}
         results.append(row)
@@ -86,6 +88,8 @@ def judge_notes(midi: np.ndarray, voiced: np.ndarray, notes: list[dict]) -> dict
             continue
         window = (times >= n["start"] + offset + EDGE_SEC) & (times < n["start"] + n["duration"] + offset - EDGE_SEC)
         sung = midi[window & voiced]
+        voiced_frames += len(sung)
+        expected_frames += max(0, math.ceil((n["start"] + n["duration"] + offset - EDGE_SEC) / FRAME_SEC) - math.ceil((n["start"] + offset + EDGE_SEC) / FRAME_SEC))
         if not window.any() or len(sung) < MIN_VOICED_RATIO * window.sum():
             continue
         center = float(np.median(sung))
@@ -96,7 +100,8 @@ def judge_notes(midi: np.ndarray, voiced: np.ndarray, notes: list[dict]) -> dict
         status = "crack" if crack else "ok" if abs(deviation) <= OK_SEMITONES else "flat" if deviation < 0 else "sharp"
         row.update(sung=round(center, 2), deviation=round(deviation, 2), status=status)
     ok = sum(r["status"] == "ok" for r in results)
-    return {"score": round(100 * ok / len(notes)), "offset": None if offset is None else round(offset, 2), "notes": results}
+    return {"score": round(100 * ok / len(notes)), "offset": None if offset is None else round(offset, 2), "notes": results,
+            "stats": {"voiced_ratio": round(100 * voiced_frames / expected_frames, 1) if expected_frames else 0}}
 
 
 def analyze(wav: bytes, notes: list[dict]) -> dict:
