@@ -74,3 +74,21 @@ def check_message(message: str) -> dict | None:
             lines = cat["lines"]
             return {"category": key, "reply": lines[zlib.crc32(message.encode("utf-8")) % len(lines)], "course": bool(cat.get("course"))}
     return None
+
+
+# ---- 커플 타로 해석 검사 (tarot.py의 guard 노드) ----
+# 타로 결과가 두 사람 관계를 단정하거나 겁주지 않게. 걸리면 그래프가 다른 조각으로 다시 조합함 (최대 2번)
+READING_BANNED = [
+    "헤어지", "헤어질", "이별", "운명이 아니", "절대", "끝날", "끝나 버", "끝장",
+    "맞지 않는 사이", "안 맞는 사이", "불행", "파국", "깨질", "바람을 피", "바람피",
+]
+
+
+def check_reading(text: str) -> list[str]:
+    """해석 문장에서 걸린 말 목록 (괜찮으면 빈 목록). 띄어쓰기를 바꿔도 잡힘"""
+    compact = re.sub(r"\s+", "", text)
+    hits = [w for w in READING_BANNED if re.sub(r"\s+", "", w) in compact]
+    flagged = check_message(text)  # 욕설·혐오 같은 말 (별명 등으로 섞여 들어올 수 있음)
+    if flagged:
+        hits.append(f"message:{flagged['category']}")
+    return hits

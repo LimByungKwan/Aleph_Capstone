@@ -55,6 +55,18 @@ py -3.12 -m venv .venv
 - `course`는 걷는 순서 (광장에서 가까운 곳부터, 쿠폰 쓰는 카페는 마지막)
 - `nextPlaceId`: 맵에 다음 목적지로 표시할 장소
 
+### `POST /tarot` — 커플 타로 (요금 0원, LLM 안 부름)
+```json
+{ "a": { "name": "민지", "self": [0,1,2,3,0,1,2,3,0,1], "guess": [1,1,2,0,0,1,3,3,0,2] },
+  "b": { "name": "준호", "self": [...10개], "guess": [...10개] },
+  "seed": "선택: 같은 값이면 같은 카드" }
+```
+- 답은 질문 순서대로 보기 번호(0부터). 질문·카드·조언 데이터는 화면과 같이 쓰는 `shared/bk_tarot/`
+- 응답: `match`(%), `mismatches`, `cards`(3장 + 해석), `summary`, `talk`(대화 질문 3개), `mission`(데이트 코스 장소), `guard`(검사 기록), `seed`
+- LangGraph: `analyze_a ∥ analyze_b → compare → draw → retrieve(RAG) → interpret → guard ⇄ interpret (최대 2번) / fallback → mission` (`app/tarot.py`, `app/tarot_rag.py`)
+- 두 사람 답은 저장하지 않음. 잘못된 답이면 422
+- 터미널에서 바로 보기: `.venv/Scripts/python try_tarot.py` (`--ask` 직접 입력, `--why` RAG 점수, `--poison` guard 반복)
+
 ### `GET /health`
 `{ "ok": true, "places": 17 }`
 
