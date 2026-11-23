@@ -90,6 +90,7 @@ function breakwaterCurve(item) {
 
 function breakwaterRails(item, curve) {
   if (item.lookout) return lookoutRails(item, curve)
+  if (item.gardenBridge) return gardenBridgeRails(item, curve)
   if (item.promenade) return []
   const width = item.width ?? 3
   const count = Math.ceil(curve.getLength() / 0.8)
@@ -122,6 +123,57 @@ function breakwaterRails(item, curve) {
       s: [to - from, 1.18, 0.18], r: [0, yaw, 0] })
   }
   return rails
+}
+
+function gardenBridgeHeight(t) {
+  return 0.20 + t * 0.215 + Math.sin(t * Math.PI) * 0.58
+}
+
+function gardenBridgeRails(item, curve, decorative = false) {
+  const parts = []
+  const width = item.width ?? 3
+  const count = Math.ceil(curve.getLength() / 0.62)
+  // The bridge rises along its deck while the dressed railing and collision follow both edges.
+  for (const side of [-1, 1]) {
+    const along = (index) => {
+      const t = index / count
+      const point = curve.getPointAt(t)
+      const tangent = curve.getTangentAt(t)
+      point.x -= tangent.z * side * (width / 2 - 0.09)
+      point.z += tangent.x * side * (width / 2 - 0.09)
+      point.y = gardenBridgeHeight(t)
+      return point
+    }
+    for (let i = 0; i < count; i += 1) {
+      const a = along(i), b = along(i + 1)
+      const dx = b.x - a.x, dz = b.z - a.z
+      if (!decorative) {
+        parts.push({ p: [(a.x + b.x) / 2, (a.y + b.y) / 2 + 0.48, (a.z + b.z) / 2],
+          s: [Math.hypot(dx, dz) + 0.055, 0.98, 0.14], r: [0, -Math.atan2(dz, dx), 0] })
+        continue
+      }
+      const beam = (y0, y1, thickness, color) => {
+        const dy = b.y + y1 - a.y - y0
+        parts.push({ p: [(a.x + b.x) / 2, (a.y + b.y + y0 + y1) / 2, (a.z + b.z) / 2],
+          s: [Math.hypot(dx, dz, dy) + 0.034, thickness, thickness],
+          r: [0, -Math.atan2(dz, dx), Math.atan2(dy, Math.hypot(dx, dz)), 'YXZ'], c: color })
+      }
+      beam(0.84, 0.84, 0.085, '#e3dfcc')
+      beam(0.19, 0.19, 0.083, '#d2cbbb')
+      beam(0.21, 0.78, 0.044, '#d4d0bc')
+      beam(0.79, 0.22, 0.044, '#e0ddcd')
+      parts.push({ p: [a.x, a.y + 0.46, a.z], s: [0.103, 0.90, 0.11], c: '#b5ad9a' })
+      if (i === count - 1) {
+        parts.push({ p: [b.x, b.y + 0.46, b.z], s: [0.12, 0.91, 0.12], c: '#b5ad9a' })
+      }
+    }
+  }
+  if (decorative) for (const t of [0.28, 0.72]) {
+    const p = curve.getPointAt(t)
+    const height = gardenBridgeHeight(t) - 0.17
+    parts.push({ p: [p.x, height / 2, p.z], s: [0.22, height, width * 0.84], c: '#aaa591' })
+  }
+  return parts
 }
 
 function lookoutHeight(item, length, distance) {
@@ -190,7 +242,7 @@ export function HjBreakwater({ item }) {
       const p = curve.getPointAt(t)
       const tan = curve.getTangentAt(t)
       const normal = new THREE.Vector3(-tan.z, 0, tan.x)
-      if (item.promenade || item.lookout || t * length < clearStart || (item.dockAtEnd && t * length > length - 2)) continue
+      if (item.promenade || item.lookout || item.gardenBridge || t * length < clearStart || (item.dockAtEnd && t * length > length - 2)) continue
       for (const side of [-1, 1]) {
         const off = side * (width / 2 + 0.5 + rand() * 0.5)
         const x = p.x + normal.x * off
@@ -205,7 +257,7 @@ export function HjBreakwater({ item }) {
       }
     }
     return { deck: item.lookout ? null : deckGeometry(curve, length, width, item),
-      rocks: rockList, rails: breakwaterRails(item, curve) }
+      rocks: rockList, rails: item.gardenBridge ? gardenBridgeRails(item, curve, true) : breakwaterRails(item, curve) }
   }, [item, width, clearStart])
 
   // 돌 무늬 한 장 = 2m (UV를 m 단위로 만들어서 반복 0.5)
@@ -220,7 +272,9 @@ export function HjBreakwater({ item }) {
       <mesh geometry={deck.sides}>
         <meshStandardMaterial color="#9d968b" roughness={0.95} side={THREE.DoubleSide} />
       </mesh>
-      <HarborRails boxes={rails} />
+      {item.gardenBridge
+        ? <Instances geometry={GEO.box} material={mat('#ffffff')} items={rails} />
+        : <HarborRails boxes={rails} />}
       {rocks.map((r, i) => (
         <mesh key={`r${i}`} position={[r.x, 0.3, r.z]} rotation={[r.r, r.r * 2, 0]} scale={r.s}>
           <dodecahedronGeometry args={[0.8, 0]} />
@@ -253,14 +307,14 @@ function deckGeometry(curve, length, width, item) {
     if (prev) dist += p.distanceTo(prev)
     prev = p
     const k = Math.min(1, dist / RAMP)
-    const h = item.lookout
+    const h = item.gardenBridge ? gardenBridgeHeight(t) : item.lookout
       ? lookoutHeight(item, length, t * length)
       : item.promenade ? RAMP_START_H + (DECK_H - RAMP_START_H) * (k * k * (3 - 2 * k)) : DECK_H
     const l = p.clone().addScaledVector(n, -width / 2)
     const r = p.clone().addScaledVector(n, width / 2)
     top.push(l.x, h, l.z, r.x, h, r.z)
     topUv.push(-width / 2, dist, width / 2, dist)
-    const base = item.promenade || item.lookout ? 0 : -1.2
+    const base = item.gardenBridge ? h - 0.18 : item.promenade || item.lookout ? 0 : -1.2
     side.push(l.x, h, l.z, l.x, base, l.z, r.x, h, r.z, r.x, base, r.z)
     if (i < samples) {
       const a = i * 2

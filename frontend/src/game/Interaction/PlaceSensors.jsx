@@ -1,5 +1,5 @@
 import { CylinderCollider, RigidBody } from '@react-three/rapier'
-import places from '@shared/places.json'
+import { mapPlaces } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
 
 // 센서 높이 (바닥에서 3m까지). 점프해도 범위 안에 있도록 넉넉하게.
@@ -8,7 +8,7 @@ const SENSOR_HALF_HEIGHT = 1.5
 // places.json 각 지점에 radius 크기의 "보이지 않는 감지 원기둥"(sensor)을 세움.
 // sensor는 부딪히지 않고 통과되며, 들어오고 나가는 것만 알려 줌.
 export default function PlaceSensors({ playerRef }) {
-  return places.map((place) => <PlaceSensor key={place.id} place={place} playerRef={playerRef} />)
+  return mapPlaces.map((place) => <PlaceSensor key={place.id} place={place} playerRef={playerRef} />)
 }
 
 function PlaceSensor({ place, playerRef }) {
