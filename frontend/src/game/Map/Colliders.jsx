@@ -1,10 +1,11 @@
 import { CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { beachBounds, seabed } from './seabed.js'
 import * as THREE from 'three'
-import { layout } from '../data/mapData.js'
+import { layout, southGroundExtension } from '../data/mapData.js'
 import { TerrainColliders } from './Terrain.jsx'
 import { GEO } from './styles/kit.jsx'
 import { HjHarborCollider } from './styles/hj/HjHarbor.jsx'
+import { palaceGroundsColliders } from './styles/hj/gyeongbokgungLayout.js'
 
 // 눈에 보이는 모델과 별개인 "충돌 전용" 박스들.
 // - JSON의 size 그대로 만들어서, 나중에 건물이 GLB로 바뀌어도 충돌 범위는 그대로예요.
@@ -21,6 +22,18 @@ const floorProps = layout.props.filter((item) => FLOOR_PROP_STYLES.includes(item
 const harborProps = layout.props.filter((item) => item.zone === 'HJ' && (
   item.style === 'hjSea' || item.style === 'hjBreakwater' || (item.style === 'hjBoat' && item.moored)
 ))
+const palaceBoxes = layout.props.filter((item) => item.style === 'hjGyeongbokgung').flatMap(palaceGroundsColliders)
+const cameraBlockers = [...layout.buildings, ...palaceBoxes.filter((item) => item.blocksCamera)]
+
+function southWallSegments(left, right, southEdge) {
+  if (!southGroundExtension) return [[left, right]]
+  const [x, z] = southGroundExtension.position
+  const [w, , d] = southGroundExtension.size
+  if (z - d / 2 >= southEdge || z + d / 2 <= southEdge) return [[left, right]]
+  const west = Math.max(left, x - w / 2 + 0.5)
+  const east = Math.min(right, x + w / 2 - 0.5)
+  return west < east ? [[left, west], [east, right]].filter(([a, b]) => a < b) : [[left, right]]
+}
 
 export default function Colliders() {
   const [groundW, groundD] = layout.ground.size
@@ -45,14 +58,16 @@ export default function Colliders() {
       {/* 바닥 가장자리 보이지 않는 벽 4면 */}
       <RigidBody type="fixed" colliders={false} name="boundary">
         <CuboidCollider args={[halfW, wallY, t]} position={[cx, wallY, cz - halfD - t]} />
-        <CuboidCollider args={[halfW, wallY, t]} position={[cx, wallY, cz + halfD + t]} />
+        {southWallSegments(cx - halfW, cx + halfW, cz + halfD).map(([from, to]) => (
+          <CuboidCollider key={from} args={[(to - from) / 2, wallY, t]} position={[(from + to) / 2, wallY, cz + halfD + t]} />
+        ))}
         <CuboidCollider args={[t, wallY, halfD]} position={[cx - halfW - t, wallY, cz]} />
         <CuboidCollider args={[t, wallY, halfD]} position={[cx + halfW + t, wallY, cz]} />
       </RigidBody>
 
       {/* 건물·소품 충돌 박스: 움직이지 않으니 몸체 하나에 모두 담음 (물리 계산 절약) */}
       <RigidBody type="fixed" colliders={false} name="static-boxes">
-        {[...layout.buildings, ...layout.props].map((item) => (
+        {[...layout.buildings, ...layout.props, ...palaceBoxes].map((item) => (
           <BoxCollider key={item.id} item={item} />
         ))}
       </RigidBody>
@@ -70,7 +85,7 @@ export default function Colliders() {
       {harborProps.map((item) => <HjHarborCollider key={item.id} item={item} />)}
 
       {/* 건물: 카메라가 벽을 뚫지 않게 막아 주는 투명 박스 (소품은 제외 — 가로등 기둥에 카메라가 걸리지 않게) */}
-      {layout.buildings.map((item) => (
+      {cameraBlockers.map((item) => (
         <CameraBlocker key={item.id} item={item} />
       ))}
 

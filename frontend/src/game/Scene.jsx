@@ -34,6 +34,8 @@ import SettingsPanel from './SettingsPanel.jsx'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
 import ShaderWarmup from './ShaderWarmup.jsx'
 import PointLightLock from './PointLightLock.jsx'
+import { southGroundExtension } from './data/mapData.js'
+import PalaceTourPresence from '../components/movieZone/PalaceTourPresence.jsx'
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
@@ -87,6 +89,7 @@ export default function Scene() {
               {playing && (
                 <>
                   <Player playerRef={playerRef} showModel={!firstPerson} />
+                  <PalaceTourPresence playerRef={playerRef} />
                   <FootSplashes playerRef={playerRef} />
                   <PlaceSensors playerRef={playerRef} />
                   {firstPerson ? <FirstPersonCamera playerRef={playerRef} /> : <FollowCamera playerRef={playerRef} />}
@@ -198,6 +201,10 @@ function SkyAmbient() {
 }
 
 // 둘러보기 카메라. 땅 밑으로 못 내려가고, 옆으로 끌면 땅과 평행하게 이동
+const overviewSouthLimit = southGroundExtension
+  ? Math.max(126, southGroundExtension.position[1] + southGroundExtension.size[2] / 2)
+  : 126
+
 function OverviewCamera() {
   const camera = useThree((state) => state.camera)
   const controlsRef = useRef(null)
@@ -276,7 +283,7 @@ function OverviewCamera() {
         if (!controls) return
         const { target } = controls
         const x = THREE.MathUtils.clamp(target.x, -126, 126)
-        const z = THREE.MathUtils.clamp(target.z, -126, 126)
+        const z = THREE.MathUtils.clamp(target.z, -126, overviewSouthLimit)
         camera.position.x += x - target.x
         camera.position.z += z - target.z
         target.x = x

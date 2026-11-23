@@ -80,6 +80,10 @@ function settle(items) {
   )
 }
 
+const props = settle([...hub.props, ...zones.flatMap((zone) => placeItems(zone.props, zone))])
+// [3. 개발 > 프론트엔드] 남쪽 경계와 만나는 확장 지형의 중심과 크기를 물리·카메라가 함께 씁니다.
+export const southGroundExtension = props.find((item) => item.extendsSouthBoundary)
+
 // 맵 전체 (모든 좌표가 절대 좌표)
 export const layout = {
   ground: hub.ground,
@@ -89,5 +93,5 @@ export const layout = {
   roads: [...hub.roads, ...zones.flatMap((zone) => placeItems(zone.roads, zone))],
   markings: [...(hub.markings ?? []), ...zones.flatMap((zone) => placeMarkings(zone.markings, zone))],
   buildings: settle([...hub.buildings, ...zones.flatMap((zone) => placeItems(zone.buildings, zone))]),
-  props: settle([...hub.props, ...zones.flatMap((zone) => placeItems(zone.props, zone))]),
+  props,
 }
