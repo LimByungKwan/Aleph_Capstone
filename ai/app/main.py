@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from .audition import router as audition_router
 from .course import DEFAULT_COUNT, MAX_COUNT, MIN_COUNT, recommend_course
 from .daily import daily_course
 from .external import key_status
@@ -20,6 +21,7 @@ from .places import course_candidates
 from .promo import TARGETS, TONES, generate_promo
 
 app = FastAPI(title="SceneWalk AI", version="0.1.0")
+app.include_router(audition_router)  # SG 오디션 업로드 (audition.py)
 
 # 프론트(Vercel·로컬 개발 서버)에서 부를 수 있게. 배포 때 ALLOWED_ORIGINS로 주소를 바꿀 수 있음
 origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,https://aleph-capstone.vercel.app").split(",") if o.strip()]
