@@ -348,7 +348,8 @@ const byCountDesc = (a, b) => b.count - a.count
  * 사용률은 화면에서 couponsUsed / couponsIssued로 계산해요.
  */
 export async function getAdminStats({ adminId }) {
-  if (USE_SERVER) throw new ApiError('NOT_READY', '서버 통계는 아직 연결 전이에요. mock 모드에서 확인해 주세요.')
+  // 서버 모드: 지민 서버 GET /admin/stats (DB 함수 get_admin_stats가 관리자 검사 + 집계). 방문자는 로그인 기록 기준
+  if (USE_SERVER) return server.getAdminStats()
   await wait()
   const admin = requireUser(adminId)
   if (admin.role !== 'admin') throw new ApiError('NOT_ADMIN', '관리자 계정만 볼 수 있어요.')

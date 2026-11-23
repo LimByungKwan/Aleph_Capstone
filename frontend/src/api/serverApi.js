@@ -116,6 +116,11 @@ export function getShopStats() {
   return authRequest('/shop/stats')
 }
 
+/** [지민] 관리자 통계 — 화면(성근 AdminPage)이 쓰는 getAdminStats와 같은 모양. 관리자가 아니면 NOT_ADMIN */
+export function getAdminStats() {
+  return authRequest('/admin/stats')
+}
+
 export async function generatePromo(input) {
   const user = useSessionStore.getState().user
   if (user?.role !== 'owner') throw new ApiError('NOT_OWNER', '사장님 계정만 쓸 수 있어요.')
