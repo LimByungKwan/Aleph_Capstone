@@ -8,6 +8,7 @@ import { GEO, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
 import { nightGlow } from './dateCourse.jsx'
 import { TarotSession } from './bk_tarotQuestions.jsx'
+import { tarotRoom, useTarotRoom } from './bk_tarotRoom.js'
 
 // 데이트 코스 구역(BK) 커플 타로 텐트. 담당: 병관
 //
@@ -118,14 +119,25 @@ function TarotInteraction({ item }) {
       }
     }
     window.addEventListener('keydown', down)
-    // ESC(공용 InteractionKeys)나 다른 화면이 패널을 닫으면 타로도 닫힘
+    // ESC(공용 InteractionKeys)나 다른 화면이 패널을 닫으면 타로도 닫힘 (같이 보기 중이면 상대에게 알리고 나감)
     const unsub = useGameStore.subscribe((state) => {
       const t = store().tarot
-      if (t.active && state.openPanel?.placeId !== item.id) store().setTarot({ active: false })
+      if (t.active && state.openPanel?.placeId !== item.id) {
+        store().setTarot({ active: false })
+        tarotRoom.leave()
+      }
+    })
+    // 같이 보기 방이 생기면(초대 수락) 두 사람 모두 타로 화면을 엶
+    const unsubRoom = useTarotRoom.subscribe((state, prev) => {
+      if (state.room && state.room !== prev.room) {
+        store().setTarot({ active: true })
+        useGameStore.getState().open({ type: 'bk_tarot', placeId: item.id })
+      }
     })
     return () => {
       window.removeEventListener('keydown', down)
       unsub()
+      unsubRoom()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id])
@@ -136,6 +148,11 @@ function TarotInteraction({ item }) {
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
       player.current = scene.getObjectByName('player') ?? null
+    }
+    if (anchor.current && !cur.spot) {
+      // 텐트 앞 손님 자리 (월드 x·z) → 같이 볼 사람 찾기(bk_tarotRoom.js)에 씀
+      anchor.current.localToWorld(tmp.v.set(0, 0, FRONT))
+      store().setTarot({ spot: [tmp.v.x, tmp.v.z] })
     }
     if (player.current?.parent && anchor.current) {
       anchor.current.localToWorld(tmp.v.set(0, 0, FRONT))
@@ -157,9 +174,10 @@ function TarotInteraction({ item }) {
 
 function TarotHud() {
   const t = useBkActivity((state) => state.tarot)
+  const invite = useTarotRoom((state) => state.invite)
   const size = useThree((state) => state.size)
-  const showHint = t.near && !t.active
-  if (!showHint && !t.active) return null
+  const showHint = t.near && !t.active && !invite
+  if (!showHint && !t.active && !invite) return null
   return (
     // 화면이 열려 있으면 장소 이름표(drei Html 기본 z-index 최대 16777271)보다 위에
     <Html calculatePosition={() => [0, 0]} zIndexRange={t.active ? [16777272, 16777272] : [20, 0]} style={{ pointerEvents: 'none' }} onOcclude={keepVisible}>
@@ -169,11 +187,30 @@ function TarotHud() {
             <kbd style={kbd}>E</kbd> 커플 타로 보기 🔮
           </div>
         )}
+        {invite && !t.active && <InviteCard invite={invite} />}
         {t.active && <TarotSession onClose={() => useGameStore.getState().close()} />}
       </div>
     </Html>
   )
 }
+
+// 같이 보기 초대 받기 (텐트 근처에서만 초대가 오므로 텐트 앞에서 보임)
+function InviteCard({ invite }) {
+  return (
+    <div style={inviteBox}>
+      <div style={{ fontSize: 22 }}>💌</div>
+      <div style={{ fontWeight: 700, margin: '2px 0 4px' }}>{invite.from.name}님이 커플 타로를 같이 보자고 해요</div>
+      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>각자 폰에서 질문 10개에 답하면, 같은 카드가 두 화면에 펼쳐져요</div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+        <button type="button" style={ghost} onClick={() => tarotRoom.respond(false)}>다음에</button>
+        <button type="button" style={yes} onClick={() => tarotRoom.respond(true)}>같이 보기 🔮</button>
+      </div>
+    </div>
+  )
+}
+const inviteBox = { pointerEvents: 'auto', width: 'min(320px, calc(100vw - 32px))', padding: '12px 14px', borderRadius: 14, background: 'rgba(36,24,64,0.94)', color: '#fff', textAlign: 'center', fontSize: 14, border: '1px solid rgba(231,195,90,0.6)', boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }
+const yes = { padding: '7px 16px', borderRadius: 999, border: 'none', background: '#e7c35a', color: '#2a1d47', fontWeight: 700, cursor: 'pointer' }
+const ghost = { padding: '7px 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.35)', background: 'transparent', color: '#fff', cursor: 'pointer' }
 
 const wrap = { position: 'absolute', left: 0, top: 0, display: 'flex', justifyContent: 'center', paddingBottom: 72, boxSizing: 'border-box' }
 const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }

@@ -20,6 +20,13 @@ let retryMs = 1000
 let retryTimer = null
 let characterId = 'male'
 
+// [병관] 'tarot.'으로 시작하는 메시지는 커플 타로 멀티(game/Map/styles/bk_tarotRoom.js)로 넘김
+const tarotListeners = new Set()
+export function onTarotMessage(fn) {
+  tarotListeners.add(fn)
+  return () => tarotListeners.delete(fn)
+}
+
 const setPeers = (fn) => useRealtimeStore.setState((s) => ({ peers: fn(s.peers) }))
 
 function handle(msg) {
@@ -38,6 +45,8 @@ function handle(msg) {
       delete next[msg.id]
       return next
     })
+  } else if (typeof msg.t === 'string' && msg.t.startsWith('tarot.')) {
+    tarotListeners.forEach((fn) => fn(msg))
   } else if (msg.t === 'state') {
     const selfId = useRealtimeStore.getState().selfId
     setPeers((peers) => {
@@ -96,6 +105,11 @@ function sendRaw(msg) {
 /** 내 위치 보내기 (MultiplayerPresence가 0.1초마다 부름) */
 export function sendMove(p, r, s, g) {
   sendRaw({ t: 'move', p, r, s, g })
+}
+
+/** [병관] 커플 타로 멀티 메시지 보내기 (tarot.* 만) */
+export function sendTarot(msg) {
+  if (typeof msg?.t === 'string' && msg.t.startsWith('tarot.')) sendRaw(msg)
 }
 
 export function sendCharacter(id) {

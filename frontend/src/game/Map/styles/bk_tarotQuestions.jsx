@@ -3,6 +3,8 @@ import questionData from '@shared/bk_tarot/questions.json'
 import { requestTarot } from '../../../api/course.js'
 import { useCourseStore } from '../../../store/courseStore.js'
 import { awardTarotBadges, cardById, recordReading, removeReading } from './bk_tarotRecord.js'
+import { onlinePeers, tarotRoom, useTarotRoom } from './bk_tarotRoom.js'
+import { useBkActivity } from './bk_activityStore.js'
 
 // 데이트 코스 구역(BK) 커플 타로 — 두 사람이 한 기기에서 번갈아 답하는 질문 카드 화면. 담당: 병관
 // 텐트(bk_tarotBooth.jsx)에서 E를 누르면 열림. 순서: 이름 → 첫 번째 사람 10문항 → 기기 넘기기 → 두 번째 사람 10문항 → 완료
@@ -35,6 +37,7 @@ export function TarotSession({ onClose }) {
   const [who, setWho] = useState(0) // 지금 답하는 사람 0 | 1
   const [qi, setQi] = useState(0) // 지금 문항 번호
   const [answers, setAnswers] = useState(emptyAnswers)
+  const room = useTarotRoom((s) => s.room)
 
   const nameOf = (i) => {
     const name = names[i].trim()
@@ -46,6 +49,9 @@ export function TarotSession({ onClose }) {
     setQi(0)
     setAnswers(emptyAnswers())
   }
+
+  // 같이 보기(각자 폰)로 방이 생기면 그쪽 화면으로
+  if (room) return <MultiSession onClose={onClose} />
 
   if (step === 'intro') {
     return (
@@ -72,6 +78,7 @@ export function TarotSession({ onClose }) {
           <button type="button" style={ghostBtn} onClick={onClose}>닫기 <kbd style={kbd}>ESC</kbd></button>
           <button type="button" style={btn} onClick={() => setStep('answer')}>{nameOf(0)}님부터 시작 ✨</button>
         </div>
+        <Together />
       </div>
     )
   }
@@ -360,6 +367,103 @@ function goCourse(r, onClose) {
   onClose()
 }
 
+// ── 같이 보기 (멀티 접속: 각자 폰으로 A·B) ─────────────────────────
+// 첫 화면 아래: 지금 접속 중인 사람 목록 → 1명 [초대]. 멀티 접속이 꺼져 있으면(혼자·mock 모드) 안 보임
+function Together() {
+  const spot = useBkActivity((s) => s.tarot.spot)
+  const { outgoing, notice } = useTarotRoom()
+  const [people, setPeople] = useState(() => onlinePeers(spot))
+  useEffect(() => {
+    const timer = setInterval(() => setPeople(onlinePeers(spot)), 1000) // 위치는 1초에 10번 바뀌어서 1초마다만 다시 봄
+    return () => clearInterval(timer)
+  }, [spot])
+  if (!people.length && !outgoing && !notice) return null
+  return (
+    <div style={togetherBox}>
+      <div style={{ fontSize: 12, color: '#e7c35a', fontWeight: 700 }}>👥 2인으로 같이 보기 · 지금 접속 중 {people.length}명</div>
+      {notice && <div style={{ fontSize: 12, margin: '4px 0', color: '#fbcfe8' }}>{notice}</div>}
+      {outgoing ? (
+        <div style={{ fontSize: 13, marginTop: 4 }}>
+          💌 {outgoing.to.name}님에게 초대를 보냈어요. 기다리는 중… ·{' '}
+          <button type="button" style={linkBtn} onClick={() => tarotRoom.leave()}>취소</button>
+        </div>
+      ) : (
+        people.map((p) => (
+          <div key={p.id} style={peerRow}>
+            <span>
+              {p.name}
+              {Number.isFinite(p.dist) && <span style={{ opacity: 0.6, fontSize: 11 }}> · {p.dist < 15 ? '텐트 앞' : `${Math.round(p.dist)}m`}</span>}
+            </span>
+            <button type="button" style={{ ...btn, padding: '4px 12px', fontSize: 12 }} onClick={() => tarotRoom.invite(p.id)}>같이 보자고 초대</button>
+          </div>
+        ))
+      )}
+      <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>한 명을 초대해서 수락하면, 두 사람 화면에 타로가 열려 각자 답하고 같은 카드가 펼쳐져요.</div>
+    </div>
+  )
+}
+
+// 같이 보기 진행: 내 10문항 → 상대 기다리기 → 결과 (각자 계정에 기록)
+function MultiSession({ onClose }) {
+  const { room, phase, partnerDone, result, notice } = useTarotRoom()
+  const [qi, setQi] = useState(0)
+  const [answers, setAnswers] = useState(() => QUESTIONS.map(() => ({ self: null, guess: null })))
+  const mine = PEOPLE[room.role === 'a' ? 0 : 1]
+  const theirs = PEOPLE[room.role === 'a' ? 1 : 0]
+  const partner = room.partner.name
+
+  if (phase === 'result' && result) return <TarotSpread r={result} onRestart={() => tarotRoom.leave()} onClose={onClose} />
+
+  if (phase === 'waiting' || phase === 'failed') {
+    return (
+      <div style={panel}>
+        <div style={{ fontSize: 34, textAlign: 'center' }}>{phase === 'failed' ? '🌫️' : partnerDone ? '🔮' : '⏳'}</div>
+        <div style={title}>{phase === 'failed' ? '카드를 펼치지 못했어요' : partnerDone ? '카드를 섞고 있어요…' : `${partner}님이 답하는 중이에요`}</div>
+        <p style={{ ...para, textAlign: 'center', opacity: 0.85 }}>
+          {phase === 'failed' ? notice : partnerDone ? '두 사람 답을 비교해서 카드 3장을 고르는 중이에요.' : '다 답하면 두 화면에 같은 카드가 펼쳐져요. 상대 답은 서로 볼 수 없어요 🙈'}
+        </p>
+        <div style={row}>
+          <button type="button" style={ghostBtn} onClick={onClose}>그만두기</button>
+          {phase === 'failed' && <button type="button" style={btn} onClick={() => tarotRoom.retry()}>다시 시도</button>}
+        </div>
+      </div>
+    )
+  }
+
+  const q = QUESTIONS[qi]
+  const a = answers[qi]
+  const pick = (part, index) => setAnswers(answers.map((x, i) => (i === qi ? { ...x, [part]: index } : x)))
+  const ready = a.self !== null && a.guess !== null
+  const next = () => {
+    if (qi < QUESTIONS.length - 1) return setQi(qi + 1)
+    tarotRoom.submit(answers.map((x) => x.self), answers.map((x) => x.guess))
+  }
+  return (
+    <div style={panel}>
+      <div style={topRow}>
+        <span style={{ ...badge, background: mine.color }}>{mine.emoji} {room.me.name}님 (나)</span>
+        <span style={{ opacity: 0.8 }}>{partnerDone ? `✅ ${partner}님 완료 · ` : ''}{qi + 1} / {QUESTIONS.length}</span>
+      </div>
+      <div style={bar}><div style={{ ...barFill, width: `${((qi + (ready ? 1 : 0)) / QUESTIONS.length) * 100}%`, background: mine.color }} /></div>
+
+      <div style={qLabel}>나는?</div>
+      <div style={qText}>{q.self}</div>
+      <Options options={q.options} value={a.self} color={mine.color} onPick={(i) => pick('self', i)} />
+
+      <div style={{ ...qLabel, marginTop: 12 }}>{partner}님은 뭐라고 할까?</div>
+      <div style={qText}>{q.guess.replaceAll('{partner}', partner)}</div>
+      <Options options={q.options} value={a.guess} color={theirs.color} onPick={(i) => pick('guess', i)} />
+
+      <div style={row}>
+        <button type="button" style={ghostBtn} disabled={qi === 0} onClick={() => setQi(qi - 1)}>← 이전</button>
+        <button type="button" style={{ ...btn, opacity: ready ? 1 : 0.45, cursor: ready ? 'pointer' : 'default' }} disabled={!ready} onClick={next}>
+          {qi < QUESTIONS.length - 1 ? '다음 →' : '다 했어요! 💌'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function Options({ options, value, color, onPick }) {
   return (
     <div style={grid}>
@@ -408,6 +512,8 @@ const linkBtn = { padding: 0, border: 'none', background: 'none', color: '#e7c35
 const lastBox = { marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(147,197,253,0.12)', border: '1px solid rgba(147,197,253,0.4)', fontSize: 13, lineHeight: 1.5 }
 const themeTag = { display: 'inline-block', marginRight: 6, padding: '0 6px', borderRadius: 999, background: 'rgba(249,168,212,0.25)', fontSize: 11, fontWeight: 700 }
 const guardChip = { display: 'inline-block', padding: '4px 12px', borderRadius: 999, background: 'rgba(134,239,172,0.18)', border: '1px solid rgba(134,239,172,0.6)', color: '#bbf7d0', fontSize: 12, fontWeight: 700 }
+const togetherBox = { marginTop: 12, padding: '8px 12px', borderRadius: 12, background: 'rgba(147,197,253,0.12)', border: '1px solid rgba(147,197,253,0.45)' }
+const peerRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, fontSize: 13 }
 const missionTag = { marginLeft: 6, padding: '0 6px', borderRadius: 999, background: '#e7c35a', color: '#2a1d47', fontSize: 10, fontWeight: 800 }
 const missionBox = { marginTop: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(231,195,90,0.14)', border: '1px solid rgba(231,195,90,0.55)', fontSize: 13 }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }

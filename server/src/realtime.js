@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { WebSocketServer } from 'ws'
+import { createTarotRooms } from './bk_tarotRooms.js'
 
 // 멀티 접속 (담당: 지민) — 같은 맵에 있는 사람들의 위치·방향·캐릭터를 실시간으로 주고받는다
 //
@@ -17,6 +18,7 @@ import { WebSocketServer } from 'ws'
 //   서버 → 화면  { t:'welcome', id, peers:[…] }          내 번호 + 이미 있는 사람들
 //               { t:'join', peer } / { t:'leave', id } / { t:'peer', peer }(캐릭터 변경)
 //               { t:'state', s:[[id,x,y,z,r,s,g], …] }  0.1초마다 움직인 사람만
+//   'tarot.'으로 시작하는 메시지는 커플 타로 멀티 (병관, bk_tarotRooms.js)
 
 export const REALTIME_PATH = '/realtime'
 
@@ -50,8 +52,9 @@ const publicPeer = (peer) => ({ id: peer.id, name: peer.name, characterId: peer.
  * @param {object} deps
  * @param {{ anon: Function, asUser: Function }} deps.supabase
  * @param {string[]} deps.allowedOrigins  접속을 허용할 화면 주소 (CORS와 같은 목록)
+ * @param {Function} [deps.readTarot]  커플 타로 AI 호출 (테스트에서 가짜로 바꿈)
  */
-export function attachRealtime(httpServer, { supabase, allowedOrigins = [], options = {} }) {
+export function attachRealtime(httpServer, { supabase, allowedOrigins = [], options = {}, readTarot } = {}) {
   const cfg = { ...DEFAULTS, ...options }
   const peers = new Map() // ws → peer
 
@@ -75,6 +78,13 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     for (const [ws, peer] of peers) if (peer.ready && ws !== except && ws.readyState === ws.OPEN) ws.send(text)
   }
 
+  // [병관] 커플 타로 멀티: 같은 WebSocket 위에 타로 방 (bk_tarotRooms.js)
+  const findPeer = (id) => {
+    for (const [ws, peer] of peers) if (peer.ready && peer.id === id) return { ws, peer }
+    return null
+  }
+  const tarot = createTarotRooms({ send, findPeer, ...(readTarot && { readTarot }), options: options.tarot })
+
   async function identify(token) {
     if (typeof token !== 'string' || !token) return { name: '손님', userId: null }
     const { data, error } = await supabase.anon().auth.getUser(token)
@@ -83,7 +93,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     return { name: profile?.display_name || '순례객', userId: data.user.id }
   }
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
     const peer = {
       id: randomUUID().slice(0, 8), // 화면끼리 구분하는 번호 (DB id와 무관)
       name: '손님',
@@ -95,6 +105,8 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       alive: true,
       windowStart: Date.now(),
       count: 0,
+      // 접속 주소 (커플 타로가 AI 서버를 부를 때 요청 횟수 제한을 사람마다 따로 세게)
+      ip: String(req?.headers?.['x-forwarded-for'] ?? '').split(',')[0].trim() || req?.socket?.remoteAddress || '',
     }
     peers.set(ws, peer)
     const helloTimer = setTimeout(() => ws.close(1008, 'hello timeout'), cfg.helloTimeoutMs)
@@ -137,6 +149,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         return
       }
       if (!peer.ready) return
+      if (tarot.handle(ws, peer, msg)) return
 
       if (msg.t === 'move') {
         const state = validMove(msg)
@@ -151,6 +164,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
 
     ws.on('close', () => {
       clearTimeout(helloTimer)
+      tarot.disconnect(ws)
       peers.delete(ws)
       if (peer.ready) broadcast({ t: 'leave', id: peer.id })
     })
@@ -188,9 +202,12 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
 
   return {
     wss,
+    /** 커플 타로 방 (테스트·로그용) */
+    tarot,
     /** 지금 접속 중인 사람 수 (테스트·로그용) */
     count: () => [...peers.values()].filter((p) => p.ready).length,
     close: () => {
+      tarot.close()
       for (const ws of peers.keys()) ws.terminate()
       wss.close()
     },
