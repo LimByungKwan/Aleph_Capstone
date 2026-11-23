@@ -6,6 +6,7 @@ import StudioPanel from './components/sg/StudioPanel.jsx'
 import AdminPage from './components/admin/AdminPage.jsx'
 import AdminLauncher from './components/admin/AdminLauncher.jsx'
 import CheerGame from './components/sg/CheerGame.jsx'
+import AuditionPanel from './components/sg/AuditionPanel.jsx'
 import LoginPage from './components/auth/LoginPage.jsx'
 import { USE_SERVER, useSessionStore } from './api/session.js'
 
@@ -40,6 +41,7 @@ export default function App() {
       <StudioPanel />
       <AdminLauncher />
       <CheerGame />
+      <AuditionPanel />
     </div>
   )
 }

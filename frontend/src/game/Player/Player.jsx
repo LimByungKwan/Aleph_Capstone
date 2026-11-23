@@ -57,6 +57,7 @@ export default function Player({ playerRef, showModel = true }) {
   const [, getKeys] = useKeyboardControls()
   // 패널이 열려 있으면(inputLocked) 키 입력을 무시 → 캐릭터 정지
   const locked = useGameStore((state) => state.inputLocked)
+  const rhythmOpen = useGameStore((state) => ['sg_audition', 'sg_cheer'].includes(state.openPanel?.type))
   const seated = usePalaceSeatStore((state) => state.seated)
   useEffect(() => () => usePalaceSeatStore.getState().reset(), [])
 
@@ -89,7 +90,7 @@ export default function Player({ playerRef, showModel = true }) {
       jumpVel={PLAYER_JUMP_SPEED}
       enableToggleRun={false}
     >
-      {showModel && <CharacterModel playerRef={playerRef} palaceSeat={seated} />}
+      {showModel && !rhythmOpen && <CharacterModel playerRef={playerRef} palaceSeat={seated} />}
     </Ecctrl>
   )
 }

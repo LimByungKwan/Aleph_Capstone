@@ -29,6 +29,7 @@ import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { SgStudio } from './sg_studio.jsx'
 import { SgCheer } from './sg_cheer.jsx'
+import { SG_AUDITION_STYLES } from './sg_audition.jsx'
 import { SungrayBeach } from './beach.jsx'
 import { FestivalCart } from './festival.jsx'
 import { ClawBooth } from './bk_clawMachine.jsx'
@@ -91,6 +92,7 @@ export const STYLES = {
   artistLounge: FilmingAlleyShop,
   soundStudio: SgStudio,
   cheerSpot: SgCheer, // 응원봉 리듬 게임 (sg_cheer.jsx)
+  ...SG_AUDITION_STYLES, // 썬그레이 오디션 세트·게이트·파일런 (sg_audition.jsx)
   bdayCafe: BdayCafe,
   popupStore: PopupStore,
   practiceRoom: FilmingAlleyShop,
