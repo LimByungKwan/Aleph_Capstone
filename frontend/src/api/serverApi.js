@@ -67,6 +67,20 @@ export async function setPlayerCharacter({ userId, characterId }) {
   return { character }
 }
 
+// ── 커플 타로 기록 (Supabase tarot_readings) ──
+export async function listTarotReadings({ limit = 10 } = {}) {
+  if (!loggedIn()) return { readings: [] }
+  return authRequest(`/me/tarot-readings?limit=${encodeURIComponent(limit)}`)
+}
+
+export function saveTarotReading({ spread, cards, summary, detail }) {
+  return authRequest('/me/tarot-readings', { method: 'POST', body: { spread, cards, summary, detail } })
+}
+
+export function deleteTarotReading({ readingId }) {
+  return authRequest(`/me/tarot-readings/${encodeURIComponent(readingId)}`, { method: 'DELETE' })
+}
+
 // ── 스탬프 ──
 export function collectStamp({ placeId }) {
   return authRequest('/stamps', { method: 'POST', body: { placeId } })

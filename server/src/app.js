@@ -3,7 +3,7 @@ import cors from 'cors'
 import express from 'express'
 import { HttpError, fromAuthError, fromDbError } from './errors.js'
 
-// SceneWalk AI API (담당: 지민) — 로그인·스탬프·쿠폰·체험·가게 문구
+// SceneWalk AI API (담당: 지민) — 로그인·스탬프·쿠폰·체험·가게 문구·꾸미기·타로 기록
 //
 // 구조: 화면(Vercel) → 이 서버(Render) → Supabase(Postgres + Auth)
 //   - 규칙(중복 스탬프 차단, 쿠폰 1회 사용, 역할 검사)은 DB 함수·제약에 있다 (supabase/migrations)
@@ -57,6 +57,11 @@ function couponJson(row) {
     usedAt: row.used_at,
     usedBy: row.used_by,
   }
+}
+
+/** tarot_readings 행 → client.js TarotReading 모양 */
+function tarotJson(row) {
+  return { id: row.id, spread: row.spread, cards: row.cards, summary: row.summary, detail: row.detail ?? {}, createdAt: row.created_at }
 }
 
 async function loadProfile(db, userId) {
@@ -170,6 +175,46 @@ export function createApp({ supabase, allowedOrigins = [] }) {
       throw new HttpError(400, 'INVALID_INPUT', '꾸미기 값을 확인해 주세요.')
     }
     res.json({ appearance: await rpc(req.db, 'save_appearance', { p_patch: patch }) })
+  })
+
+  // ── 커플 타로 결과 (화면·AI: 병관) — 카드 id와 해석 요약만, 두 사람이 쓴 답 원문은 보내지 않기 ──
+  // client.js listTarotReadings: { readings } (최신순, 기본 10개 · 최대 30개)
+  app.get('/me/tarot-readings', requireAuth, async (req, res) => {
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 10, 1), 30)
+    const { data, error } = await req.db
+      .from('tarot_readings')
+      .select('id, spread, cards, summary, detail, created_at')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) throw fromDbError(error)
+    res.json({ readings: data.map(tarotJson) })
+  })
+
+  // client.js saveTarotReading: { reading } — 형식·크기·횟수·최근 30개 보관은 DB 함수 save_tarot_reading
+  app.post('/me/tarot-readings', requireAuth, async (req, res) => {
+    const { spread, cards, summary, detail } = req.body ?? {}
+    if (
+      typeof spread !== 'string' ||
+      !Array.isArray(cards) ||
+      !cards.every((c) => typeof c === 'string') ||
+      typeof summary !== 'string' ||
+      (detail !== undefined && detail !== null && (typeof detail !== 'object' || Array.isArray(detail)))
+    ) {
+      throw new HttpError(400, 'INVALID_INPUT', '타로 결과 값을 확인해 주세요.')
+    }
+    const reading = await rpc(req.db, 'save_tarot_reading', { p_spread: spread, p_cards: cards, p_summary: summary, p_detail: detail ?? {} })
+    res.status(201).json({ reading })
+  })
+
+  // client.js deleteTarotReading: { ok: true } — 본인 기록만 (RLS)
+  app.delete('/me/tarot-readings/:readingId', requireAuth, async (req, res) => {
+    const readingId = req.params.readingId
+    if (!UUID_RE.test(readingId)) throw new HttpError(400, 'INVALID_INPUT', 'readingId 값을 확인해 주세요.')
+    const { data, error } = await req.db.from('tarot_readings').delete().eq('id', readingId).eq('user_id', req.user.id).select('id')
+    if (error) throw fromDbError(error)
+    if (!data?.length) throw new HttpError(404, 'NOT_FOUND', '없는 타로 기록이에요.')
+    res.json({ ok: true })
   })
 
   // ── 스탬프 ──
