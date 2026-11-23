@@ -30,6 +30,8 @@ import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { SgStudio } from './sg_studio.jsx'
 import { SgCheer } from './sg_cheer.jsx'
 import { SG_AUDITION_STYLES } from './sg_audition.jsx'
+import { SG_DOME_STYLES } from './sg_dome.jsx'
+import { SG_DOME_SHOW_STYLES } from './sg_domeShow.jsx'
 import { SungrayBeach } from './beach.jsx'
 import { FestivalCart } from './festival.jsx'
 import { ClawBooth } from './bk_clawMachine.jsx'
@@ -93,6 +95,8 @@ export const STYLES = {
   soundStudio: SgStudio,
   cheerSpot: SgCheer, // 응원봉 리듬 게임 (sg_cheer.jsx)
   ...SG_AUDITION_STYLES, // 썬그레이 오디션 세트·게이트·파일런 (sg_audition.jsx)
+  ...SG_DOME_STYLES, // 잠실 주경기장 느낌 돔 (sg_dome.jsx, Codex 작성)
+  ...SG_DOME_SHOW_STYLES, // 돔 바닥선 서치라이트·밤 폭죽 (sg_domeShow.jsx)
   bdayCafe: BdayCafe,
   popupStore: PopupStore,
   practiceRoom: FilmingAlleyShop,

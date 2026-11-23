@@ -83,6 +83,8 @@
     {"id": "sg_walk_sign2", "style": "signPost", "position": [-19, 40], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "SUNGRAY 선셋 데크", "bg": "#365762", "fg": "#fff2da"}]},
     { "id": "sg_alley_lamp1", "style": "lamp", "position": [23.8, 16.5], "size": [0.3, 4.5, 0.3], "rotationDeg": 90 },
     { "id": "sg_alley_lamp2", "style": "lamp", "position": [28.2, 16.5], "size": [0.3, 4.5, 0.3], "rotationDeg": -90 },
-    { "id": "sg_audition_gate", "style": "auditionGate", "position": [26, 5.5], "size": [7, 7.5, 0.6], "rotationDeg": 180, "collider": false }
+    { "id": "sg_audition_gate", "style": "auditionGate", "position": [26, 5.5], "size": [7, 7.5, 0.6], "rotationDeg": 180, "collider": false },
+    { "id": "sg_dome", "style": "kpopDome", "position": [0, 0], "size": [84.5, 18, 90], "rotationDeg": 0, "collider": false },
+    { "id": "sg_dome_show", "style": "kpopDomeShow", "position": [0, 0], "size": [84.5, 38, 90], "rotationDeg": 0, "collider": false }
   ]
 }
