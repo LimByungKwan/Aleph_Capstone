@@ -1,0 +1,186 @@
+{
+  "_note": "커플 타로 카드 의미 (메이저 아르카나 22장, 담당: 병관). RAG 원천 데이터. 문장은 직접 씀 — 기존 책·사이트 문장 복사 X. 관계를 단정하는 말 X, 역방향은 '조언'으로만. tags = questions.json의 category, mission.placeId = shared/places.json의 BK 장소",
+  "positions": {
+    "past": "지나온 우리",
+    "present": "지금의 우리",
+    "next": "우리의 다음 데이트"
+  },
+  "cards": [
+    {
+      "id": "fool", "no": 0, "name": "바보", "emoji": "🎒",
+      "keywords": ["시작", "즉흥", "설렘"],
+      "tags": ["date_style", "travel"],
+      "upright": "계획 없이 떠나도 즐거운 두 사람이에요. 처음 만났을 때의 설렘이 아직 남아 있어요.",
+      "reversed": "즉흥도 좋지만 이번엔 하나만 미리 정해 두면 더 편하게 즐길 수 있어요.",
+      "mission": { "placeId": "spot_mural", "text": "벽화 골목을 지도 없이 걸어 보고, 마음에 드는 벽화 앞에서 한 장 찍기" }
+    },
+    {
+      "id": "magician", "no": 1, "name": "마법사", "emoji": "🪄",
+      "keywords": ["재주", "표현", "실행"],
+      "tags": ["gift", "future"],
+      "upright": "마음먹은 걸 바로 해내는 힘이 있어요. 서로의 재주가 데이트를 특별하게 만들어요.",
+      "reversed": "말로만 정해 둔 약속이 있다면, 오늘 하나를 실제로 해 보는 날로 만들어 보세요.",
+      "mission": { "placeId": "spot_bk_claw", "text": "인형뽑기에서 서로에게 줄 인형 하나 도전하기" }
+    },
+    {
+      "id": "high_priestess", "no": 2, "name": "여사제", "emoji": "🌙",
+      "keywords": ["직감", "속마음", "조용함"],
+      "tags": ["contact", "conflict"],
+      "upright": "말하지 않아도 서로의 마음을 읽는 순간이 많아요. 조용한 시간이 두 사람에게 잘 맞아요.",
+      "reversed": "짐작만 하지 말고 오늘은 속마음을 한 가지씩 말로 꺼내 보세요.",
+      "mission": { "placeId": "cafe_soran", "text": "카페에서 휴대폰 내려놓고 10분 동안 이야기만 나누기" }
+    },
+    {
+      "id": "empress", "no": 3, "name": "여황제", "emoji": "🌸",
+      "keywords": ["다정함", "풍요", "돌봄"],
+      "tags": ["affection", "food"],
+      "upright": "서로를 챙겨 주는 마음이 넉넉한 두 사람이에요. 함께 먹고 쉬는 시간이 큰 힘이 돼요.",
+      "reversed": "챙겨 주기만 하다 지치지 않게, 오늘은 받는 사람도 바꿔 보세요.",
+      "mission": { "placeId": "cafe_soran", "text": "상대가 좋아할 디저트를 몰래 골라서 건네기" }
+    },
+    {
+      "id": "emperor", "no": 4, "name": "황제", "emoji": "🏛️",
+      "keywords": ["든든함", "계획", "약속"],
+      "tags": ["date_style", "future"],
+      "upright": "서로에게 기댈 수 있는 든든한 사이예요. 함께 세운 약속을 잘 지켜 왔어요.",
+      "reversed": "계획이 꼭 완벽하지 않아도 괜찮아요. 오늘은 한 가지를 상대에게 맡겨 보세요.",
+      "mission": { "placeId": "spot_bk_tower", "text": "전망대에 올라가서 다음 데이트 장소를 같이 정하기" }
+    },
+    {
+      "id": "hierophant", "no": 5, "name": "교황", "emoji": "📜",
+      "keywords": ["전통", "기념일", "배움"],
+      "tags": ["gift", "future"],
+      "upright": "두 사람만의 작은 습관과 기념일이 관계를 단단하게 해 줘요.",
+      "reversed": "늘 하던 데이트가 익숙해졌다면, 오늘은 처음 해 보는 걸 하나 넣어 보세요.",
+      "mission": { "placeId": "spot_bk_fountain", "text": "소원 분수에서 '우리만의 기념일'을 하나 새로 정하기" }
+    },
+    {
+      "id": "lovers", "no": 6, "name": "연인", "emoji": "💞",
+      "keywords": ["선택", "마음", "끌림"],
+      "tags": ["affection", "date_style"],
+      "upright": "서로를 고른 마음이 또렷한 두 사람이에요. 함께 고르는 순간마다 더 가까워져요.",
+      "reversed": "고르기 어려울 땐 하나씩 번갈아 정해 보세요. 둘 다 만족하는 길이 보여요.",
+      "mission": { "placeId": "spot_mural", "text": "벽화 골목에서 서로 마음에 드는 벽화를 하나씩 골라 같이 찍기" }
+    },
+    {
+      "id": "chariot", "no": 7, "name": "전차", "emoji": "🏇",
+      "keywords": ["추진력", "도전", "함께 달리기"],
+      "tags": ["travel", "date_style"],
+      "upright": "같은 방향을 보고 힘차게 나아가는 사이예요. 함께하면 멀리 가도 지치지 않아요.",
+      "reversed": "서두르지 않아도 괜찮아요. 오늘은 걷는 속도를 서로에게 맞춰 보세요.",
+      "mission": { "placeId": "spot_bk_tower", "text": "전망대까지 같이 걸어 올라가서 정상에서 한 장 찍기" }
+    },
+    {
+      "id": "strength", "no": 8, "name": "힘", "emoji": "🦁",
+      "keywords": ["다정한 용기", "인내", "포용"],
+      "tags": ["conflict", "affection"],
+      "upright": "부드럽게 감싸 주는 힘이 있는 두 사람이에요. 다툼도 다정하게 풀어 왔어요.",
+      "reversed": "참기만 하면 마음이 무거워져요. 작은 서운함도 부드럽게 말해 보세요.",
+      "mission": { "placeId": "cafe_soran", "text": "요즘 고마웠던 일 한 가지씩 말해 주기" }
+    },
+    {
+      "id": "hermit", "no": 9, "name": "은둔자", "emoji": "🏮",
+      "keywords": ["혼자만의 시간", "생각", "등불"],
+      "tags": ["rest", "contact"],
+      "upright": "각자의 시간을 존중해 주는 성숙한 사이예요. 떨어져 있어도 마음이 이어져 있어요.",
+      "reversed": "혼자 고민하던 게 있다면 오늘은 조금 나눠 보세요. 생각보다 가벼워져요.",
+      "mission": { "placeId": "spot_bk_tower", "text": "전망대에서 말없이 1분 동안 풍경 보기" }
+    },
+    {
+      "id": "wheel", "no": 10, "name": "운명의 수레바퀴", "emoji": "🎡",
+      "keywords": ["변화", "타이밍", "행운"],
+      "tags": ["future", "date_style"],
+      "upright": "좋은 타이밍이 찾아오고 있어요. 우연처럼 생긴 일이 즐거운 추억이 돼요.",
+      "reversed": "일이 뜻대로 안 풀려도 웃어넘기면 그것도 이야깃거리가 돼요.",
+      "mission": { "placeId": "spot_bk_claw", "text": "인형뽑기를 딱 세 번만! 결과가 어떻든 같이 웃기" }
+    },
+    {
+      "id": "justice", "no": 11, "name": "정의", "emoji": "⚖️",
+      "keywords": ["균형", "공평", "솔직함"],
+      "tags": ["conflict", "date_style"],
+      "upright": "서로를 공평하게 배려하는 사이예요. 주고받는 마음의 균형이 잘 맞아요.",
+      "reversed": "한쪽만 맞춰 주고 있진 않은지, 오늘은 상대의 의견을 먼저 물어보세요.",
+      "mission": { "placeId": "cafe_soran", "text": "메뉴를 상대가 대신 골라 주기" }
+    },
+    {
+      "id": "hanged_man", "no": 12, "name": "매달린 사람", "emoji": "🙃",
+      "keywords": ["다른 시선", "기다림", "여유"],
+      "tags": ["conflict", "rest"],
+      "upright": "상대의 입장에서 보는 여유가 있는 두 사람이에요. 기다려 준 시간이 마음을 키웠어요.",
+      "reversed": "생각만 길어지고 있다면, 작은 것부터 하나 정해서 움직여 보세요.",
+      "mission": { "placeId": "spot_mural", "text": "벽화를 거꾸로 찍는 것처럼 색다른 구도로 사진 찍기" }
+    },
+    {
+      "id": "death", "no": 13, "name": "죽음", "emoji": "🦋",
+      "keywords": ["새로운 시작", "변화", "정리"],
+      "tags": ["future", "date_style"],
+      "upright": "익숙한 것을 정리하고 새 장을 여는 시기예요. 두 사람에게 새로운 모습이 생겨요.",
+      "reversed": "익숙함이 편하지만, 작은 변화 하나가 데이트를 새롭게 해 줄 거예요.",
+      "mission": { "placeId": "spot_mural", "text": "한 번도 안 가 본 골목길로 걸어 보기" }
+    },
+    {
+      "id": "temperance", "no": 14, "name": "절제", "emoji": "🫖",
+      "keywords": ["조화", "속도 맞추기", "섞임"],
+      "tags": ["rest", "food"],
+      "upright": "서로 다른 점이 잘 섞여 조화를 이루는 사이예요. 천천히 맞춰 가는 게 잘 어울려요.",
+      "reversed": "바쁘게 달려왔다면 오늘은 쉬는 데이트로 속도를 늦춰 보세요.",
+      "mission": { "placeId": "cafe_soran", "text": "음료를 반씩 나눠 마시며 쉬어 가기" }
+    },
+    {
+      "id": "devil", "no": 15, "name": "악마", "emoji": "😈",
+      "keywords": ["끌림", "습관", "솔직한 욕심"],
+      "tags": ["affection", "contact"],
+      "upright": "서로에게 강하게 끌리는 사이예요. 함께 있으면 시간 가는 줄 몰라요.",
+      "reversed": "붙어 있는 것도 좋지만, 각자의 시간도 챙길 때 더 반가워져요.",
+      "mission": { "placeId": "spot_bk_claw", "text": "인형뽑기 내기! 진 사람이 음료 사기" }
+    },
+    {
+      "id": "tower", "no": 16, "name": "탑", "emoji": "⚡",
+      "keywords": ["깜짝 변화", "깨달음", "새 출발"],
+      "tags": ["conflict", "future"],
+      "upright": "예상 못 한 일이 생겨도 함께 넘기면 더 단단해져요. 새로운 면을 발견하는 계기가 돼요.",
+      "reversed": "쌓아 둔 이야기가 있다면 크게 번지기 전에 가볍게 꺼내 보세요.",
+      "mission": { "placeId": "spot_bk_tower", "text": "전망대에서 서로에게 '요즘 바라는 것' 하나씩 말하기" }
+    },
+    {
+      "id": "star", "no": 17, "name": "별", "emoji": "⭐",
+      "keywords": ["희망", "소원", "회복"],
+      "tags": ["future", "affection"],
+      "upright": "함께 바라는 꿈이 반짝이는 두 사람이에요. 서로에게 힘이 되어 주고 있어요.",
+      "reversed": "지쳐 있다면 큰 계획보다 작은 소원 하나부터 같이 이뤄 보세요.",
+      "mission": { "placeId": "spot_bk_fountain", "text": "소원 분수에 동전을 함께 던지고 소원 빌기" }
+    },
+    {
+      "id": "moon", "no": 18, "name": "달", "emoji": "🌕",
+      "keywords": ["감성", "불안", "밤 산책"],
+      "tags": ["contact", "conflict"],
+      "upright": "감성이 잘 통하는 두 사람이에요. 밤 산책처럼 조용한 시간이 잘 어울려요.",
+      "reversed": "괜한 걱정이 있다면 혼자 상상하지 말고 물어보세요. 금방 풀릴 거예요.",
+      "mission": { "placeId": "spot_bk_tower", "text": "저녁에 전망대에서 야경 보며 걷기" }
+    },
+    {
+      "id": "sun", "no": 19, "name": "태양", "emoji": "☀️",
+      "keywords": ["기쁨", "웃음", "밝음"],
+      "tags": ["photo", "date_style"],
+      "upright": "함께 있으면 웃음이 많은 밝은 사이예요. 오늘도 즐거운 하루가 될 거예요.",
+      "reversed": "기분이 가라앉은 날엔 크게 웃을 수 있는 놀거리 하나면 충분해요.",
+      "mission": { "placeId": "spot_mural", "text": "벽화 앞에서 제일 환하게 웃는 인증샷 찍기" }
+    },
+    {
+      "id": "judgement", "no": 20, "name": "심판", "emoji": "📯",
+      "keywords": ["돌아보기", "다시 시작", "응답"],
+      "tags": ["future", "gift"],
+      "upright": "함께한 시간을 돌아보며 다시 설레는 시기예요. 예전 추억이 새 힘이 돼요.",
+      "reversed": "지난 일은 가볍게 내려놓고, 오늘의 데이트에 집중해 보세요.",
+      "mission": { "placeId": "spot_bk_fountain", "text": "분수 앞에서 처음 만난 날 이야기 나누기" }
+    },
+    {
+      "id": "world", "no": 21, "name": "세계", "emoji": "🌍",
+      "keywords": ["완성", "여행", "함께 이룸"],
+      "tags": ["travel", "future"],
+      "upright": "함께 한 바퀴를 완성한 두 사람이에요. 이제 더 넓은 곳으로 같이 떠날 차례예요.",
+      "reversed": "마무리 못 한 약속이 있다면 오늘 하나를 끝까지 해 보세요.",
+      "mission": { "placeId": "spot_bk_tower", "text": "전망대에서 같이 가고 싶은 여행지 하나 정하기" }
+    }
+  ]
+}
