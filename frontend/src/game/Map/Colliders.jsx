@@ -6,6 +6,7 @@ import { TerrainColliders } from './Terrain.jsx'
 import { GEO } from './styles/kit.jsx'
 import { HjHarborCollider } from './styles/hj/HjHarbor.jsx'
 import { palaceGroundsColliders } from './styles/hj/gyeongbokgungLayout.js'
+import { specialAccessColliders } from './styles/hj/specialAccessLayout.js'
 
 // 눈에 보이는 모델과 별개인 "충돌 전용" 박스들.
 // - JSON의 size 그대로 만들어서, 나중에 건물이 GLB로 바뀌어도 충돌 범위는 그대로예요.
@@ -22,7 +23,8 @@ const floorProps = layout.props.filter((item) => FLOOR_PROP_STYLES.includes(item
 const harborProps = layout.props.filter((item) => item.zone === 'HJ' && (
   item.style === 'hjSea' || item.style === 'hjBreakwater' || (item.style === 'hjBoat' && item.moored)
 ))
-const palaceBoxes = layout.props.filter((item) => item.style === 'hjGyeongbokgung').flatMap(palaceGroundsColliders)
+const palaceBoxes = layout.props.filter((item) => item.style === 'hjGyeongbokgung')
+  .flatMap((item) => [...palaceGroundsColliders(item), ...specialAccessColliders(item)])
 const cameraBlockers = [...layout.buildings, ...palaceBoxes.filter((item) => item.blocksCamera)]
 
 function southWallSegments(left, right, southEdge) {

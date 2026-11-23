@@ -51,7 +51,7 @@ function DialogContent({ place, onClose }) {
       issuedCoupons.forEach((c) => toast(`🎟 쿠폰이 발급됐어요: ${c.title}`, 'ok'))
       bumpData()
     } catch (error) {
-      toast(errorText(error), error?.code === 'ALREADY_STAMPED' ? 'info' : 'error')
+      toast(errorText(error), ['ALREADY_STAMPED', 'LOGIN_REQUIRED'].includes(error?.code) ? 'info' : 'error') // [지민] 손님은 로그인 창이 함께 뜸 → 오류색 대신 안내색
       bumpData()
     } finally {
       setBusy(false)

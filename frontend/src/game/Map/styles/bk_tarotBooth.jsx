@@ -7,11 +7,12 @@ import { useBkActivity } from './bk_activityStore.js'
 import { GEO, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
 import { nightGlow } from './dateCourse.jsx'
+import { TarotSession } from './bk_tarotQuestions.jsx'
 
 // 데이트 코스 구역(BK) 커플 타로 텐트. 담당: 병관
 //
 // 데이트 코스 입구 바로 안쪽(소원 분수 옆)에 있는 보라색 점술 텐트. 앞에서 E → 커플 타로 화면이 열림 (ESC·닫기로 나감).
-// 지금은 안내 화면만 — 11/25에 두 사람 질문 카드, 11/26~ AI 서버 /tarot 연결 (docs/bk-couple-tarot-plan.md)
+// 화면: 두 사람 질문 카드(bk_tarotQuestions.jsx). 11/26~ AI 서버 /tarot 연결 (docs/bk-couple-tarot-plan.md)
 // 인형뽑기(bk_clawMachine.jsx)와 같은 방식: 공용 파일은 styles/index.js에 스타일 이름 한 줄만 등록
 
 const C = {
@@ -168,24 +169,7 @@ function TarotHud() {
             <kbd style={kbd}>E</kbd> 커플 타로 보기 🔮
           </div>
         )}
-        {t.active && (
-          <div style={panel}>
-            <div style={{ fontSize: 28, textAlign: 'center' }}>🔮</div>
-            <div style={{ fontWeight: 700, fontSize: 18, textAlign: 'center', margin: '4px 0 10px' }}>커플 타로</div>
-            <p style={para}>두 사람이 각자 질문 카드 10장에 답하면, 서로 얼마나 잘 알고 있는지 보고 타로 카드 3장으로 풀어 드려요.</p>
-            <ol style={list}>
-              <li>지나온 우리 · 지금의 우리 · 우리의 다음 데이트</li>
-              <li>마지막 카드는 이 거리에서 해 볼 데이트 미션으로 이어져요</li>
-            </ol>
-            <div style={soon}>질문 카드를 준비하고 있어요. 곧 열려요! ✨</div>
-            <div style={note}>재미로 보는 타로예요. 결과가 두 사람의 관계를 정하지 않아요.</div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-              <button type="button" style={btn} onClick={() => useGameStore.getState().close()}>
-                닫기 <kbd style={kbd}>ESC</kbd>
-              </button>
-            </div>
-          </div>
-        )}
+        {t.active && <TarotSession onClose={() => useGameStore.getState().close()} />}
       </div>
     </Html>
   )
@@ -193,12 +177,6 @@ function TarotHud() {
 
 const wrap = { position: 'absolute', left: 0, top: 0, display: 'flex', justifyContent: 'center', paddingBottom: 72, boxSizing: 'border-box' }
 const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
-const panel = { pointerEvents: 'auto', width: 'min(360px, calc(100vw - 32px))', padding: '16px 18px', borderRadius: 14, background: 'rgba(36,24,64,0.92)', color: '#fff', fontSize: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.35)', border: '1px solid rgba(231,195,90,0.5)' }
-const para = { margin: '0 0 8px', lineHeight: 1.5 }
-const list = { margin: '0 0 10px', paddingLeft: 18, lineHeight: 1.6, opacity: 0.9 }
-const soon = { padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.1)', textAlign: 'center' }
-const note = { marginTop: 10, fontSize: 12, opacity: 0.7, textAlign: 'center' }
-const btn = { padding: '6px 16px', borderRadius: 999, border: 'none', background: '#e7c35a', color: '#2a1d47', fontWeight: 700, cursor: 'pointer' }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }
 
 // drei Html 화면 고정 위치가 처음 한 번 숨겨진 채로 굳지 않게 (bk_clawMachine.jsx와 같음)

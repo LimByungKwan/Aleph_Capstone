@@ -9,6 +9,7 @@ import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { updatePalaceSeating, usePalaceSeatStore } from '../../components/movieZone/palaceSeating.js'
 import { usePalaceTour } from '../../components/movieZone/palaceTourStore.js'
+import { useSpecialAccess } from '../../components/movieZone/specialAccessStore.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 import CharacterModel from './CharacterModel.jsx'
 
@@ -66,7 +67,7 @@ export default function Player({ playerRef, showModel = true }) {
     if (!player) return
 
     const tour = usePalaceTour.getState()
-    const paused = locked || tour.open || Boolean(tour.activeActivity)
+    const paused = locked || tour.open || Boolean(tour.activeActivity) || Boolean(useSpecialAccess.getState().panel)
     const sitting = updatePalaceSeating(player, paused)
     player.setMovement(paused || sitting ? NO_INPUT : readInput(getKeys()))
 

@@ -13,7 +13,7 @@
 | 가드레일 | `ai/app/safety.py` (욕설·패드립·자해 규칙) | 두 사람이 직접 쓴 답에 먼저 돌림. **해석 문장 검사용 규칙**(단정·부정 표현)을 새로 추가 |
 | 응답 속도 (튜터: "1분은 치명적") | 커밋 `ab39213` AI 서버 미리 깨우기 | 이미 해 둠. 타로 API도 같은 서버라 같이 깨어남. 남은 것: 결과 캐싱, 기다리는 동안 카드 뒤집기 연출 |
 | 맵 미션 장소 | `shared/places.json`의 BK 장소 5곳 (벽화 골목, 카페 소란, 전망대, 소원 분수, 인형뽑기) + `bk_coinToss.jsx`, `bk_clawMachine.jsx` | 카드마다 미션 장소를 연결 (예: 별 → 소원 분수 동전 던지기) |
-| "다음 방문 때 지난번과 비교" | `frontend/src/store/lumiMemory.js` (localStorage 방문 기억) | 같은 방식으로 `tarotStore.js`에 지난 카드 저장 |
+| "다음 방문 때 지난번과 비교" | `frontend/src/store/lumiMemory.js` (localStorage 방문 기억) | 지난 카드는 지민 님 `listTarotReadings`로 불러와 비교 |
 | 배지 | `frontend/src/store/badges.js` | "첫 타로" 배지 하나 추가 |
 | 인증샷 | `frontend/src/components/photo/` | 결과 화면에서 "카드 들고 인증샷" 연결 (여유 있으면) |
 | 시작 지점 | `frontend/src/components/course/LumiCourse.jsx` (루미 대화창, BK 담당) | 루미 대화창에 **[🔮 커플 타로]** 버튼 → 공유 파일 안 건드리고 시작 가능 |
@@ -39,7 +39,7 @@
               |    └ 2번 다 실패 → 안전한 기본 문장
           [mission]              ← 카드 → BK 맵 장소 + 실제로 해 볼 데이트 행동
               |
-            END  → 결과 화면 + localStorage 저장
+            END  → 결과 화면 + saveTarotReading 저장
 ```
 
 **면접에서 "왜 LangGraph?" 답:** 병렬 입력(A·B), 상태 합치기(compare), 조건 분기(guard 통과/실패), 재시도 루프(interpret ↔ guard), 이게 한 줄 함수 호출로는 지저분해진다.
@@ -52,12 +52,14 @@
 - 질문은 **직접 만든다** (아트박스 책 질문은 참고만, 옮기지 않음 — 저작권)
 
 ### RAG (요금 0원 버전)
-- 원천 데이터: `ai/data/tarot_cards.json` — 22장 × 정/역방향 × 위치(과거·현재·다음) 짧은 문단 + 태그
-- 추가 근거: `ai/data/couple_tips.json` — 질문 카테고리(음식·여행·연락·싸움 등)별 조언 문단
+- 원천 데이터: `shared/bk_tarot/tarot_cards.json` — 22장 × 정/역방향 × 위치(과거·현재·다음) 짧은 문단 + 태그
+- 추가 근거: `shared/bk_tarot/couple_tips.json` — 질문 카테고리(음식·여행·연락·싸움 등)별 조언 문단
 - 검색: 카드 id + 두 사람 답에서 나온 카테고리 태그로 **키워드/태그 점수 검색** (순수 파이썬, 임베딩 X)
   - 이유: Render 무료 서버는 메모리가 작아서 임베딩 모델을 못 올리고, OpenAI 임베딩은 요금이 듦
   - 나중에 늘릴 때: 미리 계산한 임베딩을 JSON에 넣어 두는 방식으로 바꿀 수 있음
 - 카드 의미 글은 **직접 쓴다** (책·사이트 문장 복사 X)
+- **커플문답 대화 질문 (11/23 추가):** 아트박스 커플문답 카드 같은 분위기의 열린 질문을 `couple_tips.json`의 `talkCards`에 카테고리별 2개씩 **직접 써서** 넣음. 결과 화면 "오늘 나눠 볼 질문"으로 서로 몰랐던 카테고리부터 2개. 답은 입으로만 (저장 X)
+  - 커플노트 주제 보너스 (`talkExtras`): 📸 첫 만남·추억 / 📝 버킷리스트 / ⚖️ 밸런스 게임(A vs B) 각 8개, 결과마다 주제 하나에서 1개 더 → 질문은 모두 3개
 
 ### guard 규칙 (`safety.py`에 추가)
 - 막는 표현: "헤어질", "이별", "운명이 아니", "절대", "끝날", "맞지 않는 사이" 같은 **관계를 단정하는 말**
@@ -96,31 +98,41 @@
 서버 그래프는 그래도 A·B를 **병렬 노드**로 처리하니 LangGraph 근거는 그대로 남는다.
 (링크 공유로 각자 폰에서 답하기는 DB가 필요해서 2단계로 미룸)
 
+### 2단계: 멀티 접속 (계정마다 A·B 역할) — 11/23 정리
+- **그래프는 그대로:** `read_tarot(a, b)`는 답이 어디서 왔는지 상관없음. 바뀌는 건 "두 사람 답을 모으는 부분"뿐
+- **흐름:** A가 방 만들기 → 초대 코드·링크 → B 입장(B 역할) → 각자 폰에서 동시에 답 → 둘 다 내면 그래프 한 번 → 두 화면에 같은 결과 → 답 원문 삭제
+- **좋아지는 점:** 진짜 동시 입력(병렬 노드 설명이 자연스러움), 둘 다 계정 주인이라 각자 `saveTarotReading` 가능, 상대 답을 볼 일 없음
+- **필요한 DB (지민 님 영역, 아직 없음):** 방 테이블 — 초대 코드, A 계정, B 계정, 두 사람 답 임시 보관, 상태(대기·완료), 만료 시간
+  - 답은 결과가 나오면 바로 지우고, 만료된 방도 지움 (원문 저장 X 규칙 유지)
+  - 쓰기는 RPC로만, 읽기는 방의 두 사람만 (RLS)
+- **확인 기록:** 11/23 `supabase/migrations/` 확인 → 방 테이블 없음 (`tarot_readings`만 있음)
+  - 11/23 PR #64 병합 후 다시 확인 → 아직 없음
+
 ---
 
 ## 5. 저장 (DB 설계)
 
 | 테이블 | 내용 | MVP |
 |---|---|---|
-| `question_cards` | 질문, 보기, 카테고리 | JSON 파일 (`ai/data/questions.json`) |
+| `question_cards` | 질문, 보기, 카테고리 | JSON 파일 (`shared/bk_tarot/questions.json`) |
 | `tarot_cards` | 카드 이름, 정·역방향 의미, 태그 (RAG 원천) | JSON 파일 |
 | `answers` | session_id, 사람(A/B), question_id, self, guess | 저장 안 함 (요청에만 담김) |
-| `readings` | 두 사람 이름, 카드, 해석, 미션, 날짜 | **localStorage** (`tarotStore.js`) |
+| `readings` | 카드, 해석 요약, 고른 질문·보기 id, 날짜 | **지민 님 `tarot_readings`** (PR #57, 병합 완료) |
 
-- Render 무료 서버는 디스크가 잠들 때 지워져서 서버 파일 저장은 못 씀
-- **결정 (11/23):** 지민 님 Supabase가 연결되면 `readings`를 Supabase로 옮긴다. 그 전까지는 localStorage
+- **결정 변경 (11/23):** 지민 님이 저장을 만들어 둬서 `tarotStore.js`를 따로 만들지 않고 `frontend/src/api/client.js` 함수를 그대로 부른다
+  - `saveTarotReading({ userId, spread: 'couple', cards, summary, detail })`
+  - `listTarotReadings({ userId, limit })` → 최신순, "지난번 카드와 비교"용
+  - `deleteTarotReading({ userId, readingId })` → "기록 지우기" 버튼
+- 로그인(서버 모드)이면 Supabase, 아니면(mock) 이 브라우저에 알아서 저장 → 옮기기 작업이 필요 없음, 서버가 없어도 시연 가능
 
-### Supabase로 옮길 때 고려할 것
-1. **저장 함수 모양을 지금 정해 두기:** `saveReading(reading)` / `listReadings()`를 `tarotStore.js` 안에 두고, 지금은 localStorage, 나중엔 안쪽만 서버 호출로 바꾼다 (`client.js`가 mock/서버 두 모드를 같은 함수 모양으로 쓰는 방식과 같음). `client.js`는 공유 파일이라 옮길 때 팀과 합의
-2. **누구의 기록인가:** 로그인은 한 사람만 함 → `owner_id`(로그인한 사람) + `partner_name`(글자). B가 계정이 없어도 됨. 두 계정 연결(커플 연결)은 나중 단계
-3. **쓰기는 RPC로만:** 지민 님 DB 규칙 = 테이블에 직접 쓰지 않고 `SECURITY DEFINER` 함수로만. `save_reading` RPC 필요, 읽기는 RLS로 "내 것만"
-4. **어느 서버가 DB에 쓰나:** AI 서버(Render, 파이썬)에는 Supabase 키를 넣지 않는다. AI 서버는 결과만 돌려주고(상태 없음 → 잠들어도 문제없음), 저장은 화면 → 지민 서버(`server/`) → RPC로 (로그인 토큰 그대로)
-5. **중복 저장 막기:** 결과 화면에서 저장 버튼 두 번 눌림·재시도 → 화면에서 만든 `reading_id`(uuid)를 기본키로 써서 같은 요청은 한 번만 저장
-6. **개인정보:** 답변은 연애 관련 민감한 내용 → 원본 답(`answers`)은 저장하지 않고 일치도·몰랐던 점 요약·카드·해석만. "기록 지우기" 버튼, 상대 이름은 별명 권장. 저장소가 public이라 seed에 실제 데이터 X
-7. **결과 위조:** 화면이 결과를 보내므로 고칠 수 있음. 재미용이라 괜찮지만, 이걸로 배지·쿠폰을 주면 서버에서 다시 검증해야 함
-8. **파일 위치:** `jm_core.sql`을 고치지 말고 새 파일 `supabase/migrations/<날짜>_bk_tarot.sql` + `supabase/tests/bk_tarot_test.sql`. 날짜는 한국 시간(`kst_today()` 재사용)
-9. **localStorage 기록 옮기기:** 로그인 후 처음 한 번, 이 브라우저에 있던 기록을 올려 줄지 결정 (안 하면 지난 기록이 사라져 보임)
-10. **시연 대비:** 11/30까지 Supabase 연결이 안 되면 localStorage로 시연 (서버가 없어도 기능이 동작해야 함)
+### 지켜야 할 규칙 (지민 님)
+1. `spread`·카드 id는 영문 소문자·숫자·`_`만 (`tarot_cards.json`의 `fool`, `high_priestess` 같은 id 그대로 OK)
+2. 카드 1~10장 (우리는 3장), `summary` 1~1000자 → 해석 전문이 아니라 요약, `detail`은 객체 4KB까지
+3. **두 사람이 직접 쓴 답 원문은 저장 X** (두 번째 사람은 계정 주인이 아님) → `detail`에는 질문 id·고른 보기 번호·일치도·미션 장소 id처럼 정해진 값만
+4. 저장이 실패해도 결과 화면은 그대로 보이게 `try/catch` (서버 모드는 1시간 20번 넘으면 `TOO_MANY_REQUESTS`)
+5. 사람당 최근 30개만 남음
+6. 결과는 화면이 보내므로 고칠 수 있음 → 재미용이라 괜찮지만 배지·쿠폰과 묶으면 서버 검증 필요
+7. AI 서버(Render)에는 Supabase 키를 넣지 않음. AI 서버는 결과만 돌려주고 저장은 화면에서
 
 ---
 
@@ -128,13 +140,13 @@
 
 | 상태 | 날짜 | 할 일 | 만들 파일 |
 |---|---|---|---|
-| ✅ 11/23 완료 | 11/24 | 질문 카드 10개 + 메이저 아르카나 22장 의미 글 | `ai/data/questions.json`, `ai/data/tarot_cards.json`, `ai/tests/test_tarot_data.py` |
-| ⬜ (텐트·입구 11/23 완료) | 11/25 | 2인 답변 화면 (번갈아 답하기) | `bk_tarotBooth.jsx` 안내 화면을 질문 카드 화면으로 교체 |
-| ⬜ | 11/26 | LangGraph 기초 + analyze_a/b 병렬 + compare | `ai/app/tarot.py`, `ai/tests/test_tarot.py` |
-| ⬜ | 11/27 | draw + retrieve(RAG) + interpret | `ai/app/tarot_rag.py` |
-| ⬜ | 11/28 | guard 재시도 루프 + mission 연결 | `ai/app/safety.py`(규칙 추가), `tarot.py` |
-| ⬜ | 11/29 | 결과 저장·지난번 비교, 카드 뒤집기 연출, 배지 | `frontend/src/store/tarotStore.js`, `badges.js` |
-| ⬜ | 11/30 | 사용성 테스트, 시연 준비 | `docs/bk-qa-pending.md` 갱신 |
+| ✅ 11/23 완료 | 11/24 | 질문 카드 10개 + 메이저 아르카나 22장 의미 글 | `shared/bk_tarot/questions.json`, `shared/bk_tarot/tarot_cards.json`, `ai/tests/test_tarot_data.py` |
+| ✅ 11/23 완료 | 11/25 | 2인 답변 화면 (번갈아 답하기) | `bk_tarotQuestions.jsx` (질문 카드 화면), `bk_tarotBooth.jsx`에 연결, 데이터는 `shared/bk_tarot/`로 이동 |
+| ✅ 11/23 완료 | 11/26 | LangGraph 기초 + analyze_a/b 병렬 + compare | `ai/app/tarot.py`, `ai/tests/test_tarot.py` |
+| ✅ 11/23 완료 | 11/27 | draw + retrieve(RAG) + interpret | `ai/app/tarot_rag.py`, `shared/bk_tarot/couple_tips.json` (조언 30개 + 커플문답 대화 질문 20개) |
+| ✅ 11/23 완료 | 11/28 | guard 재시도 루프 + mission 연결 (+ `POST /tarot`, 결과 화면, 미니맵 미션 안내) | `ai/app/safety.py`(규칙 추가), `tarot.py` |
+| ✅ 11/23 완료 | 11/29 | 결과 저장·지난번 비교, 카드 뒤집기 연출, 배지 | `bk_tarotRecord.js` (지민 님 `saveTarotReading`/`listTarotReadings`/`deleteTarotReading` 호출), `badges.js` (🔮 첫 점 · 💞 80% 이상 · 🗺️ 미션 완료) |
+| ✅ 11/23 완료 (실기기·배포 확인은 남음) | 11/30 | 사용성 테스트, 시연 준비 | `docs/bk-qa-pending.md` 갱신 |
 
 카드 그림: 도트로 직접 그리거나, 처음엔 **이모지 + 카드 이름 + 색**으로 시작 (기존 덱 이미지 X).
 
@@ -147,7 +159,42 @@
    - `LLM_DAILY_LIMIT` ≥ 1이고 키가 있을 때만 OpenAI가 RAG 근거로 문장을 다듬음 → guard가 검사, 걸리면 다시 (최대 2번), 그래도 안 되면 템플릿
    - 실패·초과·느림 → 템플릿. 테스트는 실제 API 안 부름
    - Render에 키를 넣는 건 시연 당일 병관님이 직접 정함 (안 넣어도 템플릿으로 시연 가능)
-2. **결과 저장 (11/23 결정):** 지금은 localStorage, Supabase 연결되면 옮김 (5장 참고)
-3. **시작 지점 (11/23 결정·완료):** 데이트 코스 **입구 바로 안쪽**(소원 분수 광장 옆 잔디) **보라색 타로 텐트** (`tarot_booth`, 구역 좌표 [-34.5, 49], 입구는 들어오는 길 쪽 대각선). 처음엔 정원 안쪽이었는데, 메인 기능이라 들어오자마자 보이게 옮김
+2. **결과 저장 (11/23 결정·지민 님 완료):** 지민 님 `client.js` 타로 함수 사용. 로그인하면 Supabase, 아니면 이 브라우저 (5장 참고)
+3. **시작 지점 (11/23 결정·완료):** 데이트 코스 **입구 바로 안쪽**(소원 분수 광장 옆 잔디) **보라색 타로 텐트** (`tarot_booth`, 구역 좌표 [-35.5, 49], 입구는 벽돌 인도 쪽 정면 + 돌길 `tarot_path`). 처음엔 정원 안쪽이었는데, 메인 기능이라 들어오자마자 보이게 옮김
    - `frontend/src/game/Map/styles/bk_tarotBooth.jsx` (텐트 모양 + E키 + 안내 화면), `bk_activityStore.js`에 `tarot` 상태
    - 공유 파일은 `styles/index.js`에 스타일 이름 한 줄만 등록 (인형뽑기와 같은 방식)
+
+---
+
+## 8. 시연 순서 (11/30, 약 3분)
+
+미리 할 것: 배포 사이트를 시연 5분 전에 한 번 열어 두기 (Render 무료 서버 깨우기). 안 되면 로컬 `scenewalk-ai` + `frontend-dev`로 시연.
+
+1. **입구 → 텐트 (20초):** 데이트 코스 입구로 들어와 소원 분수 옆 보라색 텐트까지 돌길로 걷기 → "E 커플 타로 보기"
+2. **문답 (60초):** 별명 두 개 → A가 몇 문항 답하기 ("나는?" + "상대는 뭐라고 할까?") → 시간 줄이려고 나머지는 빠르게 → "화면을 넘겨 주세요" → B
+3. **카드 뒤집기 (40초):** 일치도 % → 카드 3장을 한 장씩 뒤집으며 "지나온 우리 · 지금의 우리 · 다음 데이트" 설명. 역방향은 '조언'으로만 읽는다는 점
+4. **설명 포인트 (40초):**
+   - LangGraph: `analyze_a ∥ analyze_b` 병렬 → `compare`에서 합침 → `draw → retrieve → interpret` → `guard` 조건 분기·되돌아가기 → `mission`
+   - RAG: 임베딩 없이 태그·키워드 점수 → 두 사람이 서로 몰랐던 카테고리의 조언을 먼저 찾음 (요금 0원, 같은 입력이면 같은 결과)
+   - guard: 관계를 단정하는 말이 나오면 다음 후보로 다시 조합, 2번 넘으면 기본 문장 → 터미널 `try_tarot.py --poison`으로 실제 반복 보여 주기
+5. **미션·기록 (20초):** "미니맵에 길 표시하고 가기" → 길 안내 → 다시 열면 "지난번과 비교", 🔮 배지
+
+**예상 질문**
+- 왜 LangGraph? → 병렬 입력·상태 합치기·조건 분기·반복이 한 줄 함수로는 지저분해짐. 그래프로 그리면 노드마다 테스트 가능
+- 왜 RAG? → 카드 의미를 매번 지어내면 같은 카드도 해석이 달라짐. 직접 쓴 근거 문단에서 찾아 쓰면 일관되고 없는 의미를 안 만듦 (`why` 점수로 근거 설명 가능)
+- 개인정보는? → 두 사람 답·별명은 저장 안 함. 카드 id·요약·일치도만, 지우기 버튼 있음
+- 멀티 접속은? → 그래프는 그대로, 방(초대 코드) 테이블만 생기면 각자 폰에서 답하기 가능 (4장 2단계)
+
+---
+
+## 9. 추가 (11/23): 타로가 짜 주는 오늘의 데이트 코스
+
+```
+… → guard ⇄ interpret → mission → plan_course → END
+                                      └ 루미 코스 그래프(course.py)를 그대로 invoke (그래프 안에서 그래프 재사용)
+```
+- `plan_course`: 카드 키워드 + 서로 몰랐던 취향(focus) → 취향 문장 → 루미 코스 그래프에 `zones=["BK"]`(데이트 코스 구역만), `must=[미션 장소]`, `start_xz=타로 텐트`를 넘겨 3곳 코스
+- `course.py`는 옵션만 추가 (없으면 예전 루미 코스 그대로 — 테스트로 확인). 조건이 있으면 LLM 없이 규칙만 → 같은 입력이면 같은 코스
+- 장소마다 이유를 타로 결과로: "서로 몰랐던 '먹고 싶은 것' 이야기를 나누기 좋은 곳", "🌙 달 카드(지금의 우리)와 어울리는 곳", 미션 장소는 카드 미션 문장
+- 화면: 결과의 "🗺️ 타로가 짜 준 오늘의 데이트 코스" → [이 코스로 데이트 시작] → 미니맵 안내, 도착마다 알림, 완주하면 🗺️ 타로 데이트 코스 완주 배지
+- 면접 포인트: "이미 만든 그래프를 다른 그래프의 노드로 재사용 → 기능끼리 연결 (타로 → 코스 → 미니맵 → 배지)"

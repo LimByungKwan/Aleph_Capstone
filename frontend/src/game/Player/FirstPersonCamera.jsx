@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { EYE_HEIGHT, LOOK_SENSITIVITY } from '../config.js'
 import { PLAYER_START_YAW } from './Player.jsx'
+import { useSpecialAccess } from '../../components/movieZone/specialAccessStore.js'
 
 const MAX_PITCH = 1.4 // 위아래로 볼 수 있는 최대 각도 (약 80도)
 
@@ -50,6 +51,11 @@ export default function FirstPersonCamera({ playerRef }) {
     const player = playerRef.current
     if (!player) return
     const { x, y, z } = player.currPos
+    const access = useSpecialAccess.getState()
+    if (access.requestedYaw !== null) {
+      look.current = { yaw:access.requestedYaw * Math.PI/180 + Math.PI, pitch:0 }
+      access.aim(null)
+    }
     camera.position.set(x, y + EYE_HEIGHT, z)
     camera.rotation.set(look.current.pitch, look.current.yaw, 0, 'YXZ')
   })

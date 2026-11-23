@@ -10,6 +10,9 @@
 - reply:      루미가 말할 문장 만들기
 
 키가 없거나 LLM 호출이 실패해도 규칙으로 대신해서, 서버는 항상 응답한다.
+
+다른 그래프가 이 그래프를 그대로 불러 쓸 수도 있다 (커플 타로 tarot.py의 plan_course 노드):
+  zones(이 구역 안에서만) · must(꼭 넣을 장소) · start_xz(출발점)를 주면 그 조건으로 규칙만 써서 고른다.
 """
 
 from __future__ import annotations
@@ -93,6 +96,10 @@ class CourseState(TypedDict, total=False):
     source: str  # 'llm' | 'rules'
     course: list[dict]  # 최종 코스 (순서대로)
     reply: str
+    # 다른 그래프에서 부를 때만 (없으면 평소 루미 코스)
+    zones: list[str]  # 이 구역 장소만 고름 (예: ['BK'])
+    must: list[dict]  # 꼭 넣을 장소 [{id, reason}] (예: 타로 미션 장소)
+    start_xz: tuple[float, float]  # 걷는 순서를 정할 출발점 (기본: 중앙 광장)
 
 
 # ── 1. 취향 이해 ─────────────────────────────────
@@ -213,7 +220,12 @@ def pick_with_rules(state: CourseState) -> CourseState:
     count = state["count"]
     scored = []
     mood = state.get("mood", "")
+    zones_only = state.get("zones") or []
+    musts = [m for m in state.get("must", []) if m.get("id") in place_by_id()]
+    must_ids = {m["id"] for m in musts}
     for place in course_candidates():
+        if (zones_only and place["zone"] not in zones_only) or place["id"] in must_ids:
+            continue
         score, reasons = score_place(place, themes, keywords)
         score, reasons = mood_bonus(place, mood, score, reasons)
         scored.append({"id": place["id"], "score": score, "reasons": reasons, "zone": place["zone"], "type": place["type"]})
@@ -223,11 +235,11 @@ def pick_with_rules(state: CourseState) -> CourseState:
     if state.get("short"):
         return {"picks": _short_course(ranked), "source": "rules"}
 
-    picks: list[dict] = []
+    picks: list[dict] = [{"id": m["id"], "score": 99, "reasons": [m.get("reason") or "꼭 들를 곳"], "zone": place_by_id()[m["id"]]["zone"], "type": place_by_id()[m["id"]]["type"]} for m in musts]
     # 취향을 하나도 못 찾은 "골고루" 코스인지 (아무거나·처음 왔어요·모르는 말 등)
     mixed = not (ranked and ranked[0]["score"] > 0)
     if not mixed:
-        picks = [s for s in ranked if s["score"] > 0][:count]
+        picks += [s for s in ranked if s["score"] > 0][: max(0, count - len(picks))]
     # 취향을 못 알아들었거나 부족하면: 구역마다 대표 촬영지 하나씩 고르게 섞어서 채움
     if len(picks) < count:
         taken = {p["id"] for p in picks}
@@ -235,7 +247,8 @@ def pick_with_rules(state: CourseState) -> CourseState:
         for s in scored:
             if len(picks) >= count:
                 break
-            if s["id"] in taken or s["type"] != "spot" or s["zone"] in zones_used:
+            # 구역을 정해 준 경우(zones)는 같은 구역에서 채움, 평소엔 구역마다 하나씩
+            if s["id"] in taken or s["type"] != "spot" or (s["zone"] in zones_used and not zones_only):
                 continue
             picks.append({**s, "reasons": s["reasons"] or ["처음 오셨다면 꼭 들러 볼 대표 촬영지"]})
             taken.add(s["id"])
@@ -307,6 +320,8 @@ def prefer_theme_zone(picks: list[dict], state: CourseState) -> list[dict]:
 
 def pick(state: CourseState) -> CourseState:
     """LLM으로 먼저 고르고, 안 되면 규칙으로. 너무 적게 골랐으면 규칙 결과로 채움"""
+    if state.get("zones") or state.get("must"):
+        return pick_with_rules(state)  # 다른 그래프가 조건을 정해 부를 때는 규칙만 (같은 입력 → 같은 코스)
     result = None if state.get("rules_only") else pick_with_llm(state.get("message", ""), state["count"])
     if not result or not result["picks"]:
         return pick_with_rules(state)
@@ -333,8 +348,8 @@ def validate(state: CourseState) -> CourseState:
 
 
 # ── 4. 걷는 순서 (전체 걷는 거리가 가장 짧게) ─────────────────
-def _walk_length(route: list[dict], known: dict) -> float:
-    here, total = START_XZ, 0.0
+def _walk_length(route: list[dict], known: dict, start: tuple[float, float] = START_XZ) -> float:
+    here, total = start, 0.0
     for p in route:
         nxt = _xz(known[p["id"]])
         total += math.dist(here, nxt)
@@ -349,7 +364,8 @@ def order(state: CourseState) -> CourseState:
     cafes = [p for p in remaining if known[p["id"]]["type"] == "cafe"]
     spots = [p for p in remaining if p not in cafes]
     routes = (list(a) + list(b) for a in itertools.permutations(spots) for b in itertools.permutations(cafes))
-    best = min(routes, key=lambda r: _walk_length(r, known), default=[])
+    start = tuple(state.get("start_xz") or START_XZ)
+    best = min(routes, key=lambda r: _walk_length(r, known, start), default=[])
     course = []
     for nxt in best:
         place = known[nxt["id"]]

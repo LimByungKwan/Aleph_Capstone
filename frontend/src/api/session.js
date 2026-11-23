@@ -36,16 +36,34 @@ function save(value) {
 
 const saved = USE_SERVER ? loadSaved() : null
 
-/** user: { id, email, name, role: 'pilgrim'|'owner'|'admin', shopId } */
+/**
+ * user: { id, email, name, role: 'pilgrim'|'owner'|'admin', shopId }
+ * loginPrompt: 로그인 창이 열려 있으면 { title, reason } (닫혀 있으면 null)
+ *   판단: 처음엔 로그인 없이 맵을 둘러보고, 스탬프처럼 "기록이 남는 행동"을 할 때만 로그인 창을 띄움
+ */
 export const useSessionStore = create(() => ({
   user: saved?.user ?? null,
   session: saved?.session ?? null,
+  loginPrompt: null,
 }))
+
+/**
+ * 로그인 창 열기
+ * @param {{ title?: string, reason?: string }} [prompt] title: 창 제목, reason: 그 아래 한 줄 (왜 로그인이 필요한지)
+ */
+export function openLogin({ title = '', reason = '' } = {}) {
+  if (!USE_SERVER) return
+  useSessionStore.setState({ loginPrompt: { title, reason } })
+}
+
+export function closeLogin() {
+  useSessionStore.setState({ loginPrompt: null })
+}
 
 function setLoggedIn(session, user) {
   const value = { session, user: user ?? useSessionStore.getState().user }
   save(value)
-  useSessionStore.setState(value)
+  useSessionStore.setState({ ...value, loginPrompt: null })
 }
 
 export function logout() {
@@ -121,6 +139,15 @@ export async function signup({ email, password, name }) {
   if (data.needsEmailConfirm) throw new ApiError('EMAIL_NOT_CONFIRMED', '메일함에서 인증 링크를 누른 뒤 로그인해 주세요.')
   setLoggedIn(data.session, data.user)
   return data.user
+}
+
+/** 닉네임 바꾸기 (1~20자). 멀티 접속 이름표는 realtimeStore가 이름 변경을 보고 다시 연결해서 바뀜 */
+export async function updateName(name) {
+  const { user } = await authRequest('/me', { method: 'PATCH', body: { name } })
+  const { session } = useSessionStore.getState()
+  save({ session, user })
+  useSessionStore.setState({ user })
+  return user
 }
 
 /** Render 서버 미리 깨우기 (로그인 화면이 뜰 때 한 번) */

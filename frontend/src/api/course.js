@@ -1,4 +1,4 @@
-// 병관 AI 서버(저장소의 ai/ 폴더) 부르기: 루미 코스 추천(/course) · 사장님 홍보문구(/promo)
+// 병관 AI 서버(저장소의 ai/ 폴더) 부르기: 루미 코스 추천(/course) · 사장님 홍보문구(/promo) · 커플 타로(/tarot)
 //
 // 로컬 개발: ai/ 폴더에서 uvicorn을 8000번 포트로 켜 두면 됨 (ai/README.md)
 // 배포: Vercel 환경변수 VITE_AI_API_URL 에 AI 서버 주소를 넣음 (예: https://scenewalk-ai.onrender.com)
@@ -33,6 +33,16 @@ export function requestPromo({ shopName, workTitle = '', offer = '', menu = '', 
 // 오늘의 코스 → 코스 응답 + { date: 'YYYY-MM-DD', title, emoji } (같은 날엔 누구에게나 같은 코스)
 export function getDailyCourse() {
   return postAi('/daily', null, 'GET')
+}
+
+// 커플 타로: 두 사람 보기 번호 → { names, match, hits, mismatches, sameTaste, focus, cards[3], summary, talk, evidence, seed, source }
+//   a/b = { name, self: number[], guess: number[] } (질문 순서대로, 0부터). 답은 서버에 저장되지 않음
+export function requestTarot({ a, b, seed }) {
+  return postAi('/tarot', { a, b, ...(seed && { seed }) })
+}
+
+export function requestLocationDocent(locationId) {
+  return postAi(`/docent/${encodeURIComponent(locationId)}`, null, 'GET')
 }
 
 async function postAi(path, body, method = 'POST') {

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import cors from 'cors'
 import express from 'express'
 import { HttpError, fromAuthError, fromDbError } from './errors.js'
+import { createLimiter } from './rateLimit.js'
 
 // SceneWalk AI API (담당: 지민) — 로그인·스탬프·쿠폰·체험·가게 문구·꾸미기·타로 기록
 //
@@ -80,9 +81,23 @@ async function rpc(db, name, args) {
  * @param {object} deps
  * @param {{ anon: () => any, asUser: (token: string) => any }} deps.supabase
  * @param {string[]} deps.allowedOrigins 화면 주소 (CORS)
+ * @param {object} [deps.limits] 로그인 시도 제한 (테스트에서 작게 바꿔 씀)
  */
-export function createApp({ supabase, allowedOrigins = [] }) {
+export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
   const app = express()
+
+  // 로그인 시도 제한 (rateLimit.js 주석 참고)
+  //   IP: 로그인+가입 시도 15분에 30번 / 이메일: 로그인 실패 15분에 5번 (성공하면 초기화)
+  const authPerIp = createLimiter(limits.authPerIp ?? { windowMs: 15 * 60_000, max: 30 })
+  const loginFailPerEmail = createLimiter(limits.loginFailPerEmail ?? { windowMs: 15 * 60_000, max: 5 })
+  function blockIfLimited(limiter, key) {
+    const r = limiter.check(key)
+    if (r.limited) {
+      const err = new HttpError(429, 'TOO_MANY_REQUESTS', `시도가 너무 많아요. ${Math.ceil(r.retryAfter / 60)}분 뒤에 다시 시도해 주세요.`)
+      err.retryAfter = r.retryAfter
+      throw err
+    }
+  }
   app.disable('x-powered-by')
   app.set('trust proxy', 1) // Render 앞단 프록시
 
@@ -118,6 +133,8 @@ export function createApp({ supabase, allowedOrigins = [] }) {
     const password = requireString(req.body?.password, '비밀번호', 72)
     const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 20) : ''
     if (!EMAIL_RE.test(email)) throw new HttpError(400, 'INVALID_INPUT', '이메일 형식을 확인해 주세요.')
+    blockIfLimited(authPerIp, req.ip)
+    authPerIp.hit(req.ip)
 
     // 역할은 받지 않는다: 가입하면 DB 트리거가 무조건 순례객(pilgrim)으로 만든다 (권한 상승 차단)
     const { data, error } = await supabase.anon().auth.signUp({
@@ -138,8 +155,17 @@ export function createApp({ supabase, allowedOrigins = [] }) {
   app.post('/auth/login', async (req, res) => {
     const email = requireString(req.body?.email, '이메일')
     const password = requireString(req.body?.password, '비밀번호', 72)
+    const emailKey = email.toLowerCase()
+    blockIfLimited(authPerIp, req.ip)
+    blockIfLimited(loginFailPerEmail, emailKey)
+    authPerIp.hit(req.ip)
+
     const { data, error } = await supabase.anon().auth.signInWithPassword({ email, password })
-    if (error) throw fromAuthError(error)
+    if (error) {
+      if (error.code === 'invalid_credentials') loginFailPerEmail.hit(emailKey)
+      throw fromAuthError(error)
+    }
+    loginFailPerEmail.reset(emailKey)
 
     const db = supabase.asUser(data.session.access_token)
     // 일일 접속자 집계용 기록 (로그인한 사람만 셈 — 11/17 팀 결정)
@@ -158,6 +184,22 @@ export function createApp({ supabase, allowedOrigins = [] }) {
   app.get('/me', requireAuth, async (req, res) => {
     const profile = await loadProfile(req.db, req.user.id)
     res.json({ user: profileJson(req.user, profile) })
+  })
+
+  // 닉네임 바꾸기 — 이름만 받는다. 역할·가게는 보내도 무시 (DB 트리거 guard_profile_update도 한 번 더 막음)
+  // 이름 변경은 감사 로그에 남기지 않음 (audit_write는 역할·가게 변경만 기록)
+  app.patch('/me', requireAuth, async (req, res) => {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : ''
+    if (!name || [...name].length > 20) throw new HttpError(400, 'INVALID_INPUT', '닉네임은 1~20자로 입력해 주세요.')
+    const { data, error } = await req.db
+      .from('profiles')
+      .update({ display_name: name })
+      .eq('id', req.user.id)
+      .select('display_name, role, shop_id')
+      .maybeSingle()
+    if (error) throw fromDbError(error)
+    if (!data) throw new HttpError(404, 'NOT_FOUND', '프로필을 찾지 못했어요. 다시 로그인해 주세요.')
+    res.json({ user: profileJson(req.user, data) })
   })
 
   // ── 캐릭터 꾸미기 ──
@@ -298,7 +340,10 @@ export function createApp({ supabase, allowedOrigins = [] }) {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
-    if (err instanceof HttpError) return res.status(err.status).json({ error: { code: err.code, message: err.message } })
+    if (err instanceof HttpError) {
+      if (err.retryAfter) res.set('Retry-After', String(err.retryAfter))
+      return res.status(err.status).json({ error: { code: err.code, message: err.message } })
+    }
     if (err?.type === 'entity.parse.failed') return res.status(400).json({ error: { code: 'INVALID_INPUT', message: '요청 형식(JSON)을 확인해 주세요.' } })
     if (err?.type === 'entity.too.large') return res.status(413).json({ error: { code: 'INVALID_INPUT', message: '요청이 너무 커요.' } })
     console.error('[server]', err)

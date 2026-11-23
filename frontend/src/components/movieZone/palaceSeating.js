@@ -34,6 +34,7 @@ export const usePalaceSeatStore = create((set, get) => ({
 
 // [3. 개발 > 프론트엔드] 착석 중에는 이동 입력만 막고 카메라와 공용 패널 상태는 그대로 둡니다.
 export function updatePalaceSeating(player, locked) {
+  if (!player.body) return false
   const state = usePalaceSeatStore.getState()
   const position = player.body.translation()
   let nearby = null

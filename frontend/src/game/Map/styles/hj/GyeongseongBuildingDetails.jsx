@@ -187,7 +187,7 @@ export default function GyeongseongBuildingDetails({ building, materials, scans 
   const { w,d,kind } = building
   return (
     <>
-      <Elevation position={[-w/2,0,0]} yaw={-Math.PI/2} span={d} building={building} materials={materials} scans={scans} />
+      {!building.press && <Elevation position={[-w/2,0,0]} yaw={-Math.PI/2} span={d} building={building} materials={materials} scans={scans} />}
       <Elevation position={[w/2,0,0]} yaw={Math.PI/2} span={d} building={building} materials={materials} scans={scans} />
       <Elevation position={[0,0,d/2]} yaw={0} span={w} building={building} materials={materials} scans={scans} rear />
       <RoofConstruction building={building} />
