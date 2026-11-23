@@ -244,7 +244,7 @@ def test_check_reading_catches_deterministic_words():
 
 def test_graph_has_guard_loop_and_branches():
     edges = {(e.source, e.target) for e in build_graph().get_graph().edges}
-    assert {("guard", "interpret"), ("guard", "mission"), ("guard", "fallback"), ("fallback", "mission"), ("mission", "__end__")} <= edges
+    assert {("guard", "interpret"), ("guard", "mission"), ("guard", "fallback"), ("fallback", "mission"), ("mission", "plan_course"), ("plan_course", "__end__")} <= edges
 
 
 def test_clean_reading_passes_guard_first_time():
@@ -299,3 +299,51 @@ def test_mission_follows_next_date_card():
         assert m["text"] == card["mission"]["text"]
         assert places[m["placeId"]]["zone"] == "BK" and m["zone"] == "BK"
         assert m["name"] and m["zoneName"] and len(m["position"]) >= 2
+
+
+# ---- 타로 → 오늘의 데이트 코스 (루미 코스 그래프 재사용) ----
+
+from app import course as course_graph  # noqa: E402
+
+
+def test_course_graph_can_be_limited_to_one_zone_with_a_must_place():
+    result = course_graph._GRAPH.invoke({
+        "message": "사진 벽화 카페", "count": 3, "rules_only": True,
+        "zones": ["BK"], "must": [{"id": "spot_bk_claw", "reason": "꼭"}], "start_xz": (49.5, 9.0),
+    })
+    ids = [c["placeId"] for c in result["course"]]
+    assert len(ids) == 3 and len(set(ids)) == 3
+    assert "spot_bk_claw" in ids
+    assert all(c["zone"] == "BK" for c in result["course"])
+    assert result["course"][-1]["type"] == "cafe"  # 쿠폰 쓸 카페는 마지막 (원래 규칙 그대로)
+
+
+def test_normal_lumi_course_is_unchanged_without_options():
+    # zones·must를 안 주면 예전처럼 여러 구역에서 고름
+    result = course_graph.recommend_course("애니 좋아하고 카페도 가고 싶어", rules_only=True)
+    assert {c["zone"] for c in result["course"]} - {"BK"}
+
+
+def test_tarot_plans_three_stop_date_course_with_mission():
+    places = place_by_id()
+    for s in range(15):
+        a, b = mixed_pair()
+        result = read_tarot(a, b, seed=f"c{s}")
+        course = result["course"]
+        ids = [c["placeId"] for c in course]
+        assert len(ids) == 3 and len(set(ids)) == 3
+        assert all(places[i]["zone"] == "BK" for i in ids)
+        assert result["mission"]["placeId"] in ids
+        assert [c["mission"] for c in course].count(True) == 1
+        mission_stop = next(c for c in course if c["mission"])
+        assert result["mission"]["text"] in mission_stop["reason"]
+        for c in course:
+            assert c["name"] and c["reason"] and len(c["position"]) == 3
+            assert not check_reading(c["reason"]), c["reason"]
+
+
+def test_course_reasons_come_from_tarot_result():
+    a, b = mixed_pair()  # 미래·연락을 서로 몰랐던 두 사람
+    result = read_tarot(a, b, seed="reason")
+    others = [c["reason"] for c in result["course"] if not c["mission"]]
+    assert any("서로 몰랐던" in r or "카드(" in r for r in others), others

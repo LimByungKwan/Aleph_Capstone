@@ -242,12 +242,28 @@ function TarotSpread({ r, onRestart, onClose }) {
         <>
           <LastTime record={record} r={r} />
 
-          {r.mission && (
+          {r.course?.length > 0 ? (
             <div style={missionBox}>
-              <div style={{ fontSize: 12, color: '#e7c35a', fontWeight: 700 }}>🗺️ 오늘의 데이트 미션 · {r.mission.name}</div>
-              <div style={{ margin: '4px 0 8px', lineHeight: 1.5 }}>{r.mission.text}</div>
-              <button type="button" style={{ ...btn, width: '100%' }} onClick={() => goMission(r.mission, onClose)}>미니맵에 길 표시하고 가기 →</button>
+              <div style={{ fontSize: 12, color: '#e7c35a', fontWeight: 700 }}>🗺️ 타로가 짜 준 오늘의 데이트 코스</div>
+              <ol style={{ margin: '6px 0 8px', paddingLeft: 20, lineHeight: 1.45 }}>
+                {r.course.map((c) => (
+                  <li key={c.placeId} style={{ marginBottom: 4 }}>
+                    <b>{c.name}</b>
+                    {c.mission && <span style={missionTag}>미션</span>}
+                    <div style={{ fontSize: 12, opacity: 0.85 }}>{c.reason}</div>
+                  </li>
+                ))}
+              </ol>
+              <button type="button" style={{ ...btn, width: '100%' }} onClick={() => goCourse(r, onClose)}>이 코스로 데이트 시작 (미니맵 안내) →</button>
             </div>
+          ) : (
+            r.mission && (
+              <div style={missionBox}>
+                <div style={{ fontSize: 12, color: '#e7c35a', fontWeight: 700 }}>🗺️ 오늘의 데이트 미션 · {r.mission.name}</div>
+                <div style={{ margin: '4px 0 8px', lineHeight: 1.5 }}>{r.mission.text}</div>
+                <button type="button" style={{ ...btn, width: '100%' }} onClick={() => goCourse(r, onClose)}>미니맵에 길 표시하고 가기 →</button>
+              </div>
+            )
           )}
 
           {r.mismatches.length > 0 && (
@@ -337,8 +353,10 @@ const FLIP_CSS = `
 `
 
 // 미션 장소를 루미 코스 안내와 같은 방식으로 미니맵에 표시 (도착하면 자동으로 완료)
-function goMission(mission, onClose) {
-  useCourseStore.getState().setCourse([mission], { tarot: mission.cardId })
+// 타로 코스(없으면 미션 장소 하나)를 루미 코스 안내와 같은 방식으로 미니맵에 표시 → 도착할 때마다 다음 장소, 끝까지 가면 배지
+function goCourse(r, onClose) {
+  const stops = r.course?.length ? r.course : [r.mission]
+  useCourseStore.getState().setCourse(stops, { tarot: r.mission?.cardId ?? 'course' })
   onClose()
 }
 
@@ -390,5 +408,6 @@ const linkBtn = { padding: 0, border: 'none', background: 'none', color: '#e7c35
 const lastBox = { marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(147,197,253,0.12)', border: '1px solid rgba(147,197,253,0.4)', fontSize: 13, lineHeight: 1.5 }
 const themeTag = { display: 'inline-block', marginRight: 6, padding: '0 6px', borderRadius: 999, background: 'rgba(249,168,212,0.25)', fontSize: 11, fontWeight: 700 }
 const guardChip = { display: 'inline-block', padding: '4px 12px', borderRadius: 999, background: 'rgba(134,239,172,0.18)', border: '1px solid rgba(134,239,172,0.6)', color: '#bbf7d0', fontSize: 12, fontWeight: 700 }
+const missionTag = { marginLeft: 6, padding: '0 6px', borderRadius: 999, background: '#e7c35a', color: '#2a1d47', fontSize: 10, fontWeight: 800 }
 const missionBox = { marginTop: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(231,195,90,0.14)', border: '1px solid rgba(231,195,90,0.55)', fontSize: 13 }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }

@@ -38,6 +38,7 @@ export async function recordReading(result) {
         focus: result.focus,
         reversed: result.cards.map((c) => c.reversed),
         missionPlaceId: result.mission?.placeId ?? null,
+        courseIds: (result.course ?? []).map((c) => c.placeId),
         seed: result.seed,
       },
     })

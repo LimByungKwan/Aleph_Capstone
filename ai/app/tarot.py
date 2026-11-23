@@ -17,6 +17,8 @@
 - guard: 관계를 단정·겁주는 말 검사 (safety.check_reading). 걸리면 걸린 조각을 빼고 interpret가 다음 후보로 다시 조합
 - fallback: 2번 다시 해도 걸리면 카드 키워드로 만든 안전한 기본 문장
 - mission: '다음 데이트' 카드 → 데이트 코스(BK) 장소 + 해 볼 행동 (화면 미니맵 안내에 그대로 씀)
+- plan_course: 루미 코스 그래프(course.py)를 그대로 불러 데이트 코스 구역 3곳 코스를 짬 (그래프 안에서 그래프 재사용)
+    카드 키워드 + 두 사람이 몰랐던 취향 → 취향 문장, 미션 장소는 꼭 넣고, 타로 텐트에서 걷기 짧은 순서로
 
 답 원문은 어디에도 저장하지 않는다 (요청 안에서만 씀). 질문 데이터는 화면과 같이 쓰는 shared/bk_tarot/questions.json
 """
@@ -29,6 +31,7 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from . import course as course_graph
 from .places import ZONE_NAMES, place_by_id
 from .safety import check_message, check_reading
 from .tarot_rag import category_names, load_cards, load_data, positions, retrieve as rag_retrieve, talk_cards
@@ -80,6 +83,8 @@ class TarotState(TypedDict, total=False):
     guard_log: list[dict]  # [{ try, problems: [{ part, words }] }] — 면접·디버그용
     fallback: bool
     mission: dict
+    course: list[dict]  # 오늘의 데이트 코스 (루미 코스와 같은 모양, 걷는 순서대로)
+    course_message: str  # 코스 그래프에 넘긴 취향 문장 (설명·테스트용)
 
 
 def _clean_name(raw, key: str) -> str:
@@ -321,6 +326,62 @@ def mission(state: TarotState) -> TarotState:
     }}
 
 
+# 질문 카테고리 → 루미 코스 그래프가 알아듣는 취향 단어 (course.py THEMES·장소 태그와 맞춤)
+CATEGORY_WORDS = {
+    "food": "카페 디저트",
+    "rest": "휴식 산책",
+    "travel": "산책 전망대",
+    "contact": "카페",
+    "conflict": "산책 야경",
+    "gift": "인형뽑기 선물",
+    "date_style": "인형뽑기 벽화",
+    "photo": "사진 벽화",
+    "affection": "로맨스 설레",
+    "future": "소원 분수",
+}
+TAROT_START_XZ = (49.5, 9.0)  # 데이트 코스 입구 타로 텐트 (bk_date.json tarot_booth: 구역 기준 [-35.5, 49] + 구역 원점 [85, -40])
+COURSE_COUNT = 3
+
+
+def plan_course(state: TarotState) -> TarotState:
+    """루미 코스 그래프를 그대로 불러서 데이트 코스 구역(BK) 3곳 코스 짜기"""
+    cards = {c["id"]: c for c in load_cards()}
+    words = []
+    for category in state.get("focus", [])[:2]:  # 서로 몰랐던 취향 먼저
+        words.append(CATEGORY_WORDS.get(category, ""))
+    for pick in state["drawn"]:  # 카드가 가진 카테고리·키워드
+        card = cards[pick["id"]]
+        words += [CATEGORY_WORDS.get(t, "") for t in card["tags"]] + card["keywords"]
+    message = " ".join(w for w in words if w)
+    m = state["mission"]
+    result = course_graph._GRAPH.invoke({
+        "message": message,
+        "count": COURSE_COUNT,
+        "rules_only": True,
+        "zones": ["BK"],
+        "must": [{"id": m["placeId"], "reason": f"{m['reason']}: {m['text']}"}],
+        "start_xz": TAROT_START_XZ,
+    })
+    course = [{**c, "mission": c["placeId"] == m["placeId"], "reason": c["reason"] if c["placeId"] == m["placeId"] else _course_reason(c, state, cards)} for c in result.get("course", [])]
+    return {"course": course, "course_message": message}
+
+
+def _course_reason(stop: dict, state: TarotState, cards: dict) -> str:
+    """코스 장소마다 '왜 여기인지'를 타로 결과로 설명 (서로 몰랐던 취향 → 카드 순)"""
+    tags = set(place_by_id()[stop["placeId"]].get("tags", []))
+    names = category_names()
+    for category in state.get("focus", []):
+        if tags & set(CATEGORY_WORDS.get(category, "").split()):
+            return f"서로 몰랐던 '{names.get(category, category)}' 이야기를 나누기 좋은 곳"
+    labels = positions()
+    for pick in state["drawn"]:
+        card = cards[pick["id"]]
+        words = set(card["keywords"]) | {w for t in card["tags"] for w in CATEGORY_WORDS.get(t, "").split()}
+        if tags & words:
+            return f"{card['emoji']} {card['name']} 카드({labels[pick['position']]})와 어울리는 곳"
+    return stop["reason"]
+
+
 def build_graph():
     graph = StateGraph(TarotState)
     graph.add_node("analyze_a", analyze_a)
@@ -332,6 +393,7 @@ def build_graph():
     graph.add_node("guard", guard)
     graph.add_node("fallback", fallback)
     graph.add_node("mission", mission)
+    graph.add_node("plan_course", plan_course)
     # START에서 두 갈래로 동시에 → 둘 다 끝나야 compare (리스트로 묶으면 기다렸다 합침)
     graph.add_edge(START, "analyze_a")
     graph.add_edge(START, "analyze_b")
@@ -343,7 +405,8 @@ def build_graph():
     # 조건 분기 + 반복: guard 결과에 따라 interpret로 돌아가거나 앞으로 감
     graph.add_conditional_edges("guard", after_guard, {"interpret": "interpret", "fallback": "fallback", "mission": "mission"})
     graph.add_edge("fallback", "mission")
-    graph.add_edge("mission", END)
+    graph.add_edge("mission", "plan_course")
+    graph.add_edge("plan_course", END)
     return graph.compile()
 
 
@@ -369,6 +432,7 @@ def read_tarot(a: dict, b: dict, seed: str | None = None) -> dict:
         "summary": result["summary"],
         "talk": result["talk"],
         "mission": result["mission"],
+        "course": result["course"],
         "retries": result.get("retries", 0),
         "guard": {"retries": result.get("retries", 0), "fallback": result.get("fallback", False), "log": result["guard_log"]},
         "evidence": [{k: e[k] for k in ("cardId", "position", "score", "why")} | {"tipId": e["tip"]["id"]} for e in result["evidence"]],
