@@ -51,6 +51,37 @@ export async function setPlayerCharacter({ userId, characterId }) {
   return { character }
 }
 
+// [지민] 캐릭터 꾸미기 (색·옷·모자 …) — 항목 이름과 값은 화면에서 자유롭게 정해요
+//   캐릭터 종류(남/여)는 위 get/setPlayerCharacter를 쓰세요. 'characterId' 키는 그쪽이 쓰는 이름이라 피해 주세요
+//   서버 모드: 계정에 저장 → 다른 기기에서 로그인해도 유지 / mock 모드: 이 브라우저에 저장
+
+/** 응답: { appearance: { [항목]: 값 } } (저장한 적 없으면 {}) */
+export async function getAppearance({ userId }) {
+  if (USE_SERVER) return server.getAppearance()
+  await wait()
+  requireUser(userId)
+  return { appearance: readDb().appearances?.[userId] ?? {} }
+}
+
+/**
+ * 보낸 항목만 바꾸고 나머지는 유지해요. 값을 null로 보내면 그 항목 삭제
+ *   saveAppearance({ userId, patch: { hat: 'red' } })
+ * 응답: { appearance } (저장된 전체) — 에러: INVALID_INPUT(객체 아님), TOO_LARGE(2KB 초과)
+ */
+export async function saveAppearance({ userId, patch }) {
+  if (USE_SERVER) return server.saveAppearance({ patch })
+  await wait()
+  requireUser(userId)
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new ApiError('INVALID_INPUT', '꾸미기 값을 확인해 주세요.')
+  const db = readDb()
+  const merged = { ...db.appearances?.[userId], ...patch }
+  const next = Object.fromEntries(Object.entries(merged).filter(([, value]) => value !== null && value !== undefined))
+  if (new TextEncoder().encode(JSON.stringify(next)).length > 2048) throw new ApiError('TOO_LARGE', '꾸미기 정보가 너무 커요.')
+  db.appearances = { ...db.appearances, [userId]: next }
+  writeDb(db)
+  return { appearance: next }
+}
+
 // 같은 구역 + 같은 작품의 가게 (다른 사람 구역 가게 쿠폰까지 나가지 않게)
 function shopsForWork(work, zone) {
   return places.filter((p) => p.type === 'cafe' && p.work && p.work === work && p.zone === zone)

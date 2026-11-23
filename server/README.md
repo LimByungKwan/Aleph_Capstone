@@ -39,6 +39,8 @@ npm test                 # 가짜 Supabase로 라우트 테스트 (실제 DB 안
 | `POST /auth/login` | `{ email, password }` | `{ session: { accessToken, refreshToken, expiresAt }, user: { id, email, name, role, shopId } }` | `INVALID_LOGIN` 401, `EMAIL_NOT_CONFIRMED` 403 |
 | `POST /auth/refresh` | `{ refreshToken }` | `{ session }` | `UNAUTHORIZED` 401 |
 | 🔒 `GET /me` | | `{ user }` | |
+| 🔒 `GET /me/appearance` | | `{ appearance }` (없으면 `{}`) | |
+| 🔒 `PATCH /me/appearance` | `{ appearance: { 항목: 값 } }` 보낸 항목만 바꿈, 값이 null이면 삭제 | `{ appearance }` (저장된 전체) | `INVALID_INPUT` 400, `TOO_LARGE` 400 (2KB 초과) |
 | 🔒 `POST /stamps` | `{ placeId }` | `{ stamp, issuedCoupons }` | `ALREADY_STAMPED` 409, `NOT_STAMPABLE` 400, `NOT_FOUND` 404 |
 | 🔒 `GET /stamps/me` | | `{ stamps: [{ id, placeId, createdAt }] }` | |
 | 🔒 `GET /coupons/me` | | `{ coupons }` (최신순) | |

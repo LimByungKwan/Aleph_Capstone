@@ -155,6 +155,23 @@ export function createApp({ supabase, allowedOrigins = [] }) {
     res.json({ user: profileJson(req.user, profile) })
   })
 
+  // ── 캐릭터 꾸미기 ──
+  // client.js getAppearance / saveAppearance: { appearance } — 항목(characterId·색·옷 …)은 화면이 정함
+  app.get('/me/appearance', requireAuth, async (req, res) => {
+    const { data, error } = await req.db.from('profiles').select('appearance').eq('id', req.user.id).maybeSingle()
+    if (error) throw fromDbError(error)
+    res.json({ appearance: data?.appearance ?? {} })
+  })
+
+  // 보낸 항목만 바꿈 (null이면 그 항목 삭제). 합치기·2KB 제한은 DB 함수 save_appearance
+  app.patch('/me/appearance', requireAuth, async (req, res) => {
+    const patch = req.body?.appearance
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch) || JSON.stringify(patch).length > 2048) {
+      throw new HttpError(400, 'INVALID_INPUT', '꾸미기 값을 확인해 주세요.')
+    }
+    res.json({ appearance: await rpc(req.db, 'save_appearance', { p_patch: patch }) })
+  })
+
   // ── 스탬프 ──
   // client.js collectStamp: { stamp, issuedCoupons }
   app.post('/stamps', requireAuth, async (req, res) => {

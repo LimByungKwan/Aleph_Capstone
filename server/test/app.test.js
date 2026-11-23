@@ -202,6 +202,54 @@ describe('회원가입 · 로그인', () => {
   })
 })
 
+describe('캐릭터 꾸미기', () => {
+  test('토큰 없이 저장하면 401, DB는 부르지 않음', async () => {
+    const res = await api('PATCH', '/me/appearance', { body: { appearance: { hat: 'red' } } })
+    assert.equal(res.status, 401)
+    assert.equal(calls.length, 0)
+  })
+
+  test('보낸 항목을 로그인한 사람 토큰으로 DB 함수에 그대로 넘김', async () => {
+    rpcHandler = () => ({ data: { characterId: 'female', hat: 'red' }, error: null })
+    const res = await api('PATCH', '/me/appearance', { token: GOOD_TOKEN, body: { appearance: { hat: 'red' } } })
+    assert.equal(res.status, 200)
+    assert.deepEqual(res.body, { appearance: { characterId: 'female', hat: 'red' } })
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, rpc: 'save_appearance', args: { p_patch: { hat: 'red' } } })
+  })
+
+  test('객체가 아니거나 너무 크면 DB까지 가지 않고 400', async () => {
+    for (const appearance of ['female', ['a'], null, { big: 'x'.repeat(2100) }]) {
+      const res = await api('PATCH', '/me/appearance', { token: GOOD_TOKEN, body: { appearance } })
+      assert.equal(res.status, 400, JSON.stringify(appearance).slice(0, 20))
+      assert.equal(res.body.error.code, 'INVALID_INPUT')
+    }
+    assert.equal(calls.length, 0)
+  })
+
+  test('DB가 TOO_LARGE를 던지면 400 TOO_LARGE', async () => {
+    rpcHandler = () => ({ data: null, error: { message: 'TOO_LARGE', details: '꾸미기 정보가 너무 커요.' } })
+    const res = await api('PATCH', '/me/appearance', { token: GOOD_TOKEN, body: { appearance: { a: 1 } } })
+    assert.equal(res.status, 400)
+    assert.equal(res.body.error.code, 'TOO_LARGE')
+  })
+
+  test('불러오기: 저장된 값, 없으면 {}', async () => {
+    tableRows = { profiles: [{ appearance: { characterId: 'male' } }] }
+    assert.deepEqual((await api('GET', '/me/appearance', { token: GOOD_TOKEN })).body, { appearance: { characterId: 'male' } })
+    tableRows = {}
+    assert.deepEqual((await api('GET', '/me/appearance', { token: GOOD_TOKEN })).body, { appearance: {} })
+  })
+
+  test('화면 주소에서 PATCH 미리 요청(CORS preflight) 허용', async () => {
+    const res = await fetch(base + '/me/appearance', {
+      method: 'OPTIONS',
+      headers: { origin: 'https://aleph-capstone.vercel.app', 'access-control-request-method': 'PATCH', 'access-control-request-headers': 'authorization,content-type' },
+    })
+    assert.ok(res.status < 300)
+    assert.match(res.headers.get('access-control-allow-methods') ?? '', /PATCH/)
+  })
+})
+
 describe('기타', () => {
   test('예상 못 한 DB 에러는 내부 내용을 숨기고 500', async () => {
     rpcHandler = () => ({ data: null, error: { message: 'relation "public.secret" does not exist' } })
