@@ -123,6 +123,7 @@
     {"rotationDeg": 0, "id": "l2_telescope", "style": "telescope", "size": [0.6,1.4,0.6], "collider": false, "elevation": 4, "position": [-1,14.2]},
     {"rotationDeg": 0, "id": "tree_51", "style": "cherryTree", "size": [3.6,6,3.6], "collider": [0.5,3,0.5], "elevation": 4, "position": [-8,4]},
     {"rotationDeg": 0, "id": "tree_52", "style": "cherryTree", "size": [3.6,6,3.6], "collider": [0.5,3,0.5], "elevation": 4, "position": [21,5]},
+    {"rotationDeg": 0, "id": "date_guide_board", "style": "bkGuideBoard", "size": [2.6,2.8,0.5], "collider": [2.6,2.6,0.3], "position": [-36.5,35.4]},
     {"rotationDeg": -90, "id": "couple_photo", "style": "couplePhotoZone", "size": [9,4.5,9], "elevation": 4, "collider": false, "position": [36,7.5]},
     {"id": "couple_photo_block_heart", "style": "bkBlocker", "size": [3.3,3.2,0.35], "elevation": 4.0, "rotationDeg": -90, "position": [37.5,7.5]},
     {"id": "couple_photo_block_pot_l", "style": "bkBlocker", "size": [0.75,1.0,0.75], "elevation": 4.0, "rotationDeg": -90, "position": [37.3,5.3]},

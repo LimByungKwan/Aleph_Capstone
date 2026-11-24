@@ -10,6 +10,7 @@ import { useBkActivity } from './bk_activityStore.js'
 import { onlinePeers } from './bk_tarotRoom.js'
 import { COUNTDOWN_MS, SHOTS, photoRoom, usePhotoRoom } from './bk_photoRoom.js'
 import { composeFourCut } from './bk_fourCut.js'
+import { useDateMission } from './bk_dateMission.js'
 
 // 커플 포토존 "인생네컷" (담당: 병관) — CouplePhotoZone(dateCourse.jsx) 안에서 그려짐 → 좌표는 포토존 기준
 // 포토존 앞에서 E → [혼자 찍기] 또는 접속 중인 사람 [같이 찍자고 초대] (멀티: bk_photoRoom.js + 서버 bk_photoRooms.js)
@@ -208,6 +209,7 @@ function ShotCapturer() {
         composeFourCut(now.shots, names)
           .then((url) => {
             photoRoom.finish(url)
+            useDateMission.getState().markDone('photo') // 데이트 코스 미션
             if (useBadges.getState().award('four_cut')) setTimeout(() => useUiStore.getState().toast('📸 배지 획득: 인생네컷', 'ok'), 600)
           })
           .catch(() => photoRoom.leave())

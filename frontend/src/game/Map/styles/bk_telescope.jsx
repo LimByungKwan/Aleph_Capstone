@@ -9,6 +9,7 @@ import { useBadges } from '../../../store/badges.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useBkActivity } from './bk_activityStore.js'
 import { labelLayer } from '../../labelLayer.js'
+import { useDateMission } from './bk_dateMission.js'
 
 // 데이트 코스 구역(BK) SKY 전망대 망원경. 담당: 병관
 // 전망층 난간의 망원경(dateCourse.jsx DECK_SCOPES: 중앙 광장 쪽·애니 구역 쪽 2대) 앞에서 E → 망원경 화면
@@ -261,6 +262,7 @@ function ScopeOverlay({ width, height }) {
 
   // 가운데 맞춘 명소를 "찾음"으로 기록 → 5곳이면 배지
   useEffect(() => {
+    if (focus >= 0) useDateMission.getState().markDone('telescope') // 데이트 코스 미션: 명소 하나 찾기
     if (focus < 0 || spotted.has(TARGETS[focus].id)) return
     const next = new Set(spotted).add(TARGETS[focus].id)
     setSpotted(next)

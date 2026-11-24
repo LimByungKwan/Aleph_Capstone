@@ -16,6 +16,8 @@ export const BADGES = [
   { id: 'tarot_match', icon: '💞', name: '서로를 잘 아는 사이', desc: '커플 타로에서 서로의 답을 80% 이상 맞혔어요' },
   { id: 'telescope', icon: '🔭', name: '전망대 망원경 탐험가', desc: 'SKY 전망대 망원경으로 명소 5곳을 찾았어요' },
   { id: 'shooting_star', icon: '🌠', name: '별똥별 소원', desc: '전망대 망원경으로 별똥별 3개를 잡고 소원을 빌었어요' },
+  { id: 'date_mission_half', icon: '💗', name: '데이트 탐험가', desc: '데이트 코스 미션 스탬프를 4개 모았어요' },
+  { id: 'date_mission_all', icon: '💕', name: '데이트 코스 마스터', desc: '데이트 코스 미션 7곳 스탬프를 모두 모았어요' },
   { id: 'four_cut', icon: '📸', name: '인생네컷', desc: '커플 포토존에서 인생네컷을 찍었어요' },
   { id: 'tarot_mission', icon: '🗺️', name: '타로 데이트 코스 완주', desc: '타로 카드가 짜 준 데이트 코스를 끝까지 걸었어요' },
 ]

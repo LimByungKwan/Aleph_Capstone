@@ -37,6 +37,7 @@ import { SungrayBeach } from './beach.jsx'
 import { FestivalCart } from './festival.jsx'
 import { ClawBooth } from './bk_clawMachine.jsx'
 import { TarotBooth } from './bk_tarotBooth.jsx'
+import { GuideBoard } from './bk_guideBoard.jsx'
 import { HubBuskingStage, HubClockTower, HubCompass, HubFoodTruck, HubMapBoard, HubPergola, HubSignpost, HubTreeBench } from './hub.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
@@ -87,6 +88,7 @@ export const STYLES = {
   greenhouseCafe: GreenhouseCafe,
   clawBooth: ClawBooth, // 인형뽑기 부스 + 미니게임 (bk_clawMachine.jsx)
   tarotBooth: TarotBooth, // 커플 타로 텐트 (bk_tarotBooth.jsx)
+  bkGuideBoard: GuideBoard, // 데이트 코스 안내판 (bk_guideBoard.jsx)
   bkBlocker: BkBlocker, // 데이트 코스: 눈에 안 보이는 충돌 상자 (커플 포토존 등)
   // K-POP (SG)
   stage: Stage,

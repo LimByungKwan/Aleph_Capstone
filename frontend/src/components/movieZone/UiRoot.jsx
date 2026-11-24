@@ -21,6 +21,7 @@ import Tutorial from '../tutorial/Tutorial.jsx'
 import BadgeBook, { BadgeButton } from '../badges/BadgeBook.jsx'
 import { PhotoButton, PhotoPreview } from '../photo/PhotoButton.jsx'
 import SoundDirector, { SoundToggle } from '../sound/SoundDirector.jsx'
+import DateMission from '../dateCourse/DateMission.jsx' // [병관] 데이트 코스 미션 (시간 탐정과 같은 모양)
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -51,6 +52,7 @@ export default function UiRoot() {
       {!inCinema && <PalaceSeatPrompt />}
       <PalaceTour enabled={!inCinema && !modal && !specialPanel} />
       <SpecialAccess enabled={!inCinema && !modal} />
+      <DateMission enabled={!inCinema && !modal} />
       <DialogBox />
       <BreakwaterScene />
       <EntranceWelcome />

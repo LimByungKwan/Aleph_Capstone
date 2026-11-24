@@ -2,6 +2,7 @@ import cardData from '@shared/bk_tarot/tarot_cards.json'
 import { deleteTarotReading, listTarotReadings, saveTarotReading } from '../../../api/client.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useBadges } from '../../../store/badges.js'
+import { useDateMission } from './bk_dateMission.js'
 
 // 데이트 코스 구역(BK) 커플 타로 기록 (담당: 병관)
 // 저장은 지민 님 client.js 함수 그대로: 로그인(서버 모드) → Supabase tarot_readings, 아니면 이 브라우저
@@ -57,6 +58,7 @@ export async function removeReading(readingId) {
 
 /** 결과를 받은 순간 주는 배지 (미션 완료 배지는 store/badges.js가 코스 완주 때 줌) */
 export function awardTarotBadges(result) {
+  useDateMission.getState().markDone('tarot') // 데이트 코스 미션
   const { award } = useBadges.getState()
   const { toast } = useUiStore.getState()
   const won = []
