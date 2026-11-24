@@ -20,7 +20,7 @@ let retryMs = 1000
 let retryTimer = null
 let characterId = 'male'
 
-// [병관] 'tarot.'·'photo.'으로 시작하는 메시지는 데이트 코스 멀티(커플 타로 bk_tarotRoom.js · 인생네컷 bk_photoRoom.js)로 넘김
+// [병관] 'tarot.'·'photo.'·'lift.'으로 시작하는 메시지는 데이트 코스 멀티(커플 타로 bk_tarotRoom.js · 인생네컷 bk_photoRoom.js · 엘리베이터 bk_liftSync.js)로 넘김
 const tarotListeners = new Set()
 export function onTarotMessage(fn) {
   tarotListeners.add(fn)
@@ -45,7 +45,7 @@ function handle(msg) {
       delete next[msg.id]
       return next
     })
-  } else if (typeof msg.t === 'string' && /^(tarot|photo)\./.test(msg.t)) {
+  } else if (typeof msg.t === 'string' && /^(tarot|photo|lift)\./.test(msg.t)) {
     tarotListeners.forEach((fn) => fn(msg))
   } else if (msg.t === 'state') {
     const selfId = useRealtimeStore.getState().selfId
@@ -107,9 +107,9 @@ export function sendMove(p, r, s, g) {
   sendRaw({ t: 'move', p, r, s, g })
 }
 
-/** [병관] 데이트 코스 멀티 메시지 보내기 (tarot.* · photo.* 만) */
+/** [병관] 데이트 코스 멀티 메시지 보내기 (tarot.* · photo.* · lift.* 만) */
 export function sendTarot(msg) {
-  if (typeof msg?.t === 'string' && /^(tarot|photo)\./.test(msg.t)) sendRaw(msg)
+  if (typeof msg?.t === 'string' && /^(tarot|photo|lift)\./.test(msg.t)) sendRaw(msg)
 }
 
 export function sendCharacter(id) {

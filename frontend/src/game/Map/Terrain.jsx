@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
 import * as THREE from 'three'
@@ -7,6 +7,8 @@ import { buildDeck, buildHill, buildPlatform, buildStairs, ringPieces, terrainHe
 import { Cyl, GEO, Instances, mat, texMat } from './styles/kit.jsx'
 import { getTiledTexture } from './styles/textures.js'
 import { DeckGate, TowerDecor, towerDecorColliders } from './styles/dateCourse.jsx'
+import { registerLift, sendLift, useLiftCall } from './styles/bk_liftSync.js'
+import { LiftCallHud } from './styles/bk_liftCall.jsx'
 
 // 구역 파일의 "terrain" 항목을 그림: 언덕(hill), 데크 산책로(deck), 계단(stairs), 들어갈 수 있는 전망 타워(tower)
 // 화면용(<Terrain />), 충돌용(<TerrainColliders />), 움직이는 엘리베이터(<Elevators />)가 같은 계산 결과를 써요.
@@ -235,7 +237,10 @@ function BoxSet({ name, boxes, position, rotation }) {
 // ── 엘리베이터 (타워마다 하나) ────────────────
 // 진짜 엘리베이터처럼 단계별로 움직임:
 //   타기(발판에 0.6초) → 문 스르륵 닫힘 → 1초 뒤 출발 → 천천히 출발해 가운데서 빠르고 도착 전 천천히(부드러운 가감속)
-//   → 도착 후 1초 뒤 문 스르륵 열림. 다른 층에서 통로 가까이 오면 같은 순서로 그 층으로 와 줌.
+//   → 도착 후 1초 뒤 문 스르륵 열림. 다른 층에 있으면 문 앞에서 [엘리베이터 호출] 버튼으로 부름 (bk_liftCall.jsx)
+//   여러 명: 발판에 올라서면 3초 탑승 대기(새 사람이 타면 연장, 최대 8초), [바로 출발]·[잠깐만요! 열림] (규칙: shared/bk_liftCore.js)
+// 멀티: 운행 시작 신호를 서버가 모두에게 보내고(bk_liftSync.js · server/src/bk_lifts.js), 각 화면은 "시작 후 몇 초"로
+//   단계를 계산 → 다른 사람이 타고 올라가도 내 화면에서 같은 엘리베이터가 같은 시간에 문 닫고 움직임
 const LIFT_AVG_SPEED = 4.5 // m/s (평균 속도, 가운데에서는 이보다 빠르고 출발·도착은 느림)
 const LIFT_BOARD_WAIT = 0.6 // 발판에 올라선 뒤 문이 닫히기 시작할 때까지(초)
 const LIFT_DOOR_TIME = 1.1 // 문이 다 열리거나 닫히는 데 걸리는 시간(초)
@@ -325,7 +330,7 @@ function Elevator({ tower, playerRef }) {
   const baseY = towerBaseY(tower)
   const levels = [0.3, T.deckFloor] // 발판 윗면 높이 (타워 바닥 기준): 아래층, 전망대
   // phase: 'open'(문 열림, 대기) → 'closing' → 'depart'(1초) → 'moving' → 'arrive'(1초) → 'opening' → 'open'
-  const initial = () => ({ at: 0, target: 0, y: levels[0], door: 1, phase: 'open', timer: 0, fromY: levels[0], ride: false, waitLeave: false })
+  const initial = () => ({ at: 0, y: levels[0], door: 1, phase: 'open', timer: 0, waitLeave: false, trip: null, boarding: null, boarded: false })
   const state = useRef(initial())
   const doorColliders = useRef([])
   const doorEnabled = useRef([null, null])
@@ -343,94 +348,117 @@ function Elevator({ tower, playerRef }) {
     ]
   }, [T])
 
+  // 운행표: 문 닫힘(D) → 출발 대기(P) → 이동(M) → 도착 대기(P) → 문 열림(D). 서버(bk_lifts.js tripMs)와 같은 길이
+  const D = LIFT_DOOR_TIME
+  const P = LIFT_PAUSE
+  const M = Math.max(1.5, Math.abs(levels[1] - levels[0]) / LIFT_AVG_SPEED)
+  const TOTAL = 2 * D + 2 * P + M
+  const send = (t, extra = {}) => sendLift({ t, towerId: tower.id, ...extra })
+
+  // 알림 받기 (멀티: 서버가 모두에게 / 혼자: 이 화면의 같은 규칙) → 모든 화면이 같은 장면
+  useEffect(
+    () =>
+      registerLift(tower.id, (msg) => {
+        const s = state.current
+        const at = performance.now()
+        if (msg.t === 'lift.trip') {
+          s.trip = { from: msg.from, to: msg.to, start: at - (msg.elapsed ?? 0) }
+          s.boarding = null
+        } else if (msg.t === 'lift.boarding') {
+          // 탑승 대기 (remaining null = 취소). 문이 닫히던 중이면 다시 열림(운행 취소)
+          s.boarding = msg.remaining == null ? null : { to: msg.to, end: at + msg.remaining, riders: msg.riders }
+          if (s.boarding && s.trip) s.trip = null
+        } else if (msg.t === 'lift.state') {
+          s.trip = msg.trip ? { from: msg.trip.from, to: msg.trip.to, start: at - msg.trip.elapsed } : null
+          s.boarding = msg.boarding ? { to: msg.boarding.to, end: at + msg.boarding.remaining, riders: msg.boarding.riders } : null
+          if (!msg.trip) s.at = msg.at
+        }
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tower.id],
+  )
+
   useFrame((_, delta) => {
     const body = bodyRef.current
     if (!body) return
     const s = state.current
     // 개발 중 코드가 새로고침 없이 바뀌면(HMR) 예전 모양의 상태가 남아 문이 멈출 수 있음 → 처음 상태로
-    if (s.phase === undefined) Object.assign(s, initial())
+    if (s.phase === undefined || s.boarded === undefined) Object.assign(s, initial())
     const dt = Math.min(delta, 0.05)
     const prevY = s.y
     const player = playerRef?.current
     let onLift = false
-    let callLevel = -1
+    let nearLevel = -1 // 엘리베이터 문 앞에 서 있는 층 (버튼용)
     if (player) {
       const p = player.currPos
       const dist = Math.hypot(p.x - cx, p.z - cz)
       const feet = p.y - baseY
       onLift = dist < T.liftRadius && feet > s.y - 0.2 && feet < s.y + 1.8
       levels.forEach((lv, i) => {
-        if (i !== s.at && dist < T.shaftRadius + 1.6 && feet > lv - 0.5 && feet < lv + 2.5) callLevel = i
+        if (dist < T.shaftRadius + 2.5 && feet > lv - 0.5 && feet < lv + 2.5) nearLevel = i
       })
     }
 
-    // 출발 준비: 목표 층을 정하고 문 닫기 시작
-    const startTrip = (target, ride) => {
-      s.target = target
-      s.ride = ride
-      s.phase = 'closing'
-      s.timer = 0
+    if (s.trip) {
+      // 운행 중: 시작한 지 몇 초인지로 단계·높이·문 열림을 계산 (모든 화면이 같은 값)
+      const e = (performance.now() - s.trip.start) / 1000
+      const { from, to } = s.trip
+      if (e < D) Object.assign(s, { phase: 'closing', at: from, door: Math.max(0, 1 - e / D), y: levels[from] })
+      else if (e < D + P) Object.assign(s, { phase: 'depart', at: from, door: 0, y: levels[from], timer: e - D })
+      else if (e < D + P + M) Object.assign(s, { phase: 'moving', at: from, door: 0, y: levels[from] + (levels[to] - levels[from]) * easeInOut((e - D - P) / M) })
+      else if (e < D + 2 * P + M) Object.assign(s, { phase: 'arrive', at: to, door: 0, y: levels[to], timer: e - D - P - M })
+      else if (e < TOTAL) Object.assign(s, { phase: 'opening', at: to, door: Math.min(1, (e - D - 2 * P - M) / D), y: levels[to] })
+      else {
+        Object.assign(s, { phase: 'open', at: to, door: 1, y: levels[to], timer: 0, waitLeave: onLift }) // 타고 온 사람이 내릴 때까지 다시 출발 X
+        s.trip = null
+        s.boarded = false
+      }
+    } else {
+      // 서 있음 (다시 열리는 중이면 문을 부드럽게 끝까지 엶)
+      Object.assign(s, { phase: 'open', door: Math.min(1, s.door + dt / D), y: levels[s.at] })
+      if (s.waitLeave && !onLift) s.waitLeave = false
+      // 발판에 올라서면 탑승(대기 3초, 다른 사람이 타면 연장) / 내리면 빠짐
+      if (onLift && !s.waitLeave && !s.boarded) {
+        s.boarded = true
+        send('lift.board')
+      } else if (!onLift && s.boarded) {
+        s.boarded = false
+        send('lift.off')
+      }
+    }
+    // 닫히는 문으로 뛰어든 사람 → 다시 열어 달라고 (규칙이 다시 열고 대기로)
+    if (s.phase === 'closing' && onLift && !s.boarded) {
+      s.boarded = true
+      send('lift.board')
     }
 
-    switch (s.phase) {
-      case 'open':
-        if (s.waitLeave) {
-          if (!onLift) s.waitLeave = false
-          s.timer = 0
-        } else if (onLift) {
-          s.timer += dt
-          if (s.timer > LIFT_BOARD_WAIT) startTrip(1 - s.at, true)
-        } else {
-          s.timer = 0
-          if (callLevel !== -1) startTrip(callLevel, false)
-        }
-        break
-      case 'closing':
-        // 타려다 내리면 다시 열어 줌
-        if (s.ride && !onLift) {
-          s.phase = 'opening'
-          break
-        }
-        s.door = Math.max(0, s.door - dt / LIFT_DOOR_TIME)
-        if (s.door === 0) {
-          s.phase = 'depart'
-          s.timer = 0
-        }
-        break
-      case 'depart':
-        s.timer += dt
-        if (s.timer >= LIFT_PAUSE) {
-          s.phase = 'moving'
-          s.timer = 0
-          s.fromY = s.y
-        }
-        break
-      case 'moving': {
-        const toY = levels[s.target]
-        const duration = Math.max(1.5, Math.abs(toY - s.fromY) / LIFT_AVG_SPEED)
-        s.timer += dt
-        const k = Math.min(1, s.timer / duration)
-        s.y = s.fromY + (toY - s.fromY) * easeInOut(k)
-        if (k >= 1) {
-          s.y = toY
-          s.at = s.target
-          s.phase = 'arrive'
-          s.timer = 0
-        }
-        break
-      }
-      case 'arrive':
-        s.timer += dt
-        if (s.timer >= LIFT_PAUSE) s.phase = 'opening'
-        break
-      case 'opening':
-        s.door = Math.min(1, s.door + dt / LIFT_DOOR_TIME)
-        if (s.door === 1) {
-          s.phase = 'open'
-          s.timer = 0
-          s.waitLeave = onLift // 타고 온 사람이 내릴 때까지는 다시 출발하지 않음
-        }
-        break
+    // 화면 버튼 상태
+    const seconds = s.boarding ? Math.max(0, Math.ceil((s.boarding.end - performance.now()) / 1000)) : 0
+    let mode = null
+    if (onLift && !s.trip) mode = 'rider' // 발판 위: 카운트다운 + [바로 출발] (막 도착했으면 [출발])
+    else if (nearLevel !== -1 && nearLevel === s.at && (s.boarding || s.phase === 'closing')) mode = 'hold' // 문 앞, 곧 떠남 → [열림]
+    else if (nearLevel !== -1 && s.trip && s.trip.to === nearLevel) mode = 'coming'
+    else if (nearLevel !== -1 && !onLift && (s.trip ? s.trip.to !== nearLevel : s.at !== nearLevel)) mode = 'call'
+    const ui = useLiftCall.getState()
+    if (ui.mode !== mode || ui.level !== nearLevel || ui.seconds !== seconds || ui.riders !== (s.boarding?.riders ?? 0) || ui.towerId !== tower.id) {
+      useLiftCall.setState({
+        towerId: tower.id,
+        mode,
+        level: nearLevel,
+        seconds,
+        riders: s.boarding?.riders ?? 0,
+        to: s.boarding?.to ?? 1 - s.at,
+        actions: {
+          call: () => send('lift.call', { to: nearLevel }),
+          go: () => send('lift.go'),
+          hold: () => send('lift.hold'),
+          board: () => {
+            state.current.waitLeave = false
+            state.current.boarded = true
+            send('lift.board')
+          },
+        },
+      })
     }
 
     body.setNextKinematicTranslation({ x: cx, y: baseY + s.y - 0.15, z: cz })
@@ -468,6 +496,7 @@ function Elevator({ tower, playerRef }) {
         <Cyl p={[0, 0, 0]} rad={T.liftRadius} h={0.3} m={CORAL} geo={GEO.cyl48} receiveShadow />
         <Cyl p={[0, 0.16, 0]} rad={T.liftRadius - 0.3} h={0.02} m={mat('#ffe4e6')} geo={GEO.cyl48} />
       </RigidBody>
+      <LiftCallHud towerId={tower.id} />
       <RigidBody type="fixed" colliders={false} position={[cx, baseY, cz]} rotation={[0, yawOf(tower), 0]} name={`lift-doors-${tower.id}`}>
         {doorBoxes.map((box, i) => (
           <CuboidCollider key={i} ref={(c) => (doorColliders.current[i] = c)} args={[box.s[0] / 2, box.s[1] / 2, box.s[2] / 2]} position={box.p} />

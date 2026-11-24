@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { WebSocketServer } from 'ws'
 import { createTarotRooms } from './bk_tarotRooms.js'
 import { createPhotoRooms } from './bk_photoRooms.js'
+import { createLifts } from './bk_lifts.js'
 
 // 멀티 접속 (담당: 지민) — 같은 맵에 있는 사람들의 위치·방향·캐릭터를 실시간으로 주고받는다
 //
@@ -19,7 +20,7 @@ import { createPhotoRooms } from './bk_photoRooms.js'
 //   서버 → 화면  { t:'welcome', id, peers:[…] }          내 번호 + 이미 있는 사람들
 //               { t:'join', peer } / { t:'leave', id } / { t:'peer', peer }(캐릭터 변경)
 //               { t:'state', s:[[id,x,y,z,r,s,g], …] }  0.1초마다 움직인 사람만
-//   'tarot.'으로 시작하는 메시지는 커플 타로 멀티, 'photo.'는 커플 포토존 인생네컷 (병관, bk_tarotRooms.js · bk_photoRooms.js)
+//   'tarot.'으로 시작하는 메시지는 커플 타로 멀티, 'photo.'는 커플 포토존 인생네컷, 'lift.'는 전망대 엘리베이터 (병관, bk_tarotRooms.js · bk_photoRooms.js · bk_lifts.js)
 
 export const REALTIME_PATH = '/realtime'
 
@@ -86,6 +87,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   }
   const tarot = createTarotRooms({ send, findPeer, ...(readTarot && { readTarot }), options: options.tarot })
   const photo = createPhotoRooms({ send, findPeer, options: options.photo })
+  const lifts = createLifts({ broadcast, send, options: options.lift })
 
   async function identify(token) {
     if (typeof token !== 'string' || !token) return { name: '손님', userId: null }
@@ -148,10 +150,11 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         const others = [...peers.values()].filter((p) => p !== peer && p.ready).map(publicPeer)
         send(ws, { t: 'welcome', id: peer.id, peers: others })
         broadcast({ t: 'join', peer: publicPeer(peer) }, ws)
+        lifts.welcome(ws) // [병관] 지금 엘리베이터 상태
         return
       }
       if (!peer.ready) return
-      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg)) return
+      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg)) return
 
       if (msg.t === 'move') {
         const state = validMove(msg)
@@ -168,6 +171,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       clearTimeout(helloTimer)
       tarot.disconnect(ws)
       photo.disconnect(ws)
+      lifts.disconnect(peer)
       peers.delete(ws)
       if (peer.ready) broadcast({ t: 'leave', id: peer.id })
     })
@@ -213,6 +217,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     close: () => {
       tarot.close()
       photo.close()
+      lifts.close()
       for (const ws of peers.keys()) ws.terminate()
       wss.close()
     },
