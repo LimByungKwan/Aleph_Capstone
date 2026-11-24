@@ -11,6 +11,7 @@ import { JM_BRIDGE_STYLES } from './jm_bridges.jsx'
 import { JM_RIVERSIDE_STYLES } from './jm_riverside.jsx'
 import { JM_BENCH_STYLES } from './jm_bench.jsx'
 import { JM_KYOTO_STYLES } from './jm_kyoto.jsx'
+import { JM_STAIR_STYLES } from './jm_stairs.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -75,6 +76,8 @@ const JM_STYLES_RAW = {
   jmFence: Fence,
   // 교토 온천 마을: 여관·수로·가스등·도리이 터널·건널목·포장마차·붉은 다리 (jm_kyoto.jsx)
   ...JM_KYOTO_STYLES,
+  // 계단 겉모습 시안 (jm_stairs.jsx)
+  ...JM_STAIR_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)
