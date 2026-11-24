@@ -184,10 +184,16 @@ for (const [i, x, z] of [[1, 38.8, -17.6], [2, 39.5, -34.5], [3, 19, -35.5]]) tr
 const ZAKA_DX = -14.5
 const ZAKA_DZ = -6
 const MAP_NORTH = -184.8 // 땅 끝(-185, hub.json 바닥) 안쪽
+// 11/24: 계단 거리 단 높이를 똑같은 1.5m 간격 대신 서로 다르게 (오르는 높이 1.2 / 2.1 / 1.1 / 1.6m)
+//   옛 높이 → 새 높이. 꼭대기(6)는 고개라 그대로
+const ZH = { 1.5: 1.2, 3: 3.3, 4.5: 4.4, 6: 6 }
+const zh = (h) => ZH[h] ?? h
 const mv = ([x, z]) => [r2(x + ZAKA_DX), r2(z + ZAKA_DZ)]
-const mv3 = ([x, z, h]) => [r2(x + ZAKA_DX), r2(z + ZAKA_DZ), h]
+const mv3 = ([x, z, h]) => [r2(x + ZAKA_DX), r2(z + ZAKA_DZ), zh(h)]
 function shiftZaka(item) {
   const out = { ...item }
+  if (item.elevation !== undefined) out.elevation = zh(item.elevation)
+  if (item.height !== undefined) out.height = zh(item.height)
   if (item.position) out.position = mv(item.position)
   if (item.center) out.center = mv(item.center)
   if (item.from) out.from = mv3(item.from)
@@ -199,7 +205,9 @@ function shiftZaka(item) {
 roads.push(...keep.zaka.roads.map(shiftZaka))
 // 도리이 계단: 단을 높게(한 단 0.43m × 7단, 한 단 깊이 2.5m) → 아래에서 도리이를 단마다 하나씩 다시 세움
 const TORII_STEP = 0.43
-terrain.push(...keep.zaka.terrain.map((item) => (item.id === 'jm_zaka_torii_stairs' ? { ...item, stepHeight: TORII_STEP } : item)).map(shiftZaka))
+// 둘째 단(오르는 높이 2.1m)은 계단을 앞으로 1.5m 늘려 다른 계단과 비슷한 경사로
+const ZAKA_STAIR_FIX = { jm_zaka_torii_stairs: (item) => ({ ...item, stepHeight: TORII_STEP }), jm_zaka_stairs_2: (item) => ({ ...item, from: [item.from[0], item.from[1] + 1.5, item.from[2]] }) }
+terrain.push(...keep.zaka.terrain.map((item) => (ZAKA_STAIR_FIX[item.id] ? ZAKA_STAIR_FIX[item.id](item) : item)).map(shiftZaka))
 buildings.push(...keep.zaka.buildings.map(shiftZaka))
 // 장면 자리 골목을 내려고 빼는 옛 항목: 골목 쪽 대나무 울타리(아래에서 틈을 두고 다시 놓음), 장면 자리와 겹치는 나무·노다테
 const ZAKA_DROP = new Set(['jm_zaka_fence_t1_w', 'jm_zaka_fence_t1_w_2', 'jm_zaka_fence_t3_e', 'jm_zaka_fence_t3_e_2', 'jm_zaka_maple_10', 'jm_zaka_nodate', 'jm_zaka_bamboo_7'])
@@ -207,15 +215,16 @@ props.push(...keep.zaka.props.filter((item) => !ZAKA_DROP.has(item.id) && !/^jm_
 {
   const st = keep.zaka.terrain.find((item) => item.id === 'jm_zaka_torii_stairs')
   const [x, z0, h0] = st.from
-  const [, z1, h1] = st.to
+  const [, z1, h1raw] = st.to
+  const h1 = zh(h1raw)
   const n = Math.ceil((h1 - h0) / TORII_STEP)
   for (let i = 0; i < n; i++) {
     const z = r2(z0 + ((z1 - z0) * (i + 0.5)) / n)
     const elevation = r2(h0 + ((h1 - h0) * (i + 1)) / n)
     const id = `jm_zaka_torii_${i + 1}`
-    props.push(shiftZaka({ id, style: 'jmTorii', position: [x, z], size: [3.4, 4.2, 0.3], collider: false, rotationDeg: 0, elevation }))
+    props.push({ ...shiftZaka({ id, style: 'jmTorii', position: [x, z], size: [3.4, 4.2, 0.3], collider: false, rotationDeg: 0 }), elevation })
     for (const [side, dx] of [['l', -1.1], ['r', 1.1]]) {
-      props.push(shiftZaka({ id: `${id}_pillar_${side}`, style: 'jmCollider', position: [r2(x + dx), z], size: [0.25, 4.2, 0.25], rotationDeg: 0, elevation }))
+      props.push({ ...shiftZaka({ id: `${id}_pillar_${side}`, style: 'jmCollider', position: [r2(x + dx), z], size: [0.25, 4.2, 0.25], rotationDeg: 0 }), elevation })
     }
   }
 }
@@ -236,16 +245,16 @@ light('jm_light_zaka', [0, -78], { elevation: 3 })
 //      (울타리는 상점 틈 자리만 비우고 다시 놓음)
 // ─────────────────────────────────────────────
 const fence = (id, position, len, elevation, rotationDeg = 90) => prop(id, 'jmBambooFence', position, [len, 1.1, 0.1], { rotationDeg, elevation })
-fence('jm_zaka_fence_t1_w_a', [-11.3, -58.25], 5.5, 1.5)
-fence('jm_zaka_fence_t1_w_b', [-11.3, -68.05], 8.9, 1.5)
-fence('jm_zaka_fence_t3_e_a', [11.3, -92.25], 5.5, 4.5)
-fence('jm_zaka_fence_t3_e_b', [11.3, -102.3], 9.4, 4.5)
-terrain.push({ type: 'platform', id: 'jm_scene1_yard', rect: [-22, -65.5, -11.5, -59], height: 1.5, surface: 'stone', rails: [{ edge: 'west' }, { edge: 'north' }, { edge: 'south' }] })
-terrain.push({ type: 'platform', id: 'jm_scene2_yard', rect: [11.5, -100, 22, -93], height: 4.5, surface: 'stone', rails: [{ edge: 'east' }, { edge: 'north' }, { edge: 'south' }] })
+fence('jm_zaka_fence_t1_w_a', [-11.3, -58.25], 5.5, zh(1.5))
+fence('jm_zaka_fence_t1_w_b', [-11.3, -68.05], 8.9, zh(1.5))
+fence('jm_zaka_fence_t3_e_a', [11.3, -92.25], 5.5, zh(4.5))
+fence('jm_zaka_fence_t3_e_b', [11.3, -102.3], 9.4, zh(4.5))
+terrain.push({ type: 'platform', id: 'jm_scene1_yard', rect: [-22, -65.5, -11.5, -59], height: zh(1.5), surface: 'stone', rails: [{ edge: 'west' }, { edge: 'north' }, { edge: 'south' }] })
+terrain.push({ type: 'platform', id: 'jm_scene2_yard', rect: [11.5, -100, 22, -93], height: zh(4.5), surface: 'stone', rails: [{ edge: 'east' }, { edge: 'north' }, { edge: 'south' }] })
 const sceneSpot = (n, position, size, rotationDeg, elevation = 0) =>
   prop(`jm_scene_${n}`, 'jmSceneSpot', position, size, { rotationDeg, elevation, collider: false, signs: [{ text: `장면 자리 ${n}` }, { text: '작품 준비 중' }] })
-sceneSpot(1, [-17, -62.25], [6, 0.1, 9], 90, 1.5)
-sceneSpot(2, [17, -96.5], [6, 0.1, 9], -90, 4.5)
+sceneSpot(1, [-17, -62.25], [6, 0.1, 9], 90, zh(1.5))
+sceneSpot(2, [17, -96.5], [6, 0.1, 9], -90, zh(4.5))
 
 // ─────────────────────────────────────────────
 // 7-2. 고개 (옛 꼭대기 단, 높이 6) — 북쪽으로 골짜기가 내려다보임
@@ -259,9 +268,7 @@ prop('jm_pass_bench', 'jmBench', [11.5, -118], [1.8, 0.5, 0.5], { rotationDeg: -
 tree('jm_pass_maple', 'jmMaple', [12.5, -123], { elevation: PASS })
 // 고개 → 골짜기 내리막 계단 (계단 거리와 반대로 북쪽으로 내려감)
 terrain.push({ type: 'stairs', id: 'jm_pass_stairs', from: [0, -139, 0], to: [0, -125.4, PASS], width: 5 })
-for (const side of [-1, 1]) {
-  prop(`jm_pass_rail_${side < 0 ? 'w' : 'e'}`, 'jmStairRail', [side * 2.65, -132.2], [0.12, 7.1, 13.6], { rotationDeg: 180, collider: [0.12, 7.1, 13.6], rail: { bottom: 0, top: PASS } })
-}
+// (11/24) 계단 옆 난간(jmStairRail)은 뺌 — 애니 구역 계단은 모두 옆 가드 없이
 
 // ─────────────────────────────────────────────
 // 7-3. 골짜기 (높이 0): 동서로 흐르는 개울 + 붉은 다리, 양쪽 강가 집 → 장면 자리 ③
@@ -290,7 +297,7 @@ const TOP = 9
 const RYOKAN_STAIR_W = 5
 terrain.push({ type: 'stairs', id: 'jm_mid_stairs', from: [-24, -147.6, 0], to: [-24, -160, MID], width: RYOKAN_STAIR_W, walls: false })
 terrain.push({ type: 'platform', id: 'jm_mid_terrace', rect: [-34, -170, 20, -160], height: MID, surface: 'stone', lights: true,
-  rails: [{ edge: 'south', gaps: [[-26.5, -21.5]] }, { edge: 'west' }, { edge: 'east' }, { edge: 'north', gaps: [[-20, 20]] }] })
+  rails: [{ edge: 'south', gaps: [[-26.5, -21.5]] }, { edge: 'west' }, { edge: 'east', gaps: [[-164.6, -161.4]] }, { edge: 'north', gaps: [[-20, 20]] }] })
 bamboo('jm_mid_bamboo_1', [-31, -167.5], { elevation: MID })
 bamboo('jm_mid_bamboo_2', [-31, -163], { elevation: MID })
 tree('jm_mid_maple', 'jmMaple', [18, -167], { elevation: MID })
@@ -298,37 +305,92 @@ for (const [i, x] of [[1, -19.5], [2, 9.5]]) gasLamp(`jm_mid_lamp_${i}`, [x, -16
 sceneSpot(4, [-6, -165], [12, 0.1, 7], 0, MID)
 terrain.push({ type: 'stairs', id: 'jm_top_stairs', from: [14, -160, MID], to: [14, -170, TOP], width: RYOKAN_STAIR_W, walls: false })
 terrain.push({ type: 'platform', id: 'jm_ryokan_top', rect: [-20, -184.8, 24, -170], height: TOP, surface: 'stone', lights: true,
-  rails: [{ edge: 'south', gaps: [[11.5, 16.5]] }, { edge: 'west' }, { edge: 'east' }, { edge: 'north' }] })
+  rails: [{ edge: 'south', gaps: [[-18.3, -13.7], [11.5, 16.5]] }, { edge: 'west' }, { edge: 'east' }, { edge: 'north' }] })
+// 11/24 계단 루트 늘리기 (한 길로만 오르지 않게)
+//   ① 동쪽 꺾인 계단: 골짜기 동쪽 → 쉼참(높이 2.5) → 서쪽으로 꺾어 중턱 동쪽 끝
+//   ② 서쪽 계단: 중턱 서쪽 → 꼭대기 서쪽 (가운데 계단과 나란히 하나 더)
+road('jm_valley_path_ne', 'stone', [27, -150.5], [10, 0.06, 3])
+terrain.push({ type: 'stairs', id: 'jm_east_stairs_1', from: [30, -152, 0], to: [30, -160, 2.5], width: 3 })
+terrain.push({ type: 'platform', id: 'jm_east_landing', rect: [27, -166, 33, -160], height: 2.5, surface: 'stone', rails: [] })
+terrain.push({ type: 'stairs', id: 'jm_east_stairs_2', from: [27, -163, 2.5], to: [20, -163, MID], width: 3 })
+stoneLantern('jm_east_landing_lantern', [31.8, -165], { elevation: 2.5 })
+prop('jm_east_landing_bench', 'jmBench', [31.6, -161.4], [1.8, 0.5, 0.5], { rotationDeg: -90, elevation: 2.5 })
+terrain.push({ type: 'stairs', id: 'jm_west_top_stairs', from: [-16, -161.5, MID], to: [-16, -170, TOP], width: 4.4 })
 // 건물(buildings)은 100m 밖에서 생략되므로 소품(props)으로 둠: 16m보다 큰 소품은 늘 그려져서 마을 어디서나 보임 (충돌은 size 그대로)
 // 11/24: 1층은 들어갈 수 있는 로비 (모양은 jm_kyoto.jsx GrandRyokanLobby). 통째 충돌을 끄고 벽·가구 충돌을 따로 깖
-const GR = { x: 2, z: -180, w: 22, h: 12, d: 8, door: 2.4, floor: 0.6, ceil: 4.2, wt: 0.25 }
-prop('jm_grand_ryokan', 'jmGrandRyokan', [GR.x, GR.z], [GR.w, GR.h, GR.d], { model: null, elevation: TOP, collider: false, enterable: true, signs: [{ text: '湯灯屋' }] })
+// 11/24: 5층 고층 여관 (독자 디자인). 층마다 높이가 다르고, 안쪽 뒷벽을 따라 지그재그 나무 계단으로 꼭대기까지 오름
+//   1층 로비(3.6) / 2층 객실(3.0) / 3층 대욕장(3.8) / 4층 연회장(3.2) / 5층 전망실(4.4). 모양은 jm_kyoto.jsx JmGrandRyokan
+const GR_FLOORS = [
+  { h: 3.6, kind: 'lobby' },
+  { h: 3.0, kind: 'rooms' },
+  { h: 3.8, kind: 'bath' },
+  { h: 3.2, kind: 'banquet' },
+  { h: 4.4, kind: 'view' },
+]
+const GR = { x: 2, z: -180, w: 22, d: 8, door: 2.4, floor: 0.6, wt: 0.25 }
+const GR_BASE = GR_FLOORS.reduce((acc, f) => [...acc, r2(acc[acc.length - 1] + f.h)], [GR.floor]) // 층 바닥 높이 (마지막 = 지붕 아래)
+const GR_TOTAL = GR_BASE[GR_BASE.length - 1]
+// 안쪽 계단 자리: 뒷벽 따라 x -10.5 ~ -3.9, 나란한 두 줄 (폭 1.2씩). 위층 바닥은 이 자리만 뚫림
+//   뒷줄(zA): 1→2층, 3→4층은 서쪽에서 동쪽으로 / 앞줄(zB): 2→3층, 4→5층은 동쪽에서 서쪽으로
+//   (한 줄에서 지그재그로 겹치면 도착 직전에 위 계단 밑면에 머리가 걸림 → 줄을 나눔)
+const GR_STAIR = { x0: -10.5, x1: -3.9, zA: -3.15, zB: -1.9, w: 1.2, holeX: [-10.75, -3.75], holeZ: [-3.75, -1.25] }
+prop('jm_grand_ryokan', 'jmGrandRyokan', [GR.x, GR.z], [GR.w, r2(GR_TOTAL + 4), GR.d], {
+  model: null, elevation: TOP, collider: false, enterable: true, signs: [{ text: '湯灯屋' }], floors: GR_FLOORS, stair: GR_STAIR,
+})
 {
   const at = (lx, lz) => [r2(GR.x + lx), r2(GR.z + lz)]
   const side = (GR.w - GR.door) / 2
   const fz = GR.d / 2 - GR.wt / 2
+  const H = r2(GR_TOTAL + 0.4)
   wall('jm_grand_ryokan_base', at(0, 0), [GR.w + 1, GR.floor, GR.d + 1], { elevation: TOP })
   // 현관 앞 돌계단 3단 (그림: 0.2m씩)
   for (let i = 0; i < 3; i++) wall(`jm_grand_ryokan_step_${i + 1}`, at(0, GR.d / 2 + 1.6 - i * 0.4), [8, r2(0.2 * (i + 1)), 0.4], { elevation: TOP })
-  wall('jm_grand_ryokan_wall_back', at(0, -fz), [GR.w, GR.h, GR.wt], { elevation: TOP })
-  wall('jm_grand_ryokan_wall_w', at(-(GR.w / 2 - GR.wt / 2), 0), [GR.wt, GR.h, GR.d], { elevation: TOP })
-  wall('jm_grand_ryokan_wall_e', at(GR.w / 2 - GR.wt / 2, 0), [GR.wt, GR.h, GR.d], { elevation: TOP })
-  wall('jm_grand_ryokan_wall_front_w', at(-(GR.door / 2 + side / 2), fz), [side, GR.h, GR.wt], { elevation: TOP })
-  wall('jm_grand_ryokan_wall_front_e', at(GR.door / 2 + side / 2, fz), [side, GR.h, GR.wt], { elevation: TOP })
-  wall('jm_grand_ryokan_wall_lintel', at(0, fz), [GR.door, r2(GR.h - 3.3), GR.wt], { elevation: TOP + 3.3 })
-  // 천장 (카메라가 위층·지붕 속으로 빠지지 않게)
-  wall('jm_grand_ryokan_ceiling', at(0, 0), [GR.w, 0.3, GR.d], { elevation: TOP + GR.ceil })
-  // 가구 충돌 (그림 자리와 같게)
-  const FL = TOP + GR.floor
+  wall('jm_grand_ryokan_wall_back', at(0, -fz), [GR.w, H, GR.wt], { elevation: TOP })
+  wall('jm_grand_ryokan_wall_w', at(-(GR.w / 2 - GR.wt / 2), 0), [GR.wt, H, GR.d], { elevation: TOP })
+  wall('jm_grand_ryokan_wall_e', at(GR.w / 2 - GR.wt / 2, 0), [GR.wt, H, GR.d], { elevation: TOP })
+  wall('jm_grand_ryokan_wall_front_w', at(-(GR.door / 2 + side / 2), fz), [side, H, GR.wt], { elevation: TOP })
+  wall('jm_grand_ryokan_wall_front_e', at(GR.door / 2 + side / 2, fz), [side, H, GR.wt], { elevation: TOP })
+  wall('jm_grand_ryokan_wall_lintel', at(0, fz), [GR.door, r2(H - 3.3), GR.wt], { elevation: TOP + 3.3 })
+  // 층마다: 바닥판(계단 자리만 뚫림) + 뚫린 곳 가장자리 낮은 나무 난간(떨어짐 방지, 계단 들어가는 쪽만 비움) + 아래층에서 올라오는 계단
+  const [hx0, hx1] = GR_STAIR.holeX
+  const [hz0, hz1] = GR_STAIR.holeZ
+  const inner = GR.w / 2 - GR.wt
+  const innerD = GR.d / 2 - GR.wt
+  for (let k = 1; k < GR_BASE.length; k++) {
+    const y = r2(TOP + GR_BASE[k] - 0.25)
+    const top = k === GR_BASE.length - 1
+    if (top) {
+      wall('jm_grand_ryokan_roof_slab', at(0, 0), [GR.w, 0.3, GR.d], { elevation: y })
+      continue
+    }
+    wall(`jm_grand_ryokan_f${k + 1}_slab_a`, at(0, r2((hz1 + innerD) / 2)), [r2(inner * 2), 0.25, r2(innerD - hz1)], { elevation: y })
+    wall(`jm_grand_ryokan_f${k + 1}_slab_b`, at(r2((hx1 + inner) / 2), r2((hz0 + hz1) / 2)), [r2(inner - hx1), 0.25, r2(hz1 - hz0)], { elevation: y })
+    // 아래층 계단(k-1)이 짝수면 동쪽(x1)에 도착, 홀수면 서쪽(x0)에 도착 → 도착하는 끝 1.4m만 난간을 비움
+    const arriveEast = (k - 1) % 2 === 0
+    const railFrom = arriveEast ? hx0 : hx0 + 1.6
+    const railTo = arriveEast ? hx1 - 1.4 : hx1
+    wall(`jm_grand_ryokan_f${k + 1}_rail`, at(r2((railFrom + railTo) / 2), hz1), [r2(railTo - railFrom), 1.0, 0.1], { elevation: r2(TOP + GR_BASE[k]) })
+  }
+  for (let k = 0; k < GR_FLOORS.length - 1; k++) {
+    const east = k % 2 === 0 // 1층→2층은 서쪽에서 동쪽으로(뒷줄), 다음 층은 반대로(앞줄)
+    const [sx, ex] = east ? [GR_STAIR.x0, GR_STAIR.x1] : [GR_STAIR.x1, GR_STAIR.x0]
+    const lz = east ? GR_STAIR.zA : GR_STAIR.zB
+    const [fx, fz2] = at(sx, lz)
+    const [tx, tz] = at(ex, lz)
+    terrain.push({ type: 'stairs', id: `jm_ryokan_in_stairs_${k + 1}`, from: [fx, fz2, r2(TOP + GR_BASE[k])], to: [tx, tz, r2(TOP + GR_BASE[k + 1])], width: GR_STAIR.w })
+  }
+  // 가구 충돌 (그림 자리와 같게). [이름, 층(0부터), x, z, 크기]
   const solids = [
-    ['counter', -6, 0.6, [3.2, 1.1, 0.85]],
-    ['irori', 4.4, -0.9, [1.4, 1.2, 1.4]],
-    ['shoes_w', -2.6, 3.45, [1.4, 1.2, 0.5]],
-    ['shoes_e', 2.6, 3.45, [1.4, 1.2, 0.5]],
-    ['bench', 6.6, 3.3, [2.6, 0.5, 0.5]],
-    ['fridge', 10.3, 3.25, [0.7, 1.6, 0.6]],
+    ['counter', 0, -6, 0.6, [3.2, 1.1, 0.85]],
+    ['irori', 0, 4.4, -0.9, [1.4, 1.2, 1.4]],
+    ['shoes_w', 0, -2.6, 3.45, [1.4, 1.2, 0.5]],
+    ['shoes_e', 0, 2.6, 3.45, [1.4, 1.2, 0.5]],
+    ['bench', 0, 6.6, 3.3, [2.6, 0.5, 0.5]],
+    ['fridge', 0, 10.3, 3.25, [0.7, 1.6, 0.6]],
+    ['f3_tub', 2, 4.5, -0.8, [7.4, 0.65, 4.2]],
+    ['f4_stage', 3, 8.9, -0.6, [3.2, 0.35, 5.4]],
   ]
-  for (const [name, lx, lz, size] of solids) wall(`jm_grand_ryokan_${name}`, at(lx, lz), size, { elevation: FL })
+  for (const [name, f, lx, lz, size] of solids) wall(`jm_grand_ryokan_${name}`, at(lx, lz), size, { elevation: r2(TOP + GR_BASE[f]) })
 }
 for (const [i, x] of [[1, -4], [2, 8]]) stoneLantern(`jm_ryokan_lantern_${i}`, [x, -172.6], { elevation: TOP })
 prop('jm_ryokan_fox_w', 'jmFox', [-1, -173.6], [0.9, 1.8, 0.9], { mirror: true, elevation: TOP })
@@ -344,6 +406,27 @@ light('jm_light_ryokan', [2, -174], { elevation: TOP })
 terrain.push(...keep.terrain)
 // 물수제비(옛 「초속 5미터」 체험)와 작품 포스터는 뺌 — 강변 풍경만 남김
 props.push(...keep.props.filter((item) => item.id !== 'jm_skip_spot' && item.id !== 'jm_poster_byousoku_river'))
+
+// 11/24: 애니 구역 계단은 모두 옆 돌 난간 벽 없이 (지민 요청, 스크린샷의 갈색 옆벽)
+for (const item of terrain) if (item.type === 'stairs') item.walls = false
+
+// 11/24 계단 겉모습 (jm_stairs.jsx): 기본은 A 자연석, 여관 쪽으로 가는 긴 계단(고개→골짜기, 골짜기→중턱, 중턱→꼭대기)은 E 등불 계단
+//   지민이 시안 A~E 중 고름. 다른 시안(B 붉은 목조·C 이끼 정원·D 참배길)도 jm_stairs.jsx에 남아 있어 id만 넣으면 바꿀 수 있음
+const STAIR_LOOK = { jm_pass_stairs: 'E', jm_mid_stairs: 'E', jm_top_stairs: 'E', jm_east_stairs_1: 'E', jm_east_stairs_2: 'E', jm_west_top_stairs: 'E' }
+// 여관 안 계단은 목조 건물 안이라 B 붉은 목조
+for (let k = 1; k <= 4; k++) STAIR_LOOK[`jm_ryokan_in_stairs_${k}`] = 'B'
+const STAIR_PREVIEW = Object.fromEntries(terrain.filter((t) => t.type === 'stairs').map((t) => [t.id, STAIR_LOOK[t.id] ?? 'A']))
+for (const st of terrain.filter((t) => t.type === 'stairs' && STAIR_PREVIEW[t.id])) {
+  // 소품 위치 = 계단 시작점 (거리 컬링이 소품 위치 기준이라), dress 좌표는 그 점 기준 상대값
+  const [ax, az, ah] = st.from
+  const [bx, bz, bh] = st.to
+  prop(`${st.id}_dress`, 'jmStairDress', [ax, az], [st.width, 1, 1], { collider: false, dress: { from: [0, 0, ah], to: [r2(bx - ax), r2(bz - az), bh], width: st.width, variant: STAIR_PREVIEW[st.id], stepHeight: st.stepHeight ?? 0.22 } })
+}
+
+// 11/24: 벽·울타리를 보고 있던 벤치 방향 바로잡기 (앞 = 로컬 +z)
+//   대나무 숲 벤치 2개: 남쪽 장면 자리 2 마당 옹벽 → 북쪽 대나무 숲 / 도리이 계단 위 벤치: 바로 앞 북쪽 울타리 → 남쪽 계단
+const BENCH_FACE = { jm_zaka_bench_bamboo_1: 180, jm_zaka_bench_bamboo_2: 180, jm_zaka_landing_bench: 0 }
+for (const item of props) if (BENCH_FACE[item.id] !== undefined) item.rotationDeg = BENCH_FACE[item.id]
 
 // 겹치는 id 검사
 const ids = new Set()

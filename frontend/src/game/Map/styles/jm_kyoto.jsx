@@ -25,8 +25,9 @@ const SHOJI = mat('#ffe7b8', { emissive: '#ffb45e', emissiveIntensity: 0.75, rou
 const LANTERN = mat('#e0412c', { emissive: '#ff6a35', emissiveIntensity: 0.9 })
 const LAMP_GLOW = mat('#fff1cf', { emissive: '#ffcf7a', emissiveIntensity: 1.3 })
 // 수로 물은 반투명으로 바꿔 바닥이 살짝 비치게 (개울은 조금 더 초록빛)
-const WATER_CLEAR = mat('#3f7f8c', { emissive: '#163a44', emissiveIntensity: 0.3, roughness: 0.1, metalness: 0.25, transparent: true, opacity: 0.85 })
-const WATER_STREAM = mat('#3d7a72', { emissive: '#12352f', emissiveIntensity: 0.3, roughness: 0.08, metalness: 0.25, transparent: true, opacity: 0.78 })
+// 11/24: 물은 맵 바다(혜진 구역 hjSea)와 같은 느낌으로 — 깊은 물색 바닥 + 출렁이는 반투명 물결 면
+const WATER_DEEP = mat('#1f4f7a', { roughness: 0.6 })
+const WATER_SURFACE = new THREE.MeshStandardMaterial({ color: '#3d84b8', transparent: true, opacity: 0.86, roughness: 0.25, metalness: 0.15 })
 
 // 처마 밑에 매다는 붉은 제등 하나
 function HangingLantern({ p, scale = 1 }) {
@@ -121,148 +122,335 @@ export function JmRyokan({ item }) {
   )
 }
 
-// ── 언덕 위 큰 온천 여관 (마을의 상징) ─────────────
-// 3단으로 위로 갈수록 좁아지는 목조 건물. 1층 앞은 붉은 기둥 회랑, 맨 뒤에 굴뚝.
-// size 예: [34, 12, 20]. 굴뚝·꼭대기 장식은 size 높이보다 조금 더 올라가요 (충돌은 size 그대로)
-export function JmGrandRyokan({ item }) {
-  const [w, h, d] = item.size
-  const sign = item.signs?.[0]
-  // item.enterable: 1층을 속이 빈 로비로 (벽 충돌은 생성 스크립트가 jmCollider로 깔아 줌, 현관 폭 GRAND_DOOR)
-  const enterable = item.enterable ?? false
-  const tiers = [
-    { sw: 1, sd: 1, fh: h * 0.3 },
-    { sw: 0.78, sd: 0.72, fh: h * 0.24 },
-    { sw: 0.52, sd: 0.48, fh: h * 0.2 },
-  ]
-  let y = 0.6
-  const parts = tiers.map((t) => {
-    const part = { ...t, y, tw: w * t.sw, td: d * t.sd }
-    y += t.fh
-    return part
-  })
-  const roofs = useMemo(
-    () => parts.map((p, i) => hipRoofGeometry(p.tw + 1.6, p.td + 1.6, i === parts.length - 1 ? h * 0.16 : 1.1, 0.35)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [w, d, h],
-  )
+// ── 고층 여관 「湯灯屋」 (11/24, 독자 디자인) ─────────
+// item.floors: [{ h, kind }] 아래층부터. 층마다 높이가 다름 (kind: lobby·rooms·bath·banquet·view)
+// item.stair: 안쪽 계단 자리 { x0, x1, z, w, holeX, holeZ } — 위층 바닥은 이 자리만 뚫림 (충돌은 생성 스크립트와 같은 값)
+// 걷는 판정(바닥판·벽·계단·난간)은 생성 스크립트가 jmCollider·지형 계단으로 깔고, 여기서는 그림만
+// 앞(+z) 1층 가운데가 현관(GRAND_DOOR). 층마다 바깥에 처마·붉은 발코니·제등, 꼭대기에 큰 지붕
+export const GRAND_DOOR = 2.4
+const WALL_T = 0.25
+const LOBBY_WALL = '#e9dcc0'
+const BASE_H = 0.6
+const FLOOR_WOOD = ['#8a6243', '#7a5a3e', '#6f4a33', '#8d6a4a', '#5e4330']
 
+export function JmGrandRyokan({ item }) {
+  const [w, , d] = item.size
+  const sign = item.signs?.[0]
+  const floors = item.floors ?? [{ h: 3.6, kind: 'lobby' }]
+  const stair = item.stair
+  const bases = floors.reduce((acc, f) => [...acc, acc[acc.length - 1] + f.h], [BASE_H])
+  const total = bases[bases.length - 1]
+  const roof = useMemo(() => hipRoofGeometry(w + 2.4, d + 2.4, 3.4, 0.35), [w, d])
   return (
     <group>
       {/* 돌 기단 + 앞 계단 */}
-      <Box p={[0, 0.3, 0]} s={[w + 1, 0.6, d + 1]} c={STONE} />
+      <Box p={[0, BASE_H / 2, 0]} s={[w + 1, BASE_H, d + 1]} c={STONE} />
       {range(3).map((i) => (
         <Box key={i} p={[0, 0.1 + i * 0.2, d / 2 + 1.6 - i * 0.4]} s={[8, 0.2, 0.4]} c="#b5ad9f" />
       ))}
-      {parts.map((p, i) => {
-        const fz = p.td / 2
-        const bandW = p.tw - 1.4
-        const hollow = enterable && i === 0
-        // 들어갈 수 있으면 1층 앞면 가운데(현관 폭)는 장지문·살을 비움
-        const inDoor = (x, half) => hollow && Math.abs(x) < GRAND_DOOR / 2 + half
-        const sideBand = (bandW - GRAND_DOOR) / 2
-        return (
-          <group key={i}>
-            {hollow ? (
-              <GrandRyokanShell w={p.tw} d={p.td} y={p.y} h={p.fh} />
-            ) : (
-              <Box p={[0, p.y + p.fh / 2, 0]} s={[p.tw, p.fh, p.td]} c={i === 0 ? DARK_WOOD : WOOD} />
-            )}
-            {/* 장지문 불빛 2줄 */}
-            {[0.3, 0.68].map((t) =>
-              hollow ? (
-                [-1, 1].map((side) => (
-                  <Box key={`${t}${side}`} p={[side * (GRAND_DOOR / 2 + sideBand / 2), p.y + p.fh * t, fz + 0.03]} s={[sideBand, p.fh * 0.26, 0.05]} m={SHOJI} />
-                ))
-              ) : (
-                <Box key={t} p={[0, p.y + p.fh * t, fz + 0.03]} s={[bandW, p.fh * 0.26, 0.05]} m={SHOJI} />
-              ),
-            )}
-            {range(Math.round(bandW / 1.1)).map((k, _, all) => {
-              const x = -bandW / 2 + (k * bandW) / (all.length - 1)
-              if (inDoor(x, 0.1)) return null
-              return <Box key={k} p={[x, p.y + p.fh / 2, fz + 0.08]} s={[0.1, p.fh * 0.9, 0.08]} c={DARK_WOOD} />
-            })}
-            {/* 옆면 창 */}
-            {[-1, 1].map((side) => (
-              <Box key={side} p={[side * (p.tw / 2 + 0.03), p.y + p.fh * 0.5, 0]} s={[0.05, p.fh * 0.3, p.td - 2]} m={SHOJI} />
-            ))}
-            {/* 발코니 난간 (2단부터) */}
-            {i > 0 && <Box p={[0, p.y + 0.9, fz + 0.7]} s={[p.tw - 0.6, 0.1, 0.1]} c={VERMILION} />}
-            {i > 0 && <Box p={[0, p.y + 0.05, fz + 0.4]} s={[p.tw - 0.6, 0.1, 0.8]} c={WOOD} />}
-            <mesh geometry={roofs[i]} position={[0, p.y + p.fh, 0]}>
-              <meshStandardMaterial color={ROOF} flatShading side={THREE.DoubleSide} />
-            </mesh>
-            {/* 처마 끝 제등 줄 */}
-            {range(Math.round(p.tw / 2.6)).map((k, _, all) => (
-              <HangingLantern key={k} p={[-p.tw / 2 + 1 + (k * (p.tw - 2)) / Math.max(1, all.length - 1), p.y + p.fh - 0.6, fz + 1]} scale={i === 0 ? 1.2 : 1} />
-            ))}
-          </group>
-        )
-      })}
-      {/* 1층 붉은 기둥 회랑 */}
-      {range(9).map((k) => {
-        const x = -w / 2 + 1 + (k * (w - 2)) / 8
-        // 현관 바로 앞 기둥은 빼서 드나드는 길·카메라를 막지 않게
-        if (enterable && Math.abs(x) < GRAND_DOOR / 2 + 0.3) return null
-        return <Cyl key={k} p={[x, 0.6 + parts[0].fh / 2, d / 2 + 0.9]} rad={0.22} h={parts[0].fh} c={VERMILION} />
-      })}
-      <Box p={[0, 0.6 + parts[0].fh - 0.15, d / 2 + 0.9]} s={[w - 1.6, 0.3, 0.35]} c={VERMILION} />
-      {/* 정면 큰 현판 */}
-      {sign && (
-        <group position={[0, parts[1].y + parts[1].fh * 0.95, parts[1].td / 2 + 0.7]}>
-          <Box p={[0, 0, -0.06]} s={[5.4, 1.7, 0.1]} c={DARK_WOOD} />
+      {floors.map((f, k) => (
+        <TowerFloor key={k} k={k} f={f} y={bases[k]} w={w} d={d} stair={stair} last={k === floors.length - 1} />
+      ))}
+      {/* 지붕 밑 판 + 큰 지붕 + 금색 꼭대기 장식 + 굴뚝(지붕 위만) */}
+      <Box p={[0, total + 0.1, 0]} s={[w, 0.2, d]} c={DARK_WOOD} />
+      <mesh geometry={roof} position={[0, total + 0.2, 0]}>
+        <meshStandardMaterial color={ROOF} flatShading side={THREE.DoubleSide} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <Cyl key={s} p={[s * (w / 2 - 1.5), total + 3.9, 0]} rad={0.22} h={0.9} c="#c9a245" />
+      ))}
+      <group position={[w * 0.36, total, -d * 0.2]}>
+        <Cyl p={[0, 3.4, 0]} rad={0.6} h={6.8} c="#7d6c5e" />
+        <Cyl p={[0, 6.9, 0]} rad={0.75} h={0.4} c="#3d3530" />
+      </group>
+      {/* 2층 정면 큰 현판 */}
+      {sign && floors.length > 1 && (
+        <group position={[0, bases[1] + floors[1].h * 0.55, d / 2 + 1.05]}>
+          <Box p={[0, 0, -0.06]} s={[5.4, 1.5, 0.1]} c={DARK_WOOD} />
           <mesh>
-            <planeGeometry args={[5, 1.4]} />
-            <GlowMaterial glow={0.8} map={getJpSignTexture(sign.text, sign.bg ?? '#f3dfb2', sign.fg ?? '#7a1d12', 5 / 1.4)} side={THREE.DoubleSide} />
+            <planeGeometry args={[5, 1.25]} />
+            <GlowMaterial glow={0.8} map={getJpSignTexture(sign.text, sign.bg ?? '#f3dfb2', sign.fg ?? '#7a1d12', 5 / 1.25)} side={THREE.DoubleSide} />
           </mesh>
         </group>
       )}
-      {/* 지붕 꼭대기 장식 */}
-      <Cyl p={[0, y + h * 0.16 + 0.5, 0]} rad={0.25} h={1} c="#c9a245" />
-      {/* 굴뚝 (온천 보일러). 로비를 뚫지 않게 2층 바닥부터 */}
-      <group position={[w * 0.38, 0, -d * 0.32]}>
-        <Cyl p={[0, (parts[1].y + h + 6) / 2, 0]} rad={0.8} h={h + 6 - parts[1].y} c="#7d6c5e" />
-        <Cyl p={[0, h + 6, 0]} rad={0.95} h={0.5} c="#3d3530" />
-        {range(3).map((k) => (
-          <Cyl key={k} p={[0, parts[1].y + 1.5 + k * ((h + 2) / 4), 0]} rad={0.84} h={0.18} c="#4b403a" />
-        ))}
-      </group>
-      {enterable && <GrandRyokanLobby w={w} d={d} floor={0.6} ceil={0.6 + parts[0].fh} />}
+      {/* 1층 붉은 기둥 회랑 (현관 앞 기둥은 빼서 드나드는 길을 막지 않게) */}
+      {range(9).map((k) => {
+        const x = -w / 2 + 1 + (k * (w - 2)) / 8
+        if (Math.abs(x) < GRAND_DOOR / 2 + 0.3) return null
+        return <Cyl key={k} p={[x, BASE_H + floors[0].h / 2, d / 2 + 0.9]} rad={0.22} h={floors[0].h} c={VERMILION} />
+      })}
+      <Box p={[0, BASE_H + floors[0].h - 0.15, d / 2 + 0.9]} s={[w - 1.6, 0.3, 0.35]} c={VERMILION} />
+      {floors[0].kind === 'lobby' && <GrandRyokanLobby w={w} d={d} floor={BASE_H} ceil={BASE_H + floors[0].h} />}
     </group>
   )
 }
 
-// ── 큰 여관 1층: 속 빈 벽(뒤·옆·앞 현관 양쪽) + 바닥·천장 ──
-export const GRAND_DOOR = 2.4
-const WALL_T = 0.25
-const LOBBY_WALL = '#e9dcc0'
-function GrandRyokanShell({ w, d, y, h }) {
-  const side = (w - GRAND_DOOR) / 2
+// 처마: 벽 바깥으로 비스듬히 내민 판 4장 (안에서 보이지 않게 벽 밖에만)
+function Eave({ w, d, y, out = 1.3 }) {
+  const tilt = 0.42
   return (
     <group>
-      {/* 바닥 (마루) + 천장 + 천장 보 */}
-      <Box p={[0, y + 0.03, 0]} s={[w - 0.1, 0.06, d - 0.1]} c="#8a6243" />
-      <Box p={[0, y + h - 0.04, 0]} s={[w - 0.1, 0.08, d - 0.1]} c="#d9c8a6" />
-      {range(7).map((k) => (
-        <Box key={k} p={[-w / 2 + 1 + (k * (w - 2)) / 6, y + h - 0.18, 0]} s={[0.18, 0.2, d - 0.3]} c={DARK_WOOD} />
-      ))}
-      {/* 겉은 짙은 나무, 안쪽 면은 밝은 회벽 */}
-      <Box p={[0, y + h / 2, -d / 2 + WALL_T / 2]} s={[w, h, WALL_T]} c={DARK_WOOD} />
-      <Box p={[0, y + h / 2, -d / 2 + WALL_T + 0.01]} s={[w - 0.6, h - 0.2, 0.02]} c={LOBBY_WALL} />
       {[-1, 1].map((s) => (
-        <group key={s}>
-          <Box p={[s * (w / 2 - WALL_T / 2), y + h / 2, 0]} s={[WALL_T, h, d]} c={DARK_WOOD} />
-          <Box p={[s * (w / 2 - WALL_T - 0.01), y + h / 2, 0]} s={[0.02, h - 0.2, d - 0.6]} c={LOBBY_WALL} />
-          <Box p={[s * (GRAND_DOOR / 2 + side / 2), y + h / 2, d / 2 - WALL_T / 2]} s={[side, h, WALL_T]} c={DARK_WOOD} />
-          {/* 현관 기둥 */}
-          <Box p={[s * (GRAND_DOOR / 2 + 0.1), y + h / 2, d / 2 - WALL_T / 2]} s={[0.22, h, WALL_T + 0.1]} c={VERMILION} />
+        <group key={`fz${s}`}>
+          <mesh position={[0, y - Math.sin(tilt) * out * 0.5, s * (d / 2 + Math.cos(tilt) * out * 0.5)]} rotation={[s * tilt, 0, 0]}>
+            <boxGeometry args={[w + out * 2, 0.12, out]} />
+            <meshStandardMaterial color={ROOF} flatShading />
+          </mesh>
+          <mesh position={[s * (w / 2 + Math.cos(tilt) * out * 0.5), y - Math.sin(tilt) * out * 0.5, 0]} rotation={[0, 0, -s * tilt]}>
+            <boxGeometry args={[out, 0.12, d]} />
+            <meshStandardMaterial color={ROOF} flatShading />
+          </mesh>
         </group>
       ))}
-      {/* 현관 위 벽 + 노렌 */}
-      <Box p={[0, y + h - 0.45, d / 2 - WALL_T / 2]} s={[GRAND_DOOR, 0.9, WALL_T]} c={DARK_WOOD} />
+    </group>
+  )
+}
+
+// 층 하나: 벽(겉 짙은 나무 + 안 회벽) + 바깥 장지문 불빛·살 + 처마·발코니 + 바닥판(뚫린 계단 자리) + 안 꾸밈
+function TowerFloor({ k, f, y, w, d, stair, last }) {
+  const h = f.h
+  const first = k === 0
+  const side = (w - GRAND_DOOR) / 2
+  const inner = w / 2 - WALL_T
+  const innerD = d / 2 - WALL_T
+  const bandW = w - 1.4
+  const sideBand = (bandW - GRAND_DOOR) / 2
+  const glass = f.kind === 'view'
+  const [hx0, hx1] = stair?.holeX ?? [0, 0]
+  const [hz0, hz1] = stair?.holeZ ?? [0, 0]
+  const arriveEast = (k - 1) % 2 === 0
+  const railFrom = arriveEast ? hx0 : hx0 + 1.6
+  const railTo = arriveEast ? hx1 - 1.4 : hx1
+  const floorColor = FLOOR_WOOD[k % FLOOR_WOOD.length]
+  return (
+    <group>
+      {/* 바닥 (1층은 마루, 위층은 계단 자리만 뚫린 바닥판 — 아래층 천장도 됨) */}
+      {first || !stair ? (
+        <Box p={[0, y + 0.03, 0]} s={[w - 0.1, 0.06, d - 0.1]} c={floorColor} />
+      ) : (
+        <group>
+          <Box p={[0, y - 0.12, (hz1 + innerD) / 2]} s={[inner * 2, 0.25, innerD - hz1]} c={floorColor} />
+          <Box p={[(hx1 + inner) / 2, y - 0.12, (hz0 + hz1) / 2]} s={[inner - hx1, 0.25, hz1 - hz0]} c={floorColor} />
+          <Box p={[0, y - 0.255, (hz1 + innerD) / 2]} s={[inner * 2, 0.01, innerD - hz1]} c="#d9c8a6" />
+          {/* 계단 구멍 가장자리 나무 난간 (도착하는 끝은 비움) */}
+          <Box p={[(railFrom + railTo) / 2, y + 0.95, hz1]} s={[railTo - railFrom, 0.08, 0.1]} c="#7a5236" />
+          {range(Math.max(2, Math.round((railTo - railFrom) / 1.1) + 1)).map((i, _, all) => (
+            <Box key={i} p={[railFrom + ((railTo - railFrom) * i) / (all.length - 1), y + 0.48, hz1]} s={[0.08, 0.95, 0.08]} c="#5a3d2a" />
+          ))}
+        </group>
+      )}
+      {/* 벽: 겉은 짙은 나무, 안쪽 면은 밝은 회벽 */}
+      <Box p={[0, y + h / 2, -d / 2 + WALL_T / 2]} s={[w, h, WALL_T]} c={first ? DARK_WOOD : WOOD} />
+      <Box p={[0, y + h / 2, -d / 2 + WALL_T + 0.01]} s={[w - 0.6, h - 0.3, 0.02]} c={LOBBY_WALL} />
       {[-1, 1].map((s) => (
-        <Box key={`n${s}`} p={[s * 0.6, y + h - 1.25, d / 2 + 0.02]} s={[1.15, 0.75, 0.02]} c="#2d3a5c" />
+        <group key={s}>
+          <Box p={[s * (w / 2 - WALL_T / 2), y + h / 2, 0]} s={[WALL_T, h, d]} c={first ? DARK_WOOD : WOOD} />
+          <Box p={[s * (w / 2 - WALL_T - 0.01), y + h / 2, 0]} s={[0.02, h - 0.3, d - 0.6]} c={LOBBY_WALL} />
+          {first && <Box p={[s * (GRAND_DOOR / 2 + side / 2), y + h / 2, d / 2 - WALL_T / 2]} s={[side, h, WALL_T]} c={DARK_WOOD} />}
+          {first && <Box p={[s * (GRAND_DOOR / 2 + 0.1), y + h / 2, d / 2 - WALL_T / 2]} s={[0.22, h, WALL_T + 0.1]} c={VERMILION} />}
+          {/* 옆면 창 불빛 */}
+          <Box p={[s * (w / 2 + 0.03), y + h * 0.5, 0]} s={[0.05, h * 0.3, d - 2]} m={SHOJI} />
+        </group>
       ))}
+      {first && <Box p={[0, y + h - 0.45, d / 2 - WALL_T / 2]} s={[GRAND_DOOR, 0.9, WALL_T]} c={DARK_WOOD} />}
+      {first &&
+        [-1, 1].map((s) => <Box key={`n${s}`} p={[s * 0.6, y + h - 1.25, d / 2 + 0.02]} s={[1.15, 0.75, 0.02]} c="#2d3a5c" />)}
+      {!first && <Box p={[0, y + h / 2, d / 2 - WALL_T / 2]} s={[w, h, WALL_T]} c={WOOD} />}
+      {!first && !glass && <Box p={[0, y + h / 2, d / 2 - WALL_T - 0.01]} s={[w - 0.6, h - 0.3, 0.02]} c={LOBBY_WALL} />}
+      {/* 바깥 앞면: 장지문 불빛 2줄(전망실은 큰 유리창 — 안에서도 밝게 보임) + 세로 살 */}
+      {glass && <Box p={[0, y + h * 0.52, d / 2 + 0.03]} s={[bandW, h * 0.6, 0.05]} m={VIEW_GLASS} />}
+      {glass && <Box p={[0, y + h * 0.52, d / 2 - WALL_T - 0.03]} s={[bandW, h * 0.6, 0.03]} m={VIEW_GLASS} />}
+      {!glass &&
+        [0.3, 0.68].map((t) =>
+          first ? (
+            [-1, 1].map((s) => (
+              <Box key={`${t}${s}`} p={[s * (GRAND_DOOR / 2 + sideBand / 2), y + h * t, d / 2 + 0.03]} s={[sideBand, h * 0.26, 0.05]} m={SHOJI} />
+            ))
+          ) : (
+            <Box key={t} p={[0, y + h * t, d / 2 + 0.03]} s={[bandW, h * 0.26, 0.05]} m={SHOJI} />
+          ),
+        )}
+      {range(Math.round(bandW / 1.1)).map((i, _, all) => {
+        const x = -bandW / 2 + (i * bandW) / (all.length - 1)
+        if (first && Math.abs(x) < GRAND_DOOR / 2 + 0.1) return null
+        return <Box key={`sl${i}`} p={[x, y + h / 2, d / 2 + 0.08]} s={[0.1, h * 0.9, 0.08]} c={DARK_WOOD} />
+      })}
+      {/* 2층부터: 붉은 발코니(바깥 장식, 들어갈 수 없음) */}
+      {!first && <Box p={[0, y + 0.05, d / 2 + 0.45]} s={[w - 0.6, 0.1, 0.8]} c={WOOD} />}
+      {!first && <Box p={[0, y + 0.95, d / 2 + 0.82]} s={[w - 0.6, 0.1, 0.1]} c={VERMILION} />}
+      {!first &&
+        range(12).map((i) => <Box key={`bp${i}`} p={[-w / 2 + 0.5 + (i * (w - 1)) / 11, y + 0.5, d / 2 + 0.82]} s={[0.08, 0.9, 0.08]} c={VERMILION} />)}
+      {/* 층 위 처마 + 처마 끝 제등 (꼭대기 층은 큰 지붕이 대신) */}
+      {!last && <Eave w={w} d={d} y={y + h - 0.05} out={first ? 1.5 : 1.2} />}
+      {!last &&
+        range(Math.round(w / 2.8)).map((i, _, all) => (
+          <HangingLantern key={`hl${i}`} p={[-w / 2 + 1 + (i * (w - 2)) / Math.max(1, all.length - 1), y + h - 0.75, d / 2 + 1.05]} scale={first ? 1.15 : 0.95} />
+        ))}
+      {f.kind === 'rooms' && <FloorRooms y={y} h={h} w={w} d={d} />}
+      {f.kind === 'bath' && <FloorBath y={y} h={h} w={w} />}
+      {f.kind === 'banquet' && <FloorBanquet y={y} h={h} w={w} />}
+      {f.kind === 'view' && <FloorView y={y} h={h} w={w} d={d} />}
+    </group>
+  )
+}
+
+const VIEW_GLASS = mat('#cfe6f5', { transparent: true, opacity: 0.35, emissive: '#ffe2b0', emissiveIntensity: 0.15, roughness: 0.05, double: true })
+const STEAM = mat('#ffffff', { transparent: true, opacity: 0.35, roughness: 1 })
+const BATH_WATER = mat('#7fc4c8', { transparent: true, opacity: 0.8, emissive: '#1d5a5e', emissiveIntensity: 0.3, roughness: 0.05, metalness: 0.2 })
+const GOLD_SCREEN = mat('#d4b15a', { emissive: '#6b5214', emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.3 })
+const LANTERN_RED = mat('#c2410c', { emissive: '#ff9a4d', emissiveIntensity: 0.8 })
+
+// 층 이름 간판 (계단 올라오는 쪽 천장에 매달림)
+function FloorSign({ text, y, h, x = -2.6, z = -1.2 }) {
+  return (
+    <group position={[x, y + h - 0.6, z]}>
+      <mesh>
+        <planeGeometry args={[1.5, 0.55]} />
+        <GlowMaterial glow={0.5} map={getJpSignTexture(text, '#3d2a1e', '#f3e6c8', 1.5 / 0.55)} side={THREE.DoubleSide} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <Box key={s} p={[s * 0.55, 0.42, 0]} s={[0.02, 0.3, 0.02]} c="#2b1d14" />
+      ))}
+    </group>
+  )
+}
+
+// 2층 객실: 뒷벽 미닫이 방문(번호패) 줄 + 동쪽 끝 문 열린 방(다다미·이불·상) + 복도 제등
+function FloorRooms({ y, h, w, d }) {
+  const back = -d / 2 + WALL_T
+  const right = w / 2 - WALL_T
+  return (
+    <group>
+      <FloorSign text="客室" y={y} h={h} />
+      {range(5).map((i) => (
+        <group key={i} position={[-2.6 + i * 1.9, y, back + 0.05]}>
+          <Box p={[0, 1.05, 0]} s={[1.6, 2.1, 0.05]} c="#efe6cf" />
+          <Box p={[0, 1.05, 0.03]} s={[0.04, 2.1, 0.02]} c={DARK_WOOD} />
+          <Box p={[0, 2.15, 0.02]} s={[1.7, 0.1, 0.06]} c={DARK_WOOD} />
+          <Box p={[0.55, 2.4, 0.03]} s={[0.36, 0.2, 0.02]} c="#3d2a1e" />
+          <Box p={[0.55, 2.4, 0.045]} s={[0.24, 0.08, 0.01]} c="#f3e6c8" />
+        </group>
+      ))}
+      {/* 문 열린 방 (동쪽 끝): 다다미 + 이불 + 낮은 상 + 행등 */}
+      <Box p={[right - 1.6, y + 0.06, -1.6]} s={[3, 0.1, 3.8]} c={TATAMI} />
+      <Box p={[right - 1.6, y + 0.115, -1.6]} s={[0.03, 0.01, 3.7]} c={TATAMI_EDGE} />
+      <Box p={[right - 2.2, y + 0.2, -2.4]} s={[1.1, 0.16, 2]} c="#f5f0e6" />
+      <Box p={[right - 2.2, y + 0.3, -1.65]} s={[1.1, 0.1, 0.5]} c="#9fb7d8" />
+      <Box p={[right - 2.2, y + 0.29, -2.75]} s={[1.0, 0.12, 1.1]} c="#c2410c" />
+      <group position={[right - 0.9, y + 0.1, -0.6]}>
+        <Box p={[0, 0.25, 0]} s={[0.8, 0.05, 0.6]} c="#4a2f1f" />
+        <Box p={[0, 0.12, 0]} s={[0.1, 0.24, 0.1]} c="#4a2f1f" />
+        <Cyl p={[0.15, 0.32, 0]} rad={0.05} h={0.09} c="#5f7f4a" />
+      </group>
+      <Box p={[right - 0.45, y + 0.45, -3.2]} s={[0.32, 0.6, 0.32]} m={PAPER_GLOW} />
+      {[-1.5, 2.5, 6.5].map((x) => (
+        <HangingLantern key={x} p={[x, y + h - 0.7, 1.4]} scale={0.9} />
+      ))}
+    </group>
+  )
+}
+
+// 3층 대욕장: 큰 나무 욕조(물·김) + 동쪽 벽 씻는 자리(의자·통·거울) + 대나무 칸막이
+function FloorBath({ y, h, w }) {
+  const right = w / 2 - WALL_T
+  const tub = { x: 4.5, z: -0.8, w: 7.4, d: 4.2 }
+  return (
+    <group>
+      <FloorSign text="大浴場" y={y} h={h} />
+      <Box p={[3.5, y + 0.07, 0]} s={[13.4, 0.02, 7.2]} c="#9a958b" />
+      <group position={[tub.x, y, tub.z]}>
+        {[-1, 1].map((s) => (
+          <group key={s}>
+            <Box p={[0, 0.33, s * (tub.d / 2 - 0.12)]} s={[tub.w, 0.65, 0.24]} c="#a0764d" />
+            <Box p={[s * (tub.w / 2 - 0.12), 0.33, 0]} s={[0.24, 0.65, tub.d]} c="#a0764d" />
+          </group>
+        ))}
+        <Box p={[0, 0.25, 0]} s={[tub.w - 0.3, 0.5, tub.d - 0.3]} c="#6b4a30" />
+        <Box p={[0, 0.54, 0]} s={[tub.w - 0.36, 0.02, tub.d - 0.36]} m={BATH_WATER} />
+        {range(7).map((i) => (
+          <mesh key={i} position={[-2.8 + i * 0.95, 1.0 + (i % 3) * 0.35, i % 2 ? 0.6 : -0.6]} material={STEAM} scale={[0.7, 0.45, 0.7]}>
+            <sphereGeometry args={[1, 10, 8]} />
+          </mesh>
+        ))}
+        <Box p={[tub.w / 2 - 0.4, 1.2, -tub.d / 2 + 0.3]} s={[0.12, 0.12, 0.9]} c="#7a8f3d" />
+      </group>
+      {range(4).map((i) => (
+        <group key={i} position={[right - 0.5, y, -2.7 + i * 1.6]}>
+          <Box p={[-0.35, 0.18, 0]} s={[0.35, 0.3, 0.3]} c="#c98a46" />
+          <Cyl p={[-0.1, 0.12, 0.35]} rad={0.14} h={0.18} c="#a0764d" />
+          <Box p={[0.22, 1.25, 0]} s={[0.03, 0.6, 0.45]} c="#cfe6f5" />
+        </group>
+      ))}
+      <Box p={[-3.2, y + 0.9, 1.6]} s={[0.12, 1.8, 3.6]} c="#7a8f3d" />
+      <HangingLantern p={[4.5, y + h - 0.8, 2.4]} scale={1} />
+    </group>
+  )
+}
+
+// 4층 연회장: 긴 낮은 상 2줄 + 방석·그릇 + 동쪽 무대(금 병풍·제등)
+function FloorBanquet({ y, h, w }) {
+  const right = w / 2 - WALL_T
+  return (
+    <group>
+      <FloorSign text="宴会場" y={y} h={h} />
+      <Box p={[1.6, y + 0.06, 0.6]} s={[11, 0.1, 6.2]} c={TATAMI} />
+      {[-0.6, 2.2].map((z) => (
+        <group key={z} position={[1.4, y + 0.1, z]}>
+          <Box p={[0, 0.3, 0]} s={[8.4, 0.06, 0.8]} c="#4a2f1f" />
+          {[-1, 1].map((s) => (
+            <Box key={s} p={[s * 3.9, 0.14, 0]} s={[0.1, 0.28, 0.6]} c="#4a2f1f" />
+          ))}
+          {range(7).map((i) => (
+            <group key={i}>
+              {[-1, 1].map((s) => (
+                <Box key={s} p={[-3.6 + i * 1.2, 0.05, s * 0.75]} s={[0.55, 0.08, 0.55]} c="#7f1d1d" />
+              ))}
+              <Cyl p={[-3.6 + i * 1.2, 0.36, -0.2]} rad={0.12} h={0.04} c="#b91c1c" />
+              <Cyl p={[-3.6 + i * 1.2, 0.36, 0.2]} rad={0.12} h={0.04} c="#1f2937" />
+            </group>
+          ))}
+        </group>
+      ))}
+      <Box p={[right - 1.85, y + 0.18, -0.6]} s={[3.2, 0.35, 5.4]} c="#6b4630" />
+      {range(5).map((i) => (
+        <Box key={i} p={[right - 0.12, y + 1.4, -2.6 + i * 1.0]} s={[0.04, 1.8, 0.98]} m={GOLD_SCREEN} />
+      ))}
+      {[-1, 1].map((s) => (
+        <Cyl key={s} p={[right - 1.85, y + h - 0.8, -0.6 + s * 2]} rad={0.24} h={0.5} m={LANTERN_RED} />
+      ))}
+      <HangingLantern p={[1.4, y + h - 0.7, 0.8]} scale={1} />
+    </group>
+  )
+}
+
+// 5층 전망실: 큰 유리창 쪽을 보는 긴 의자 + 망원경 + 작은 신단 + 큰 제등
+function FloorView({ y, h, w, d }) {
+  const right = w / 2 - WALL_T
+  const front = d / 2 - WALL_T
+  return (
+    <group>
+      <FloorSign text="展望の間" y={y} h={h} />
+      {[-0.5, 4.5].map((x) => (
+        <group key={x} position={[x, y, front - 1.6]}>
+          <Box p={[0, 0.42, 0]} s={[3, 0.08, 0.5]} c="#9a7650" />
+          {[-1, 1].map((s) => (
+            <Box key={s} p={[s * 1.3, 0.2, 0]} s={[0.1, 0.4, 0.42]} c="#5a3d2a" />
+          ))}
+        </group>
+      ))}
+      <group position={[8.5, y, front - 0.9]}>
+        <Cyl p={[0, 0.6, 0]} rad={0.05} h={1.2} c="#2b2d30" />
+        <mesh position={[0, 1.25, 0.15]} rotation={[-0.25, 0, 0]}>
+          <cylinderGeometry args={[0.08, 0.1, 0.7, 12]} />
+          <meshStandardMaterial color="#c9a245" metalness={0.5} roughness={0.4} />
+        </mesh>
+      </group>
+      <group position={[right - 0.3, y + 1.6, -1.6]}>
+        <Box p={[0, 0, 0]} s={[0.4, 0.08, 1.4]} c="#3a281c" />
+        <Box p={[0, 0.3, 0]} s={[0.3, 0.5, 0.5]} c="#f5f0e6" />
+        <Box p={[0, 0.6, 0]} s={[0.4, 0.1, 0.7]} c={ROOF} />
+      </group>
+      <Cyl p={[2, y + h - 1.0, -0.4]} rad={0.45} h={0.9} m={LANTERN_RED} />
     </group>
   )
 }
@@ -329,7 +517,7 @@ function GrandRyokanLobby({ w, d, floor: F, ceil }) {
       {range(4).map((k) => (
         <Box
           key={`by${k}`}
-          p={[left + 0.35 + (k % 2) * 0.12, F + 0.85, -2.4 + k * 0.62]}
+          p={[left + 0.35 + (k % 2) * 0.12, F + 0.85, -1.7 + k * 0.62]}
           s={[0.04, 1.7, 0.62]}
           c={k % 2 ? '#d4b15a' : '#c9a245'}
         />
@@ -430,7 +618,7 @@ function GrandRyokanLobby({ w, d, floor: F, ceil }) {
       </group>
 
       {/* ── 불빛: 바닥 행등(사방 종이등) + 천장 붉은 제등 ── */}
-      {[[left + 0.5, back + 0.5], [2, back + 0.5], [right - 0.5, 1.2], [-3.4, front - 0.5]].map(([x, z]) => (
+      {[[left + 0.5, 1.6], [2, back + 0.5], [right - 0.5, 1.2], [-3.4, front - 0.5]].map(([x, z]) => (
         <group key={`an${x}${z}`} position={[x, F, z]}>
           <Box p={[0, 0.06, 0]} s={[0.4, 0.12, 0.4]} c={DARK_WOOD} />
           <Box p={[0, 0.5, 0]} s={[0.34, 0.7, 0.34]} m={PAPER_GLOW} />
@@ -453,6 +641,7 @@ const RIVER_ROCK = mat('#7d776e', { flat: true, roughness: 0.95 })
 const MOSS_ROCK = mat('#6b7356', { flat: true, roughness: 1 })
 const BED_STONE = mat('#5c5a52', { flat: true, roughness: 1 })
 // 같은 개울은 늘 같은 자리에 바위가 놓이게 (Math.random 대신 정해진 수열)
+const waveTmp = new THREE.Vector3()
 const seeded = (n) => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
   return x - Math.floor(x)
@@ -471,8 +660,34 @@ export function JmCanal({ item }) {
     return t
   }, [inner, len])
   const speed = item.flowSpeed ?? (natural ? 0.5 : 0.22)
-  useFrame((_, delta) => {
+  // 출렁이는 물결 면 (hjSea와 같은 방식: 꼭짓점 높이를 sin 물결로, 갱신은 초당 30번까지, 멀면 쉼)
+  const surfaceRef = useRef(null)
+  const lastTick = useRef(-1)
+  const wave = useMemo(() => {
+    const g = new THREE.PlaneGeometry(inner, len, Math.max(2, Math.ceil(inner / 0.7)), Math.max(2, Math.ceil(len / 0.9)))
+    g.rotateX(-Math.PI / 2)
+    g.attributes.position.setUsage(THREE.DynamicDrawUsage)
+    return { g, base: Float32Array.from(g.attributes.position.array) }
+  }, [inner, len])
+  const amp = natural ? 0.035 : 0.022
+  useFrame(({ clock, camera }, delta) => {
     if (flow) flow.offset.y -= delta * speed
+    const mesh = surfaceRef.current
+    if (!mesh) return
+    mesh.getWorldPosition(waveTmp)
+    if (waveTmp.distanceToSquared(camera.position) > (60 + len / 2) ** 2) return
+    const t = clock.elapsedTime
+    const tick = Math.floor(t * 30)
+    if (lastTick.current === tick) return
+    lastTick.current = tick
+    const pos = mesh.geometry.attributes.position
+    const { base } = wave
+    for (let i = 0; i < pos.count; i++) {
+      const x = base[i * 3]
+      const z = base[i * 3 + 2]
+      pos.setY(i, Math.sin(x * 1.6 + t * 1.8) * amp + Math.cos(z * 0.9 + t * (natural ? 2.6 : 1.3)) * amp)
+    }
+    pos.needsUpdate = true
   })
   const rocks = useMemo(() => {
     if (!natural) return { up: [], bed: [] }
@@ -485,7 +700,7 @@ export function JmCanal({ item }) {
       const r = 0.14 + seeded(i + 90) * 0.22
       up.push({ p: [x, 0.04 + r * 0.25, z], r, rot: seeded(i + 7) * 6, moss: seeded(i + 31) > 0.6 })
       for (let k = 0; k < 2; k++) {
-        bed.push({ p: [(seeded(i * 3 + k + 200) - 0.5) * inner, 0.035, z + (seeded(i * 5 + k) - 0.5) * 2], r: 0.12 + seeded(i + k + 400) * 0.16 })
+        bed.push({ p: [(seeded(i * 3 + k + 200) - 0.5) * inner, 0.055, z + (seeded(i * 5 + k) - 0.5) * 2], r: 0.12 + seeded(i + k + 400) * 0.16 })
       }
     }
     return { up, bed }
@@ -499,9 +714,10 @@ export function JmCanal({ item }) {
           <dodecahedronGeometry args={[1, 0]} />
         </mesh>
       ))}
-      <mesh position={[0, 0.06, 0]} scale={[inner, 0.02, len]} material={natural ? WATER_STREAM : WATER_CLEAR}>
-        <boxGeometry />
+      <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]} material={WATER_DEEP}>
+        <planeGeometry args={[inner, len]} />
       </mesh>
+      <mesh ref={surfaceRef} geometry={wave.g} position={[0, 0.07, 0]} material={WATER_SURFACE} userData={{ noMerge: true }} />
       {flow && (
         <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]} userData={{ noMerge: true }}>
           <planeGeometry args={[inner, len]} />
