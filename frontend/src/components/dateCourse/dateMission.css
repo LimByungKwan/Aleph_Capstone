@@ -1,0 +1,24 @@
+/* 데이트 코스 미션 (담당: 병관) — 모양은 영화·드라마 구역 시간 탐정(cinema.css special-*) 그대로, 색만 분홍 */
+.special-era[data-era="date"] { background: #fde7f3; border-color: #f0a6c8; color: #6b1f45; }
+.special-era[data-era="date"] b { color: #be185d; }
+.date-tracker .special-stop-group h3 { color: #9d174d; }
+.date-tracker__foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.date-tracker__foot .ui-btn { font-size: 12px; padding: 4px 8px; }
+.date-dialog .special-tag { background: #fbcfe8; color: #831843; border-color: #f9a8d4; }
+
+.date-map { grid-template-columns: minmax(150px, 220px) 1fr; align-items: start; }
+@media (max-width: 640px) { .date-map { grid-template-columns: 1fr; } .date-map svg { max-height: 300px; } }
+.date-map svg { width: 100%; height: auto; }
+.date-map__zone { fill: #e8f2dc; stroke: #b9cfa3; stroke-width: 2; }
+.date-map__hill { fill: #cfe3b8; }
+.date-map__road { fill: #e7d9c4; }
+.date-map__label { font-size: 9px; fill: #6b5a45; text-anchor: middle; }
+.date-map__pin { cursor: pointer; }
+.date-map__pin circle { fill: #fff; stroke: #f472b6; stroke-width: 2.5; }
+.date-map__pin[data-state="done"] circle { fill: #fde7f3; }
+.date-map__pin[data-state="stamp"] circle { fill: #f9a8d4; stroke: #be185d; }
+.date-map__pin text { font-size: 12px; text-anchor: middle; }
+.date-map__pin:hover circle, .date-map__pin:focus circle { stroke-width: 4; }
+.date-map__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.date-map__list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
+.date-map__list small { color: #8b6f57; margin-left: 4px; }
