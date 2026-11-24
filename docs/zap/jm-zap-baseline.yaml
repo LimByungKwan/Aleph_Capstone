@@ -1,0 +1,54 @@
+# SceneWalk 수동(baseline) 점검 — 공격 요청 없음 (activeScan 잡 없음)
+# 둘러보기(spider, 최대 2분) + GET 요청 몇 개 → 오가는 응답만 수동 검사 → 보고서
+env:
+  contexts:
+    - name: site
+      urls: ["https://aleph-capstone.vercel.app"]
+      includePaths: ["https://aleph-capstone.vercel.app.*"]
+    - name: api
+      urls: ["https://scenewalk-api.onrender.com"]
+      includePaths: ["https://scenewalk-api.onrender.com.*"]
+  parameters:
+    failOnError: false
+    progressToStdout: true
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+  - type: spider
+    parameters:
+      context: site
+      maxDuration: 2
+      maxDepth: 3
+  - type: requestor
+    parameters:
+      user: ""
+    requests:
+      - url: "https://scenewalk-api.onrender.com/health"
+        method: GET
+      - url: "https://scenewalk-api.onrender.com/me"
+        method: GET
+      - url: "https://scenewalk-api.onrender.com/me"
+        method: GET
+        headers: ["Origin: https://evil.example"]
+      - url: "https://scenewalk-api.onrender.com/stamps/me"
+        method: GET
+      - url: "https://scenewalk-api.onrender.com/admin/stats"
+        method: GET
+      - url: "https://scenewalk-api.onrender.com/shops/shop_hj_snack/promo"
+        method: GET
+      - url: "https://scenewalk-api.onrender.com/no-such-path"
+        method: GET
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 3
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: "./zap-out"
+      reportFile: zap-baseline
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: "./zap-out"
+      reportFile: zap-baseline
