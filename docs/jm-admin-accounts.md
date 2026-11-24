@@ -131,7 +131,7 @@ where id in (select id from auth.users where email in (
 ));
 ```
 
-- 테스트 계정 `jm-test-pilgrim`, `jm-test-ui` 는 11/30 리허설 뒤 삭제 예정. 시연용 사장님 계정(`jm-demo-owner`)은 지우지 않는다.
+- 테스트 계정 `jm-test-pilgrim`, `jm-test-ui` 는 리허설 뒤, 캡스톤 마감(11/30) 전에 삭제 예정. 시연용 사장님 계정(`jm-demo-owner`)은 지우지 않는다.
 
 ## 이메일 인증 (지금은 꺼 둠, 11/23 결정)
 
@@ -160,7 +160,8 @@ where id in (select id from auth.users where email in (
 - 비밀번호를 잊으면 지민이 Supabase SQL Editor에서 바꾼다 (`example.com`은 메일을 못 받아서 재설정 메일 불가):
 
 ```sql
-update auth.users set encrypted_password = crypt('새_비밀번호', gen_salt('bf'))
+-- 비용 10을 꼭 적기: gen_salt('bf')만 쓰면 비용 06으로 저장됨 (11/24 빈틈 5)
+update auth.users set encrypted_password = crypt('새_비밀번호', gen_salt('bf', 10))
 where email = 'jm-demo-owner@example.com' returning email;
 ```
 
