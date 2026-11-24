@@ -7,7 +7,7 @@
 ## 한 줄 결론
 
 **차트 7개 중 6개는 구현·테스트 완료(ZAP은 수동 스캔까지), 1개(구역 관리자 분리)는 CODEOWNERS 파일까지 하고 브랜치 보호 설정이 남음.**
-점검하다가 빈틈 4개를 새로 찾았고, 그중 1개(HSTS)는 같은 날 고쳤다 → 아래 "찾은 빈틈".
+점검하다가 빈틈 4개를 새로 찾았고, 그중 2개(API HSTS, 배포 화면 보안 헤더)는 같은 날 고쳤다 → 아래 "찾은 빈틈".
 
 ## 항목별 결과
 
@@ -27,7 +27,7 @@
 | 5-b | 로그인 시도 제한 | ✅ | 같은 IP 15분 30번, 같은 이메일 실패 15분 5번 넘으면 잠깐 막음 | 서버 테스트 통과 | `server/src/app.js:91-92`, `server/test/rateLimit.test.js` |
 | 6-a | 감사 로그 | ✅ | 역할 변경·가게 홍보문구·쿠폰 사용을 DB 트리거가 자동 기록. 관리자도 고치거나 지울 수 없음 | 11/23 시연용 사장님 지정이 첫 기록으로 남음 | `20261125120000_jm_audit_log.sql`, `supabase/tests/jm_audit_log_test.sql` |
 | 6-b | 권한 우회 403 테스트 | ✅ | 권한 없는 요청이 정확히 막히는지 자동 테스트 | 서버 테스트 **69개 통과**(401·403·역할 미들웨어·보안 헤더 포함, 11/24 기준). RLS 구조라 "남의 데이터 조회"는 403이 아니라 **0건**으로 나옴 | `server/test/app.test.js`, 매트릭스 SQL |
-| 7 | OWASP ZAP 점검 | ✅ 수동 스캔 (빈틈 4) | ZAP 2.17.0으로 배포 사이트·API를 **둘러보고 응답만 검사**(공격 요청을 보내는 능동 스캔은 안 함 — Render 무료 서버·시연 데이터 보호) | 11/24: **High 0개**. API는 헤더 경고 0개(정보성 1개). 배포 사이트는 Medium 3개(CSP 없음, `X-Frame-Options` 없음, 정적 파일 `Access-Control-Allow-Origin: *`)·Low 2개(`nosniff` 없음, 번들 안 타임스탬프) | 스캔 설정 = 아래 "ZAP 다시 돌리는 법". 로그인한 화면 안쪽·POST API는 범위 밖 |
+| 7 | OWASP ZAP 점검 | ✅ 수동 스캔 (빈틈 4 → 고침) | ZAP 2.17.0으로 배포 사이트·API를 **둘러보고 응답만 검사**(공격 요청을 보내는 능동 스캔은 안 함 — Render 무료 서버·시연 데이터 보호) | 11/24: **High 0개**. API는 헤더 경고 0개(정보성 1개). 배포 사이트는 Medium 3개(CSP 없음, `X-Frame-Options` 없음, 정적 파일 `Access-Control-Allow-Origin: *`)·Low 2개(`nosniff` 없음, 번들 안 타임스탬프) | 스캔 설정 = 아래 "ZAP 다시 돌리는 법". 로그인한 화면 안쪽·POST API는 범위 밖 |
 
 ### 추가로 확인한 것
 
@@ -44,7 +44,7 @@
 | 1 | **Render API에 HSTS 헤더가 없음** (Vercel 화면은 있음) | 첫 접속을 http로 하면 중간자가 가로챌 여지. 실제로는 API를 화면이 https로만 부르므로 위험 낮음 | ✅ 11/24 고침: 모든 응답에 HSTS(1년) + `nosniff` + `X-Frame-Options: DENY` + `no-referrer` (`server/src/app.js`, 서버 테스트 "보안 헤더") — 배포 후 `curl -sI https://scenewalk-api.onrender.com/health`로 확인 |
 | 2 | **시간 탐정 스탬프는 서버 검증이 없음** (브라우저 저장) | 로그인한 사람이 개발자 도구로 스탬프를 만들어 낼 수 있음. 다른 기기·관리자 통계에도 안 보임 | 시연 뒤 DB 저장으로 옮기기 검토 (혜진 기능이라 같이) |
 | 3 | 로그인 토큰을 localStorage에 저장 | 화면에 XSS가 생기면 토큰을 훔칠 수 있음 | 알고 한 타협: 짧은 만료(1시간) + 화면에 사용자 입력을 HTML로 넣지 않음(React 기본). 근거 `frontend/src/api/session.js:14` |
-| 4 | **배포 화면(Vercel)에 보안 헤더가 거의 없음** (ZAP으로 발견): `Content-Security-Policy`·`X-Frame-Options`·`X-Content-Type-Options` 없음. API(Render)는 11/24에 다 넣음 | ① 다른 사이트가 우리 화면을 iframe에 넣어 클릭을 속일 수 있음(클릭재킹) ② CSP가 없어서 XSS가 생기면 막아 줄 두 번째 벽이 없음 — 빈틈 3(토큰 localStorage)과 겹침. 정적 파일의 `ACAO: *`는 Vercel 기본값이고 로그인 정보가 안 실려서 위험 낮음 | 🟡 11/24 `frontend/vercel.json` 추가: `X-Frame-Options: DENY`·`nosniff`·`Referrer-Policy`·CSP 일부(`frame-ancestors 'none'; object-src 'none'; base-uri 'self'`). 스크립트를 제한하는 CSP(`script-src` 등)는 three.js·WebAssembly·외부 API 때문에 화면이 깨질 수 있어 **시연 뒤** 검토. 배포 후 `curl -sI https://aleph-capstone.vercel.app/`로 확인 (Vercel 프로젝트는 병관님 계정) |
+| 4 | **배포 화면(Vercel)에 보안 헤더가 거의 없음** (ZAP으로 발견): `Content-Security-Policy`·`X-Frame-Options`·`X-Content-Type-Options` 없음. API(Render)는 11/24에 다 넣음 | ① 다른 사이트가 우리 화면을 iframe에 넣어 클릭을 속일 수 있음(클릭재킹) ② CSP가 없어서 XSS가 생기면 막아 줄 두 번째 벽이 없음 — 빈틈 3(토큰 localStorage)과 겹침. 정적 파일의 `ACAO: *`는 Vercel 기본값이고 로그인 정보가 안 실려서 위험 낮음 | ✅ 11/24 고침 (PR #80): `frontend/vercel.json`에 `X-Frame-Options: DENY`·`nosniff`·`Referrer-Policy`·CSP 일부(`frame-ancestors 'none'; object-src 'none'; base-uri 'self'`). 배포 후 실제 사이트에서 4개 모두 확인, JS·3D 모델 파일 형식 정상(`nosniff`로 막히지 않음), 화면·콘솔 오류 없음. 남은 것: 스크립트를 제한하는 CSP(`script-src` 등)는 three.js·WebAssembly·외부 API 때문에 화면이 깨질 수 있어 **시연 뒤** 검토 |
 
 ### 알고 정한 위험 (팀 결정)
 
