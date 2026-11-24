@@ -101,6 +101,20 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
   app.disable('x-powered-by')
   app.set('trust proxy', 1) // Render 앞단 프록시
 
+  // 보안 헤더 (11/24 점검에서 Render API에 HSTS가 없던 것 보완 — docs/jm-security-checklist.md 빈틈 1)
+  //   HSTS: 한 번 접속한 브라우저는 1년 동안 http로 요청하지 않고 바로 https로 감
+  //   nosniff: 응답을 JSON이 아닌 다른 형식(스크립트 등)으로 추측해 실행하지 않게
+  //   DENY / no-referrer: API 응답을 다른 사이트 화면에 끼워 넣거나, 주소를 남의 사이트로 흘리지 않게
+  app.use((_req, res, next) => {
+    res.set({
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+    })
+    next()
+  })
+
   app.use(
     cors({
       origin(origin, done) {
@@ -122,6 +136,24 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     req.user = data.user
     req.db = supabase.asUser(token)
     next()
+  }
+
+  // 역할 검사 (RBAC 미들웨어): requireAuth 다음에 붙임. 예) app.get('/admin/stats', requireAuth, requireRole('admin'), …)
+  // 판단: 역할 검사는 원래 DB 함수 첫 줄이 한다(get_admin_stats·get_shop_stats …). 여기서 한 번 더 막는 이유는
+  //   ① 권한 없는 요청이 DB 함수까지 가지 않게 (함수 검사를 실수로 빼먹어도 서버에서 한 겹 더)
+  //   ② 어떤 경로가 어떤 역할용인지 라우트 한 줄에서 보이게
+  //   역할은 토큰이 아니라 DB(profiles)에서 매번 읽음 → 관리자가 SQL로 역할을 바꾸면 다음 요청부터 바로 반영
+  const ROLE_ERROR = { admin: ['NOT_ADMIN', '관리자 계정만 쓸 수 있어요.'], owner: ['NOT_OWNER', '사장님 계정만 쓸 수 있어요.'] }
+  function requireRole(role) {
+    return async (req, _res, next) => {
+      const profile = await loadProfile(req.db, req.user.id)
+      if (profile?.role !== role) {
+        const [code, message] = ROLE_ERROR[role] ?? ['FORBIDDEN', '권한이 없어요.']
+        throw new HttpError(403, code, message)
+      }
+      req.profile = profile
+      next()
+    }
   }
 
   // ── 상태 확인 (Render 헬스 체크, 시연 전 서버 깨우기) ──
@@ -323,16 +355,16 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
   // ── 사장님 ──
   // client.js getShopStats: { issued, used, visitors, recentRedemptions }
   // 관리자 통계 (화면: 성근 #/admin). 관리자 검사·집계는 DB 함수 get_admin_stats가 함 → 아니면 403 NOT_ADMIN
-  app.get('/admin/stats', requireAuth, async (req, res) => {
+  app.get('/admin/stats', requireAuth, requireRole('admin'), async (req, res) => {
     res.json(await rpc(req.db, 'get_admin_stats'))
   })
 
-  app.get('/shop/stats', requireAuth, async (req, res) => {
+  app.get('/shop/stats', requireAuth, requireRole('owner'), async (req, res) => {
     res.json(await rpc(req.db, 'get_shop_stats'))
   })
 
   // client.js saveShopPromo: { shopPromo: { text, tag, savedAt } }
-  app.put('/shop/promo', requireAuth, async (req, res) => {
+  app.put('/shop/promo', requireAuth, requireRole('owner'), async (req, res) => {
     const text = requireString(req.body?.text, '홍보문구', 300)
     const tag = typeof req.body?.tag === 'string' ? req.body.tag.slice(0, 100) : null
     res.json(await rpc(req.db, 'save_shop_promo', { p_text: text, p_tag: tag }))

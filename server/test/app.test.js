@@ -397,7 +397,8 @@ describe('관리자 통계', () => {
     assert.equal(calls.length, 0)
   })
 
-  test('로그인한 사람 토큰으로 get_admin_stats를 부르고 결과를 그대로 돌려줌', async () => {
+  test('관리자 토큰으로 get_admin_stats를 부르고 결과를 그대로 돌려줌', async () => {
+    tableRows = { profiles: [{ display_name: '관리자', role: 'admin', shop_id: null }] }
     const stats = { todayVisitors: 2, totalStamps: 5, couponsIssued: 1, couponsUsed: 0, dailyVisitors: [], stampsByZone: [], topPlaces: [] }
     rpcHandler = () => ({ data: stats, error: null })
     const res = await api('GET', '/admin/stats', { token: GOOD_TOKEN })
@@ -406,7 +407,8 @@ describe('관리자 통계', () => {
     assert.deepEqual(calls[0], { token: GOOD_TOKEN, rpc: 'get_admin_stats', args: undefined })
   })
 
-  test('관리자가 아니면 DB가 던진 NOT_ADMIN → 403', async () => {
+  test('서버 미들웨어가 막지 못한 경우에도 DB가 던진 NOT_ADMIN → 403 (두 번째 겹)', async () => {
+    tableRows = { profiles: [{ display_name: '관리자', role: 'admin', shop_id: null }] }
     rpcHandler = () => ({ data: null, error: { message: 'NOT_ADMIN', details: '관리자 계정만 볼 수 있어요.' } })
     const res = await api('GET', '/admin/stats', { token: GOOD_TOKEN })
     assert.equal(res.status, 403)
@@ -414,8 +416,50 @@ describe('관리자 통계', () => {
   })
 })
 
+describe('역할 검사 미들웨어 (requireRole)', () => {
+  const cases = [
+    ['GET', '/admin/stats', 'admin', 'NOT_ADMIN'],
+    ['GET', '/shop/stats', 'owner', 'NOT_OWNER'],
+    ['PUT', '/shop/promo', 'owner', 'NOT_OWNER'],
+  ]
+  for (const [method, path, role, code] of cases) {
+    test(`${method} ${path}: ${role}가 아니면 DB 함수까지 가지 않고 403 ${code}`, async () => {
+      for (const profile of [{ role: 'pilgrim' }, { role: role === 'admin' ? 'owner' : 'admin' }, null]) {
+        calls = []
+        tableRows = profile ? { profiles: [{ display_name: 'x', shop_id: null, ...profile }] } : {}
+        const res = await api(method, path, { token: GOOD_TOKEN, body: method === 'GET' ? undefined : { text: '오늘의 메뉴' } })
+        assert.equal(res.status, 403, `${profile?.role ?? '프로필 없음'}`)
+        assert.equal(res.body.error.code, code)
+        assert.equal(calls.filter((c) => c.rpc).length, 0, 'rpc를 부르면 안 됨')
+      }
+    })
+  }
+
+  test('사장님이면 통과해서 get_shop_stats를 부름', async () => {
+    tableRows = { profiles: [{ display_name: '분식', role: 'owner', shop_id: 'shop_hj_snack' }] }
+    rpcHandler = () => ({ data: { issued: 0 }, error: null })
+    const res = await api('GET', '/shop/stats', { token: GOOD_TOKEN })
+    assert.equal(res.status, 200)
+    assert.equal(calls[0].rpc, 'get_shop_stats')
+  })
+})
+
+describe('보안 헤더', () => {
+  test('모든 응답에 HSTS · nosniff · DENY · no-referrer, x-powered-by 없음', async () => {
+    for (const path of ['/health', '/no-such-path']) {
+      const res = await api('GET', path)
+      assert.equal(res.headers.get('strict-transport-security'), 'max-age=31536000; includeSubDomains')
+      assert.equal(res.headers.get('x-content-type-options'), 'nosniff')
+      assert.equal(res.headers.get('x-frame-options'), 'DENY')
+      assert.equal(res.headers.get('referrer-policy'), 'no-referrer')
+      assert.equal(res.headers.get('x-powered-by'), null)
+    }
+  })
+})
+
 describe('기타', () => {
   test('예상 못 한 DB 에러는 내부 내용을 숨기고 500', async () => {
+    tableRows = { profiles: [{ display_name: '분식', role: 'owner', shop_id: 'shop_hj_snack' }] }
     rpcHandler = () => ({ data: null, error: { message: 'relation "public.secret" does not exist' } })
     const original = console.error
     console.error = () => {}
