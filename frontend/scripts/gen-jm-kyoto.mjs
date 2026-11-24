@@ -135,7 +135,7 @@ prop('jm_machiya_tram_s', 'jmMachiya', [-20.5, 0.6], [7, 7, 7], { rotationDeg: 1
 prop('jm_vending_tram', 'jmVendingRow', [-30, -2.6], [3, 1.9, 0.8], { rotationDeg: 180 })
 
 // ─────────────────────────────────────────────
-// 4. 서2 갈래: 호수 → 「초속 5미터」 벚꽃 강변 (호수·강은 옛 데이터 그대로)
+// 4. 서2 갈래: 호수 → 「초속 5센티미터」 벚꽃 강변 (호수·강은 옛 데이터 그대로)
 // ─────────────────────────────────────────────
 road('jm_branch_w2', 'stone', [-19.5, -21], [25, 0.06, 3.5])
 prop('jm_sign_river', 'jmArrowSign', [-16.6, -18.8], [1.6, 2.1, 0.2], { signs: [{ text: '벚꽃 강변', dir: 'left' }, { text: '호수', dir: 'left' }] })
@@ -210,7 +210,8 @@ const ZAKA_STAIR_FIX = { jm_zaka_torii_stairs: (item) => ({ ...item, stepHeight:
 terrain.push(...keep.zaka.terrain.map((item) => (ZAKA_STAIR_FIX[item.id] ? ZAKA_STAIR_FIX[item.id](item) : item)).map(shiftZaka))
 buildings.push(...keep.zaka.buildings.map(shiftZaka))
 // 장면 자리 골목을 내려고 빼는 옛 항목: 골목 쪽 대나무 울타리(아래에서 틈을 두고 다시 놓음), 장면 자리와 겹치는 나무·노다테
-const ZAKA_DROP = new Set(['jm_zaka_fence_t1_w', 'jm_zaka_fence_t1_w_2', 'jm_zaka_fence_t3_e', 'jm_zaka_fence_t3_e_2', 'jm_zaka_maple_10', 'jm_zaka_nodate', 'jm_zaka_bamboo_7'])
+// (11/24) 장면 자리 마당을 치우면서 예전에 뺐던 골목 울타리·나무·노다테를 되돌림 → 지금은 빼는 항목 없음
+const ZAKA_DROP = new Set([])
 props.push(...keep.zaka.props.filter((item) => !ZAKA_DROP.has(item.id) && !/^jm_zaka_torii_\d/.test(item.id)).map(shiftZaka))
 {
   const st = keep.zaka.terrain.find((item) => item.id === 'jm_zaka_torii_stairs')
@@ -241,20 +242,9 @@ light('jm_light_street_n', [0, -36])
 light('jm_light_zaka', [0, -78], { elevation: 3 })
 
 // ─────────────────────────────────────────────
-// 7-1. 장면 자리 ①②: 계단 거리 상점 사이 골목 → 같은 높이의 작은 마당
-//      (울타리는 상점 틈 자리만 비우고 다시 놓음)
+// 7-1. (11/24) 장면 자리 마당 4곳은 치움 — 장면은 계단 거리 가게 문으로 들어가는 명장면 공간으로 옮김 (아래 9번)
 // ─────────────────────────────────────────────
 const fence = (id, position, len, elevation, rotationDeg = 90) => prop(id, 'jmBambooFence', position, [len, 1.1, 0.1], { rotationDeg, elevation })
-fence('jm_zaka_fence_t1_w_a', [-11.3, -58.25], 5.5, zh(1.5))
-fence('jm_zaka_fence_t1_w_b', [-11.3, -68.05], 8.9, zh(1.5))
-fence('jm_zaka_fence_t3_e_a', [11.3, -92.25], 5.5, zh(4.5))
-fence('jm_zaka_fence_t3_e_b', [11.3, -102.3], 9.4, zh(4.5))
-terrain.push({ type: 'platform', id: 'jm_scene1_yard', rect: [-22, -65.5, -11.5, -59], height: zh(1.5), surface: 'stone', rails: [{ edge: 'west' }, { edge: 'north' }, { edge: 'south' }] })
-terrain.push({ type: 'platform', id: 'jm_scene2_yard', rect: [11.5, -100, 22, -93], height: zh(4.5), surface: 'stone', rails: [{ edge: 'east' }, { edge: 'north' }, { edge: 'south' }] })
-const sceneSpot = (n, position, size, rotationDeg, elevation = 0) =>
-  prop(`jm_scene_${n}`, 'jmSceneSpot', position, size, { rotationDeg, elevation, collider: false, signs: [{ text: `장면 자리 ${n}` }, { text: '작품 준비 중' }] })
-sceneSpot(1, [-17, -62.25], [6, 0.1, 9], 90, zh(1.5))
-sceneSpot(2, [17, -96.5], [6, 0.1, 9], -90, zh(4.5))
 
 // ─────────────────────────────────────────────
 // 7-2. 고개 (옛 꼭대기 단, 높이 6) — 북쪽으로 골짜기가 내려다보임
@@ -286,7 +276,6 @@ prop('jm_valley_house_se', 'jmMachiya', [17, -133], [7, 7, 7], { rotationDeg: 18
 prop('jm_valley_house_nw', 'jmMachiya', [-38, -155], [7, 7, 7], { signs: [{ text: '蕎麦 谷風', bg: '#3f2a1d', fg: '#f5e6c8' }] })
 for (const [i, x, z, s] of [[1, -30, -137, 'jmMaple'], [2, 30, -137, 'jmMaple'], [3, -8, -129, 'jmSakura'], [4, 8, -129, 'jmSakura'], [5, -46, -149, 'jmMaple'], [6, 44, -150, 'jmGinkgo'], [7, 34, -157, 'jmMaple']]) tree(`jm_valley_tree_${i}`, s, [x, z])
 light('jm_light_valley', [0, -145])
-sceneSpot(3, [20, -153.5], [12, 0.1, 8], 0)
 
 // ─────────────────────────────────────────────
 // 7-4. 중턱 (높이 5) → 장면 자리 ④, 그리고 꼭대기(높이 10) 큰 여관 「湯灯屋」
@@ -302,7 +291,6 @@ bamboo('jm_mid_bamboo_1', [-31, -167.5], { elevation: MID })
 bamboo('jm_mid_bamboo_2', [-31, -163], { elevation: MID })
 tree('jm_mid_maple', 'jmMaple', [18, -167], { elevation: MID })
 for (const [i, x] of [[1, -19.5], [2, 9.5]]) gasLamp(`jm_mid_lamp_${i}`, [x, -161.6], { elevation: MID })
-sceneSpot(4, [-6, -165], [12, 0.1, 7], 0, MID)
 terrain.push({ type: 'stairs', id: 'jm_top_stairs', from: [14, -160, MID], to: [14, -170, TOP], width: RYOKAN_STAIR_W, walls: false })
 terrain.push({ type: 'platform', id: 'jm_ryokan_top', rect: [-20, -184.8, 24, -170], height: TOP, surface: 'stone', lights: true,
   rails: [{ edge: 'south', gaps: [[-18.3, -13.7], [11.5, 16.5]] }, { edge: 'west' }, { edge: 'east' }, { edge: 'north' }] })
@@ -404,8 +392,81 @@ light('jm_light_ryokan', [2, -174], { elevation: TOP })
 // 8. 옛 데이터에서 가져오는 것: 호수·서쪽 벚꽃 강변·BK 전망대 흔들다리
 // ─────────────────────────────────────────────
 terrain.push(...keep.terrain)
-// 물수제비(옛 「초속 5미터」 체험)와 작품 포스터는 뺌 — 강변 풍경만 남김
+// 물수제비(옛 「초속 5센티미터」 체험)와 작품 포스터는 뺌 — 강변 풍경만 남김
 props.push(...keep.props.filter((item) => item.id !== 'jm_skip_spot' && item.id !== 'jm_poster_byousoku_river'))
+
+// ─────────────────────────────────────────────
+// 9. 명장면 공간 (11/24, jm_portal.jsx): 계단 거리 가게 문 → 맵 밖 장면 공간으로 순간 이동
+//    공간은 맵 남쪽 바다 위 멀리(월드 z 약 850, 안개에 가려 맵에서는 안 보임)에 하나씩 나란히 둠
+//    순간 이동은 병관님 워프 goto(도착점 근처 평평한 바닥을 위에서 재서 찾음) → 바닥은 높이 1m 판
+//    작품명은 근접형 가상 이름 (팀 규칙) — 지민과 확정 전 임시
+// ─────────────────────────────────────────────
+const ZONE_ORIGIN_Z = -85
+const ROOM = { w: 36, d: 36, z: 935, floor: 1, wall: 10 } // z는 구역 좌표 (월드 z = 935 - 85 = 850)
+const SCENE_ROOMS = [
+  { n: 1, kind: 'totoro', shop: 'jm_zaka_shop_3', x: -240, title: '명장면 ① 「이웃집 토토로」', sub: '비 오는 숲속 정류장', color: '#9fd3ff' },
+  { n: 2, kind: 'stairs', shop: 'jm_zaka_shop_6', x: -120, title: '명장면 ② 「너의 이름은.」', sub: '노을 지는 붉은 난간 계단', color: '#ffb08a' },
+  { n: 3, kind: 'rock', shop: 'jm_zaka_shop_7', x: 0, title: '명장면 ③ 「귀멸의 칼날」', sub: '안개 숲의 갈라진 바위', color: '#cfe8d8' },
+  { n: 4, kind: 'crossing', shop: 'jm_zaka_shop_10', x: 120, title: '명장면 ④ 「초속 5센티미터」', sub: '벚꽃 날리는 철길 건널목', color: '#ffc4d6' },
+  { n: 5, kind: 'onsen', shop: 'jm_zaka_shop_12', x: 240, title: '명장면 ⑤ 「센과 치히로의 행방불명」', sub: '붉은 다리 건너 옛 온천 본관', color: '#ff9a6b' },
+]
+// 공간별 걷는 판정·추가 정보 (로컬 좌표: 공간 가운데 기준, +z가 입구 쪽)
+const ROOM_STAIR = { z0: 5, z1: -9, h: 4, w: 4 } // ② 계단 (바닥 1m 위에서 4m 오름)
+const ROOM_BRIDGE = { z: -4, len: 6, w: 3, water: 5 } // ⑤ 물길 위 붉은 다리
+const ROOM_STAMP = { 1: 'spot_jm_crossing', 2: 'spot_jm_stairs', 3: 'spot_jm_shrine', 4: 'spot_jm_sakura_river' }
+const keepShop = (id) => keep.zaka.buildings.find((b) => b.id === id)
+for (const sr of SCENE_ROOMS) {
+  const cz = ROOM.z
+  // 공간 바닥(충돌) + 둘레 벽(충돌, 보이지 않음) + 공간 그림
+  wall(`jm_scene_room_${sr.n}_floor`, [sr.x, cz], [ROOM.w, ROOM.floor, ROOM.d])
+  wall(`jm_scene_room_${sr.n}_wall_n`, [sr.x, r2(cz - ROOM.d / 2)], [ROOM.w, ROOM.wall, 0.5], { elevation: ROOM.floor })
+  wall(`jm_scene_room_${sr.n}_wall_s`, [sr.x, r2(cz + ROOM.d / 2)], [ROOM.w, ROOM.wall, 0.5], { elevation: ROOM.floor })
+  wall(`jm_scene_room_${sr.n}_wall_w`, [r2(sr.x - ROOM.w / 2), cz], [0.5, ROOM.wall, ROOM.d], { elevation: ROOM.floor })
+  wall(`jm_scene_room_${sr.n}_wall_e`, [r2(sr.x + ROOM.w / 2), cz], [0.5, ROOM.wall, ROOM.d], { elevation: ROOM.floor })
+  // 소품 size는 16m 이하 (16m보다 크면 맵 어디서나 늘 그려짐 → 공간 근처에서만 그리게), 실제 크기는 room.w/d
+  prop(`jm_scene_room_${sr.n}`, 'jmSceneRoom', [sr.x, cz], [16, 12, 16], {
+    collider: false, elevation: ROOM.floor,
+    room: { kind: sr.kind, title: sr.title, sub: sr.sub, w: ROOM.w, d: ROOM.d, ...(sr.kind === 'stairs' && { stair: ROOM_STAIR }), ...(sr.kind === 'onsen' && { bridge: ROOM_BRIDGE }) },
+  })
+  const L = (lx, lz) => [r2(sr.x + lx), r2(cz + lz)]
+  const F = ROOM.floor
+  if (sr.kind === 'stairs') {
+    const st = ROOM_STAIR
+    terrain.push({ type: 'stairs', id: `jm_scene${sr.n}_stairs`, from: [...L(0, st.z0), F], to: [...L(0, st.z1), F + st.h], width: st.w })
+    const [x0, z0] = L(-6, st.z1 - 8)
+    const [x1, z1] = L(6, st.z1)
+    terrain.push({ type: 'platform', id: `jm_scene${sr.n}_top`, rect: [x0, z0, x1, z1], height: F + st.h, surface: 'stone', rails: [{ edge: 'north' }, { edge: 'west' }, { edge: 'east' }] })
+    for (const side of [-1, 1]) for (const k of [0, 1, 2]) wall(`jm_scene${sr.n}_house_${side < 0 ? 'w' : 'e'}${k}`, L(side * (st.w / 2 + 3.6), st.z0 - 2.5 - k * 5.2), [5.6, 9, 4.6], { elevation: F })
+  }
+  if (sr.kind === 'rock') wall(`jm_scene${sr.n}_rock`, L(0, -4.5), [3.6, 2.8, 3.6], { elevation: F })
+  if (sr.kind === 'onsen') {
+    const b = ROOM_BRIDGE
+    for (const side of [-1, 1]) {
+      const len = ROOM.w / 2 - b.w / 2
+      wall(`jm_scene${sr.n}_water_${side < 0 ? 'w' : 'e'}`, L(side * (b.w / 2 + len / 2), b.z), [len, 1, b.water], { elevation: F })
+      for (const k of [0, 1, 2]) wall(`jm_scene${sr.n}_shop_${side < 0 ? 'w' : 'e'}${k}`, L(side * 5.4, 13 - k * 4.4), [4.6, 6, 4], { elevation: F })
+    }
+    wall(`jm_scene${sr.n}_bathhouse`, L(0, b.z - b.len / 2 - 6), [13, 12, 6], { elevation: F })
+  }
+  // 가게 문 (가게 앞면 = 로컬 +z, 거리 쪽)
+  const shopItem = shiftZaka(keepShop(sr.shop))
+  const a = (shopItem.rotationDeg * Math.PI) / 180
+  const [fx, fz] = [Math.sin(a), Math.cos(a)]
+  const half = shopItem.size[2] / 2
+  const facade = [r2(shopItem.position[0] + fx * half), r2(shopItem.position[1] + fz * half)]
+  const street = [r2(facade[0] + fx * 2.2), r2(facade[1] + fz * 2.2)]
+  const spawn = [sr.x, r2(cz + ROOM.d / 2 - 7)]
+  const toWorld = ([x, z]) => [x, r2(z + ZONE_ORIGIN_Z)]
+  prop(`jm_scene_door_${sr.n}`, 'jmPortalDoor', facade, [1.6, 2.4, 0.2], {
+    rotationDeg: shopItem.rotationDeg, elevation: shopItem.elevation ?? 0, collider: false,
+    portal: { kind: 'shop', to: toWorld(spawn), face: 180, label: sr.title, title: sr.title.split(' ')[0] + ' ' + sr.title.split(' ')[1], sub: sr.sub, color: sr.color },
+  })
+  // 나가는 문 (공간 남쪽, 앞이 공간 안쪽(-z)을 보게 180도)
+  prop(`jm_scene_exit_${sr.n}`, 'jmPortalDoor', [sr.x, r2(cz + ROOM.d / 2 - 3)], [2.7, 3.6, 0.3], {
+    rotationDeg: 180, elevation: ROOM.floor, collider: false,
+    portal: { kind: 'gate', to: toWorld(street), face: (shopItem.rotationDeg + 180) % 360, label: '계단 거리', title: '계단 거리로 돌아가기', color: sr.color },
+  })
+}
 
 // 11/24: 애니 구역 계단은 모두 옆 돌 난간 벽 없이 (지민 요청, 스크린샷의 갈색 옆벽)
 for (const item of terrain) if (item.type === 'stairs') item.walls = false
@@ -415,6 +476,8 @@ for (const item of terrain) if (item.type === 'stairs') item.walls = false
 const STAIR_LOOK = { jm_pass_stairs: 'E', jm_mid_stairs: 'E', jm_top_stairs: 'E', jm_east_stairs_1: 'E', jm_east_stairs_2: 'E', jm_west_top_stairs: 'E' }
 // 여관 안 계단은 목조 건물 안이라 B 붉은 목조
 for (let k = 1; k <= 4; k++) STAIR_LOOK[`jm_ryokan_in_stairs_${k}`] = 'B'
+// 명장면 ② 신사 계단은 밝은 화강암(D 참배길)
+STAIR_LOOK.jm_scene2_stairs = 'D'
 const STAIR_PREVIEW = Object.fromEntries(terrain.filter((t) => t.type === 'stairs').map((t) => [t.id, STAIR_LOOK[t.id] ?? 'A']))
 for (const st of terrain.filter((t) => t.type === 'stairs' && STAIR_PREVIEW[t.id])) {
   // 소품 위치 = 계단 시작점 (거리 컬링이 소품 위치 기준이라), dress 좌표는 그 점 기준 상대값

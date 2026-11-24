@@ -12,6 +12,7 @@ import { JM_RIVERSIDE_STYLES } from './jm_riverside.jsx'
 import { JM_BENCH_STYLES } from './jm_bench.jsx'
 import { JM_KYOTO_STYLES } from './jm_kyoto.jsx'
 import { JM_STAIR_STYLES } from './jm_stairs.jsx'
+import { JM_PORTAL_STYLES } from './jm_portal.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -44,6 +45,8 @@ const NO_MERGE = new Set([
   'jmGroundCover', // 이미 인스턴스 한 번에 그림
   'jmPathRibbon', // 이미 메시 하나
   'jmCrossing', // 깜빡이는 경보등
+  'jmPortalDoor', // 문 앞 안내(HUD)·순간 이동
+  'jmSceneRoom', // 장면 공간 (비·체험 등 움직이는 부품)
 ])
 
 const JM_STYLES_RAW = {
@@ -78,6 +81,8 @@ const JM_STYLES_RAW = {
   ...JM_KYOTO_STYLES,
   // 계단 겉모습 시안 (jm_stairs.jsx)
   ...JM_STAIR_STYLES,
+  // 명장면 공간 입구·공간 (jm_portal.jsx)
+  ...JM_PORTAL_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)

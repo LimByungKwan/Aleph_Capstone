@@ -112,6 +112,11 @@ export const JP_SIGN_KO = {
   '宿 せせらぎ': '세세라기 여관',
   '甘味 川辺': '강변 디저트',
   '蕎麦 谷風': '골바람 메밀국수',
+  稲荷前: '이나리 신사 앞',
+  停留所: '정류장',
+  ひみつきち: '비밀 기지',
+  駅: '역',
+  高校: '고등학교',
 }
 
 export function getJpSignTexture(text, bg = '#ffffff', fg = '#222222', aspect = 4) {
@@ -147,7 +152,7 @@ export function getJpSignTexture(text, bg = '#ffffff', fg = '#222222', aspect = 
 
 // 시골 버스 정류장 둥근 표지판 그림: 파란 원 + 하얀 버스 그림 + 「バス」
 export function getBusSignTexture() {
-  return canvasTexture('bussign', 256, 256, (ctx, w, h) => {
+  return canvasTexture('bussign-ko', 256, 256, (ctx, w, h) => {
     ctx.clearRect(0, 0, w, h)
     ctx.fillStyle = '#1d4ed8'
     ctx.beginPath()
@@ -186,10 +191,15 @@ export function getBusSignTexture() {
     }
     // 글씨
     ctx.fillStyle = '#ffffff'
-    fitText(ctx, 'バス', 110, 40, 'bold', JP_FONT)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('バス', w / 2, 192)
+    fitText(ctx, 'バス', 100, 34, 'bold', JP_FONT)
+    ctx.fillText('バス', w / 2, 180)
+    // 아래 작게 한국어
+    ctx.globalAlpha = 0.9
+    fitText(ctx, '버스', 70, 20, 'bold', KO_FONT)
+    ctx.fillText('버스', w / 2, 211)
+    ctx.globalAlpha = 1
   })
 }
 
