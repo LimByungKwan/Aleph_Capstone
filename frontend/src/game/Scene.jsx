@@ -37,6 +37,7 @@ import PointLightLock from './PointLightLock.jsx'
 import { southGroundExtension } from './data/mapData.js'
 import PalaceTourPresence from '../components/movieZone/PalaceTourPresence.jsx'
 import MultiplayerPresence from './multiplayer/MultiplayerPresence.jsx' // [지민] 멀티 접속
+import { WarpZones } from './Map/styles/bk_warpZones.jsx' // [병관] 구역 워프존
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
@@ -81,6 +82,7 @@ export default function Scene() {
           {playing && <SeasonalWeather playerRef={playerRef} />}
           <PlaceMarkers />
           <CourseMarker />
+          <WarpZones playerRef={playerRef} />
 
           {/* 물리 엔진(Rapier)은 처음에 잠깐 로딩이 필요해서 Suspense로 감쌈 */}
           <Suspense fallback={null}>

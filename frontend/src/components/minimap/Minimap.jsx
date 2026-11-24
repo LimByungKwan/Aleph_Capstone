@@ -7,6 +7,7 @@ import { useCourseStore } from '../../store/courseStore.js'
 import { tutorialTarget, useTutorial } from '../../store/tutorialStore.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { playerPose } from '../../store/playerPose.js'
+import { WARPS, isLoggedIn, useWarps } from '../../game/Map/styles/bk_warpStore.js'
 import './minimap.css'
 
 // 미니맵 (담당: 병관) — 오른쪽 아래, [🗺 미니맵] 버튼으로 열고 닫음
@@ -41,6 +42,7 @@ export default function Minimap() {
   const [open, setOpen] = useState(saved.open ?? true)
   const [zoom, setZoom] = useState(saved.zoom === 'all' ? 'all' : 'near')
   const panelOpen = useGameStore((s) => Boolean(s.openPanel))
+  const [picked, setPicked] = useState(null) // 미니맵에서 누른 워프존
 
   useEffect(() => save({ open, zoom }), [open, zoom])
 
@@ -70,13 +72,49 @@ export default function Minimap() {
           ✕
         </button>
       </div>
-      <MinimapCanvas zoom={zoom} />
+      <MinimapCanvas zoom={zoom} onPickWarp={setPicked} />
+      {picked && <WarpConfirm warp={picked} onClose={() => setPicked(null)} />}
     </section>
   )
 }
 
-function MinimapCanvas({ zoom }) {
+// 워프존 아이콘을 눌렀을 때: 로그인 안 함 / 아직 안 켜짐 / 이동할지 묻기
+function WarpConfirm({ warp, onClose }) {
+  const unlocked = useWarps((s) => s.unlocked.includes(warp.id))
+  const loggedIn = isLoggedIn()
+  const go = () => {
+    useWarps.getState().warp(warp.id)
+    onClose()
+  }
+  return (
+    <div className="mm-warp" role="dialog" aria-label="워프존">
+      <div className="mm-warp__title">
+        {warp.icon} {warp.name} 워프존
+      </div>
+      {!loggedIn ? (
+        <p>로그인해야 워프존으로 이동할 수 있어요.</p>
+      ) : !unlocked ? (
+        <p>🔒 아직 꺼져 있어요. {warp.name} 구역 입구 안쪽 워프존 근처에 한 번 가면 켜져요.</p>
+      ) : (
+        <p>이 지역으로 이동하겠습니까?</p>
+      )}
+      <div className="mm-warp__btns">
+        {loggedIn && unlocked ? (
+          <>
+            <button type="button" onClick={onClose}>취소</button>
+            <button type="button" className="is-go" onClick={go}>🌀 이동</button>
+          </>
+        ) : (
+          <button type="button" onClick={onClose}>확인</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MinimapCanvas({ zoom, onPickWarp }) {
   const canvasRef = useRef(null)
+  const view = useRef({ toScreen: null }) // 마지막으로 그린 좌표 변환 (워프 아이콘 누르기용)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -136,6 +174,25 @@ function MinimapCanvas({ zoom }) {
         ctx.strokeStyle = '#fff'
         ctx.stroke()
       }
+
+      // 워프존 (켜짐: 구역 색 / 꺼짐: 회색 + 자물쇠)
+      const unlocked = useWarps.getState().unlocked
+      for (const w of WARPS) {
+        const [x, y] = toScreen(w.position[0], w.position[2])
+        const on = unlocked.includes(w.id)
+        ctx.beginPath()
+        ctx.arc(x, y, 8, 0, Math.PI * 2)
+        ctx.fillStyle = on ? w.color : '#9ca3af'
+        ctx.fill()
+        ctx.lineWidth = 2
+        ctx.strokeStyle = '#fff'
+        ctx.stroke()
+        ctx.font = '10px system-ui, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(on ? '🌀' : '🔒', x, y + 0.5)
+      }
+      view.current.toScreen = toScreen
 
       // 루미 코스: 지금 가야 할 한 곳만 (도착하면 다음 장소로 바뀜)
       const tutorial = tutorialTarget(useTutorial.getState()) // 튜토리얼 1단계: 루미 위치
@@ -226,7 +283,38 @@ function MinimapCanvas({ zoom }) {
     return () => cancelAnimationFrame(raf)
   }, [zoom])
 
-  return <canvas ref={canvasRef} className="mm__canvas" style={{ width: SIZE, height: SIZE }} />
+  // 워프존 아이콘 찾기 (누른 곳에서 11px 안)
+  const warpAt = (event) => {
+    const toScreen = view.current.toScreen
+    if (!toScreen) return null
+    const rect = event.currentTarget.getBoundingClientRect()
+    const px = ((event.clientX - rect.left) / rect.width) * SIZE
+    const py = ((event.clientY - rect.top) / rect.height) * SIZE
+    let best = null
+    let bestD = 11
+    for (const w of WARPS) {
+      const [x, y] = toScreen(w.position[0], w.position[2])
+      const d = Math.hypot(x - px, y - py)
+      if (d < bestD && Math.hypot(x - SIZE / 2, y - SIZE / 2) < SIZE / 2) {
+        bestD = d
+        best = w
+      }
+    }
+    return best
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="mm__canvas"
+      style={{ width: SIZE, height: SIZE }}
+      onClick={(e) => {
+        const w = warpAt(e)
+        if (w) onPickWarp(w)
+      }}
+      onMouseMove={(e) => (e.currentTarget.style.cursor = warpAt(e) ? 'pointer' : '')}
+    />
+  )
 }
 
 // ── 정적 지도: 한 번만 그려서 재사용 ───────────────────
