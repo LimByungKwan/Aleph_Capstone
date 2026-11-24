@@ -6,8 +6,8 @@
 
 ## 한 줄 결론
 
-**차트 7개 중 5개는 구현·테스트 완료, 1개(구역 관리자 분리 = GitHub 권한)는 남음, 1개(ZAP 점검)는 아직 안 함.**
-점검하다가 빈틈 3개를 새로 찾았다 → 아래 "찾은 빈틈".
+**차트 7개 중 5개는 구현·테스트 완료, 1개(구역 관리자 분리)는 CODEOWNERS 파일까지 하고 브랜치 보호 설정이 남음, 1개(ZAP 점검)는 아직 안 함.**
+점검하다가 빈틈 3개를 새로 찾았고, 그중 1개(HSTS)는 같은 날 고쳤다 → 아래 "찾은 빈틈".
 
 ## 항목별 결과
 
@@ -19,14 +19,14 @@
 | 2-a | bcrypt (비밀번호 저장) | ✅ | 비밀번호를 직접 저장하지 않고 Supabase Auth가 bcrypt 해시로 저장 | Supabase Auth 기본 동작 (이번엔 DB 해시 앞자리 확인 못 함 — 대시보드 로그인 풀림) | `docs/jm-db-design.md` 11/18 결정 |
 | 2-b | JWT (로그인 증표) | ✅ | 서버는 요청마다 토큰을 Supabase에 확인받고, 그 토큰 그대로 DB에 넘김. 토큰 1시간 만료 + refresh | 토큰 없음·가짜 토큰 → **401**. 서명 방식 **ES256**(공개키 서명) | `server/src/app.js:115` `requireAuth`, JWKS `alg: ES256` |
 | 2-c | HTTPS | ✅ (빈틈 1) | 3곳 모두 HTTPS만. http로 오면 https로 돌려보냄 | http → **308/301** 리다이렉트, **TLS 1.3**. Vercel은 HSTS 있음, **Render API는 HSTS 없음** | 아래 "다시 확인하는 법" |
-| 3 | RBAC (역할별 권한) | ✅ | 역할 검사를 DB 함수 첫 줄과 RLS에서 함 → 서버 코드를 실수해도 DB가 막음 | 순례객이 관리자 통계 → `NOT_ADMIN`(11/23 실제 DB에서 확인), 순례객이 사장님 통계 → `NOT_OWNER`, 다른 가게 쿠폰 사용 → `WRONG_SHOP` | `jm_core.sql:415`(사장님), `:382`(가게), `20261126120000_jm_admin_stats.sql`(관리자) |
-| 3' | 구역 관리자 분리 | ⬜ 남음 | 맵 구역은 DB 행이 아니라 **파일**이라 앱 권한으로는 못 막음 → GitHub CODEOWNERS + main 브랜치 보호로 해결 예정 | — | 다음 작업 |
+| 3 | RBAC (역할별 권한) | ✅ | **두 겹**: ① 서버 미들웨어 `requireRole('admin'/'owner')`가 DB 함수 전에 막음(11/24 추가) ② DB 함수 첫 줄과 RLS가 한 번 더 → 서버 코드를 실수해도 DB가 막음. 역할은 토큰이 아니라 매번 DB에서 읽음 | 순례객이 관리자 통계 → `NOT_ADMIN`(11/23 실제 DB에서 확인), 순례객이 사장님 통계 → `NOT_OWNER`, 다른 가게 쿠폰 사용 → `WRONG_SHOP` | `server/src/app.js` `requireRole`, `jm_core.sql:415`(사장님), `:382`(가게), `20261126120000_jm_admin_stats.sql`(관리자) · 서버 테스트 "역할 검사 미들웨어": 순례객·다른 역할·프로필 없음 → 403, DB 함수 호출 0번 |
+| 3' | 구역 관리자 분리 | 🟡 파일 완료, 설정 남음 | 맵 구역은 DB 행이 아니라 **파일**이라 앱 권한으로는 못 막음 → GitHub `CODEOWNERS`로 구역 파일마다 담당자 지정(PR이 오면 담당자에게 리뷰 자동 요청). main 브랜치 보호는 저장소 주인(병관) 설정 필요 | `.github/CODEOWNERS` (11/24) | 승인 강제("Require review from Code Owners")는 혼자 고친 PR도 막혀서 시연 뒤 결정 |
 | 4-a | RLS (행 단위 권한) | ✅ | 13개 테이블 모두 RLS. "내 것만" 읽기, 관리자만 전체 | 권한 매트릭스 테스트 통과 (테이블 × 비로그인·순례객·다른 사장님 × 읽기/쓰기) | `supabase/tests/jm_security_matrix_test.sql` |
 | 4-b | 앱 전용 DB 계정 | ✅ | 서버는 RLS를 무시하는 `service_role` 키를 **아예 안 가짐**. 사용자 토큰(`authenticated` 역할)으로만 DB 접속 | 서버 `.env`에 공개 키(publishable)만 있음 | `server/src/supabase.js:5` |
 | 5-a | 스탬프 서버 검증 | ✅ (빈틈 2) | 스탬프는 DB 함수만 찍을 수 있고, 같은 장소 두 번은 DB 제약이 막음. NPC 같은 장소는 거절 | 토큰 없이 `POST /stamps` → **401** | `jm_core.sql:121` `UNIQUE(user_id, place_id)`, `:290` `collect_stamp` |
 | 5-b | 로그인 시도 제한 | ✅ | 같은 IP 15분 30번, 같은 이메일 실패 15분 5번 넘으면 잠깐 막음 | 서버 테스트 통과 | `server/src/app.js:91-92`, `server/test/rateLimit.test.js` |
 | 6-a | 감사 로그 | ✅ | 역할 변경·가게 홍보문구·쿠폰 사용을 DB 트리거가 자동 기록. 관리자도 고치거나 지울 수 없음 | 11/23 시연용 사장님 지정이 첫 기록으로 남음 | `20261125120000_jm_audit_log.sql`, `supabase/tests/jm_audit_log_test.sql` |
-| 6-b | 권한 우회 403 테스트 | ✅ | 권한 없는 요청이 정확히 막히는지 자동 테스트 | 서버 테스트 **48개 통과**(401·403 포함). RLS 구조라 "남의 데이터 조회"는 403이 아니라 **0건**으로 나옴 | `server/test/app.test.js`, 매트릭스 SQL |
+| 6-b | 권한 우회 403 테스트 | ✅ | 권한 없는 요청이 정확히 막히는지 자동 테스트 | 서버 테스트 **69개 통과**(401·403·역할 미들웨어·보안 헤더 포함, 11/24 기준). RLS 구조라 "남의 데이터 조회"는 403이 아니라 **0건**으로 나옴 | `server/test/app.test.js`, 매트릭스 SQL |
 | 7 | OWASP ZAP 점검 | ⬜ 안 함 | 배포 사이트 자동 취약점 스캔 | — | 팀 공지 후 진행 예정 |
 
 ### 추가로 확인한 것
@@ -41,7 +41,7 @@
 
 | # | 빈틈 | 위험 | 대응 |
 |---|---|---|---|
-| 1 | **Render API에 HSTS 헤더가 없음** (Vercel 화면은 있음) | 첫 접속을 http로 하면 중간자가 가로챌 여지. 실제로는 API를 화면이 https로만 부르므로 위험 낮음 | 서버에 `Strict-Transport-Security` 헤더 1줄 추가 (작은 작업) |
+| 1 | **Render API에 HSTS 헤더가 없음** (Vercel 화면은 있음) | 첫 접속을 http로 하면 중간자가 가로챌 여지. 실제로는 API를 화면이 https로만 부르므로 위험 낮음 | ✅ 11/24 고침: 모든 응답에 HSTS(1년) + `nosniff` + `X-Frame-Options: DENY` + `no-referrer` (`server/src/app.js`, 서버 테스트 "보안 헤더") — 배포 후 `curl -sI https://scenewalk-api.onrender.com/health`로 확인 |
 | 2 | **시간 탐정 스탬프는 서버 검증이 없음** (브라우저 저장) | 로그인한 사람이 개발자 도구로 스탬프를 만들어 낼 수 있음. 다른 기기·관리자 통계에도 안 보임 | 시연 뒤 DB 저장으로 옮기기 검토 (혜진 기능이라 같이) |
 | 3 | 로그인 토큰을 localStorage에 저장 | 화면에 XSS가 생기면 토큰을 훔칠 수 있음 | 알고 한 타협: 짧은 만료(1시간) + 화면에 사용자 입력을 HTML로 넣지 않음(React 기본). 근거 `frontend/src/api/session.js:14` |
 

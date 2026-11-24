@@ -14,6 +14,7 @@ import { HoopShoot } from './jm_activities.jsx'
 // public/fonts 의 웹폰트 (Google Fonts, SIL Open Font License).
 // ⚠ 용량을 줄이려고 지금 간판·안내판에 쓰는 글자만 들어 있어요. 새 글자를 쓰면 그 글자만 기본 글꼴로 보여요.
 //   글자를 추가하면 frontend/public/fonts/JM_FONTS.md 의 방법으로 다시 받아 주세요.
+const KO_FONT = '"Pretendard", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif'
 const JP_FONT = '"JmJp", "Yu Gothic", "Meiryo", "Hiragino Sans", sans-serif' // Zen Maru Gothic Bold
 export const KR_FONT = '"JmKr", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif' // Gowun Dodum
 const range = (n) => Array.from({ length: n }, (_, i) => i)
@@ -71,21 +72,72 @@ export function GlowMaterial({ map, glow = 0.45, ...rest }) {
 
 // 일본어 간판 (가로).
 // aspect = 간판 판의 가로 ÷ 세로. 판 비율과 같은 캔버스에 그려서 글자가 늘어나거나 찌그러지지 않게 해요.
+// 일본어 간판 밑에 작게 붙이는 한국어 (11/24: 간판마다 뜻을 알 수 있게). 새 일본어 간판을 만들면 여기에도 추가
+export const JP_SIGN_KO = {
+  湯灯町: '유아카리 마을',
+  湯灯峠: '유아카리 고개',
+  湯灯屋: '유아카리 큰 여관',
+  帳場: '접수처',
+  ゆ: '온천',
+  月見屋: '달맞이 여관',
+  白鷺館: '백로관',
+  '旅館 白鷺': '백로 여관',
+  花灯り: '꽃등불 여관',
+  鶴乃家: '학의 집',
+  松の湯: '소나무 온천',
+  日帰り湯: '당일 온천',
+  ゆずりは: '유즈리하 여관',
+  妖怪茶屋: '요괴 찻집',
+  氷華酒造: '빙화 양조장',
+  '晴れ屋 雑貨店': '하레야 잡화점',
+  おでん: '어묵',
+  '八つ橋 こもれび': '야쓰하시 과자점',
+  '陶器 青窯': '청가마 도자기',
+  '扇子 風月': '풍월 부채',
+  '甘味処 ゆずは': '유즈하 디저트',
+  'お香 しずく': '시즈쿠 향 가게',
+  '手ぬぐい 波屋': '나미야 손수건',
+  '抹茶 みどり庵': '미도리안 말차',
+  '風鈴 りん': '린 풍경 가게',
+  '人形 ひなた': '히나타 인형',
+  '団子 もちつき': '모치쓰키 경단',
+  '竹細工 たけのこ': '다케노코 대나무 공예',
+  '茶屋 坂の上': '언덕 위 찻집',
+  '古典堂 書店': '고전당 서점',
+  '豆腐 ひかり': '히카리 두부',
+  '宿 せせらぎ': '세세라기 여관',
+  '甘味 川辺': '강변 디저트',
+  '蕎麦 谷風': '골바람 메밀국수',
+}
+
 export function getJpSignTexture(text, bg = '#ffffff', fg = '#222222', aspect = 4) {
   const a = Math.round(Math.min(12, Math.max(0.5, aspect)) * 10) / 10
+  const ko = JP_SIGN_KO[text]
   const height = 160
   const width = Math.round(height * a)
-  return canvasTexture(`jpsign:${text}:${bg}:${fg}:${a}`, width, height, (ctx, w, h) => {
+  return canvasTexture(`jpsign:${text}:${bg}:${fg}:${a}:${ko ? 'ko' : ''}`, width, height, (ctx, w, h) => {
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, w, h)
     ctx.strokeStyle = 'rgba(0,0,0,0.22)'
     ctx.lineWidth = 6
     ctx.strokeRect(6, 6, w - 12, h - 12)
-    fitText(ctx, text, w * 0.86, 96, 'bold', JP_FONT, h * 0.62)
     ctx.fillStyle = fg
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(text, w / 2, h / 2 + 4)
+    if (!ko) {
+      fitText(ctx, text, w * 0.86, 96, 'bold', JP_FONT, h * 0.62)
+      ctx.fillText(text, w / 2, h / 2 + 4)
+      return
+    }
+    // 위: 일본어(크게) / 아래: 가는 줄 + 한국어(작게, 조금 옅게)
+    fitText(ctx, text, w * 0.86, 96, 'bold', JP_FONT, h * 0.46)
+    ctx.fillText(text, w / 2, h * 0.36)
+    ctx.globalAlpha = 0.35
+    ctx.fillRect(w * 0.2, h * 0.63, w * 0.6, 2)
+    ctx.globalAlpha = 0.9
+    fitText(ctx, ko, w * 0.84, 48, 'bold', KO_FONT, h * 0.22)
+    ctx.fillText(ko, w / 2, h * 0.8)
+    ctx.globalAlpha = 1
   })
 }
 

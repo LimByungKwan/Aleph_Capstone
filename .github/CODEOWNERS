@@ -1,0 +1,56 @@
+# 담당자 지정 (CODEOWNERS) — 작성: 지민, 11/24
+# 이 파일의 목적: "자기 구역 파일만 수정"(frontend/src/game/data/zones/README.md 규칙)을 GitHub가 알아서 챙기게 하기
+#
+# 지금 동작 (11/24)
+#   - 아래 경로를 건드린 PR이 올라오면 그 담당자에게 **리뷰 요청이 자동으로** 간다 (알림 역할)
+#   - 병합을 막지는 않는다. 막으려면 main 브랜치 보호에서 "Require review from Code Owners"를 켜야 하는데,
+#     그러면 자기 파일만 고친 PR도 다른 사람 승인이 있어야 병합된다 (작성자 본인 승인은 안 쳐 줌)
+#     → 시연(11/30) 전에는 켜지 않고, 시연 뒤에 팀이 정한다
+#
+# 규칙: 아래로 갈수록 우선. 한 줄에 여러 명이면 그중 한 명.
+# 새 파일을 만들면 이름 앞에 자기 접두사(jm_ / bk_ / hj_ / sg_)를 붙이면 자동으로 내 담당이 된다
+
+# ── 기본: 맵 통합·공용 파일은 병관 (광장·맵 통합 담당) ──
+*                                         @LimByungKwan
+
+# ── 구역 데이터 (구역 하나 = 파일 하나) ──
+/frontend/src/game/data/zones/jm_*        @few0579-a11y
+/frontend/src/game/data/zones/bk_*        @LimByungKwan
+/frontend/src/game/data/zones/hj_*        @hyejin-log
+/frontend/src/game/data/zones/sg_*        @psg-maker
+/frontend/src/game/data/hub.json          @LimByungKwan
+
+# ── 구역 스타일 (접두사로 구분) ──
+/frontend/src/game/Map/styles/jm_*        @few0579-a11y
+/frontend/src/game/Map/styles/bk_*        @LimByungKwan
+/frontend/src/game/Map/styles/hj*         @hyejin-log
+/frontend/src/game/Map/styles/sg_*        @psg-maker
+
+# ── 지민: 로그인·역할·스탬프·쿠폰 API, DB, 배포, 멀티 접속 ──
+/server/                                  @few0579-a11y
+/supabase/                                @few0579-a11y
+/frontend/src/api/session.js              @few0579-a11y
+/frontend/src/api/serverApi.js            @few0579-a11y
+/frontend/src/components/auth/            @few0579-a11y
+/frontend/src/game/multiplayer/           @few0579-a11y
+/docs/jm-*                                @few0579-a11y
+
+# ── 혜진: 대화창·스탬프북·쿠폰함, 사장님 화면 ──
+/frontend/src/components/movieZone/       @hyejin-log
+/frontend/src/components/boss/            @hyejin-log
+/docs/hj-*                                @hyejin-log
+
+# ── 성근: 관리자 화면, 통계, 성능, K-POP ──
+/frontend/src/components/admin/           @psg-maker
+/frontend/src/components/sg/              @psg-maker
+/docs/sg-*                                @psg-maker
+
+# ── 병관: AI 가이드·타로·코스 (ai/ 폴더 포함) ──
+/ai/                                      @LimByungKwan
+/frontend/src/components/course/          @LimByungKwan
+/docs/bk-*                                @LimByungKwan
+
+# ── 공용 약속 파일: 바꾸면 모두가 알아야 함 → 담당 2명 이상 ──
+/frontend/src/api/client.js               @hyejin-log @few0579-a11y
+/frontend/package.json                    @LimByungKwan @few0579-a11y
+/.github/                                 @few0579-a11y @LimByungKwan
