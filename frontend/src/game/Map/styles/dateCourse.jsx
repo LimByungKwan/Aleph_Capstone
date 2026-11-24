@@ -8,6 +8,7 @@ import { Ball, Box, Cone, Cyl, GEO, Instances, hashString, mat, seeded, texMat }
 import SeasonalTree from './SeasonalTree.jsx'
 import { live } from '../../timeOfDay.js'
 import { TowerTelescopes } from './bk_telescope.jsx'
+import { PhotoBooth } from './bk_photoBooth.jsx'
 import { FountainCoinToss } from './bk_coinToss.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
@@ -1087,6 +1088,12 @@ function couplePhotoZoneGeometry() {
   return photoZoneGeometry
 }
 
+// 눈에 안 보이는 충돌 전용 소품 (커플 포토존처럼 모양이 복잡한 소품을 여러 상자로 막을 때). 구역 파일 style: "bkBlocker"
+// 그림은 없고, 충돌은 공용 Colliders.jsx가 이 항목의 collider(또는 size)로 만듦
+export function BkBlocker() {
+  return null
+}
+
 const SWING_SEAT = mat('#fbcfe8')
 const SWING_ROPE = mat('#f5f0e6')
 
@@ -1098,6 +1105,8 @@ export function CouplePhotoZone() {
   return (
     <group>
       <mesh geometry={couplePhotoZoneGeometry()} material={INTERIOR_MAT} castShadow receiveShadow />
+      {/* 인생네컷 (E → 혼자·같이 찍기) */}
+      <PhotoBooth />
       {/* 흔들리는 그네: 위 가로대 높이를 축으로 회전 */}
       <group ref={swingRef} position={[SWING.x, SWING.top, SWING.z]}>
         {[-0.75, 0.75].map((x) => (

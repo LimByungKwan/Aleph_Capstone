@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { WebSocketServer } from 'ws'
 import { createTarotRooms } from './bk_tarotRooms.js'
+import { createPhotoRooms } from './bk_photoRooms.js'
 
 // 멀티 접속 (담당: 지민) — 같은 맵에 있는 사람들의 위치·방향·캐릭터를 실시간으로 주고받는다
 //
@@ -18,7 +19,7 @@ import { createTarotRooms } from './bk_tarotRooms.js'
 //   서버 → 화면  { t:'welcome', id, peers:[…] }          내 번호 + 이미 있는 사람들
 //               { t:'join', peer } / { t:'leave', id } / { t:'peer', peer }(캐릭터 변경)
 //               { t:'state', s:[[id,x,y,z,r,s,g], …] }  0.1초마다 움직인 사람만
-//   'tarot.'으로 시작하는 메시지는 커플 타로 멀티 (병관, bk_tarotRooms.js)
+//   'tarot.'으로 시작하는 메시지는 커플 타로 멀티, 'photo.'는 커플 포토존 인생네컷 (병관, bk_tarotRooms.js · bk_photoRooms.js)
 
 export const REALTIME_PATH = '/realtime'
 
@@ -84,6 +85,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     return null
   }
   const tarot = createTarotRooms({ send, findPeer, ...(readTarot && { readTarot }), options: options.tarot })
+  const photo = createPhotoRooms({ send, findPeer, options: options.photo })
 
   async function identify(token) {
     if (typeof token !== 'string' || !token) return { name: '손님', userId: null }
@@ -149,7 +151,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         return
       }
       if (!peer.ready) return
-      if (tarot.handle(ws, peer, msg)) return
+      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg)) return
 
       if (msg.t === 'move') {
         const state = validMove(msg)
@@ -165,6 +167,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     ws.on('close', () => {
       clearTimeout(helloTimer)
       tarot.disconnect(ws)
+      photo.disconnect(ws)
       peers.delete(ws)
       if (peer.ready) broadcast({ t: 'leave', id: peer.id })
     })
@@ -204,10 +207,12 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     wss,
     /** 커플 타로 방 (테스트·로그용) */
     tarot,
+    photo,
     /** 지금 접속 중인 사람 수 (테스트·로그용) */
     count: () => [...peers.values()].filter((p) => p.ready).length,
     close: () => {
       tarot.close()
+      photo.close()
       for (const ws of peers.keys()) ws.terminate()
       wss.close()
     },

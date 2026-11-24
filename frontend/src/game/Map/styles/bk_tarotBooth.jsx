@@ -181,7 +181,7 @@ function TarotHud() {
   return (
     // 화면이 열려 있으면 장소 이름표(drei Html 기본 z-index 최대 16777271)보다 위에
     <Html calculatePosition={() => [0, 0]} zIndexRange={t.active ? [16777272, 16777272] : [20, 0]} style={{ pointerEvents: 'none' }} onOcclude={keepVisible}>
-      <div style={{ ...wrap, width: size.width, height: size.height, alignItems: t.active ? 'center' : 'flex-end' }}>
+      <div ref={wheelScroll} style={{ ...wrap, width: size.width, height: size.height, alignItems: t.active ? 'center' : 'flex-end' }}>
         {showHint && (
           <div style={chip}>
             <kbd style={kbd}>E</kbd> 커플 타로 보기 🔮
@@ -215,6 +215,25 @@ const ghost = { padding: '7px 14px', borderRadius: 999, border: '1px solid rgba(
 const wrap = { position: 'absolute', left: 0, top: 0, display: 'flex', justifyContent: 'center', paddingBottom: 72, boxSizing: 'border-box' }
 const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }
+
+// 타로 창 마우스 휠 스크롤: 게임 쪽(카메라 휠 확대 등)이 휠을 가져가서 창이 안 내려가던 문제 →
+// 휠이 창 위에서 돌면 가장 가까운 스크롤 되는 칸을 직접 내림 (캔버스로는 안 넘김)
+function wheelScroll(el) {
+  if (!el || el.dataset.wheel) return
+  el.dataset.wheel = '1'
+  el.addEventListener(
+    'wheel',
+    (event) => {
+      let box = event.target instanceof Element ? event.target : null
+      while (box && box !== el && !(box.scrollHeight > box.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(box).overflowY))) box = box.parentElement
+      if (!box || box === el) return
+      event.preventDefault()
+      event.stopPropagation()
+      box.scrollTop += event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+    },
+    { passive: false },
+  )
+}
 
 // drei Html 화면 고정 위치가 처음 한 번 숨겨진 채로 굳지 않게 (bk_clawMachine.jsx와 같음)
 function keepVisible() {}

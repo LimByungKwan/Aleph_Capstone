@@ -296,26 +296,14 @@ function TarotSpread({ r, onRestart, onClose }) {
             </div>
           )}
 
-          {r.guard && (
-            <div style={{ textAlign: 'center', marginTop: 10 }}>
-              <span style={guardChip}>
-                🛡️ 해석 검사 통과
-                {r.guard.fallback ? ' · 기본 문장으로 바꿈' : r.guard.retries > 0 ? ` · 문장 ${r.guard.retries}번 다시 고름` : ' · 한 번에 통과'}
-              </span>
-            </div>
-          )}
           <div style={note}>
             재미로 보는 타로예요. 결과가 두 사람의 관계를 정하지 않아요.
-            <br />
-            {record.status === 'saving' && '기록 저장 중…'}
             {record.saved && (
               <>
-                📒 카드·요약만 기록했어요 (두 사람 답은 저장 안 함) ·{' '}
-                <button type="button" style={linkBtn} onClick={forget}>이 기록 지우기</button>
+                {' '}
+                <button type="button" style={linkBtn} onClick={forget}>기록 지우기</button>
               </>
             )}
-            {record.status === 'deleted' && '🗑️ 이번 기록을 지웠어요'}
-            {record.error && `⚠️ ${record.error}`}
           </div>
         </>
       )}
@@ -511,7 +499,6 @@ const cardBack = { width: '100%', marginTop: 8, padding: '12px', borderRadius: 1
 const linkBtn = { padding: 0, border: 'none', background: 'none', color: '#e7c35a', textDecoration: 'underline', cursor: 'pointer', fontSize: 12 }
 const lastBox = { marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(147,197,253,0.12)', border: '1px solid rgba(147,197,253,0.4)', fontSize: 13, lineHeight: 1.5 }
 const themeTag = { display: 'inline-block', marginRight: 6, padding: '0 6px', borderRadius: 999, background: 'rgba(249,168,212,0.25)', fontSize: 11, fontWeight: 700 }
-const guardChip = { display: 'inline-block', padding: '4px 12px', borderRadius: 999, background: 'rgba(134,239,172,0.18)', border: '1px solid rgba(134,239,172,0.6)', color: '#bbf7d0', fontSize: 12, fontWeight: 700 }
 const togetherBox = { marginTop: 12, padding: '8px 12px', borderRadius: 12, background: 'rgba(147,197,253,0.12)', border: '1px solid rgba(147,197,253,0.45)' }
 const peerRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, fontSize: 13 }
 const missionTag = { marginLeft: 6, padding: '0 6px', borderRadius: 999, background: '#e7c35a', color: '#2a1d47', fontSize: 10, fontWeight: 800 }
