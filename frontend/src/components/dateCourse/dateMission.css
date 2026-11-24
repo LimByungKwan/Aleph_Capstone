@@ -6,6 +6,42 @@
 .date-tracker__foot .ui-btn { font-size: 12px; padding: 4px 8px; }
 .date-dialog .special-tag { background: #fbcfe8; color: #831843; border-color: #f9a8d4; }
 
+.date-activity-prompt { position: fixed; z-index: 12; left: 50%; bottom: max(104px, calc(env(safe-area-inset-bottom) + 80px)); transform: translateX(-50%); white-space: nowrap; }
+.date-activity-prompt kbd { margin-right: 4px; padding: 1px 5px; border: 1px solid currentColor; border-radius: 4px; }
+.date-activity-start { margin-top: 8px; }
+.date-cafe-menu { min-width: 0; margin: 0; padding: 8px 12px 12px; border: 1px solid #e3cfb1; border-radius: 10px; }
+.date-cafe-menu legend { padding: 0 4px; color: #7f3e2f; font-weight: 700; }
+.date-cafe-menu label { display: inline-flex; align-items: center; gap: 5px; padding: 8px; border: 1px solid #e3cfb1; border-radius: 8px; cursor: pointer; }
+.date-cafe-menu label:has(:checked) { border-color: #9d174d; background: #fce7f3; }
+.date-cafe-menu input { accent-color: #9d174d; }
+
+[data-bk-mural-frame] > :not(:has(canvas)),
+.ui-root:has(.date-mural-view) > :not(.date-mural-view) { visibility: hidden; }
+.date-mural-view { position: absolute; z-index: 30; inset: 0; overflow: hidden; touch-action: none; user-select: none; cursor: grab; }
+.date-mural-view:active { cursor: grabbing; }
+.date-mural-header, .date-mural-controls {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 24px), 450px);
+  background: #21171ff2;
+  color: #fff6f9;
+  border: 1px solid #f2b8d3a8;
+  border-radius: 12px;
+}
+.date-mural-header { top: max(12px, env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; }
+.date-mural-header h2 { margin: 0; font: 700 clamp(15px, 3vw, 20px) var(--ui-serif); }
+.date-mural-frame { position: absolute; inset: 16% 9% 22%; border: 2px dashed #ffe5ef; border-radius: 13px; box-shadow: 0 0 0 100vmax #160b1954; pointer-events: none; }
+.date-mural-frame[data-ready="true"] { border: 2px solid #a2ffce; }
+.date-mural-controls { bottom: max(10px, env(safe-area-inset-bottom)); display: grid; gap: 5px; text-align: center; padding: 7px 8px; }
+.date-mural-controls p { margin: 0; font-size: 12px; }
+.date-mural-controls ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px 9px; list-style: none; padding: 0; margin: 0; font-size: 11px; color: #ffe4b5; }
+.date-mural-controls li[data-framed="true"] { color: #a2ffce; }
+.date-mural-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.date-mural-buttons .ui-btn { min-width: 40px; min-height: 36px; padding: 5px 8px; }
+.date-mural-buttons .ui-btn:focus-visible, .date-mural-header .ui-btn:focus-visible { outline: 2px solid #a2ffce; outline-offset: 2px; }
+
 .date-map { grid-template-columns: minmax(150px, 220px) 1fr; align-items: start; }
 @media (max-width: 640px) { .date-map { grid-template-columns: 1fr; } .date-map svg { max-height: 300px; } }
 .date-map svg { width: 100%; height: auto; }

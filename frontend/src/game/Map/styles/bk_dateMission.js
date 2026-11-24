@@ -1,13 +1,12 @@
 import { create } from 'zustand'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
-import { useGameStore } from '../../../store/gameStore.js'
 import { useBadges } from '../../../store/badges.js'
 import { useBkActivity } from './bk_activityStore.js'
 
 // 데이트 코스 미션 (담당: 병관) — 영화·드라마 구역 "시간 탐정 역사 복원"과 같은 모양·흐름
-//   데이트 코스 구역 안 7곳: 체험(또는 방문)을 끝내면 ◐ → 장소 카드에서 [🔖 데이트 스탬프] → ✓
+//   데이트 코스 구역 안 7곳: 체험을 끝내면 ◐ → 장소 카드에서 [🔖 데이트 스탬프] → ✓
 //   절반(4곳)이면 💗 배지, 7곳 다 모으면 💕 배지 + 완주 보상 창
-// 완료 신호: 동전 던지기·인형뽑기(bk_activityStore.completed) / 타로 결과 / 인생네컷 완성 / 망원경으로 명소 찾기 / 카페·벽화 골목 방문
+// 완료 신호: 동전 던지기·인형뽑기 / 타로 결과 / 인생네컷 완성 / 망원경으로 명소 찾기 / 카페 주문 / 벽화 구도 맞추기
 // 기록은 계정별로 이 브라우저에 저장 (영화·드라마 구역 시간 탐정과 같은 방식)
 
 export const DATE_MISSIONS = [
@@ -68,20 +67,21 @@ export const DATE_MISSIONS = [
     id: 'cafe',
     short: '소란 커피',
     icon: '☕',
-    kind: '🚶 방문',
-    center: [78.5, 17],
+    kind: '상대 취향으로 한 잔',
+    center: [75.5, 18.2], // 워프는 카운터 앞의 평평한 산책로로
+    mapAt: [75.5, 17],
     intro: '드라마 주인공이 아르바이트하던 골목 카페. 걷다가 쉬어 가기 좋아요.',
-    how: '카페 앞까지 걸어가면 완료돼요.',
+    how: '가게 앞 주문 카운터에서 E 또는 [주문하기]를 누르고, 음료와 디저트를 하나씩 골라요.',
     nearby: ['카페', '디저트 카페'],
   },
   {
     id: 'mural',
     short: '날개 벽화 골목',
     icon: '🪽',
-    kind: '🚶 방문',
-    center: [120.5, 2.5],
-    intro: '날개 벽화 앞에서 사진을 남기는 골목. 드라마 엔딩 장면의 촬영지예요.',
-    how: '벽화 골목까지 걸어가면 완료돼요.',
+    kind: '엔딩 장면 맞추기',
+    center: [120.5, 4.5], // 벽화 앞 발자국 (벽화 중심에서 +z 방향으로 6m)
+    intro: '주인공이 꿈을 고백했던 영화의 엔딩 촬영지예요. 벽화 앞에서 마지막 장면의 구도를 찾아보세요.',
+    how: '분홍 발자국에 서서 E 또는 [구도 맞추기]를 누르세요. 화면을 드래그하거나 방향 버튼을 눌러 양쪽 날개 끝과 발자국을 프레임 안에 넣고 [장면 완성]을 눌러요.',
     nearby: ['벽화 거리', '사진 명소'],
   },
 ]
@@ -98,7 +98,13 @@ const KEY = 'scenewalk.date-mission'
 function readSaved() {
   try {
     const data = JSON.parse(localStorage.getItem(KEY))
-    return data && typeof data === 'object' && data.accounts ? data : { accounts: {} }
+    if (!data || typeof data.accounts !== 'object' || !data.accounts) return { accounts: {} }
+    // 예전 방문으로 받은 스탬프는 인정해요. 아직 받지 않았다면 새 체험부터 진행해요.
+    for (const pass of Object.values(data.accounts)) {
+      if (pass?.done?.cafe && !pass.stamps?.cafe && !pass.cafeOrder) delete pass.done.cafe
+      if (pass?.done?.mural && !pass.stamps?.mural && !pass.muralFramed) delete pass.done.mural
+    }
+    return data
   } catch {
     return { accounts: {} }
   }
@@ -121,11 +127,18 @@ export const useDateMission = create((set, get) => ({
       // 저장이 막힌 브라우저면 이번 접속에서만
     }
   },
-  /** 체험·방문 완료 → ◐ (스탬프는 카드에서 받기) */
-  markDone(id) {
-    if (!getMission(id) || get().pass().done[id]) return false
-    get().write((p) => ({ ...p, done: { ...p.done, [id]: new Date().toISOString() } }))
+  /** 체험 완료 → ◐ (스탬프는 카드에서 받기) */
+  markDone(id, cafeOrder) {
     const m = getMission(id)
+    const alreadyDone = get().pass().done[id]
+    if (!m || (id === 'cafe' && !cafeOrder) || (alreadyDone && !cafeOrder)) return false
+    get().write((p) => ({
+      ...p,
+      done: { ...p.done, [id]: alreadyDone || new Date().toISOString() },
+      ...(id === 'cafe' && { cafeOrder }),
+      ...(id === 'mural' && { muralFramed: true }),
+    }))
+    if (alreadyDone) return true
     useUiStore.getState().toast?.(`${m.icon} 데이트 미션 완료: ${m.short} — 오른쪽 목록에서 스탬프를 받아 보세요`, 'ok')
     return true
   },
@@ -153,31 +166,22 @@ useBkActivity.subscribe((state, prev) => {
   if (state.completed === prev.completed) return
   for (const key of Object.keys(state.completed)) if (!prev.completed[key] && ACTIVITY_TO_MISSION[key]) useDateMission.getState().markDone(ACTIVITY_TO_MISSION[key])
 })
-// 카페·벽화 골목: 그 장소 지점에 들어가면 방문 완료 (지점 센서 = gameStore.nearbyPlaceId)
-const VISIT = { cafe_soran: 'cafe', spot_mural: 'mural' }
-useGameStore.subscribe((state, prev) => {
-  if (state.nearbyPlaceId !== prev.nearbyPlaceId && VISIT[state.nearbyPlaceId]) useDateMission.getState().markDone(VISIT[state.nearbyPlaceId])
-})
 
 // ── 📍 내 근처에서 실제로 가 보기 ──
 // 브라우저에게 지금 위치를 물어 그 위치 중심으로 지도 검색을 엶. 위치는 우리 서버로 보내지 않음 (지도 주소에만 들어감)
 // 위치 사용을 거절하거나 안 되면 카카오맵 일반 검색으로
-let lastCoords = null
 export function openNearby(keyword) {
   const tab = window.open('about:blank', '_blank') // 팝업 차단을 피하려고 누른 순간에 창을 먼저 엶
+  if (tab) tab.opener = null
   const go = (url) => {
-    if (tab) tab.location.href = url
-    else window.open(url, '_blank', 'noopener')
+    if (!tab) window.location.assign(url) // 새 탭이 차단되면 현재 탭에서 열기
+    else if (!tab.closed) tab.location.replace(url)
   }
   const fallback = () => go(`https://map.kakao.com/link/search/${encodeURIComponent(keyword)}`)
   const withCoords = ({ latitude, longitude }) => go(`https://www.google.com/maps/search/${encodeURIComponent(keyword)}/@${latitude.toFixed(5)},${longitude.toFixed(5)},15z`)
-  if (lastCoords) return withCoords(lastCoords)
   if (!navigator.geolocation) return fallback()
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      lastCoords = pos.coords
-      withCoords(pos.coords)
-    },
+    (pos) => withCoords(pos.coords),
     fallback,
     { timeout: 8000, maximumAge: 5 * 60 * 1000 },
   )
