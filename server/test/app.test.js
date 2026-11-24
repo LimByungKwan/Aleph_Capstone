@@ -286,6 +286,45 @@ describe('캐릭터 꾸미기', () => {
   })
 })
 
+describe('워프존 활성화 기록', () => {
+  test('토큰 없이 켜거나 불러오면 401, DB는 부르지 않음', async () => {
+    assert.equal((await api('POST', '/me/warps', { body: { warpId: 'warp_bk' } })).status, 401)
+    assert.equal((await api('GET', '/me/warps')).status, 401)
+    assert.equal(calls.length, 0)
+  })
+
+  test('켜기: 로그인한 사람 토큰으로 unlock_warp를 부르고 200 { warps }', async () => {
+    rpcHandler = () => ({ data: ['warp_bk', 'warp_jm'], error: null })
+    const res = await api('POST', '/me/warps', { token: GOOD_TOKEN, body: { warpId: 'warp_jm' } })
+    assert.equal(res.status, 200)
+    assert.deepEqual(res.body, { warps: ['warp_bk', 'warp_jm'] })
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, rpc: 'unlock_warp', args: { p_warp_id: 'warp_jm' } })
+  })
+
+  test('형식이 틀리면 DB까지 가지 않고 400', async () => {
+    for (const warpId of [undefined, null, 1, '', 'warp_', 'WARP_BK', 'warp_bk; drop', '<script>', ['warp_bk']]) {
+      const res = await api('POST', '/me/warps', { token: GOOD_TOKEN, body: { warpId } })
+      assert.equal(res.status, 400, String(warpId))
+      assert.equal(res.body.error.code, 'INVALID_INPUT')
+    }
+    assert.equal(calls.length, 0)
+  })
+
+  test('형식은 맞지만 목록에 없는 id는 DB가 INVALID_INPUT → 400', async () => {
+    rpcHandler = () => ({ data: null, error: { message: 'INVALID_INPUT', details: '워프존 id를 확인해 주세요.' } })
+    const res = await api('POST', '/me/warps', { token: GOOD_TOKEN, body: { warpId: 'warp_xx' } })
+    assert.equal(res.status, 400)
+    assert.equal(res.body.error.code, 'INVALID_INPUT')
+  })
+
+  test('불러오기: 내 user_id 조건으로 읽고 id만 배열로', async () => {
+    tableRows = { warp_unlocks: [{ warp_id: 'warp_bk' }, { warp_id: 'warp_sg' }] }
+    const res = await api('GET', '/me/warps', { token: GOOD_TOKEN })
+    assert.deepEqual(res.body, { warps: ['warp_bk', 'warp_sg'] })
+    assert.deepEqual(calls[0], { token: GOOD_TOKEN, table: 'warp_unlocks', filters: [['user_id', USER.id]] })
+  })
+})
+
 describe('커플 타로 기록', () => {
   const READING_ID = '11111111-1111-4111-8111-111111111111'
   const body = { spread: 'couple', cards: ['major_06', 'major_17'], summary: '서로의 속도를 맞춰 가는 시기예요.', detail: { questionIds: ['q03'] } }

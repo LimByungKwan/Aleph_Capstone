@@ -165,11 +165,12 @@ begin
   perform public.log_access();                           -- access_logs
   perform public.save_appearance('{"hat":"red"}');       -- profiles.appearance
   perform public.save_tarot_reading('couple', array['major_06'], '매트릭스 검증', null);  -- tarot_readings
+  perform public.unlock_warp('warp_jm');                 -- warp_unlocks
   select code into v_code from public.coupons where user_id = a limit 1;
   if v_code is null then raise exception 'FAIL: 준비 단계에서 A의 쿠폰이 안 만들어짐'; end if;
   perform pg_temp.login(o1);
   perform public.redeem_coupon(v_code, gen_random_uuid());  -- redeem_requests
-  raise notice 'PASS: 준비 — A의 스탬프·쿠폰·체험·접속·꾸미기·타로·쿠폰 사용 기록 생성';
+  raise notice 'PASS: 준비 — A의 스탬프·쿠폰·체험·접속·꾸미기·타로·워프·쿠폰 사용 기록 생성';
 
   -- ── 1. 다른 순례객 B: 남의 것 못 보고, 어떤 테이블도 직접 못 씀 ──
   perform pg_temp.login(b);
@@ -201,7 +202,9 @@ begin
       $q$select public.log_access()$q$,
       $q$select public.save_shop_promo('x', null)$q$,
       $q$select public.save_appearance('{}')$q$,
-      $q$select public.save_tarot_reading('couple', array['major_00'], 'x', null)$q$])
+      $q$select public.save_tarot_reading('couple', array['major_00'], 'x', null)$q$,
+      $q$select public.get_admin_stats()$q$,
+      $q$select public.unlock_warp('warp_bk')$q$])
   loop
     begin
       execute f;
@@ -213,7 +216,7 @@ begin
       end if;
     end;
   end loop;
-  raise notice 'PASS: [비로그인] 쓰기 함수 8개 모두 permission denied';
+  raise notice 'PASS: [비로그인] 쓰기 함수 10개 모두 permission denied';
 
   -- ── 5. 관리자: 접속 기록·통계는 보여야 함 (막기만 하고 정작 필요한 사람이 못 보면 안 됨) ──
   perform pg_temp.login(ad);

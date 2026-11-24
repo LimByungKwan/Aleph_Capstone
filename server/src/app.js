@@ -259,6 +259,24 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     res.json({ ok: true })
   })
 
+  // ── 워프존 활성화 기록 (워프존 화면: 병관 bk_warpStore.js) ──
+  // client.js listWarps: { warps: ['warp_bk', …] } — 본인 것만 (RLS + user_id 조건)
+  app.get('/me/warps', requireAuth, async (req, res) => {
+    const { data, error } = await req.db.from('warp_unlocks').select('warp_id').eq('user_id', req.user.id).order('warp_id')
+    if (error) throw fromDbError(error)
+    res.json({ warps: data.map((row) => row.warp_id) })
+  })
+
+  // client.js unlockWarp: { warps } — 허용 id 4개 검사·중복 무시는 DB 함수 unlock_warp
+  // 이미 켠 워프를 다시 보내도 같은 결과라 201이 아니라 200
+  app.post('/me/warps', requireAuth, async (req, res) => {
+    const warpId = req.body?.warpId
+    if (typeof warpId !== 'string' || !/^warp_[a-z]{2}$/.test(warpId)) {
+      throw new HttpError(400, 'INVALID_INPUT', '워프존 id를 확인해 주세요.')
+    }
+    res.json({ warps: await rpc(req.db, 'unlock_warp', { p_warp_id: warpId }) })
+  })
+
   // ── 스탬프 ──
   // client.js collectStamp: { stamp, issuedCoupons }
   app.post('/stamps', requireAuth, async (req, res) => {
