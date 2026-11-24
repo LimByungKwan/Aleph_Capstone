@@ -5,6 +5,7 @@
 .date-tracker__foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .date-tracker__foot .ui-btn { font-size: 12px; padding: 4px 8px; }
 .date-dialog .special-tag { background: #fbcfe8; color: #831843; border-color: #f9a8d4; }
+.date-dialog:has(.date-letter-status) .special-dialog__head { position: sticky; top: 0; z-index: 1; }
 
 .date-activity-prompt { position: fixed; z-index: 12; left: 50%; bottom: max(104px, calc(env(safe-area-inset-bottom) + 80px)); transform: translateX(-50%); white-space: nowrap; }
 .date-activity-prompt kbd { margin-right: 4px; padding: 1px 5px; border: 1px solid currentColor; border-radius: 4px; }
@@ -72,6 +73,8 @@
 .date-letter-clue { padding: 11px 13px; border: 1px solid #dfbc9c; border-radius: 12px; background: #fff2d9; }
 .date-letter-sequence { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; list-style: none; padding: 0; margin: 8px 0; }
 .date-letter-sequence li { display: flex; justify-content: center; align-items: center; gap: 4px; min-height: 36px; padding: 4px; border: 1px solid #ddbfa0; border-radius: 8px; background: #fffaf2; font-size: 13px; }
+.date-letter-slot { display: grid; gap: 4px; width: 100%; text-align: center; }
+.date-letter-slot select { width: 100%; min-width: 0; min-height: 36px; padding: 3px; border: 1px solid #bd886e; border-radius: 6px; background: #fffaf3; color: #512d30; font: inherit; }
 .date-letter-key { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; padding: 0; margin: 7px 0 0; text-align: center; font-size: 13px; }
 .date-letter-key dt, .date-letter-key dd { margin: 0; padding: 3px 0; }
 .date-letter-color::before { content: ''; display: inline-block; flex-shrink: 0; width: 10px; height: 10px; margin-right: 4px; border: 1px solid #4e344a44; border-radius: 50%; background: var(--letter-color, transparent); }
