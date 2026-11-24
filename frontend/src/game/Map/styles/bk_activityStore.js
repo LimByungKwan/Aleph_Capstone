@@ -34,6 +34,10 @@ export const useBkActivity = create((set, get) => ({
   tarot: { near: false, active: false, spot: null }, // spot: 텐트 앞 [x, z] (같이 볼 사람 찾기용)
   setTarot: (patch) => set({ tarot: { ...get().tarot, ...patch } }),
 
+  // photo: 커플 포토존 인생네컷 (bk_photoBooth.jsx) — near: 포토존 앞인지, active: 인생네컷 창이 열려 있는지
+  photo: { near: false, active: false },
+  setPhoto: (patch) => set({ photo: { ...get().photo, ...patch } }),
+
   // scope: SKY 전망대 망원경 (bk_telescope.jsx)
   //   near: 앞에 서 있는 망원경 번호 (없으면 -1), active: 망원경 화면이 열려 있는지, index: 보고 있는 망원경, focus: 십자선에 맞춘 명소 번호
   scope: { near: -1, active: false, index: 0, focus: -1 },

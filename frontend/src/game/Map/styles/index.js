@@ -24,6 +24,7 @@ import {
   RoundPlaza,
   Telescope,
   Terrace,
+  BkBlocker,
 } from './dateCourse.jsx'
 import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
@@ -86,6 +87,7 @@ export const STYLES = {
   greenhouseCafe: GreenhouseCafe,
   clawBooth: ClawBooth, // 인형뽑기 부스 + 미니게임 (bk_clawMachine.jsx)
   tarotBooth: TarotBooth, // 커플 타로 텐트 (bk_tarotBooth.jsx)
+  bkBlocker: BkBlocker, // 데이트 코스: 눈에 안 보이는 충돌 상자 (커플 포토존 등)
   // K-POP (SG)
   stage: Stage,
   sungrayBeach: SungrayBeach,

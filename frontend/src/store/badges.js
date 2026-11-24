@@ -16,6 +16,7 @@ export const BADGES = [
   { id: 'tarot_match', icon: '💞', name: '서로를 잘 아는 사이', desc: '커플 타로에서 서로의 답을 80% 이상 맞혔어요' },
   { id: 'telescope', icon: '🔭', name: '전망대 망원경 탐험가', desc: 'SKY 전망대 망원경으로 명소 5곳을 찾았어요' },
   { id: 'shooting_star', icon: '🌠', name: '별똥별 소원', desc: '전망대 망원경으로 별똥별 3개를 잡고 소원을 빌었어요' },
+  { id: 'four_cut', icon: '📸', name: '인생네컷', desc: '커플 포토존에서 인생네컷을 찍었어요' },
   { id: 'tarot_mission', icon: '🗺️', name: '타로 데이트 코스 완주', desc: '타로 카드가 짜 준 데이트 코스를 끝까지 걸었어요' },
 ]
 
@@ -50,7 +51,7 @@ export const useBadges = create((set, get) => ({
 // 완주한 코스로 받을 배지 고르기
 function badgesFor(course, meta) {
   if (meta?.tarot) return [['tarot_mission']] // 타로 코스는 데이트 코스 구역 안 짧은 코스라 일반 코스 완주 배지는 주지 않음
-  if (meta?.telescope) return [] // 망원경으로 찾은 한 곳 길 안내는 배지 없음
+  if (meta?.telescope || meta?.photo) return [] // 망원경·포토존 길 안내는 배지 없음
   const zones = new Set(course.map((c) => c.zone))
   const ids = [['first_course']]
   if (course.length && [...zones].every((z) => z === 'BK')) ids.push(['date_course'])
