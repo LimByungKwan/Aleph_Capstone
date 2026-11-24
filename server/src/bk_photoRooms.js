@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto'
 
 // 커플 포토존 "같이 찍는 인생네컷" 멀티 (담당: 병관) — 지민 님 멀티 접속(realtime.js) WebSocket 위
 //
-// 흐름: A가 접속 중인 사람 B 초대 → B 수락 → 두 사람이 하트 앞 자기 발자국에 섬(photo.ready)
+// 흐름: A가 접속 중인 사람 B 초대 → B 수락 → 두 사람이 하트 앞 서로 다른 발자국에 섬(photo.ready)
 //       → 둘 다 서 있으면 서버가 4컷 신호(photo.shot 0~3)를 같은 간격으로 두 화면에 보냄
 //       → 각 화면이 3·2·1 뒤 자기 화면을 찍어 네컷을 만듦 → photo.done → 방 지움
 // 사진(이미지)은 서버로 보내지 않음. 서버는 "언제 찍을지" 신호만 맞춰 줌. DB 저장 없음
 //
-// 화면 → 서버: photo.invite {to} · photo.respond {inviteId, accept} · photo.ready {roomId, ready} · photo.leave
+// 화면 → 서버: photo.invite {to} · photo.respond {inviteId, accept} · photo.ready {roomId, ready, spot?} · photo.leave
 // 서버 → 화면: photo.invite_sent · photo.invited · photo.declined · photo.start {roomId, role, me, partner}
 //             photo.ready_state {a, b} · photo.shot {index, total} · photo.done · photo.cancelled {reason} · photo.error
 
@@ -22,7 +22,7 @@ const DEFAULTS = {
 export function createPhotoRooms({ send, findPeer, options = {} }) {
   const cfg = { ...DEFAULTS, ...options }
   const invites = new Map() // inviteId → { from, to, timer }
-  const rooms = new Map() // roomId → { members:[{ws,peer,role,ready}], shooting, timers:[] }
+  const rooms = new Map() // roomId → { members:[{ws,peer,role,spot}], shooting, timers:[] }
   const busy = new Map() // ws → { inviteId } | { roomId }
 
   const err = (ws, code, message) => send(ws, { t: 'photo.error', code, message })
@@ -73,8 +73,8 @@ export function createPhotoRooms({ send, findPeer, options = {} }) {
     invites.delete(msg.inviteId)
     const roomId = randomUUID().slice(0, 8)
     const members = [
-      { ...inv.from, role: 'a', ready: false },
-      { ...inv.to, role: 'b', ready: false },
+      { ...inv.from, role: 'a', spot: null },
+      { ...inv.to, role: 'b', spot: null },
     ]
     const room = { members, shooting: false, timers: [] }
     room.timers.push(setTimeout(() => dropRoom(roomId, 'expired'), cfg.roomMs))
@@ -89,11 +89,16 @@ export function createPhotoRooms({ send, findPeer, options = {} }) {
   function ready(ws, msg) {
     const room = rooms.get(msg.roomId)
     const me = room?.members.find((m) => m.ws === ws)
-    if (!me || room.shooting) return
-    me.ready = Boolean(msg.ready)
-    const state = Object.fromEntries(room.members.map((m) => [m.role, m.ready]))
+    if (!me || room.shooting || typeof msg.ready !== 'boolean') return
+    // 이전 화면은 spot을 보내지 않으므로 배정된 색으로 처리해요.
+    const spot = msg.spot === undefined ? me.role : msg.spot
+    if (msg.ready && spot !== 'a' && spot !== 'b') return
+    me.spot = msg.ready ? spot : null
+    const state = Object.fromEntries(room.members.map((m) => [m.role, m.spot !== null]))
+    const sameSpot = state.a && state.b && room.members[0].spot === room.members[1].spot
+    if (sameSpot) state.sameSpot = true
     for (const m of room.members) send(m.ws, { t: 'photo.ready_state', ...state })
-    if (room.members.every((m) => m.ready)) shoot(msg.roomId)
+    if (state.a && state.b && !sameSpot) shoot(msg.roomId)
   }
 
   // 두 사람 다 섰으면: 컷 신호를 같은 간격으로 두 화면에 동시에

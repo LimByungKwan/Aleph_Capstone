@@ -4,6 +4,9 @@ import { playerPose } from '../../store/playerPose.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { CafeOrderMenu } from '../../game/Map/styles/bk_cafeOrder.jsx'
 import { MURAL_FRAME_PANEL, MuralFrameView, resetMuralFrame } from '../../game/Map/styles/bk_muralFrame.jsx'
+import { currentEpisodeStep, getDateEpisode } from '../../game/Map/styles/bk_dateEpisodes.js'
+import { EpisodePanel } from '../../game/Map/styles/bk_episodePanel.jsx'
+import { useEpisodeRoom } from '../../game/Map/styles/bk_episodeRoom.js'
 import { useWarps } from '../../game/Map/styles/bk_warpStore.js'
 import { DATE_BADGE_COUNT, DATE_MISSIONS, DATE_STAMP_COUNT, getMission, inDateZone, mapPoint, openNearby, useDateMission } from '../../game/Map/styles/bk_dateMission.js'
 import './dateMission.css'
@@ -66,6 +69,12 @@ export default function DateMission({ enabled = true }) {
   const muralFrameOpen = useGameStore((s) => s.openPanel?.type === MURAL_FRAME_PANEL)
   const { openCard, openMap, close } = useDateMission.getState()
   const pass = saved.accounts[userId] ?? EMPTY
+  const episodeInvite = useEpisodeRoom((s) => s.invite)
+  const episodeRoom = useEpisodeRoom((s) => s.room)
+  const episodeInProgress = Boolean(episodeRoom || pass.episodeBook?.currentId)
+  const episodeNext = episodeRoom ? getDateEpisode(episodeRoom.episodeId)?.steps[episodeRoom.step] : currentEpisodeStep(pass.episodeBook)
+  const episodeLabel = episodeInvite ? '💌 데이트 초대' : episodeRoom?.letter ? '💌 골목 편지 열기' : episodeRoom ? '💌 함께 걷는 중'
+    : episodeInProgress ? (episodeNext ? '💌 에피소드 이어 하기' : '💌 엔딩 엽서 쓰기') : '💌 데이트 에피소드'
   const [here, setHere] = useState({ inZone: false, atCafe: false, atMural: false, x: 0, z: 0 })
   const [expanded, setExpanded] = useState(() => !window.matchMedia?.('(max-width: 700px)').matches)
 
@@ -110,7 +119,7 @@ export default function DateMission({ enabled = true }) {
       openCard('mural')
     }} />
   )
-  if (!here.inZone && !card && !mapOpen && !cafeOrderOpen) return null
+  if (!here.inZone && !card && !mapOpen && !cafeOrderOpen && !episodeInProgress && !episodeInvite) return null
   const doneCount = Object.keys(pass.done).length
   const stampCount = Object.keys(pass.stamps).length
   const near = (m) => {
@@ -122,7 +131,7 @@ export default function DateMission({ enabled = true }) {
     if (count === DATE_STAMP_COUNT) openCard('reward')
     else if (count) toast?.(`🔖 데이트 스탬프 ${count} / ${DATE_STAMP_COUNT}`, 'ok')
   }
-  const mission = card && card !== 'reward' ? getMission(card) : null
+  const mission = card ? getMission(card) : null
   const atActivity = !panelOpen && (here.atCafe || here.atMural)
   const activity = here.atCafe
     ? { id: 'cafe', label: '주문하기', open: openCafeOrder }
@@ -164,15 +173,21 @@ export default function DateMission({ enabled = true }) {
               </section>
               <div className="date-tracker__foot">
                 <button type="button" className="ui-btn" onClick={openMap}>🗺️ 데이트 코스 지도</button>
+                <button type="button" className="ui-btn" onClick={() => openCard('episodes')}>{episodeLabel}</button>
                 {stampCount === DATE_STAMP_COUNT && <button type="button" className="ui-btn" onClick={() => openCard('reward')}>완주 보상 보기</button>}
               </div>
             </div>
           )}
         </aside>
       )}
-      {atActivity && !card && !mapOpen && (
+      {atActivity && !episodeInvite && !card && !mapOpen && (
         <button type="button" className="ui-btn ui-interactive date-activity-prompt" onClick={activity.open}>
           <kbd>E</kbd> {here.atCafe ? '소란 커피 주문하기' : '엔딩 장면 맞추기'}
+        </button>
+      )}
+      {(episodeInvite || (!here.inZone && episodeInProgress)) && !panelOpen && !card && !mapOpen && (
+        <button type="button" className="ui-btn ui-interactive date-activity-prompt" onClick={() => openCard('episodes')}>
+          {episodeInvite || episodeRoom?.letter ? episodeLabel : episodeNext ? `💌 이어서 하기 · ${getMission(episodeNext.id).short}` : '💌 엔딩 엽서 쓰기'}
         </button>
       )}
       {cafeOrderOpen && (
@@ -188,6 +203,11 @@ export default function DateMission({ enabled = true }) {
           onCollect={() => collect(mission.id)} onClose={close} />
       )}
       {!cafeOrderOpen && card === 'reward' && <Reward onClose={close} />}
+      {!cafeOrderOpen && card === 'episodes' && (
+        <Dialog badge="💌 데이트 코스" title="데이트 에피소드" onClose={close}>
+          <EpisodePanel key={userId} book={pass.episodeBook} onClose={close} />
+        </Dialog>
+      )}
       {!cafeOrderOpen && mapOpen && <DateMap pass={pass} onClose={close} />}
     </>
   )

@@ -3,6 +3,7 @@ import { WebSocketServer } from 'ws'
 import { createTarotRooms } from './bk_tarotRooms.js'
 import { createPhotoRooms } from './bk_photoRooms.js'
 import { createLifts } from './bk_lifts.js'
+import { createEpisodeRooms } from './bk_episodeRooms.js'
 
 // 멀티 접속 (담당: 지민) — 같은 맵에 있는 사람들의 위치·방향·캐릭터를 실시간으로 주고받는다
 //
@@ -88,6 +89,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   const tarot = createTarotRooms({ send, findPeer, ...(readTarot && { readTarot }), options: options.tarot })
   const photo = createPhotoRooms({ send, findPeer, options: options.photo })
   const lifts = createLifts({ broadcast, send, options: options.lift })
+  const episodes = createEpisodeRooms({ send, findPeer, inviteMs: options.episode?.inviteMs })
 
   async function identify(token) {
     if (typeof token !== 'string' || !token) return { name: '손님', userId: null }
@@ -154,7 +156,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         return
       }
       if (!peer.ready) return
-      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg)) return
+      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg)) return
 
       if (msg.t === 'move') {
         const state = validMove(msg)
@@ -172,6 +174,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       tarot.disconnect(ws)
       photo.disconnect(ws)
       lifts.disconnect(peer)
+      episodes.disconnect(ws)
       peers.delete(ws)
       if (peer.ready) broadcast({ t: 'leave', id: peer.id })
     })

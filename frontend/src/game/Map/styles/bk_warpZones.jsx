@@ -58,6 +58,7 @@ export function WarpZones({ playerRef }) {
     if (request && player.body && typeof request === 'object') {
       // 구역 안 장소로 (데이트 코스 미션): 기준점 근처의 빈 자리를 찾아서
       done()
+      if (request.isValid && !request.isValid()) return
       let cx
       let cz
       if (request.anchor) {
@@ -75,7 +76,10 @@ export function WarpZones({ playerRef }) {
         useGameStore.getState().close()
         if (request.label) useUiStore.getState().toast(`🌀 ${request.label}(으)로 이동했어요`, 'ok')
         request.onArrive?.()
-      } else useUiStore.getState().toast('이동할 자리를 찾지 못했어요. 걸어서 가 주세요.', 'info')
+      } else {
+        useUiStore.getState().toast('이동할 자리를 찾지 못했어요. 걸어서 가 주세요.', 'info')
+        request.onFail?.()
+      }
       return
     }
     if (request && player.body) {

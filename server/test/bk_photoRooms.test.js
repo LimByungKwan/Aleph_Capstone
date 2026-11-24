@@ -114,6 +114,27 @@ describe('커플 포토존 인생네컷 멀티', () => {
     await bye(a, b)
   })
 
+  test('같은 발자국은 대기하고 반대 색으로 바꿔 서면 양쪽 촬영 시작', async () => {
+    const { a, b, sa, sb } = await pair()
+    a.send({ t: 'photo.ready', roomId: sa.roomId, ready: true, spot: 'b' })
+    assert.deepEqual(await a.next('photo.ready_state'), { t: 'photo.ready_state', a: true, b: false })
+    await b.next('photo.ready_state')
+
+    b.send({ t: 'photo.ready', roomId: sb.roomId, ready: true, spot: 'b' })
+    const same = { t: 'photo.ready_state', a: true, b: true, sameSpot: true }
+    assert.deepEqual(await a.next('photo.ready_state'), same)
+    assert.deepEqual(await b.next('photo.ready_state'), same)
+
+    b.send({ t: 'photo.ready', roomId: sb.roomId, ready: true, spot: 'a' })
+    const different = { t: 'photo.ready_state', a: true, b: true }
+    assert.deepEqual(await a.next('photo.ready_state'), different)
+    assert.deepEqual(await b.next('photo.ready_state'), different)
+    const firstShot = { t: 'photo.shot', index: 0, total: 4 }
+    assert.deepEqual(await a.next('photo.shot'), firstShot)
+    assert.deepEqual(await b.next('photo.shot'), firstShot)
+    await bye(a, b)
+  })
+
   test('거절·없는 사람·초대 시간 초과', async () => {
     const a = await join('tok-a')
     const b = await join('tok-b')

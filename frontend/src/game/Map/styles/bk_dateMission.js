@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useBadges } from '../../../store/badges.js'
 import { useBkActivity } from './bk_activityStore.js'
+import { EMPTY_EPISODE_BOOK, collectEpisodePostcard, getDateEpisode, recordEpisodeActivity } from './bk_dateEpisodes.js'
+import { episodeRoom, useEpisodeRoom } from './bk_episodeRoom.js'
+import { LETTER_ENDINGS, LETTER_STATIONS } from '@shared/bk_letterPuzzle.js'
 
 // 데이트 코스 미션 (담당: 병관) — 영화·드라마 구역 "시간 탐정 역사 복원"과 같은 모양·흐름
 //   데이트 코스 구역 안 7곳: 체험을 끝내면 ◐ → 장소 카드에서 [🔖 데이트 스탬프] → ✓
@@ -69,9 +72,9 @@ export const DATE_MISSIONS = [
     icon: '☕',
     kind: '상대 취향으로 한 잔',
     center: [75.5, 18.2], // 워프는 카운터 앞의 평평한 산책로로
-    mapAt: [75.5, 17],
+    mapAt: LETTER_STATIONS.sequence.point,
     intro: '드라마 주인공이 아르바이트하던 골목 카페. 걷다가 쉬어 가기 좋아요.',
-    how: '가게 앞 주문 카운터에서 E 또는 [주문하기]를 누르고, 음료와 디저트를 하나씩 골라요.',
+    how: '가게 앞 주문 카운터에서 E 또는 [주문하기]를 누르세요. 메뉴를 고르고 잔 위의 점을 이어 음료를 만든 뒤 토핑을 올려요.',
     nearby: ['카페', '디저트 카페'],
   },
   {
@@ -79,9 +82,9 @@ export const DATE_MISSIONS = [
     short: '날개 벽화 골목',
     icon: '🪽',
     kind: '엔딩 장면 맞추기',
-    center: [120.5, 4.5], // 벽화 앞 발자국 (벽화 중심에서 +z 방향으로 6m)
+    center: LETTER_STATIONS.palette.point, // 벽화 앞 발자국 (벽화 중심에서 +z 방향으로 6m)
     intro: '주인공이 꿈을 고백했던 영화의 엔딩 촬영지예요. 벽화 앞에서 마지막 장면의 구도를 찾아보세요.',
-    how: '분홍 발자국에 서서 E 또는 [구도 맞추기]를 누르세요. 화면을 드래그하거나 방향 버튼을 눌러 양쪽 날개 끝과 발자국을 프레임 안에 넣고 [장면 완성]을 눌러요.',
+    how: '분홍 발자국에 서서 E 또는 [구도 맞추기]를 누르세요. 양쪽 날개 끝과 발자국을 프레임 안에 넣으면 사진을 찍거나 장면을 완성할 수 있어요.',
     nearby: ['벽화 거리', '사진 명소'],
   },
 ]
@@ -115,6 +118,7 @@ export const useDateMission = create((set, get) => ({
   saved: readSaved(), // { accounts: { [userId]: { done: {id: iso}, stamps: {id: iso} } } }
   card: null, // 열린 장소 카드 id | 'reward'
   mapOpen: false, // 데이트 코스 안내판(지도) 창
+  episodeGuide: null, // 목적지 안내를 켠 계정
   pass: () => get().saved.accounts[useUiStore.getState().userId] ?? empty,
   write(fn) {
     const userId = useUiStore.getState().userId
@@ -130,14 +134,21 @@ export const useDateMission = create((set, get) => ({
   /** 체험 완료 → ◐ (스탬프는 카드에서 받기) */
   markDone(id, cafeOrder) {
     const m = getMission(id)
-    const alreadyDone = get().pass().done[id]
-    if (!m || (id === 'cafe' && !cafeOrder) || (alreadyDone && !cafeOrder)) return false
+    if (!m || (id === 'cafe' && !cafeOrder)) return false
+    const pass = get().pass()
+    const alreadyDone = pass.done[id]
+    const shared = episodeRoom.complete(id, cafeOrder)
+    const episodeBook = shared ? pass.episodeBook : recordEpisodeActivity(pass.episodeBook, id, cafeOrder)
+    const episodeAdvanced = episodeBook !== pass.episodeBook
+    if (alreadyDone && !cafeOrder && !episodeAdvanced) return false
     get().write((p) => ({
       ...p,
       done: { ...p.done, [id]: alreadyDone || new Date().toISOString() },
       ...(id === 'cafe' && { cafeOrder }),
       ...(id === 'mural' && { muralFramed: true }),
+      ...(episodeAdvanced && { episodeBook }),
     }))
+    if (episodeAdvanced) useUiStore.getState().toast?.('💌 에피소드가 진행됐어요. 다음 장소나 엽서를 확인해 보세요.', 'ok')
     if (alreadyDone) return true
     useUiStore.getState().toast?.(`${m.icon} 데이트 미션 완료: ${m.short} — 오른쪽 목록에서 스탬프를 받아 보세요`, 'ok')
     return true
@@ -157,7 +168,49 @@ export const useDateMission = create((set, get) => ({
   openCard: (id) => set({ card: id, mapOpen: false }),
   openMap: () => set({ mapOpen: true, card: null }),
   close: () => set({ card: null, mapOpen: false }),
+  startEpisode(id) {
+    if (!getDateEpisode(id)) return
+    const book = get().pass().episodeBook ?? EMPTY_EPISODE_BOOK
+    get().write((p) => ({
+      ...p, episodeBook: { ...book, currentId: id, runs: { ...book.runs, [id]: book.runs[id] ?? { step: 0 } } },
+    }))
+  },
+  savePostcard(id, line) {
+    const current = get().pass().episodeBook
+    const episodeBook = collectEpisodePostcard(current, id, line, new Date().toISOString())
+    if (episodeBook !== current) get().write((p) => ({ ...p, episodeBook }))
+  },
+  saveSharedCheckpoint({ episodeId, step, order, finished }) {
+    const book = get().pass().episodeBook ?? EMPTY_EPISODE_BOOK
+    const previous = book.runs[episodeId]
+    const run = !finished && previous?.step > step ? previous : { step, ...(order && { order }) }
+    get().write((p) => ({
+      ...p, episodeBook: { ...book, currentId: episodeId, runs: { ...book.runs, [episodeId]: run } },
+    }))
+  },
+  saveLetterPostcard({ roundId, ending }) {
+    if (!LETTER_ENDINGS[ending] || get().pass().letterPostcard?.roundId === roundId) return
+    get().write((pass) => ({ ...pass, letterPostcard: { roundId, ending } }))
+    useUiStore.getState().toast?.('💌 둘이 찾은 편지를 엔딩 엽서함에 저장했어요.', 'ok')
+  },
+  showEpisodeGuide: (visible = true) => set({ episodeGuide: visible ? useUiStore.getState().userId : null }),
 }))
+
+useEpisodeRoom.subscribe((state, previous) => {
+  const date = useDateMission.getState()
+  if (state.room && state.room.roomId !== previous.room?.roomId) {
+    if (!state.room.letter) date.saveSharedCheckpoint({ episodeId: state.room.episodeId, step: 0 })
+    date.showEpisodeGuide()
+  }
+  const letter = state.room?.letter
+  if (letter?.solved && !previous.room?.letter?.solved) date.saveLetterPostcard(letter)
+  if (state.checkpoint && state.checkpoint !== previous.checkpoint) {
+    date.saveSharedCheckpoint(state.checkpoint)
+    const message = state.checkpoint.finished ? '💌 함께 걸은 에피소드가 끝났어요. 각자의 엔딩 엽서를 써 보세요.' : '💌 두 사람 모두 완료했어요. 다음 장소로 가요.'
+    useUiStore.getState().toast?.(message, 'ok')
+  }
+  if (state.notice && state.notice !== previous.notice && !state.invite) useUiStore.getState().toast?.(state.notice, 'info')
+})
 
 // ── 완료 신호 연결 ──
 // 동전 던지기·인형뽑기: 원래 체험 완료 기록(bk_activityStore.completed)
