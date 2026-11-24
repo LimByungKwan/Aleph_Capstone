@@ -69,8 +69,10 @@ export function applyLetterAction(round, index, peer, msg) {
     return { changed: true }
   }
   if (msg.t === 'episode.letter.guess' && !round.solved && role === 'palette' && round.read.size === 2) {
+    if (round.shared.size !== LETTER_ROLES.length) return { error: 'letter_share' }
     if (!atStation(peer, role)) return { error: 'letter_station' }
-    const { colors } = msg
+    const { colors, attempt } = msg
+    if (attempt !== undefined && attempt !== round.attempts) return {}
     if (!Array.isArray(colors) || colors.length !== 3 || new Set(colors).size !== 3 ||
       !colors.every((value) => typeof value === 'string' && Object.hasOwn(LETTER_COLORS, value))) return {}
     round.solved = sameOrder(round.answer, colors)

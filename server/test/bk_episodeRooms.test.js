@@ -142,25 +142,28 @@ test('골목 편지: 장소별 비공개 단서, 공유, 오답, 공동 해결 �
   send(b, 'read')
   const [aPrivate, bPrivate] = await states()
   const palette = bPrivate.letter.clue
+  const colors = sequence.map((symbol) => palette[symbol])
   assert.deepEqual(Object.keys(palette).sort(), ['flower', 'moon', 'star'])
   assert.equal(aPrivate.letter.received, undefined)
   send(a, 'share')
   const [aShared, bShared] = await states()
   assert.equal(aShared.letter.shared, true)
   assert.deepEqual(bShared.letter.received, sequence)
+  send(b, 'guess', { colors, attempt: 0 })
+  assert.equal((await b.next('episode.error')).reason, 'letter_share')
   send(b, 'share')
   const [received] = await states()
   assert.deepEqual(received.letter.received, palette)
 
-  const colors = sequence.map((symbol) => palette[symbol])
   send(a, 'guess', { colors }) // 색 담당만 정답을 제출할 수 있음
   send(b, 'guess', { colors: [colors[0], colors[0], colors[2]] }) // 잘못된 형식
-  send(b, 'guess', { colors: [colors[1], colors[0], colors[2]] })
+  send(b, 'guess', { colors: [colors[1], colors[0], colors[2]], attempt: 0 })
   const missed = await states()
   assert.ok(missed.every(({ letter }) => letter.attempts === 1 && !letter.solved && letter.ending === undefined))
-  send(b, 'guess', { colors })
+  send(b, 'guess', { colors: [colors[1], colors[0], colors[2]], attempt: 0 }) // 늦게 들어온 중복 제출
+  send(b, 'guess', { colors, attempt: 1 })
   const solved = await states()
-  assert.ok(solved.every(({ letter }) => letter.solved && letter.ending === solved[0].letter.ending))
+  assert.ok(solved.every(({ letter }) => letter.attempts === 1 && letter.solved && letter.ending === solved[0].letter.ending))
 
   send(a, 'replay')
   const requested = await states()

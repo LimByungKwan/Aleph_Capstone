@@ -11,6 +11,7 @@ const messages = {
   left: '친구와의 연결이 끊겼어요. 함께 끝낸 단계부터 혼자 이어갈 수 있어요.',
   cancelled: '함께 걷기를 마쳤어요.',
   letter_station: '내 단서 장소 가까이에서 다시 눌러 주세요.',
+  letter_share: '두 사람이 서로 단서를 보내면 편지의 봉인을 풀 수 있어요.',
   letter_left: '친구와의 연결이 끊겨 이번 편지 풀이가 끝났어요. 완성한 엽서는 다시 볼 수 있어요.',
 }
 
@@ -57,10 +58,10 @@ export const episodeRoom = {
     if (invite) sendTarot({ t: 'episode.respond', inviteId: invite.inviteId, accept })
   },
   leave: () => sendTarot({ t: 'episode.leave' }),
-  letterAction(action, colors) {
+  letterAction(action, colors, attempt) {
     const { room } = useEpisodeRoom.getState()
     if (!room?.letter) return
-    sendTarot({ t: `episode.letter.${action}`, roomId: room.roomId, roundId: room.letter.roundId, ...(colors && { colors }) })
+    sendTarot({ t: `episode.letter.${action}`, roomId: room.roomId, roundId: room.letter.roundId, ...(colors && { colors, attempt }) })
   },
   complete(activity, order) {
     const { room, submittedStep } = useEpisodeRoom.getState()

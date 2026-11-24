@@ -29,25 +29,39 @@ function Clue({ role, data, title }) {
   )
 }
 
-function ColorAnswer() {
-  const [colors, setColors] = useState([])
+function ColorAnswer({ sequence, attempts }) {
+  const [colors, setColors] = useState(() => sequence.map(() => ''))
+  const [reviewedAttempts, setReviewedAttempts] = useState(attempts)
+  const allSelected = colors.every(Boolean)
+  const canSubmit = allSelected && new Set(colors).size === sequence.length
+  const wrong = attempts > reviewedAttempts
+
+  const chooseColor = (index, color) => {
+    setColors((previous) => previous.map((value, i) => i === index ? color : value))
+    setReviewedAttempts(attempts)
+  }
   return (
     <section className="special-narration">
       <h3>편지 봉인의 색 순서</h3>
-      <p>친구가 알려 준 그림 순서를 벽화의 색으로 바꿔 보세요.</p>
-      <ol className="date-letter-sequence" aria-label="입력한 색 순서" aria-live="polite">
-        {[0, 1, 2].map((index) => {
-          const color = LETTER_COLORS[colors[index]]
-          return <li key={index} className="date-letter-color" style={{ '--letter-color': color?.swatch }}>{color?.label ?? `${index + 1}번째`}</li>
-        })}
-      </ol>
-      <div className="special-actions">
-        {Object.entries(LETTER_COLORS).map(([key, color]) => (
-          <button key={key} type="button" className="ui-btn date-letter-color" style={{ '--letter-color': color.swatch }}
-            disabled={colors.includes(key)} onClick={() => setColors((previous) => previous.includes(key) ? previous : [...previous, key])}>{color.label}</button>
+      <p>각 그림 아래에서 벽화 단서에 적힌 색을 고르세요.</p>
+      <ol className="date-letter-sequence" aria-label="입력한 색 순서">
+        {sequence.map((symbol, index) => (
+          <li key={symbol}>
+            <label className="date-letter-slot">
+              <span>{index + 1}. <span aria-hidden="true">{LETTER_SYMBOLS[symbol].icon} </span>{LETTER_SYMBOLS[symbol].label}</span>
+              <select value={colors[index]} onChange={(event) => chooseColor(index, event.target.value)}>
+                <option value="">색 선택</option>
+                {Object.entries(LETTER_COLORS).map(([key, color]) => <option key={key} value={key}>{color.label}</option>)}
+              </select>
+            </label>
+          </li>
         ))}
-        <button type="button" className="ui-btn" disabled={!colors.length} onClick={() => setColors((previous) => previous.slice(0, -1))}>한 칸 지우기</button>
-        <button type="button" className="ui-btn ui-btn--primary" disabled={colors.length !== 3} onClick={() => episodeRoom.letterAction('guess', colors)}>편지 열기</button>
+      </ol>
+      <p className="date-letter-retry" role="status">
+        {wrong ? '색 순서가 달라요. 각 그림의 색을 확인하고 틀린 칸만 바꿔 보세요.' : allSelected && !canSubmit ? '세 칸에 서로 다른 색을 골라 주세요.' : ''}
+      </p>
+      <div className="special-actions">
+        <button type="button" className="ui-btn ui-btn--primary" disabled={!canSubmit || wrong} onClick={() => episodeRoom.letterAction('guess', colors, attempts)}>편지 열기</button>
       </div>
     </section>
   )
@@ -64,9 +78,11 @@ function LetterPostcard({ ending }) {
 
 function LetterRound({ room, onClose }) {
   const { letter } = room
-  const { role, clue, received, bothRead, partnerRead, solved } = letter
+  const { role, clue, received, partnerRead, shared, solved } = letter
+  const ready = Boolean(shared && received)
   const station = LETTER_STATIONS[role]
   const [atStation, setAtStation] = useState(false)
+  const showAnswer = ready && role === 'palette' && atStation
 
   useEffect(() => {
     const check = () => {
@@ -107,8 +123,11 @@ function LetterRound({ room, onClose }) {
     <>
       <section className="special-narration">
         <h3>{role === 'sequence' ? '내 역할 · 그림 순서' : '내 역할 · 그림과 색'}</h3>
-        <p>{station.title}에서 내 단서를 읽어요.</p>
-        <p className="special-visit" role="status">내 단서 {clue ? '✓ 읽음' : '○ 아직'} · 친구 단서 {partnerRead ? '✓ 읽음' : '○ 아직'}</p>
+        {!clue && <p>{station.title}에서 내 단서를 읽어요.</p>}
+        <p className="special-visit date-letter-status" role="status">
+          내 단서 {shared ? '✓ 보냄' : clue ? '읽음 · 보내기 필요' : '아직 읽기 전'}<br />
+          친구 단서 {received ? '✓ 받음' : partnerRead ? '보내기를 기다리는 중' : '읽기를 기다리는 중'}
+        </p>
         {!clue && (
           <div className="special-actions">
             {atStation
@@ -127,11 +146,10 @@ function LetterRound({ room, onClose }) {
           </div>
         </>
       )}
-      {received && <Clue role={role === 'sequence' ? 'palette' : 'sequence'} data={received} title="친구가 보낸 단서" />}
-      {letter.attempts > 0 && <p className="date-letter-retry" role="status">순서가 달라요. 단서를 다시 보고 시도해 보세요.</p>}
-      {bothRead && role === 'sequence' && <p>색 담당 친구가 벽화에서 편지의 봉인을 풀고 있어요.</p>}
-      {bothRead && role === 'palette' && (atStation
-        ? <ColorAnswer key={letter.attempts} />
+      {received && !showAnswer && <Clue role={role === 'sequence' ? 'palette' : 'sequence'} data={received} title="친구가 보낸 단서" />}
+      {ready && role === 'sequence' && <p>색 담당 친구가 벽화에서 편지의 봉인을 풀고 있어요.</p>}
+      {ready && role === 'palette' && (showAnswer
+        ? <ColorAnswer sequence={received} attempts={letter.attempts} />
         : <button type="button" className="ui-btn" onClick={() => go(station.mission)}>벽화 봉인으로 이동</button>)}
     </>
   )
@@ -143,7 +161,7 @@ export function LetterPanel({ room, online, onClose }) {
   return (
     <>
       <h3>{LETTER_TITLE}</h3>
-      <p className="special-intro">카페의 컵 받침과 벽화의 타일에 단서가 하나씩 남아 있어요. 서로 알려 주고 골목 끝 편지의 봉인을 열어 보세요.</p>
+      {!room?.letter && <p className="special-intro">카페의 컵 받침과 벽화의 타일에서 단서를 하나씩 찾아 서로 보내면 편지의 봉인을 풀 수 있어요.</p>}
       {room?.letter
         ? <LetterRound key={room.letter.roundId} room={room} onClose={onClose} />
         : <p>{online ? '접속한 친구를 초대하면 두 사람에게 서로 다른 역할이 주어져요.' : '멀티 서버에 연결되면 친구를 초대할 수 있어요.'}</p>}
