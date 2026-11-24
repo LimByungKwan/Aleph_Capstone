@@ -103,3 +103,46 @@
     transform-origin: top right;
   }
 }
+
+/* 워프존 이동 확인 창 (미니맵 위) */
+.mm-warp {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: 220px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(31, 20, 64, 0.95);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.mm-warp__title {
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.mm-warp p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+.mm-warp__btns {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.mm-warp__btns button {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.mm-warp__btns button.is-go {
+  border: none;
+  background: #a78bfa;
+  color: #1f1440;
+  font-weight: 800;
+}
