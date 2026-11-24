@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useUiStore } from '../movieZone/uiStore.js'
 import { playerPose } from '../../store/playerPose.js'
+import { useGameStore } from '../../store/gameStore.js'
+import { CafeOrderMenu } from '../../game/Map/styles/bk_cafeOrder.jsx'
+import { MURAL_FRAME_PANEL, MuralFrameView, resetMuralFrame } from '../../game/Map/styles/bk_muralFrame.jsx'
 import { useWarps } from '../../game/Map/styles/bk_warpStore.js'
 import { DATE_BADGE_COUNT, DATE_MISSIONS, DATE_STAMP_COUNT, getMission, inDateZone, mapPoint, openNearby, useDateMission } from '../../game/Map/styles/bk_dateMission.js'
 import './dateMission.css'
@@ -11,6 +14,38 @@ import './dateMission.css'
 
 const EMPTY = { done: {}, stamps: {} }
 const NEAR = 10 // 이 거리(m) 안이면 [워프] 대신 [안내]
+const CAFE = getMission('cafe')
+const MURAL = getMission('mural')
+const CAFE_ORDER_PANEL = 'bkCafeOrder'
+
+function atCafeCounter() {
+  const [x, z] = mapPoint(CAFE)
+  return playerPose.ready && playerPose.z >= z - 1.2 && Math.hypot(playerPose.x - x, playerPose.z - z) <= 1.8
+}
+
+function atMuralStand() {
+  const [x, z] = mapPoint(MURAL)
+  return playerPose.ready && Math.hypot(playerPose.x - x, playerPose.z - z) <= 1.8
+}
+
+function openActivity(type, canStart, prepare) {
+  const game = useGameStore.getState()
+  if (!canStart() || game.openPanel) return false
+  prepare?.()
+  useDateMission.getState().close()
+  game.open({ type })
+  return true
+}
+
+function closeActivity(type) {
+  const game = useGameStore.getState()
+  if (game.openPanel?.type === type) game.close()
+}
+
+const openCafeOrder = () => openActivity(CAFE_ORDER_PANEL, atCafeCounter)
+const closeCafeOrder = () => closeActivity(CAFE_ORDER_PANEL)
+const openMuralFrame = () => openActivity(MURAL_FRAME_PANEL, atMuralStand, resetMuralFrame)
+const closeMuralFrame = () => closeActivity(MURAL_FRAME_PANEL)
 
 function warpTo(m) {
   useWarps.getState().goto({
@@ -26,23 +61,56 @@ export default function DateMission({ enabled = true }) {
   const saved = useDateMission((s) => s.saved)
   const card = useDateMission((s) => s.card)
   const mapOpen = useDateMission((s) => s.mapOpen)
+  const panelOpen = useGameStore((s) => Boolean(s.openPanel))
+  const cafeOrderOpen = useGameStore((s) => s.openPanel?.type === CAFE_ORDER_PANEL)
+  const muralFrameOpen = useGameStore((s) => s.openPanel?.type === MURAL_FRAME_PANEL)
   const { openCard, openMap, close } = useDateMission.getState()
   const pass = saved.accounts[userId] ?? EMPTY
-  const [here, setHere] = useState({ inZone: false, x: 0, z: 0 })
+  const [here, setHere] = useState({ inZone: false, atCafe: false, atMural: false, x: 0, z: 0 })
   const [expanded, setExpanded] = useState(() => !window.matchMedia?.('(max-width: 700px)').matches)
 
   // 데이트 코스 구역 안에 있는지 (0.5초마다)
   useEffect(() => {
     const tick = () => {
       const inZone = playerPose.ready && inDateZone(playerPose.x, playerPose.z)
-      setHere((h) => (h.inZone === inZone && Math.abs(h.x - playerPose.x) < 2 && Math.abs(h.z - playerPose.z) < 2 ? h : { inZone, x: playerPose.x, z: playerPose.z }))
+      const atCafe = atCafeCounter()
+      const atMural = atMuralStand()
+      setHere((h) => (h.inZone === inZone && h.atCafe === atCafe && h.atMural === atMural && Math.abs(h.x - playerPose.x) < 2 && Math.abs(h.z - playerPose.z) < 2
+        ? h : { inZone, atCafe, atMural, x: playerPose.x, z: playerPose.z }))
     }
     tick()
     const timer = setInterval(tick, 500)
     return () => clearInterval(timer)
   }, [])
 
-  if (!enabled || (!here.inZone && !card && !mapOpen)) return null
+  useEffect(() => {
+    if (!enabled) {
+      closeCafeOrder()
+      closeMuralFrame()
+      return
+    }
+    const onKeyDown = (event) => {
+      if (event.code !== 'KeyE' || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return
+      if (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable], dialog')) return
+      const date = useDateMission.getState()
+      if (date.card || date.mapOpen || !(openCafeOrder() || openMuralFrame())) return
+      // 주문 카운터와 벽화 발자국에서는 E로 데이트 체험을 열어요.
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [enabled])
+
+  if (!enabled) return null
+  if (muralFrameOpen) return (
+    <MuralFrameView onClose={closeMuralFrame} onComplete={() => {
+      useDateMission.getState().markDone('mural')
+      closeMuralFrame()
+      openCard('mural')
+    }} />
+  )
+  if (!here.inZone && !card && !mapOpen && !cafeOrderOpen) return null
   const doneCount = Object.keys(pass.done).length
   const stampCount = Object.keys(pass.stamps).length
   const near = (m) => {
@@ -55,6 +123,10 @@ export default function DateMission({ enabled = true }) {
     else if (count) toast?.(`🔖 데이트 스탬프 ${count} / ${DATE_STAMP_COUNT}`, 'ok')
   }
   const mission = card && card !== 'reward' ? getMission(card) : null
+  const atActivity = !panelOpen && (here.atCafe || here.atMural)
+  const activity = here.atCafe
+    ? { id: 'cafe', label: '주문하기', open: openCafeOrder }
+    : { id: 'mural', label: '구도 맞추기', open: openMuralFrame }
 
   return (
     <>
@@ -98,12 +170,25 @@ export default function DateMission({ enabled = true }) {
           )}
         </aside>
       )}
-      {mission && (
-        <MissionCard key={mission.id} m={mission} done={Boolean(pass.done[mission.id])} stamped={Boolean(pass.stamps[mission.id])} count={stampCount}
-          isNear={near(mission)} onCollect={() => collect(mission.id)} onClose={close} />
+      {atActivity && !card && !mapOpen && (
+        <button type="button" className="ui-btn ui-interactive date-activity-prompt" onClick={activity.open}>
+          <kbd>E</kbd> {here.atCafe ? '소란 커피 주문하기' : '엔딩 장면 맞추기'}
+        </button>
       )}
-      {card === 'reward' && <Reward onClose={close} />}
-      {mapOpen && <DateMap pass={pass} onClose={close} />}
+      {cafeOrderOpen && (
+        <Dialog badge="☕ 소란 커피" title="상대 취향으로 한 잔" onClose={closeCafeOrder}>
+          <CafeOrderMenu key={userId} stamped={Boolean(pass.stamps.cafe)} onClose={closeCafeOrder}
+            onOrder={(order) => useDateMission.getState().markDone('cafe', order)}
+            onViewMission={() => { closeCafeOrder(); openCard('cafe') }} />
+        </Dialog>
+      )}
+      {!cafeOrderOpen && mission && (
+        <MissionCard key={mission.id} m={mission} done={Boolean(pass.done[mission.id])} stamped={Boolean(pass.stamps[mission.id])} count={stampCount}
+          isNear={near(mission)} activity={atActivity && mission.id === activity.id ? activity : null}
+          onCollect={() => collect(mission.id)} onClose={close} />
+      )}
+      {!cafeOrderOpen && card === 'reward' && <Reward onClose={close} />}
+      {!cafeOrderOpen && mapOpen && <DateMap pass={pass} onClose={close} />}
     </>
   )
 }
@@ -132,21 +217,22 @@ function Dialog({ badge, status, done, title, children, onClose }) {
   )
 }
 
-function NearbyButtons({ keywords }) {
+function NearbyButtons({ keywords, showCafeDetails = false }) {
   return (
     <section className="special-narration">
       <h3>📍 내 근처에서 실제로 가 보기</h3>
       <div className="special-actions">
         {keywords.map((k) => (
-          <button key={k} type="button" className="ui-btn" onClick={() => openNearby(k)}>📍 내 근처 {k}</button>
+          <button key={k} type="button" className="ui-btn" onClick={() => openNearby(k)}>내 근처 {k} 지도에서 보기</button>
         ))}
       </div>
-      <p className="special-visit">누르면 브라우저가 위치 사용을 물어봐요. 위치는 지도 검색에만 쓰고 저장하거나 서버로 보내지 않아요. 거절하면 일반 검색으로 열려요.</p>
+      {showCafeDetails && <p className="special-visit">지도에서 카페를 고르면 영업시간을 볼 수 있어요. 홈페이지가 등록된 카페는 상세정보에서 열 수 있어요.</p>}
+      <p className="special-visit">위치를 허용하면 내 주변을 검색해요. 위치는 지도 서비스에만 전달돼요. 위치를 사용할 수 없으면 일반 검색이 열려요.</p>
     </section>
   )
 }
 
-function MissionCard({ m, done, stamped, count, isNear, onCollect, onClose }) {
+function MissionCard({ m, done, stamped, count, isNear, activity, onCollect, onClose }) {
   return (
     <Dialog badge={`${m.icon} 데이트 코스 미션 · ${m.kind}`} status={done ? '체험 완료' : '아직이에요'} done={done} title={m.short} onClose={onClose}>
       <div className="special-dialog__body">
@@ -154,8 +240,9 @@ function MissionCard({ m, done, stamped, count, isNear, onCollect, onClose }) {
         <section>
           <h3>어떻게 하나요?</h3>
           <p>{m.how}</p>
+          {activity && <button type="button" className="ui-btn date-activity-start" onClick={activity.open}>{m.icon} {activity.label}</button>}
         </section>
-        <NearbyButtons keywords={m.nearby} />
+        <NearbyButtons keywords={m.nearby} showCafeDetails={m.id === 'cafe'} />
       </div>
       <footer className="special-dialog__foot">
         <div className="special-actions">

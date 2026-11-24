@@ -10,6 +10,8 @@ import { live } from '../../timeOfDay.js'
 import { TowerTelescopes } from './bk_telescope.jsx'
 import { PhotoBooth } from './bk_photoBooth.jsx'
 import { FountainCoinToss } from './bk_coinToss.jsx'
+import { CafeOrderCounter } from './bk_cafeOrder.jsx'
+import { MuralFrameScene } from './bk_muralFrame.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
 // 최적화: 공용 도형·재질(kit.jsx), 반복 물체는 <Instances>, 작은 물체·빛나는 재질은 그림자 끔.
@@ -1365,6 +1367,7 @@ export function HanokShop({ item }) {
       )}
       <Instances geometry={GEO.sphere} material={BULB} items={bulbs} />
       <HanokRoof w={w + 1.4} d={d + 1.4} y={wallTop - 0.05} h={roofH} />
+      {item.id === 'BK/b_cafe' && <CafeOrderCounter />}
       {/* 사진관 지붕 위 카메라 장식 */}
       {item.roofProp === 'camera' && (
         <group position={[0, wallTop + 0.9, front - 0.5]}>
@@ -1492,6 +1495,10 @@ export function NeonWings({ item }) {
   const [w, h, d] = item.size
   const capH = 0.5
   const wallH = h - capH
+  const isMural = item.id === 'BK/b_wings'
+  const wingCenterY = isMural ? 0.83 : wallH * 0.55
+  const wingHeight = isMural ? 2.1 : w * 0.375
+  const wingZ = d / 2 + (isMural ? 0.07 : 0.03)
   const capGeometry = roofGeometry(w + 0.6, d + 0.8, capH, 0.1)
   const flowers = useMemo(
     () =>
@@ -1512,8 +1519,8 @@ export function NeonWings({ item }) {
       <mesh
         geometry={GEO.plane}
         material={nightGlow(texMat(getNeonWingsTexture(), { emissive: '#ffffff', emissiveIntensity: 1.4, transparent: true }), 2.4)}
-        position={[0, wallH * 0.55, d / 2 + 0.03]}
-        scale={[w * 0.75, w * 0.375, 1]}
+        position={[0, wingCenterY, wingZ]}
+        scale={[w * 0.75, wingHeight, 1]}
         userData={NO_SHADOW}
       />
       {[-1, 1].map((side) => (
@@ -1521,6 +1528,7 @@ export function NeonWings({ item }) {
       ))}
       <Instances geometry={GEO.ico} material={TINTABLE} items={flowers} />
       <Instances geometry={GEO.box} material={mat('#6aa857', { flat: true })} items={vines} />
+      {isMural && <MuralFrameScene wingWidth={w * 0.75} wingHeight={wingHeight} wingCenterY={wingCenterY} wingZ={wingZ} />}
     </group>
   )
 }
