@@ -345,7 +345,8 @@ export function buildStairs(stairs) {
   const L = Math.hypot(bx - ax, bz - az)
   const rise = bh - ah
   // smooth: 완만한 경사로(휠체어용) — 아주 낮은 턱이 촘촘해서 비탈처럼 보임
-  const count = stairs.smooth ? Math.max(4, Math.round(L / 0.4)) : Math.max(1, Math.ceil(rise / 0.22))
+  // stepHeight: 한 단 높이(기본 0.22m). 크게 주면 단이 적고 높아 보임 (충돌은 경사로라 오르기는 같음)
+  const count = stairs.smooth ? Math.max(4, Math.round(L / 0.4)) : Math.max(1, Math.ceil(rise / (stairs.stepHeight ?? 0.22)))
   const yaw = Math.atan2(bx - ax, bz - az)
   const dirX = (bx - ax) / L
   const dirZ = (bz - az) / L
@@ -362,10 +363,10 @@ export function buildStairs(stairs) {
     r: eulerOf(yaw, -Math.atan2(rise, L)),
     s: [w, 0.2, len],
   }
-  // 양옆 난간 벽 (낮은 돌 난간)
+  // 양옆 난간 벽 (낮은 돌 난간). walls: false 면 없음 (넓은 계단을 탁 트이게)
   const nx = Math.cos(yaw) * (w / 2 + 0.15)
   const nz = -Math.sin(yaw) * (w / 2 + 0.15)
-  const walls = [1, -1].map((side) => ({
+  const walls = (stairs.walls === false ? [] : [1, -1]).map((side) => ({
     p: [(ax + bx) / 2 + nx * side, (ah + bh) / 2 + 0.3, (az + bz) / 2 + nz * side],
     r: eulerOf(yaw, -Math.atan2(rise, L)),
     s: [0.3, 1.2, len + 0.3],
