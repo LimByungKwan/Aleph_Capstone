@@ -73,7 +73,7 @@ export default function DateMission({ enabled = true }) {
   const episodeRoom = useEpisodeRoom((s) => s.room)
   const episodeInProgress = Boolean(episodeRoom || pass.episodeBook?.currentId)
   const episodeNext = episodeRoom ? getDateEpisode(episodeRoom.episodeId)?.steps[episodeRoom.step] : currentEpisodeStep(pass.episodeBook)
-  const episodeLabel = episodeInvite ? '💌 데이트 초대' : episodeRoom ? '💌 함께 걷는 중'
+  const episodeLabel = episodeInvite ? '💌 데이트 초대' : episodeRoom?.letter ? '💌 골목 편지 열기' : episodeRoom ? '💌 함께 걷는 중'
     : episodeInProgress ? (episodeNext ? '💌 에피소드 이어 하기' : '💌 엔딩 엽서 쓰기') : '💌 데이트 에피소드'
   const [here, setHere] = useState({ inZone: false, atCafe: false, atMural: false, x: 0, z: 0 })
   const [expanded, setExpanded] = useState(() => !window.matchMedia?.('(max-width: 700px)').matches)
@@ -187,7 +187,7 @@ export default function DateMission({ enabled = true }) {
       )}
       {(episodeInvite || (!here.inZone && episodeInProgress)) && !panelOpen && !card && !mapOpen && (
         <button type="button" className="ui-btn ui-interactive date-activity-prompt" onClick={() => openCard('episodes')}>
-          {episodeInvite ? episodeLabel : episodeNext ? `💌 이어서 하기 · ${getMission(episodeNext.id).short}` : '💌 엔딩 엽서 쓰기'}
+          {episodeInvite || episodeRoom?.letter ? episodeLabel : episodeNext ? `💌 이어서 하기 · ${getMission(episodeNext.id).short}` : '💌 엔딩 엽서 쓰기'}
         </button>
       )}
       {cafeOrderOpen && (

@@ -2,7 +2,7 @@
 import { episodeSteps } from '@shared/bk_episodeSteps.js'
 
 const stepText = {
-  cafe: '소란 커피에서 함께 마시고 싶은 음료와 디저트를 골라요.',
+  cafe: '소란 커피에서 함께 마시고 싶은 음료를 직접 만들어 봐요.',
   mural: '날개 벽화 앞에서 쪽지의 주인공을 떠올리며 엔딩 구도를 완성해요.',
   photo: '커플 포토존에서 혼자 또는 친구와 인생네컷을 완성해요.',
   telescope: '별빛 전망대의 망원경으로 멀리 있는 명소 하나를 찾아요.',

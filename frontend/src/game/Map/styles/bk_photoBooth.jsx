@@ -11,11 +11,12 @@ import { onlinePeers } from './bk_tarotRoom.js'
 import { COUNTDOWN_MS, SHOTS, photoRoom, usePhotoRoom } from './bk_photoRoom.js'
 import { composeFourCut } from './bk_fourCut.js'
 import { useDateMission } from './bk_dateMission.js'
+import { useWarps } from './bk_warpStore.js'
 
 // 커플 포토존 "인생네컷" (담당: 병관) — CouplePhotoZone(dateCourse.jsx) 안에서 그려짐 → 좌표는 포토존 기준
 // 포토존 앞에서 E → [혼자 찍기] 또는 접속 중인 사람 [같이 찍자고 초대] (멀티: bk_photoRoom.js + 서버 bk_photoRooms.js)
 // → 하트 앞 분홍·하늘 발자국에 각자 서면 → 카메라가 삼각대 자리로 → 두 화면에서 동시에 3·2·1 × 4컷 → 네컷 사진
-// 캐릭터를 순간 이동시키지 않고 직접 걸어와 서게 함 (공용 Player.jsx 수정 없음). 찍는 동안만 두 캐릭터가 카메라를 보게 돌림
+// 초대 수락자는 포토존 앞에 도착한 뒤 자기 발자국까지 걸어감. 찍는 동안만 두 캐릭터가 카메라를 보게 돌림
 
 const SPOTS = { a: new THREE.Vector3(-0.45, 0, -0.9), b: new THREE.Vector3(0.45, 0, -0.9), solo: new THREE.Vector3(0, 0, -0.9) }
 const SPOT_R = 0.55 // 발자국에서 이 거리 안이면 "섰음"
@@ -25,6 +26,7 @@ const EYE = new THREE.Vector3(0, 1.4, 2.3) // 찍는 카메라: 하트 앞 두 �
 const LOOK = new THREE.Vector3(0, 1.25, -1.2)
 const COLORS = { a: '#f472b6', b: '#60a5fa', solo: '#f472b6' }
 const PLACE_ID = 'BK/couple_photo'
+const ARRIVAL = { name: PLACE_ID, local: [1.5, 0, 2.6] } // 일반 포토존 워프 자리에서 하늘색 발자국 쪽으로 비켜 도착
 
 const RING_GEO = new THREE.RingGeometry(0.32, 0.42, 32)
 const ringMat = (color) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })
@@ -46,7 +48,7 @@ export function PhotoBooth() {
   const player = useRef(null)
   const lastLookup = useRef(-Infinity)
   const turned = useRef([]) // 카메라 쪽으로 돌려 둔 모델들 (끝나면 되돌림)
-  const lastReady = useRef(null)
+  const lastSpot = useRef(null)
   const tmp = useMemo(() => ({ v: new THREE.Vector3(), me: new THREE.Vector3(), q: new THREE.Quaternion(), pq: new THREE.Quaternion(), m: new THREE.Matrix4() }), [])
   const phase = usePhotoRoom((s) => s.phase)
   const solo = usePhotoRoom((s) => s.solo)
@@ -76,18 +78,34 @@ export function PhotoBooth() {
     }
   }, [])
 
-  // 단계가 바뀔 때: 모이기 → 창 닫고 걸어오게(멀면 미니맵 안내) / 찍기 → 움직임 잠금 / 끝나면 원래대로
+  // 단계가 바뀔 때: 모이기 → 초대 수락자 워프 / 찍기 → 움직임 잠금 / 끝나면 원래대로
   useEffect(() => {
     const game = useGameStore.getState()
     if (phase === 'gather') {
-      if (store().photo.active) game.close()
+      const { room } = usePhotoRoom.getState()
+      const guest = room?.role === 'b'
+      if (store().photo.active || (guest && game.openPanel)) game.close()
       const here = root.current?.localToWorld(new THREE.Vector3(0, 0, 0))
       const me = scene.getObjectByName('player')?.getWorldPosition(new THREE.Vector3())
-      if (here && me && Math.hypot(here.x - me.x, here.z - me.z) > 15) {
+      const guide = () => {
+        if (!here) return
         useCourseStore.getState().setCourse(
           [{ placeId: 'bk_couple_photo', name: '커플 포토존', zone: 'BK', zoneName: '데이트 코스 구역', type: 'spot', position: [here.x, here.y, here.z], reason: '인생네컷 같이 찍기' }],
           { photo: true },
         )
+      }
+      if (guest && (!here || !me || Math.hypot(here.x - me.x, here.z - me.z) > 4 || Math.abs(here.y + 1 - me.y) > 2)) {
+        useWarps.getState().goto({
+          anchor: ARRIVAL,
+          label: '커플 포토존',
+          isValid: () => {
+            const current = usePhotoRoom.getState()
+            return current.phase === 'gather' && current.room?.roomId === room.roomId
+          },
+          onFail: guide,
+        })
+      } else if (!guest && here && me && Math.hypot(here.x - me.x, here.z - me.z) > 15) {
+        guide()
       }
     }
     if (phase === 'shooting' || phase === 'idle') {
@@ -101,7 +119,7 @@ export function PhotoBooth() {
       turned.current.forEach((m) => m.quaternion.identity())
       turned.current = []
     }
-    if (phase === 'gather') lastReady.current = null
+    if (phase === 'gather') lastSpot.current = null
   }, [phase, scene])
 
   useFrame((state) => {
@@ -121,17 +139,18 @@ export function PhotoBooth() {
     const p = store().photo
     if (player.current?.parent) {
       player.current.getWorldPosition(tmp.me)
-      const local = root.current.worldToLocal(tmp.me.clone())
+      const local = root.current.worldToLocal(tmp.me)
       // E 안내
       const near = ph.phase === 'idle' && local.distanceTo(NEAR_POINT) < NEAR && Math.abs(local.y) < 3
       if (near !== p.near) store().setPhoto({ near })
-      // 모이기: 내 발자국 위에 섰는지
+      // 가까운 발자국을 감지해요. 멀티에서는 맡은 역할과 관계없이 두 자리를 쓸 수 있어요.
       if (ph.phase === 'gather' && ph.room) {
-        const spot = SPOTS[ph.solo ? 'solo' : ph.room.role]
-        const on = Math.hypot(local.x - spot.x, local.z - spot.z) < SPOT_R && Math.abs(local.y - 1) < 1.5
-        if (on !== lastReady.current) {
-          lastReady.current = on
-          photoRoom.setReady(on)
+        const closest = ph.solo ? 'solo' : local.x < 0 ? 'a' : 'b'
+        const spot = SPOTS[closest]
+        const occupied = Math.hypot(local.x - spot.x, local.z - spot.z) < SPOT_R && Math.abs(local.y - 1) < 1.5 ? closest : null
+        if (occupied !== lastSpot.current) {
+          lastSpot.current = occupied
+          photoRoom.setReady(occupied)
         }
       }
     } else if (p.near) store().setPhoto({ near: false })
@@ -225,11 +244,14 @@ function PhotoHud() {
   const p = useBkActivity((s) => s.photo)
   const ph = usePhotoRoom()
   const size = useThree((s) => s.size)
+  // 데이트 목록이나 미니맵이 사진 초대 버튼을 가리지 않도록 캔버스 밖에 표시해요.
+  const overlay = useMemo(() => ({ current: document.body }), [])
   const showHint = p.near && !p.active && ph.phase === 'idle' && !ph.invite
   const visible = showHint || p.active || ph.invite || ph.phase !== 'idle'
+  const aboveHud = p.active || ph.invite || ph.phase !== 'idle'
   if (!visible) return null
   return (
-    <Html calculatePosition={() => [0, 0]} zIndexRange={p.active ? [16777272, 16777272] : [21, 0]} style={{ pointerEvents: 'none' }} onOcclude={keepVisible}>
+    <Html portal={overlay} calculatePosition={() => [0, 0]} zIndexRange={aboveHud ? [16777282, 16777282] : [21, 0]} style={{ pointerEvents: 'none' }} onOcclude={keepVisible}>
       <div style={{ ...wrap, width: size.width, height: size.height }}>
         {showHint && (
           <div style={{ ...chip, marginBottom: 72 }}>
@@ -277,7 +299,7 @@ function IntroPanel() {
         ) : (
           <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>지금 접속한 다른 사람이 없어요.</div>
         )}
-        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>수락하면 둘 다 포토존으로 와서 각자 발자국에 서면 동시에 찍혀요.</div>
+        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>친구가 수락하면 포토존 앞으로 바로 와요. 둘 다 발자국에 서면 촬영이 시작돼요.</div>
       </div>
       <div style={row}>
         <button type="button" style={ghostBtn} onClick={() => useGameStore.getState().close()}>닫기 <kbd style={kbd}>ESC</kbd></button>
@@ -291,28 +313,27 @@ function InviteCard({ invite }) {
     <div style={{ ...panel, width: 'min(320px, calc(100vw - 32px))', textAlign: 'center', marginBottom: 72 }}>
       <div style={{ fontSize: 22 }}>📸</div>
       <div style={{ fontWeight: 700, margin: '2px 0 4px' }}>{invite.from.name}님이 인생네컷을 같이 찍자고 해요</div>
-      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>데이트 코스 구역 커플 포토존에서 만나요</div>
+      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>수락하면 커플 포토존으로 이동해요.</div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
         <button type="button" style={ghostBtn} onClick={() => photoRoom.respond(false)}>다음에</button>
-        <button type="button" style={btn} onClick={() => photoRoom.respond(true)}>같이 찍기 📸</button>
+        <button type="button" style={btn} onClick={() => photoRoom.respond(true)}>수락하고 이동 📸</button>
       </div>
     </div>
   )
 }
 
 function GatherBanner() {
-  const { room, ready, solo } = usePhotoRoom()
+  const { room, ready, solo, sameSpot } = usePhotoRoom()
   const mark = (ok) => (ok ? '✅' : '⏳')
   return (
     <div style={banner}>
-      <div style={{ fontWeight: 700 }}>📸 하트 앞 {solo ? '분홍' : room.role === 'a' ? '분홍' : '하늘색'} 발자국 원에 서 주세요</div>
+      <div style={{ fontWeight: 700 }}>📸 {solo ? '하트 앞 분홍 발자국에 서 주세요' : '하트 앞에 서로 다른 발자국에 서 주세요'}</div>
       {!solo && (
         <div style={{ fontSize: 12, marginTop: 2 }}>
-          <span style={{ color: COLORS.a }}>●</span> {room.role === 'a' ? room.me.name : room.partner.name} {mark(ready.a)} ·{' '}
-          <span style={{ color: COLORS.b }}>●</span> {room.role === 'b' ? room.me.name : room.partner.name} {mark(ready.b)}
+          나 {mark(ready[room.role])} · {room.partner.name === room.me.name ? '상대' : room.partner.name} {mark(ready[room.role === 'a' ? 'b' : 'a'])}
         </div>
       )}
-      <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{solo ? '서면 바로 찍기 시작해요' : '둘 다 서면 동시에 찍기 시작해요'}</div>
+      <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{solo ? '서면 바로 찍기 시작해요' : sameSpot ? '한 사람이 옆 발자국으로 옮겨 주세요' : '두 자리가 채워지면 동시에 촬영해요'}</div>
       <button type="button" style={{ ...linkBtn, marginTop: 4 }} onClick={() => photoRoom.leave()}>그만두기</button>
     </div>
   )
@@ -392,7 +413,7 @@ const ghostBtn = { padding: '7px 14px', borderRadius: 999, border: '1px solid rg
 const linkBtn = { padding: 0, border: 'none', background: 'none', color: '#f9a8d4', textDecoration: 'underline', cursor: 'pointer', fontSize: 12, pointerEvents: 'auto' }
 const togetherBox = { marginTop: 12, padding: '8px 12px', borderRadius: 12, background: 'rgba(147,197,253,0.12)', border: '1px solid rgba(147,197,253,0.45)' }
 const peerRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, fontSize: 13 }
-const banner = { pointerEvents: 'auto', position: 'absolute', top: 64, left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', borderRadius: 14, background: 'rgba(36,24,64,0.92)', color: '#fff', fontSize: 14, textAlign: 'center', border: '1px solid rgba(244,114,182,0.6)', whiteSpace: 'nowrap' }
+const banner = { pointerEvents: 'auto', position: 'absolute', bottom: 'max(96px, calc(env(safe-area-inset-bottom) + 80px))', left: '50%', transform: 'translateX(-50%)', width: 'max-content', maxWidth: 'calc(100% - 24px)', padding: '8px 16px', borderRadius: 14, background: 'rgba(36,24,64,0.92)', color: '#fff', fontSize: 14, textAlign: 'center', border: '1px solid rgba(244,114,182,0.6)', boxSizing: 'border-box' }
 const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }
 const frameGuide = { position: 'absolute', border: '3px dashed rgba(255,255,255,0.7)', borderRadius: 12, boxSizing: 'border-box' }

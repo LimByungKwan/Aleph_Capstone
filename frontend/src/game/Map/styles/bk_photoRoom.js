@@ -12,7 +12,7 @@ export const SHOTS = 4
 export const SHOT_GAP_MS = 4500 // 서버(bk_photoRooms.js shotGapMs)와 같게
 export const COUNTDOWN_MS = 3000
 
-const initial = { invite: null, outgoing: null, room: null, solo: false, phase: 'idle', ready: { a: false, b: false }, shot: null, shots: [], result: null, notice: null }
+const initial = { invite: null, outgoing: null, room: null, solo: false, phase: 'idle', ready: { a: false, b: false }, sameSpot: false, shot: null, shots: [], result: null, notice: null }
 
 export const usePhotoRoom = create(() => ({ ...initial }))
 
@@ -33,7 +33,7 @@ export function handlePhotoMessage(msg) {
     case 'photo.start':
       return set({ ...initial, room: { roomId: msg.roomId, role: msg.role, me: msg.me, partner: msg.partner }, phase: 'gather' })
     case 'photo.ready_state':
-      return set({ ready: { a: msg.a, b: msg.b } })
+      return set({ ready: { a: msg.a, b: msg.b }, sameSpot: Boolean(msg.sameSpot) })
     case 'photo.shot':
       return set({ phase: 'shooting', shot: { index: msg.index, at: performance.now() } })
     case 'photo.done':
@@ -68,15 +68,16 @@ export const photoRoom = {
     usePhotoRoom.setState({ ...initial, solo: true, room: { roomId: 'solo', role: 'a', me: { name: '나' }, partner: null }, phase: 'gather' })
   },
   /** 내가 발자국 위에 섰는지 (bk_photoBooth.jsx가 바뀔 때만 부름) */
-  setReady(ready) {
+  setReady(spot) {
     const s = usePhotoRoom.getState()
     if (!s.room || s.phase !== 'gather') return
+    const ready = spot !== null
     if (s.solo) {
       usePhotoRoom.setState({ ready: { a: ready, b: true } })
       if (ready) startSoloShots()
       return
     }
-    sendTarot({ t: 'photo.ready', roomId: s.room.roomId, ready })
+    sendTarot({ t: 'photo.ready', roomId: s.room.roomId, ready, spot })
   },
   saveShot(index, url) {
     const shots = [...usePhotoRoom.getState().shots]

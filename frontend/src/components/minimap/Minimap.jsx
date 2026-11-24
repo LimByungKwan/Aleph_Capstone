@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { LETTER_STATIONS } from '@shared/bk_letterPuzzle.js'
 import { layout, mapPlaces, southGroundExtension, zones } from '../../game/data/mapData.js'
 import { PLACE_COLORS } from '../../game/config.js'
 import { CHANNELS, COURTS, HALLS, PONDS, WALKS } from '../../game/Map/styles/hj/gyeongbokgungLayout.js'
@@ -126,7 +127,10 @@ function MinimapCanvas({ zoom, onPickWarp }) {
   const view = useRef({ toScreen: null }) // 마지막으로 그린 좌표 변환 (워프 아이콘 누르기용)
   const userId = useUiStore((s) => s.userId)
   const soloStep = useDateMission((s) => currentEpisodeStep(s.saved.accounts[userId]?.episodeBook)?.id)
-  const sharedStep = useEpisodeRoom((s) => s.room ? getDateEpisode(s.room.episodeId)?.steps[s.room.step]?.id : null)
+  const sharedStep = useEpisodeRoom(({ room }) => {
+    if (room?.letter) return room.letter.solved ? 'mural' : LETTER_STATIONS[room.letter.role]?.mission
+    return room ? getDateEpisode(room.episodeId)?.steps[room.step]?.id : null
+  })
   const guideEnabled = useDateMission((s) => s.episodeGuide === userId)
   const episodeStop = guideEnabled ? EPISODE_STOPS[sharedStep ?? soloStep] : undefined
 
