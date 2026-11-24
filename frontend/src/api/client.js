@@ -138,6 +138,37 @@ export async function deleteTarotReading({ userId, readingId }) {
   return { ok: true }
 }
 
+// [지민] 워프존 활성화 기록 (워프존 화면: 병관 bk_warpStore.js) — 미니맵 워프를 다른 기기에서도 유지
+//   서버 모드: 계정에 저장 (Supabase warp_unlocks) / mock 모드: 이 브라우저에 계정별로 저장
+//   "근처에 갔는지"는 화면이 판단해서 보내는 값 (이동 편의 기능이라 서버 위치 검증 없음)
+
+export const WARP_IDS = ['warp_bk', 'warp_jm', 'warp_sg', 'warp_hj'] // DB CHECK와 같음. 늘리면 migration도 같이
+
+/** 응답: { warps: string[] } 내가 켠 워프존 id (id 순서). 서버 모드에서 로그인 전이면 요청 없이 [] */
+export async function listWarps({ userId }) {
+  if (USE_SERVER) return server.listWarps()
+  await wait()
+  requireUser(userId)
+  return { warps: [...(readDb().warpUnlocks?.[userId] ?? [])] }
+}
+
+/**
+ * 워프존 켜기 — 이미 켠 것을 다시 보내도 에러 없이 같은 목록
+ *   unlockWarp({ userId, warpId: 'warp_bk' })
+ * 응답: { warps: string[] } — 에러: INVALID_INPUT(목록에 없는 id), 서버 모드 손님은 UNAUTHORIZED
+ */
+export async function unlockWarp({ userId, warpId }) {
+  if (USE_SERVER) return server.unlockWarp({ warpId })
+  await wait()
+  requireUser(userId)
+  if (!WARP_IDS.includes(warpId)) throw new ApiError('INVALID_INPUT', '워프존 id를 확인해 주세요.')
+  const db = readDb()
+  const warps = [...new Set([...(db.warpUnlocks?.[userId] ?? []), warpId])].sort()
+  db.warpUnlocks = { ...db.warpUnlocks, [userId]: warps }
+  writeDb(db)
+  return { warps }
+}
+
 // 같은 구역 + 같은 작품의 가게 (다른 사람 구역 가게 쿠폰까지 나가지 않게)
 function shopsForWork(work, zone) {
   return places.filter((p) => p.type === 'cafe' && p.work && p.work === work && p.zone === zone)

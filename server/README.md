@@ -45,6 +45,10 @@ npm test                 # 가짜 Supabase로 라우트 테스트 (실제 DB 안
 | 🔒 `GET /me/tarot-readings?limit=10` | | `{ readings: [{ id, spread, cards, summary, detail, createdAt }] }` 최신순, 최대 30 | |
 | 🔒 `POST /me/tarot-readings` | `{ spread, cards: string[], summary, detail? }` 답 원문은 넣지 않기 | 201 `{ reading }` | `INVALID_INPUT` 400, `TOO_LARGE` 400 (detail 4KB 초과), `TOO_MANY_REQUESTS` 429 (1시간 20번) |
 | 🔒 `DELETE /me/tarot-readings/:readingId` | | `{ ok: true }` | `NOT_FOUND` 404 |
+| 🔒 `GET /me/warps` | | `{ warps: ["warp_bk", …] }` 내가 켠 워프존 (id 순서) | |
+| 🔒 `POST /me/warps` | `{ warpId }` (`warp_bk` `warp_jm` `warp_sg` `warp_hj`) | `{ warps }` 이미 켠 것도 같은 응답 | `INVALID_INPUT` 400 |
+| 🔒 `PATCH /me` | `{ name }` 1~20자 | `{ user }` | `INVALID_INPUT` 400 |
+| 🔒 `GET /admin/stats` | | 관리자 통계 (client.js `getAdminStats` 모양) | `NOT_ADMIN` 403 |
 | 🔒 `POST /stamps` | `{ placeId }` | `{ stamp, issuedCoupons }` | `ALREADY_STAMPED` 409, `NOT_STAMPABLE` 400, `NOT_FOUND` 404 |
 | 🔒 `GET /stamps/me` | | `{ stamps: [{ id, placeId, createdAt }] }` | |
 | 🔒 `GET /coupons/me` | | `{ coupons }` (최신순) | |

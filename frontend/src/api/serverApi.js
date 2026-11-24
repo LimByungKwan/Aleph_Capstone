@@ -81,6 +81,16 @@ export function deleteTarotReading({ readingId }) {
   return authRequest(`/me/tarot-readings/${encodeURIComponent(readingId)}`, { method: 'DELETE' })
 }
 
+// ── 워프존 활성화 기록 (Supabase warp_unlocks, 워프존 화면: 병관) ──
+export async function listWarps() {
+  if (!loggedIn()) return { warps: [] }
+  return authRequest('/me/warps')
+}
+
+export function unlockWarp({ warpId }) {
+  return authRequest('/me/warps', { method: 'POST', body: { warpId } })
+}
+
 // ── 스탬프 ──
 // 손님(비로그인)은 맵·체험은 그대로 즐기고, 스탬프를 받으려는 순간에만 로그인 창을 띄운다
 // (스탬프 버튼이 있는 화면들을 하나하나 고치지 않고 여기 한 곳에서 막음)
