@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { MOCK_USERS } from '../../api/mockDb.js'
-import { USE_SERVER, useSessionStore } from '../../api/session.js'
+import { USE_SERVER, openLogin, useSessionStore } from '../../api/session.js'
 
 // [3. 개발 > 기초개발/서비스] 혜진 담당 UI 상태 (gameStore와 분리)
 // - 현재 사용자(역할): 로그인은 지민님 담당이라 지금은 시연용 계정 전환만 해요.
@@ -36,7 +36,15 @@ export const useUiStore = create((set, get) => ({
 
   // 'stampbook' | 'coupons' | null
   modal: null,
-  openModal: (modal) => set({ modal }),
+  // [지민] 서버 모드에서 손님(비로그인)이 스탬프북을 열면 스탬프북 대신 로그인 창 (11/24 지민 결정)
+  //        스탬프북을 여는 버튼이 여러 곳(오른쪽 위·쿠폰함·입구 안내·방파제)이라 여기 한 곳에서 막음
+  openModal: (modal) => {
+    if (USE_SERVER && modal === 'stampbook' && !useSessionStore.getState().session) {
+      openLogin({ title: '로그인하고 스탬프북을 봐요', reason: '모은 스탬프는 계정에 저장돼서 다른 기기에서도 그대로 보여요.' })
+      return
+    }
+    set({ modal })
+  },
   closeModal: () => set({ modal: null }),
 
   // 스탬프·쿠폰이 바뀌면 숫자를 늘려서 목록이 다시 불러와지게 함
