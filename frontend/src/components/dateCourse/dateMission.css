@@ -15,6 +15,14 @@
 .date-cafe-menu label:has(:checked) { border-color: #9d174d; background: #fce7f3; }
 .date-cafe-menu input { accent-color: #9d174d; }
 
+.date-episode-panel button[aria-pressed="true"] { border-color: #9d174d; background: #fce7f3; }
+.date-episode-friends { min-width: 0; max-width: 100%; padding: 7px 9px; border: 1px solid #bd886e; border-radius: 8px; background: #fffaf3; color: #512d30; font: inherit; }
+.date-episode-steps { display: grid; gap: 8px; margin: 0; padding-left: 24px; }
+.date-episode-steps li::marker { color: #9d174d; font-weight: 700; }
+.date-episode-steps strong { color: #643948; }
+.date-episode-postcard { padding: 15px; border: 1px solid #bd745d; border-radius: 12px; background: #fff2df; text-align: center; }
+.date-episode-postcard p:first-of-type { color: #752f45; font: 700 17px/1.5 var(--ui-serif); }
+
 [data-bk-mural-frame] > :not(:has(canvas)),
 .ui-root:has(.date-mural-view) > :not(.date-mural-view) { visibility: hidden; }
 .date-mural-view { position: absolute; z-index: 30; inset: 0; overflow: hidden; touch-action: none; user-select: none; cursor: grab; }

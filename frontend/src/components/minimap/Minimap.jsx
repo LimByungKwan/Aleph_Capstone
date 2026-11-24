@@ -8,6 +8,10 @@ import { tutorialTarget, useTutorial } from '../../store/tutorialStore.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { playerPose } from '../../store/playerPose.js'
 import { WARPS, isLoggedIn, useWarps } from '../../game/Map/styles/bk_warpStore.js'
+import { currentEpisodeStep, getDateEpisode } from '../../game/Map/styles/bk_dateEpisodes.js'
+import { DATE_MISSIONS, mapPoint, useDateMission } from '../../game/Map/styles/bk_dateMission.js'
+import { useEpisodeRoom } from '../../game/Map/styles/bk_episodeRoom.js'
+import { useUiStore } from '../movieZone/uiStore.js'
 import './minimap.css'
 
 // 미니맵 (담당: 병관) — 오른쪽 아래, [🗺 미니맵] 버튼으로 열고 닫음
@@ -20,6 +24,11 @@ const SIZE = 200 // 미니맵 크기(px)
 const BASE_SCALE = 3 // 정적 지도 그림의 해상도 (px/m)
 const ZOOMS = { near: { label: '주변', scale: 1.6 }, all: { label: '전체', scale: null } }
 const COURSE_COLOR = '#ff6fa3'
+const EPISODE_COLOR = '#ffe189'
+const EPISODE_STOPS = Object.fromEntries(DATE_MISSIONS.map((mission) => {
+  const [x, z] = mapPoint(mission)
+  return [mission.id, { name: mission.short, position: [x, 0, z] }]
+}))
 const STORAGE_KEY = 'scenewalk.minimap'
 
 function readSaved() {
@@ -115,6 +124,11 @@ function WarpConfirm({ warp, onClose }) {
 function MinimapCanvas({ zoom, onPickWarp }) {
   const canvasRef = useRef(null)
   const view = useRef({ toScreen: null }) // 마지막으로 그린 좌표 변환 (워프 아이콘 누르기용)
+  const userId = useUiStore((s) => s.userId)
+  const soloStep = useDateMission((s) => currentEpisodeStep(s.saved.accounts[userId]?.episodeBook)?.id)
+  const sharedStep = useEpisodeRoom((s) => s.room ? getDateEpisode(s.room.episodeId)?.steps[s.room.step]?.id : null)
+  const guideEnabled = useDateMission((s) => s.episodeGuide === userId)
+  const episodeStop = guideEnabled ? EPISODE_STOPS[sharedStep ?? soloStep] : undefined
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -196,11 +210,12 @@ function MinimapCanvas({ zoom, onPickWarp }) {
 
       // 루미 코스: 지금 가야 할 한 곳만 (도착하면 다음 장소로 바뀜)
       const tutorial = tutorialTarget(useTutorial.getState()) // 튜토리얼 1단계: 루미 위치
-      const remaining = course.length ? course.slice(index, index + 1) : tutorial ? [tutorial] : []
+      const remaining = episodeStop ? [episodeStop] : course.length ? course.slice(index, index + 1) : tutorial ? [tutorial] : []
+      const routeColor = episodeStop ? EPISODE_COLOR : COURSE_COLOR
       if (remaining.length) {
         ctx.setLineDash([5, 4])
         ctx.lineWidth = 2.5
-        ctx.strokeStyle = COURSE_COLOR
+        ctx.strokeStyle = routeColor
         ctx.beginPath()
         ctx.moveTo(...toScreen(me.x, me.z))
         for (const stop of remaining) ctx.lineTo(...toScreen(stop.position[0], stop.position[2]))
@@ -210,16 +225,16 @@ function MinimapCanvas({ zoom, onPickWarp }) {
           const [x, y] = toScreen(stop.position[0], stop.position[2])
           ctx.beginPath()
           ctx.arc(x, y, i === 0 ? 7 : 5, 0, Math.PI * 2)
-          ctx.fillStyle = i === 0 ? COURSE_COLOR : 'rgba(255,111,163,0.55)'
+          ctx.fillStyle = routeColor
           ctx.fill()
           ctx.lineWidth = 2
           ctx.strokeStyle = '#fff'
           ctx.stroke()
-          ctx.fillStyle = '#fff'
+          ctx.fillStyle = episodeStop ? '#533b17' : '#fff'
           ctx.font = 'bold 9px system-ui, sans-serif'
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText(course.length ? String(index + i + 1) : '!', x, y + 0.5) // 튜토리얼 목적지(루미)는 '!'
+          ctx.fillText(episodeStop ? '◆' : course.length ? String(index + i + 1) : '!', x, y + 0.5)
         })
       }
 
@@ -259,7 +274,7 @@ function MinimapCanvas({ zoom, onPickWarp }) {
           ctx.lineTo(-5, -7)
           ctx.lineTo(-5, 7)
           ctx.closePath()
-          ctx.fillStyle = COURSE_COLOR
+          ctx.fillStyle = routeColor
           ctx.fill()
           ctx.lineWidth = 2
           ctx.strokeStyle = '#fff'
@@ -281,7 +296,7 @@ function MinimapCanvas({ zoom, onPickWarp }) {
     }
     draw()
     return () => cancelAnimationFrame(raf)
-  }, [zoom])
+  }, [zoom, episodeStop])
 
   // 워프존 아이콘 찾기 (누른 곳에서 11px 안)
   const warpAt = (event) => {
@@ -306,6 +321,7 @@ function MinimapCanvas({ zoom, onPickWarp }) {
   return (
     <canvas
       ref={canvasRef}
+      aria-label={episodeStop ? `데이트 에피소드 길 안내 · ${episodeStop.name}` : undefined}
       className="mm__canvas"
       style={{ width: SIZE, height: SIZE }}
       onClick={(e) => {

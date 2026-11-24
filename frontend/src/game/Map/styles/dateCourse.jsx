@@ -11,6 +11,7 @@ import { TowerTelescopes } from './bk_telescope.jsx'
 import { PhotoBooth } from './bk_photoBooth.jsx'
 import { FountainCoinToss } from './bk_coinToss.jsx'
 import { CafeOrderCounter } from './bk_cafeOrder.jsx'
+import { EpisodeScenery } from './bk_episodeScenery.jsx'
 import { MuralFrameScene } from './bk_muralFrame.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
@@ -1367,7 +1368,7 @@ export function HanokShop({ item }) {
       )}
       <Instances geometry={GEO.sphere} material={BULB} items={bulbs} />
       <HanokRoof w={w + 1.4} d={d + 1.4} y={wallTop - 0.05} h={roofH} />
-      {item.id === 'BK/b_cafe' && <CafeOrderCounter />}
+      {item.id === 'BK/b_cafe' && <><CafeOrderCounter /><EpisodeScenery spot="cafe" /></>}
       {/* 사진관 지붕 위 카메라 장식 */}
       {item.roofProp === 'camera' && (
         <group position={[0, wallTop + 0.9, front - 0.5]}>
@@ -1526,9 +1527,14 @@ export function NeonWings({ item }) {
       {[-1, 1].map((side) => (
         <Box key={side} p={[side * w * 0.32, 0.25, d / 2 + 0.35]} s={[2.4, 0.5, 0.6]} c="#9a6b45" />
       ))}
-      <Instances geometry={GEO.ico} material={TINTABLE} items={flowers} />
+      {!isMural && <Instances geometry={GEO.ico} material={TINTABLE} items={flowers} />}
       <Instances geometry={GEO.box} material={mat('#6aa857', { flat: true })} items={vines} />
-      {isMural && <MuralFrameScene wingWidth={w * 0.75} wingHeight={wingHeight} wingCenterY={wingCenterY} wingZ={wingZ} />}
+      {isMural && (
+        <>
+          <MuralFrameScene wingWidth={w * 0.75} wingHeight={wingHeight} wingCenterY={wingCenterY} wingZ={wingZ} />
+          <EpisodeScenery spot="mural" />
+        </>
+      )}
     </group>
   )
 }

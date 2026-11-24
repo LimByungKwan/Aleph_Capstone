@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useBadges } from '../../../store/badges.js'
 import { useBkActivity } from './bk_activityStore.js'
+import { EMPTY_EPISODE_BOOK, collectEpisodePostcard, getDateEpisode, recordEpisodeActivity } from './bk_dateEpisodes.js'
+import { episodeRoom, useEpisodeRoom } from './bk_episodeRoom.js'
 
 // 데이트 코스 미션 (담당: 병관) — 영화·드라마 구역 "시간 탐정 역사 복원"과 같은 모양·흐름
 //   데이트 코스 구역 안 7곳: 체험을 끝내면 ◐ → 장소 카드에서 [🔖 데이트 스탬프] → ✓
@@ -115,6 +117,7 @@ export const useDateMission = create((set, get) => ({
   saved: readSaved(), // { accounts: { [userId]: { done: {id: iso}, stamps: {id: iso} } } }
   card: null, // 열린 장소 카드 id | 'reward'
   mapOpen: false, // 데이트 코스 안내판(지도) 창
+  episodeGuide: null, // 목적지 안내를 켠 계정
   pass: () => get().saved.accounts[useUiStore.getState().userId] ?? empty,
   write(fn) {
     const userId = useUiStore.getState().userId
@@ -130,14 +133,21 @@ export const useDateMission = create((set, get) => ({
   /** 체험 완료 → ◐ (스탬프는 카드에서 받기) */
   markDone(id, cafeOrder) {
     const m = getMission(id)
-    const alreadyDone = get().pass().done[id]
-    if (!m || (id === 'cafe' && !cafeOrder) || (alreadyDone && !cafeOrder)) return false
+    if (!m || (id === 'cafe' && !cafeOrder)) return false
+    const pass = get().pass()
+    const alreadyDone = pass.done[id]
+    const shared = episodeRoom.complete(id, cafeOrder)
+    const episodeBook = shared ? pass.episodeBook : recordEpisodeActivity(pass.episodeBook, id, cafeOrder)
+    const episodeAdvanced = episodeBook !== pass.episodeBook
+    if (alreadyDone && !cafeOrder && !episodeAdvanced) return false
     get().write((p) => ({
       ...p,
       done: { ...p.done, [id]: alreadyDone || new Date().toISOString() },
       ...(id === 'cafe' && { cafeOrder }),
       ...(id === 'mural' && { muralFramed: true }),
+      ...(episodeAdvanced && { episodeBook }),
     }))
+    if (episodeAdvanced) useUiStore.getState().toast?.('💌 에피소드가 진행됐어요. 다음 장소나 엽서를 확인해 보세요.', 'ok')
     if (alreadyDone) return true
     useUiStore.getState().toast?.(`${m.icon} 데이트 미션 완료: ${m.short} — 오른쪽 목록에서 스탬프를 받아 보세요`, 'ok')
     return true
@@ -157,7 +167,42 @@ export const useDateMission = create((set, get) => ({
   openCard: (id) => set({ card: id, mapOpen: false }),
   openMap: () => set({ mapOpen: true, card: null }),
   close: () => set({ card: null, mapOpen: false }),
+  startEpisode(id) {
+    if (!getDateEpisode(id)) return
+    const book = get().pass().episodeBook ?? EMPTY_EPISODE_BOOK
+    get().write((p) => ({
+      ...p, episodeBook: { ...book, currentId: id, runs: { ...book.runs, [id]: book.runs[id] ?? { step: 0 } } },
+    }))
+  },
+  savePostcard(id, line) {
+    const current = get().pass().episodeBook
+    const episodeBook = collectEpisodePostcard(current, id, line, new Date().toISOString())
+    if (episodeBook !== current) get().write((p) => ({ ...p, episodeBook }))
+  },
+  saveSharedCheckpoint({ episodeId, step, order, finished }) {
+    const book = get().pass().episodeBook ?? EMPTY_EPISODE_BOOK
+    const previous = book.runs[episodeId]
+    const run = !finished && previous?.step > step ? previous : { step, ...(order && { order }) }
+    get().write((p) => ({
+      ...p, episodeBook: { ...book, currentId: episodeId, runs: { ...book.runs, [episodeId]: run } },
+    }))
+  },
+  showEpisodeGuide: (visible = true) => set({ episodeGuide: visible ? useUiStore.getState().userId : null }),
 }))
+
+useEpisodeRoom.subscribe((state, previous) => {
+  const date = useDateMission.getState()
+  if (state.room && state.room.roomId !== previous.room?.roomId) {
+    date.saveSharedCheckpoint({ episodeId: state.room.episodeId, step: 0 })
+    date.showEpisodeGuide()
+  }
+  if (state.checkpoint && state.checkpoint !== previous.checkpoint) {
+    date.saveSharedCheckpoint(state.checkpoint)
+    const message = state.checkpoint.finished ? '💌 함께 걸은 에피소드가 끝났어요. 각자의 엔딩 엽서를 써 보세요.' : '💌 두 사람 모두 완료했어요. 다음 장소로 가요.'
+    useUiStore.getState().toast?.(message, 'ok')
+  }
+  if (state.notice && state.notice !== previous.notice && !state.invite) useUiStore.getState().toast?.(state.notice, 'info')
+})
 
 // ── 완료 신호 연결 ──
 // 동전 던지기·인형뽑기: 원래 체험 완료 기록(bk_activityStore.completed)
