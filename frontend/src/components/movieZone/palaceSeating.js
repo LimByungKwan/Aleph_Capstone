@@ -39,6 +39,24 @@ function lockRide(player, locked) {
   player.body.lockTranslations?.(locked, true)
 }
 
+// [3. 개발 > 프론트엔드] 순간 이동 요청 (경복궁 안내판에서 전각을 고르면 그 앞으로 옮겨 줘요)
+// 다음 프레임에 updatePalaceSeating이 캐릭터를 옮겨요. 앉아 있거나 탈것을 타고 있으면 무시해요.
+let pendingWarp = null
+export function requestPalaceWarp(position) {
+  pendingWarp = position
+}
+
+// 앉는 자리 더하기 (사정전 용상·의자 등). { id, label, position:[x, 서 있을 때 몸통 y, z], yaw, surfaceY(좌판 윗면) }
+export function registerPalaceSeat(seat) {
+  if (!seats.some((s) => s.id === seat.id)) seats.push(seat)
+}
+
+// 오르내리는 자리 등록: { id, position:[x,y,z](캐릭터 몸통 높이), radius, prompt, warpTo:[x,y,z] }
+const warpSpots = []
+export function registerWarpSpot(spot) {
+  if (!warpSpots.some((s) => s.id === spot.id)) warpSpots.push(spot)
+}
+
 // [3. 개발 > 프론트엔드] 착석 중에는 이동 입력만 막고 카메라와 공용 패널 상태는 그대로 둡니다.
 export function updatePalaceSeating(player, locked) {
   // 맵을 다시 불러오는 동안에는 몸통(body)이 아직 없을 수 있어요 → 그 프레임은 건너뜀
@@ -46,6 +64,14 @@ export function updatePalaceSeating(player, locked) {
   // 개발 중 확인용: 콘솔에서 window.__hjPlayer.body.setTranslation(...)으로 캐릭터를 옮길 수 있어요 (배포 빌드엔 없음)
   if (import.meta.env.DEV) window.__hjPlayer = player
   const state = usePalaceSeatStore.getState()
+  if (pendingWarp) {
+    if (!state.seated) {
+      const [wx, wy, wz] = pendingWarp
+      player.body.setTranslation({ x: wx, y: wy, z: wz }, true)
+      player.body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+    }
+    pendingWarp = null
+  }
   const position = player.body.translation()
 
   // ── 전차·기차에 타고 있을 때: 좌석을 따라 같이 움직이고, 정차했을 때만 내릴 수 있어요 ──
@@ -97,6 +123,29 @@ export function updatePalaceSeating(player, locked) {
       vehicle.boardHint ??= { label: vehicle.label, prompt: `${vehicle.label} 타기`, board: vehicle }
       nearby = vehicle.boardHint
     }
+  }
+  // 오르내리는 자리 (향원정 안쪽 계단 등): 가까이 가면 "E 2층으로 올라가기" → 위층으로 옮겨 줘요
+  if (!nearby && !state.seated) {
+    for (const spot of warpSpots) {
+      const [x, y, z] = spot.position
+      if (Math.abs(position.y - y) < 0.9 && Math.hypot(position.x - x, position.z - z) < spot.radius) {
+        nearby = spot
+        break
+      }
+    }
+  }
+  // 문 열고 닫기처럼 그 자리에서 하는 일 (E 한 번). 한 프레임 비웠다가 다시 잡아 안내 문구가 바뀌게 해요
+  if (nearby?.action && state.requested && !locked) {
+    nearby.action()
+    usePalaceSeatStore.setState({ nearby: null, requested: false })
+    return false
+  }
+  if (nearby?.warpTo && state.requested && !locked) {
+    const [x, y, z] = nearby.warpTo
+    player.body.setTranslation({ x, y, z }, true)
+    player.body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+    usePalaceSeatStore.setState({ nearby: null, requested: false })
+    return false
   }
   if (nearby?.board && state.requested && !locked) {
     const seat = nearby.board.seats.find((s) => !s.taken)

@@ -4,6 +4,7 @@ import { registerVehicle, updateVehicleWorld } from '../../../../components/movi
 import { usePalaceSeatStore } from '../../../../components/movieZone/palaceSeating.js'
 import { HjVintageCar } from './HjGyeongseongStreet.jsx'
 import { circleFree } from './driveArea.js'
+import { remoteVehicle, sendVehicle } from '../../../../components/movieZone/hjSync.js'
 
 // [3. 개발 > 프론트엔드] 직접 운전하는 클래식 자동차 (style: "hjDrivableCar") — 혜진 영화·드라마 구역
 // 차 옆에서 E → 운전석에 앉아요. 운전 중에는 W/↑ 앞으로, S/↓ 브레이크·뒤로, A/D/←/→ 핸들.
@@ -43,6 +44,21 @@ export default function HjDrivableCar({ item }) {
     const s = st.current
     const dt = Math.min(delta, 0.1)
     const driving = usePalaceSeatStore.getState().seated?.vehicle === vehicle
+    // [멀티] 다른 사람이 운전 중이면 그 사람 화면이 보낸 위치를 따라가요 (그동안은 못 타요)
+    const remote = driving ? null : remoteVehicle(item.id)
+    if (remote) {
+      s.x = remote.p[0]
+      s.z = remote.p[2]
+      s.yaw = remote.r
+      s.speed = 0
+      if (ref.current) {
+        ref.current.position.set(s.x - bx, CAR_Y, s.z - bz)
+        ref.current.rotation.y = s.yaw
+      }
+      vehicle.stopped = false
+      updateVehicleWorld(vehicle, ref.current, SEAT, [-1.7, 0.1, -0.3])
+      return
+    }
     const up = driving && pressed('KeyW', 'ArrowUp')
     const down = driving && pressed('KeyS', 'ArrowDown')
     const left = driving && pressed('KeyA', 'ArrowLeft')
@@ -77,6 +93,8 @@ export default function HjDrivableCar({ item }) {
     vehicle.stopped = Math.abs(s.speed) < 0.3
     vehicle.speed = s.speed
     updateVehicleWorld(vehicle, ref.current, SEAT, [-1.7, 0.1, -0.3])
+    // [멀티] 내가 운전 중이면 위치를 보내요
+    if (driving) sendVehicle(item.id, [s.x, CAR_Y, s.z], s.yaw)
   })
 
   return (

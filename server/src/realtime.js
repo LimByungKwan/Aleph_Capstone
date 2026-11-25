@@ -4,6 +4,7 @@ import { createTarotRooms } from './bk_tarotRooms.js'
 import { createPhotoRooms } from './bk_photoRooms.js'
 import { createLifts } from './bk_lifts.js'
 import { createEpisodeRooms } from './bk_episodeRooms.js'
+import { createHjWorld } from './hj_world.js'
 
 // 멀티 접속 (담당: 지민) — 같은 맵에 있는 사람들의 위치·방향·캐릭터를 실시간으로 주고받는다
 //
@@ -90,6 +91,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   const photo = createPhotoRooms({ send, findPeer, options: options.photo })
   const lifts = createLifts({ broadcast, send, options: options.lift })
   const episodes = createEpisodeRooms({ send, findPeer, inviteMs: options.episode?.inviteMs })
+  const hj = createHjWorld({ broadcast, send }) // [혜진] 경복궁·경성 문·앉기·탈것·시계 동기화 (hj_world.js)
 
   async function identify(token) {
     if (typeof token !== 'string' || !token) return { name: '손님', userId: null }
@@ -153,10 +155,11 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         send(ws, { t: 'welcome', id: peer.id, peers: others })
         broadcast({ t: 'join', peer: publicPeer(peer) }, ws)
         lifts.welcome(ws) // [병관] 지금 엘리베이터 상태
+        hj.welcome(ws) // [혜진] 지금 문·앉은 자리 상태 + 서버 시각
         return
       }
       if (!peer.ready) return
-      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg)) return
+      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg) || hj.handle(ws, peer, msg)) return
 
       if (msg.t === 'move') {
         const state = validMove(msg)
@@ -175,6 +178,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       photo.disconnect(ws)
       lifts.disconnect(peer)
       episodes.disconnect(ws)
+      hj.disconnect(peer)
       peers.delete(ws)
       if (peer.ready) broadcast({ t: 'leave', id: peer.id })
     })

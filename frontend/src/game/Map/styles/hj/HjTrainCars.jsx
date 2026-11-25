@@ -6,6 +6,7 @@ import { getSignTexture } from '../textures.js'
 import { getLandscapePaintingTexture, getStainedGlassTexture } from './hjTextures.js'
 import { registerVehicle, updateVehicleWorld } from '../../../../components/movieZone/rideSeats.js'
 import { SeatedPerson } from './HjPeople.jsx'
+import { sharedSeconds } from '../../../../components/movieZone/hjSync.js'
 
 // [3. 개발 > 프론트엔드] 증기기관차 + 객차 2량 (style: "hjSteamTrain") — 혜진 영화·드라마 구역
 // 1호 객차: 가운데 통로 + 등받이 높은 마주 보는 나무 의자, 흰 둥근 천장과 갈빗대, 매달린 등
@@ -95,7 +96,8 @@ export function HjSteamTrain({ item }) {
     const OUT = 22
     const GAP = 8
     const period = IN + DWELL + OUT + GAP
-    const t = (clock.elapsedTime + (item.phase ?? 0)) % period
+    // 모든 화면이 같은 시간표로 움직이게 서버 시각 기준 (혼자 모드면 내 시계)
+    const t = (sharedSeconds() + (item.phase ?? 0)) % period
     let pos = route.end
     let stopped = false
     let shown = true

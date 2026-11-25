@@ -5,6 +5,7 @@ import { Ball, Box, Cone, Cyl, GEO, Instances, mat } from '../kit.jsx'
 import { getSignTexture } from '../textures.js'
 import { TramCar, tramSeatSlots } from './HjTramCar.jsx'
 import { registerVehicle, updateVehicleWorld } from '../../../../components/movieZone/rideSeats.js'
+import { sharedSeconds } from '../../../../components/movieZone/hjSync.js'
 
 // [3. 개발 > 프론트엔드] 1930년대 경성 거리 세트 (혜진 영화·드라마 구역, 궁궐 동쪽)
 // 근대 석조·벽돌 상가 · 돔 지붕 역사 · 전차와 선로 · 가스등 · 인력거 · 광고탑
@@ -278,7 +279,8 @@ export function HjTram({ item }) {
     const MOVE = 18
     const DWELL = 9
     const period = 2 * (MOVE + DWELL)
-    const t = (clock.elapsedTime + (item.phase ?? 0)) % period
+    // 모든 화면이 같은 시간표로 움직이게 서버 시각 기준 (혼자 모드면 내 시계)
+    const t = (sharedSeconds() + (item.phase ?? 0)) % period
     let k = 0
     let stopped = true
     if (t < DWELL) k = 0

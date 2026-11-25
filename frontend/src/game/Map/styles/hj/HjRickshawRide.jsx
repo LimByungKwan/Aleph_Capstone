@@ -5,6 +5,11 @@ import { Ball, Box, Cone, Cyl, GEO, mat } from '../kit.jsx'
 import { registerVehicle, updateVehicleWorld } from '../../../../components/movieZone/rideSeats.js'
 import { HjRickshaw } from './HjGyeongseong.jsx'
 import { DESTINATIONS, NODES, findPath } from './rickshawRoutes.js'
+import { usePalaceSeatStore } from '../../../../components/movieZone/palaceSeating.js'
+import { remoteVehicle, sendVehicle } from '../../../../components/movieZone/hjSync.js'
+
+// 가장 가까운 길목 (다른 사람이 몰고 간 뒤 멈춘 자리에서 다시 출발할 때)
+const nearestNode = (x, z) => Object.keys(NODES).reduce((best, id) => (Math.hypot(NODES[id].pos[0] - x, NODES[id].pos[1] - z) < Math.hypot(NODES[best].pos[0] - x, NODES[best].pos[1] - z) ? id : best))
 
 // [3. 개발 > 프론트엔드] 타는 인력거 (style: "hjRickshawRide") — 혜진 영화·드라마 구역, 1930 경성 거리
 // 인력거꾼이 손잡이를 잡고 서 있어요. 옆에서 E로 타면 "어디까지 모실까요?" 하고 목적지를 물어요(RickshawMenu.jsx).
@@ -49,8 +54,27 @@ export default function HjRickshawRide({ item }) {
     const s = st.current
     const dt = Math.min(delta, 0.25) // 화면이 느려도(프레임이 적어도) 같은 속도로 달리게, 너무 큰 건너뜀만 막아요
     s.clock += dt
+    // [멀티] 다른 사람이 타고 가는 중이면 그 사람 화면이 보낸 위치를 따라가요 (그동안은 다른 사람이 못 타요)
+    const riding = usePalaceSeatStore.getState().seated?.vehicle === vehicle
+    const remote = riding ? null : remoteVehicle(item.id)
+    if (remote) {
+      s.x = remote.p[0]
+      s.z = remote.p[2]
+      s.yaw = remote.r
+      s.path = null
+      s.remoteRun = remote.p[1] > 0.5
+      s.wasRemote = true
+      vehicle.stopped = false
+      vehicle.request = null
+    } else if (s.wasRemote) {
+      s.wasRemote = false
+      s.remoteRun = false
+      s.node = nearestNode(s.x, s.z)
+      vehicle.node = s.node
+      vehicle.stopped = true
+    }
     // 손님이 목적지를 골랐어요
-    if (vehicle.request && !s.path) {
+    if (!remote && vehicle.request && !s.path) {
       const to = vehicle.request
       vehicle.request = null
       const path = findPath(s.node, to)
@@ -100,13 +124,15 @@ export default function HjRickshawRide({ item }) {
     // 인력거꾼: 달릴 때 몸이 위아래로 통통, 다리를 번갈아 내딛어요
     const p = puller.current
     if (p) {
-      const run = s.path ? 1 : 0
+      const run = s.path || s.remoteRun ? 1 : 0
       p.bob.position.y = run * Math.abs(Math.sin(s.clock * 9)) * 0.03
       const swing = run * Math.sin(s.clock * 9) * 0.55
       p.legL.rotation.z = swing
       p.legR.rotation.z = -swing
     }
     updateVehicleWorld(vehicle, ref.current, SEAT, [0, 0.1, 1.5])
+    // [멀티] 내가 타고 있으면 위치를 보내요 (p[1]: 달리는 중이면 1 → 인력거꾼 다리 움직임)
+    if (riding) sendVehicle(item.id, [s.x, s.path ? 1 : 0, s.z], s.yaw)
   })
 
   return (

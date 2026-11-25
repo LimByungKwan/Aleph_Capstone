@@ -160,8 +160,9 @@ function Throne({ seat, rug }) {
   const [x, floor, z] = seat.position
   return (
     <group position={[x, floor, z]}>
-      <Box p={[0, 0.1, 0]} s={[1.23, 0.2, 0.93]} c="#632c24" />
-      <Box p={[0, 0.29, 0]} s={[1.18, 0.17, 0.83]} c="#9e4839" />
+      {/* 좌판은 뒤로 물려 얕게: 앉았을 때 무릎·종아리가 앞으로 나와 보여요 */}
+      <Box p={[0, 0.1, 0.2]} s={[1.23, 0.2, 0.55]} c="#632c24" />
+      <Box p={[0, 0.29, 0.17]} s={[1.18, 0.17, 0.55]} c="#9e4839" />
       <Box p={[0, 0.76, 0.44]} s={[1.29, 1.01, 0.12]} c="#8d3f31" />
       <Box p={[0, 1.24, 0.44]} s={[1.35, 0.12, 0.19]} c={GOLD} />
       <mesh position={[0, 0.78, 0.369]} rotation-y={Math.PI}>
@@ -170,8 +171,8 @@ function Throne({ seat, rug }) {
       </mesh>
       {[-1, 1].map(side => (
         <group key={side}>
-          <Box p={[side * 0.64, 0.45, 0.04]} s={[0.105, 0.54, 0.61]} c="#743c2b" />
-          <Box p={[side * 0.64, 0.72, 0]} s={[0.18, 0.095, 0.82]} c={GOLD} />
+          <Box p={[side * 0.64, 0.45, 0.17]} s={[0.105, 0.54, 0.55]} c="#743c2b" />
+          <Box p={[side * 0.64, 0.72, 0.12]} s={[0.18, 0.095, 0.66]} c={GOLD} />
         </group>
       ))}
     </group>
@@ -266,7 +267,8 @@ export default function HjPalaceInterior({ timber }) {
           ))}
           <PaintedBeam position={[side * 3.15, 3.05, 0]} rotation={Math.PI / 2} length={6.2} map={band} />
           <StandingLantern position={[side * 2.60, ROOM_FLOOR, -1.86]} />
-          <StandingLantern position={[side * 2.75, ROOM_FLOOR, 1.61]} />
+          {/* 뒤쪽 등은 용상 단(x ±2.9) 바깥 바닥에 세워요 (단 속에 묻히지 않게) */}
+          <StandingLantern position={[side * 3.75, ROOM_FLOOR, 2.1]} />
         </group>
       ))}
       <Instances geometry={GEO.box} material={PARTS} items={lattice} />
@@ -281,9 +283,9 @@ export default function HjPalaceInterior({ timber }) {
         : <Box key={seat.id} p={[seat.position[0], ROOM_FLOOR + 0.058, seat.position[2]]}
           s={[0.91, 0.10, 0.73]} c="#843c35" />)}
       {PALACE_SEATS.map(seat => (
-        <mesh key={seat.id} position={[seat.position[0], seat.position[1] + seat.surfaceOffset, seat.position[2]]}
+        <mesh key={seat.id} position={[seat.position[0], seat.position[1] + seat.surfaceOffset, seat.position[2] + (seat.id === 'throne' ? 0.17 : 0)]}
           rotation-x={-Math.PI / 2}>
-          <planeGeometry args={seat.id === 'throne' ? [1.15, 0.82] : [0.90, 0.71]} />
+          <planeGeometry args={seat.id === 'throne' ? [1.12, 0.52] : [0.90, 0.71]} />
           <meshStandardMaterial map={rug} roughness={0.86} />
         </mesh>
       ))}

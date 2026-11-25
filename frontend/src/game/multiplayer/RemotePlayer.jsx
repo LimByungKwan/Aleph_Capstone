@@ -7,6 +7,7 @@ import characters from '@shared/characters.json'
 import { PLAYER_RUN_SPEED, PLAYER_WALK_SPEED } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
 import { useRealtimeStore } from './realtimeStore.js'
+import { useRemoteSeats } from '../../components/movieZone/hjSync.js' // [혜진] 다른 사람이 앉아 있으면 앉은 자세로
 
 // [지민] 다른 사람 캐릭터 1명
 // - 위치는 서버에서 0.1초마다 오므로, 그 사이를 부드럽게 따라가게(보간) 그림 → 뚝뚝 끊겨 보이지 않음
@@ -69,6 +70,13 @@ function RemoteModel({ id, character }) {
       next.Jump.setLoop(LoopOnce, 1)
       next.Jump.clampWhenFinished = true
     }
+    // [혜진] 앉은 자세: Sit 동작의 마지막 장면에 멈춰 둠
+    const sitClip = animations.find((c) => c.name === 'Sit')
+    if (sitClip) {
+      next.Sit = mixer.clipAction(sitClip).setLoop(LoopOnce, 1).play()
+      next.Sit.clampWhenFinished = true
+      next.Sit.setEffectiveWeight(0)
+    }
     actions.current = next
     return () => {
       mixer.stopAllAction()
@@ -87,7 +95,16 @@ function RemoteModel({ id, character }) {
     airborne.current = inAir
     const walk = MathUtils.smoothstep(speed, 0.08, 0.65)
     const run = MathUtils.smoothstep(speed, PLAYER_WALK_SPEED + 0.15, PLAYER_RUN_SPEED - 0.5)
-    const target = inAir ? { Idle: 0, Walk: 0, Run: 0, Jump: 1 } : { Idle: 1 - walk, Walk: walk * (1 - run), Run: walk * run, Jump: 0 }
+    // [혜진] 앉아 있으면(hj.sit) 다른 동작은 끄고 앉은 자세 + 좌판 높이에 맞춰 내려 앉힘
+    const sit = useRemoteSeats.getState().seats[id]
+    let target = inAir ? { Idle: 0, Walk: 0, Run: 0, Jump: 1 } : { Idle: 1 - walk, Walk: walk * (1 - run), Run: walk * run, Jump: 0 }
+    if (sit && current.Sit) {
+      target = { Idle: 0, Walk: 0, Run: 0, Jump: 0 }
+      current.Sit.time = current.Sit.getClip().duration - 0.00001
+    }
+    weight.current.Sit = MathUtils.damp(weight.current.Sit ?? 0, sit && current.Sit ? 1 : 0, 12, dt)
+    current.Sit?.setEffectiveWeight(weight.current.Sit)
+    model.position.y = sit && current.Sit ? -(sit.h ?? 0.91) - (model.userData.seatHipHeight ?? 0.45) : -1
     for (const name of CLIPS) {
       if (!current[name]) continue
       weight.current[name] = MathUtils.damp(weight.current[name], target[name], 10, dt)
@@ -124,7 +141,10 @@ export default function RemotePlayer({ id, name, characterId }) {
     g.position.x = MathUtils.damp(g.position.x, x, FOLLOW, dt)
     g.position.y = MathUtils.damp(g.position.y, y, FOLLOW, dt)
     g.position.z = MathUtils.damp(g.position.z, z, FOLLOW, dt)
-    g.rotation.y = MathUtils.damp(g.rotation.y, shortestAngle(g.rotation.y, yaw), FOLLOW, dt)
+    // [혜진] 앉아 있으면 자리 방향을 바라봄
+    const sit = useRemoteSeats.getState().seats[id]
+    const faceYaw = sit && Number.isFinite(sit.r) ? sit.r : yaw
+    g.rotation.y = MathUtils.damp(g.rotation.y, shortestAngle(g.rotation.y, faceYaw), FOLLOW, dt)
   })
 
   return (

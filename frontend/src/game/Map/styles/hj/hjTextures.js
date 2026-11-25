@@ -499,3 +499,660 @@ export function getLatticeGlassTexture() {
     ctx.strokeStyle = '#2a211b'; ctx.lineWidth = 12; ctx.strokeRect(0, 0, w, h)
   })
 }
+
+// ── 경복궁 전각용 (HjHanok.jsx) ─────────────────────────
+
+// 단청 긴 띠 (창방·평방): 뇌록(초록) 바탕 + 양 끝 머리초(연꽃 겹원) + 가운데 금문. 가로로 반복해서 써요 (1장 = 2m)
+export function getDancheongTexture() {
+  return canvasTexture('dancheong', 512, 64, (ctx, w, h) => {
+    ctx.fillStyle = '#2f6b58'
+    ctx.fillRect(0, 0, w, h)
+    // 위·아래 휘(띠 줄무늬)
+    const bands = ['#f2ecd8', '#c8423a', '#2a4f8a']
+    bands.forEach((c, i) => {
+      ctx.fillStyle = c
+      ctx.fillRect(0, i * 3, w, 3)
+      ctx.fillRect(0, h - (i + 1) * 3, w, 3)
+    })
+    // 머리초: 연꽃 겹원 (양 끝)
+    const lotus = (cx) => {
+      const rings = [
+        [24, '#2a4f8a'],
+        [20, '#f2ecd8'],
+        [16, '#c8423a'],
+        [11, '#f0c040'],
+        [6, '#c8423a'],
+      ]
+      for (const [r, c] of rings) {
+        ctx.fillStyle = c
+        ctx.beginPath()
+        ctx.arc(cx, h / 2, r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      // 꽃잎
+      ctx.fillStyle = '#e8d9b5'
+      for (let i = 0; i < 8; i += 1) {
+        const a = (i / 8) * Math.PI * 2
+        ctx.beginPath()
+        ctx.ellipse(cx + Math.cos(a) * 18, h / 2 + Math.sin(a) * 18, 4, 2.2, a, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      // 겹친 휘 줄
+      ctx.fillStyle = '#2a4f8a'
+      ctx.fillRect(cx + 30, 9, 6, h - 18)
+      ctx.fillStyle = '#f2ecd8'
+      ctx.fillRect(cx + 38, 9, 3, h - 18)
+      ctx.fillStyle = '#c8423a'
+      ctx.fillRect(cx + 43, 9, 5, h - 18)
+    }
+    lotus(36)
+    ctx.save()
+    ctx.translate(w, 0)
+    ctx.scale(-1, 1)
+    lotus(36)
+    ctx.restore()
+    // 가운데 금문 (마름모 연속)
+    ctx.strokeStyle = '#d8b25a'
+    ctx.lineWidth = 2
+    for (let x = 120; x < w - 120; x += 22) {
+      ctx.beginPath()
+      ctx.moveTo(x, h / 2)
+      ctx.lineTo(x + 11, 16)
+      ctx.lineTo(x + 22, h / 2)
+      ctx.lineTo(x + 11, h - 16)
+      ctx.closePath()
+      ctx.stroke()
+    }
+  }, { repeat: true })
+}
+
+// 띠살문: 붉은 밤색 살 + 흰 창호지. 세로살이 촘촘하고 위·가운데·아래에 가로살 묶음 (1장 = 문짝 1개)
+export function getDoorLatticeTexture() {
+  return canvasTexture('doorLattice', 128, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#efe6cf'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#6e3326'
+    for (let x = 10; x < w - 8; x += 9) ctx.fillRect(x, 0, 3, h)
+    for (const y0 of [22, 118, 216]) {
+      for (let i = 0; i < 4; i += 1) ctx.fillRect(0, y0 + i * 6, w, 3)
+    }
+    // 문틀
+    ctx.fillStyle = '#7b3a2c'
+    ctx.fillRect(0, 0, w, 8)
+    ctx.fillRect(0, h - 8, w, 8)
+    ctx.fillRect(0, 0, 8, h)
+    ctx.fillRect(w - 8, 0, 8, h)
+    ctx.fillStyle = '#4a2018'
+    ctx.fillRect(w - 3, 0, 3, h)
+  })
+}
+
+// 빗살·완자 교창 (문 위 가로로 긴 채광창)
+export function getTransomLatticeTexture() {
+  return canvasTexture('transomLattice', 256, 64, (ctx, w, h) => {
+    ctx.fillStyle = '#efe6cf'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#6e3326'
+    ctx.lineWidth = 3
+    for (let x = -h; x < w + h; x += 14) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + h, h); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(x + h, 0); ctx.lineTo(x, h); ctx.stroke()
+    }
+    ctx.fillStyle = '#7b3a2c'
+    ctx.fillRect(0, 0, w, 6); ctx.fillRect(0, h - 6, w, 6)
+  }, { repeat: true })
+}
+
+// 박석: 근정전 마당의 울퉁불퉁한 넓적 화강암 판석 (1장 = 4m × 4m)
+export function getBakseokTexture() {
+  return canvasTexture('bakseok', 512, 512, (ctx, w, h) => {
+    const rnd = seeded(77)
+    ctx.fillStyle = '#8f8b80'
+    ctx.fillRect(0, 0, w, h)
+    let y = 0
+    while (y < h) {
+      const rowH = 44 + rnd() * 40
+      let x = -rnd() * 60
+      while (x < w) {
+        const sw = 60 + rnd() * 90
+        const tone = 150 + rnd() * 50
+        ctx.fillStyle = `rgb(${tone + 8},${tone + 4},${tone - 6})`
+        ctx.beginPath()
+        const j = () => (rnd() - 0.5) * 8
+        ctx.moveTo(x + 3 + j(), y + 3 + j())
+        ctx.lineTo(x + sw - 3 + j(), y + 3 + j())
+        ctx.lineTo(x + sw - 3 + j(), y + rowH - 3 + j())
+        ctx.lineTo(x + 3 + j(), y + rowH - 3 + j())
+        ctx.closePath()
+        ctx.fill()
+        // 돌 결 얼룩
+        for (let k = 0; k < 5; k += 1) {
+          ctx.fillStyle = `rgba(${rnd() < 0.5 ? '90,85,75' : '230,226,215'},0.18)`
+          ctx.beginPath()
+          ctx.arc(x + rnd() * sw, y + rnd() * rowH, 3 + rnd() * 9, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        x += sw
+      }
+      y += rowH
+    }
+  }, { repeat: true })
+}
+
+// 장대석: 기단·월대·축대 옆면의 길쭉한 화강암 켜 (1장 = 3m × 1m)
+export function getAshlarTexture() {
+  return canvasTexture('ashlar', 512, 128, (ctx, w, h) => {
+    const rnd = seeded(31)
+    ctx.fillStyle = '#7f7a6e'
+    ctx.fillRect(0, 0, w, h)
+    const rows = 3
+    for (let r = 0; r < rows; r += 1) {
+      const y = (r * h) / rows
+      let x = r % 2 ? -60 : 0
+      while (x < w) {
+        const bw = 110 + rnd() * 80
+        const tone = 175 + rnd() * 35
+        ctx.fillStyle = `rgb(${tone},${tone - 4},${tone - 14})`
+        ctx.fillRect(x + 2, y + 2, bw - 4, h / rows - 4)
+        x += bw
+      }
+    }
+  }, { repeat: true })
+}
+
+// 꽃담: 침전 담·굴뚝에 쓰는 붉은 전돌 + 흰 줄눈 + 가운데 꽃무늬
+export function getFlowerWallTexture() {
+  return canvasTexture('flowerWall', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#efe5d2'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#b0503a'
+    for (let y = 0; y < h; y += 16) {
+      for (let x = (y / 16) % 2 ? -16 : 0; x < w; x += 32) ctx.fillRect(x + 2, y + 2, 28, 12)
+    }
+    ctx.fillStyle = '#efe5d2'
+    ctx.beginPath(); ctx.arc(w / 2, h / 2, 54, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = '#8c3a2a'; ctx.lineWidth = 6
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2
+      ctx.beginPath(); ctx.arc(w / 2 + Math.cos(a) * 22, h / 2 + Math.sin(a) * 22, 18, 0, Math.PI * 2); ctx.stroke()
+    }
+  })
+}
+
+// 기와: 세로로 수키와(볼록·밝음)와 암키와(오목·어두움)가 번갈아, 가로로 기와 겹친 줄 (1장 = 0.42m × 0.5m)
+export function getRoofTileTexture() {
+  return canvasTexture('roofTile', 64, 64, (ctx, w, h) => {
+    ctx.fillStyle = '#3e474e'
+    ctx.fillRect(0, 0, w, h)
+    const g = ctx.createLinearGradient(0, 0, w / 2, 0)
+    g.addColorStop(0, '#4f5a61')
+    g.addColorStop(0.5, '#7a868c')
+    g.addColorStop(1, '#4f5a61')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w / 2, h)
+    ctx.fillStyle = 'rgba(20,24,28,0.35)'
+    ctx.fillRect(0, h - 6, w, 6)
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'
+    ctx.fillRect(0, 0, w, 3)
+  }, { repeat: true })
+}
+
+// ── 경복궁 실내·창호 (2차: 사진 기반 세부) ─────────────────
+
+// 창살 무늬 (흰 창호지 + 살). kind: 'tti' 띠살 · 'bit' 빗살(사선 격자) · 'jeongja' 정자살(네모 격자)
+//   · 'fret' 번개(ㄹ자)살 — 경회루 칸막이의 초록 살. bar: 살 색
+export function getLatticeTexture(kind = 'tti', bar = '#6e3326', frame = '#7b3a2c') {
+  return canvasTexture(`lattice-${kind}-${bar}-${frame}`, 128, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#f1ebda'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = bar
+    ctx.strokeStyle = bar
+    if (kind === 'tti') {
+      for (let x = 10; x < w - 8; x += 9) ctx.fillRect(x, 0, 3, h)
+      for (const y0 of [22, 118, 216]) for (let i = 0; i < 4; i += 1) ctx.fillRect(0, y0 + i * 6, w, 3)
+    } else if (kind === 'bit') {
+      ctx.lineWidth = 3
+      for (let d = -h; d < w + h; d += 16) {
+        ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d + h, h); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(d + h, 0); ctx.lineTo(d, h); ctx.stroke()
+      }
+    } else if (kind === 'jeongja') {
+      for (let x = 14; x < w - 8; x += 18) ctx.fillRect(x, 0, 3, h)
+      for (let y = 14; y < h - 8; y += 22) ctx.fillRect(0, y, w, 3)
+    } else {
+      // 번개살: ㄹ자가 칸마다 방향을 바꾸며 이어져요
+      ctx.lineWidth = 5
+      ctx.lineCap = 'square'
+      const c = 32
+      for (let gy = 0; gy < h / c; gy += 1) {
+        for (let gx = 0; gx < w / c; gx += 1) {
+          ctx.save()
+          ctx.translate(gx * c + c / 2, gy * c + c / 2)
+          ctx.rotate(((gx + gy) % 2) * (Math.PI / 2))
+          ctx.beginPath()
+          ctx.moveTo(-12, -12); ctx.lineTo(12, -12); ctx.lineTo(12, 0); ctx.lineTo(-12, 0); ctx.lineTo(-12, 12); ctx.lineTo(12, 12)
+          ctx.stroke()
+          ctx.restore()
+        }
+      }
+    }
+    ctx.fillStyle = frame
+    ctx.fillRect(0, 0, w, 7); ctx.fillRect(0, h - 7, w, 7); ctx.fillRect(0, 0, 7, h); ctx.fillRect(w - 7, 0, 7, h)
+  })
+}
+
+// 우물반자: 초록 반자틀 + 칸마다 파란 바탕 연꽃 (1장 = 2칸 × 2칸)
+export function getCofferCeilingTexture() {
+  return canvasTexture('cofferCeiling', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#2f6b58'
+    ctx.fillRect(0, 0, w, h)
+    for (let gy = 0; gy < 2; gy += 1) {
+      for (let gx = 0; gx < 2; gx += 1) {
+        const x = gx * 128
+        const y = gy * 128
+        ctx.fillStyle = '#c8423a'; ctx.fillRect(x + 9, y + 9, 110, 110)
+        ctx.fillStyle = '#f2ecd8'; ctx.fillRect(x + 13, y + 13, 102, 102)
+        ctx.fillStyle = '#1f3f78'; ctx.fillRect(x + 16, y + 16, 96, 96)
+        // 귀 장식
+        ctx.fillStyle = '#e9b949'
+        for (const [cx, cy] of [[20, 20], [108, 20], [20, 108], [108, 108]]) {
+          ctx.beginPath(); ctx.arc(x + cx, y + cy, 5, 0, Math.PI * 2); ctx.fill()
+        }
+        const cx = x + 64
+        const cy = y + 64
+        ctx.fillStyle = '#2f6b58'
+        for (let i = 0; i < 8; i += 1) {
+          const a = (i / 8) * Math.PI * 2
+          ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * 26, cy + Math.sin(a) * 26, 11, 6, a, 0, Math.PI * 2); ctx.fill()
+        }
+        for (const [r, c] of [[24, '#c8423a'], [18, '#f2ecd8'], [13, '#e9b949'], [6, '#c8423a']]) {
+          ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill()
+        }
+        ctx.fillStyle = '#f2ecd8'
+        for (let i = 0; i < 8; i += 1) {
+          const a = (i / 8) * Math.PI * 2 + Math.PI / 8
+          ctx.beginPath(); ctx.arc(cx + Math.cos(a) * 37, cy + Math.sin(a) * 37, 3, 0, Math.PI * 2); ctx.fill()
+        }
+      }
+    }
+  }, { repeat: true })
+}
+
+// 보개천장 황룡: 붉은 구름 바탕에 금빛 쌍룡 + 여의주
+export function getDragonPanelTexture() {
+  return canvasTexture('dragonPanel', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#2b1410'
+    ctx.fillRect(0, 0, w, h)
+    // 구름
+    ctx.strokeStyle = 'rgba(200,66,58,0.75)'
+    ctx.lineWidth = 4
+    for (const [x, y] of [[40, 40], [210, 60], [60, 210], [200, 200], [128, 30], [128, 226]]) {
+      for (let i = 0; i < 3; i += 1) { ctx.beginPath(); ctx.arc(x + i * 9, y, 9, Math.PI, 0); ctx.stroke() }
+    }
+    const dragon = (flip) => {
+      ctx.save()
+      ctx.translate(w / 2, h / 2)
+      ctx.scale(flip, flip)
+      ctx.lineCap = 'round'
+      ctx.strokeStyle = '#7a5418'
+      ctx.lineWidth = 20
+      const body = () => { ctx.beginPath(); ctx.moveTo(-20, -18); ctx.bezierCurveTo(-90, -40, -100, 40, -40, 50); ctx.bezierCurveTo(10, 60, 60, 20, 95, 70); ctx.stroke() }
+      body()
+      ctx.strokeStyle = '#e2b544'
+      ctx.lineWidth = 14
+      body()
+      // 비늘
+      ctx.fillStyle = '#a8761f'
+      for (let t = 0; t < 1; t += 0.07) {
+        const x = -40 + Math.sin(t * 6) * 50 * (1 - t) + t * 120
+        const y = -10 + t * 70 + Math.cos(t * 6) * 25
+        ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill()
+      }
+      // 머리 + 갈기 + 뿔
+      ctx.fillStyle = '#e8bf4f'; ctx.beginPath(); ctx.ellipse(-12, -24, 17, 12, -0.4, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = '#c8423a'
+      for (let i = 0; i < 5; i += 1) { ctx.beginPath(); ctx.arc(-26 - i * 4, -34 + i * 5, 5, 0, Math.PI * 2); ctx.fill() }
+      ctx.strokeStyle = '#e8bf4f'; ctx.lineWidth = 3
+      ctx.beginPath(); ctx.moveTo(-8, -34); ctx.lineTo(4, -48); ctx.stroke()
+      ctx.fillStyle = '#2b1410'; ctx.beginPath(); ctx.arc(-6, -27, 2.5, 0, Math.PI * 2); ctx.fill()
+      // 발톱
+      ctx.strokeStyle = '#e2b544'; ctx.lineWidth = 5
+      for (const [x, y] of [[-70, 10], [30, 45]]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y + 14); ctx.stroke() }
+      ctx.restore()
+    }
+    dragon(1)
+    dragon(-1)
+    // 여의주
+    ctx.fillStyle = '#f6efe0'; ctx.beginPath(); ctx.arc(w / 2, h / 2, 11, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = '#e0553f'; ctx.beginPath(); ctx.arc(w / 2, h / 2, 6, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = '#d8b25a'; ctx.lineWidth = 8; ctx.strokeRect(4, 4, w - 8, h - 8)
+  })
+}
+
+// 향원정 육각 반자: 붉은 틀 + 초록 칸마다 날아가는 새 (1장 = 2칸 × 2칸)
+export function getBirdCofferTexture() {
+  return canvasTexture('birdCoffer', 128, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#9a3a2c'
+    ctx.fillRect(0, 0, w, h)
+    for (let gy = 0; gy < 2; gy += 1) {
+      for (let gx = 0; gx < 2; gx += 1) {
+        const x = gx * 64
+        const y = gy * 64
+        ctx.fillStyle = '#e9e2cf'; ctx.fillRect(x + 4, y + 4, 56, 56)
+        ctx.fillStyle = '#3f7a55'; ctx.fillRect(x + 7, y + 7, 50, 50)
+        // 새: 몸 + 양 날개 + 붉은 머리
+        ctx.fillStyle = '#f1e7c9'
+        ctx.beginPath(); ctx.ellipse(x + 32, y + 33, 9, 4, -0.5, 0, Math.PI * 2); ctx.fill()
+        ctx.strokeStyle = '#f1e7c9'; ctx.lineWidth = 3
+        ctx.beginPath(); ctx.moveTo(x + 30, y + 31); ctx.quadraticCurveTo(x + 20, y + 14, x + 12, y + 20); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(x + 34, y + 31); ctx.quadraticCurveTo(x + 46, y + 18, x + 52, y + 26); ctx.stroke()
+        ctx.fillStyle = '#c8423a'; ctx.beginPath(); ctx.arc(x + 41, y + 28, 3, 0, Math.PI * 2); ctx.fill()
+        ctx.strokeStyle = '#d8b25a'; ctx.lineWidth = 2
+        ctx.beginPath(); ctx.moveTo(x + 24, y + 37); ctx.lineTo(x + 14, y + 46); ctx.stroke()
+      }
+    }
+  }, { repeat: true })
+}
+
+// 우물마루: 긴 장귀틀 사이에 짧은 청판을 가로로 끼운 회갈색 나무 마루 (1장 = 2m × 2m)
+export function getMaruTexture() {
+  return canvasTexture('maru', 256, 256, (ctx, w, h) => {
+    const rnd = seeded(5)
+    ctx.fillStyle = '#7d7366'
+    ctx.fillRect(0, 0, w, h)
+    for (let band = 0; band < 2; band += 1) {
+      const x0 = band * 128
+      // 장귀틀 (세로 긴 널)
+      ctx.fillStyle = '#6b6156'
+      ctx.fillRect(x0, 0, 16, h)
+      // 청판 (가로 짧은 널)
+      for (let y = 0; y < h; y += 18) {
+        const t = 118 + rnd() * 30
+        ctx.fillStyle = `rgb(${t},${t - 8},${t - 18})`
+        ctx.fillRect(x0 + 17, y + 1, 110, 16)
+        ctx.strokeStyle = 'rgba(60,50,40,0.25)'
+        ctx.lineWidth = 1
+        for (let k = 0; k < 3; k += 1) {
+          const gy = y + 3 + rnd() * 12
+          ctx.beginPath()
+          ctx.moveTo(x0 + 18, gy)
+          ctx.bezierCurveTo(x0 + 50, gy + 2, x0 + 80, gy - 2, x0 + 126, gy + 1)
+          ctx.stroke()
+        }
+      }
+    }
+  }, { repeat: true })
+}
+
+// 계자난간 청판: 분홍 판 + 초록 테두리 + 가운데 뚫린 안상(구름 모양 구멍)
+export function getRailPanelTexture() {
+  return canvasTexture('railPanel', 128, 48, (ctx, w, h) => {
+    ctx.fillStyle = '#4f8a6a'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#d98b78'
+    ctx.fillRect(5, 5, w - 10, h - 10)
+    ctx.fillStyle = '#5a2a22'
+    ctx.beginPath()
+    ctx.moveTo(28, 30)
+    ctx.bezierCurveTo(30, 12, 50, 14, 56, 20)
+    ctx.bezierCurveTo(60, 10, 70, 10, 74, 20)
+    ctx.bezierCurveTo(80, 14, 98, 12, 100, 30)
+    ctx.bezierCurveTo(90, 36, 38, 36, 28, 30)
+    ctx.fill()
+  }, { repeat: true })
+}
+
+// 흰 창호지 문 (향원정): 얇은 나무 테 + 흰 종이
+export function getPaperDoorTexture() {
+  return canvasTexture('paperDoor', 64, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#f4f0e6'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#6b3a2a'
+    ctx.fillRect(0, 0, w, 4)
+    ctx.fillRect(0, h - 4, w, 4)
+    ctx.fillRect(0, 0, 4, h)
+    ctx.fillRect(w - 4, 0, 4, h)
+    ctx.fillStyle = 'rgba(110,80,60,0.25)'
+    ctx.fillRect(w / 2 - 1, 0, 2, h)
+  })
+}
+
+// ── 사정전(편전) 실내 ─────────────────────────────
+
+// 돗자리 바닥: 연한 볏짚색 왕골 결 + 파란 선두름(가장자리 천). 1장 = 돗자리 한 장(0.9m × 1.8m)
+export function getMatFloorTexture() {
+  return canvasTexture('matFloor', 128, 256, (ctx, w, h) => {
+    const rnd = seeded(12)
+    ctx.fillStyle = '#e2d7b2'
+    ctx.fillRect(0, 0, w, h)
+    for (let y = 0; y < h; y += 3) {
+      const t = 205 + rnd() * 30
+      ctx.fillStyle = `rgb(${t},${t - 10},${t - 45})`
+      ctx.fillRect(0, y, w, 1)
+    }
+    ctx.fillStyle = '#2c4a8a'
+    ctx.fillRect(0, 0, 7, h)
+    ctx.fillRect(w - 7, 0, 7, h)
+    ctx.fillRect(0, 0, w, 6)
+    ctx.fillRect(0, h - 6, w, 6)
+  }, { repeat: true })
+}
+
+// 운룡도: 붉은빛 구름 속에서 꿈틀대는 용 (편전 어좌 위 큰 그림)
+export function getCloudDragonTexture() {
+  return canvasTexture('cloudDragon', 512, 256, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, w, h)
+    g.addColorStop(0, '#f1d9c8')
+    g.addColorStop(1, '#e8c3b0')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w, h)
+    const rnd = seeded(8)
+    // 구름 소용돌이
+    ctx.strokeStyle = 'rgba(190,80,70,0.45)'
+    ctx.lineWidth = 3
+    for (let i = 0; i < 26; i += 1) {
+      const x = rnd() * w
+      const y = rnd() * h
+      const r = 10 + rnd() * 22
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 1.5)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(x + r * 0.7, y, r * 0.5, Math.PI, Math.PI * 2.4)
+      ctx.stroke()
+    }
+    // 용 몸통 (S자) + 비늘 + 머리·뿔·수염 + 여의주
+    ctx.lineCap = 'round'
+    const body = () => {
+      ctx.beginPath()
+      ctx.moveTo(60, 200)
+      ctx.bezierCurveTo(140, 40, 230, 220, 300, 110)
+      ctx.bezierCurveTo(350, 40, 400, 120, 440, 70)
+      ctx.stroke()
+    }
+    ctx.strokeStyle = '#a0342c'
+    ctx.lineWidth = 26
+    body()
+    ctx.strokeStyle = '#d8735e'
+    ctx.lineWidth = 18
+    body()
+    ctx.fillStyle = 'rgba(140,40,32,0.55)'
+    for (let t = 0; t < 60; t += 1) {
+      ctx.beginPath()
+      ctx.arc(70 + t * 6.2, 200 - Math.sin(t / 9) * 70 - t * 1.6, 2.4, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.fillStyle = '#b8402f'
+    ctx.beginPath()
+    ctx.ellipse(452, 62, 26, 17, -0.4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = '#8c2a22'
+    ctx.lineWidth = 3
+    for (const [dx, dy] of [[18, -30], [30, -22], [-10, 20], [6, 24]]) {
+      ctx.beginPath()
+      ctx.moveTo(452, 62)
+      ctx.quadraticCurveTo(452 + dx * 0.6, 62 + dy * 1.3, 452 + dx * 1.6, 62 + dy)
+      ctx.stroke()
+    }
+    // 발톱
+    for (const [x, y] of [[150, 115], [260, 175], [360, 85]]) {
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x - 14, y + 18)
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + 6, y + 20)
+      ctx.stroke()
+    }
+    ctx.fillStyle = '#f6efe0'
+    ctx.beginPath()
+    ctx.arc(392, 168, 13, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = '#c8423a'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.strokeStyle = '#7a2a22'
+    ctx.lineWidth = 10
+    ctx.strokeRect(5, 5, w - 10, h - 10)
+  })
+}
+
+// ── 경복궁 벽·창 (사진 기반, HjHanok fillWall · 궁궐 담장) ─────────────────
+
+// 사괘석 화방벽: 네모난 화강석 덩이를 줄마다 엇갈려 쌓고 흰 줄눈을 두껍게 (1장 = 벽 한 칸, 약 2m × 1m)
+export function getSagwaeTexture() {
+  return canvasTexture('sagwae', 512, 256, (ctx, w, h) => {
+    const rnd = seeded(23)
+    ctx.fillStyle = '#efe9dc' // 흰 줄눈
+    ctx.fillRect(0, 0, w, h)
+    const rows = 5
+    const rh = h / rows
+    for (let r = 0; r < rows; r += 1) {
+      const y = r * rh
+      let x = r % 2 ? -rh * 0.5 : 0
+      while (x < w) {
+        const bw = rh * (0.95 + rnd() * 0.25)
+        const tone = 168 + rnd() * 34
+        const warm = 4 + rnd() * 10
+        ctx.fillStyle = `rgb(${tone + warm},${tone + warm * 0.4},${tone - warm * 0.5})`
+        ctx.fillRect(x + 5, y + 5, bw - 10, rh - 10)
+        // 화강암 알갱이
+        for (let k = 0; k < 40; k += 1) {
+          const d = rnd()
+          ctx.fillStyle = d < 0.5 ? 'rgba(60,55,50,0.35)' : 'rgba(255,255,255,0.35)'
+          ctx.fillRect(x + 6 + rnd() * (bw - 12), y + 6 + rnd() * (rh - 12), 1.6, 1.6)
+        }
+        // 위쪽 밝은 가장자리 (돌이 살짝 튀어나온 느낌)
+        ctx.fillStyle = 'rgba(255,255,255,0.18)'
+        ctx.fillRect(x + 5, y + 5, bw - 10, 3)
+        ctx.fillStyle = 'rgba(0,0,0,0.12)'
+        ctx.fillRect(x + 5, y + rh - 8, bw - 10, 3)
+        x += bw
+      }
+    }
+  }, { repeat: true })
+}
+
+// 전돌 띠: 화방벽 위 어두운 회색 전돌을 가로로 쌓고, 아래 가장자리를 톱니처럼 엇갈려 끝낸 띠 (1장 = 2m × 0.25m)
+export function getBrickBandTexture() {
+  return canvasTexture('brickBand', 512, 64, (ctx, w, h) => {
+    ctx.fillStyle = '#d9d4c8'
+    ctx.fillRect(0, 0, w, h)
+    const rh = 12
+    for (let r = 0; r < 4; r += 1) {
+      for (let x = r % 2 ? -14 : 0; x < w; x += 28) {
+        ctx.fillStyle = r % 2 ? '#4e5256' : '#5b5f63'
+        ctx.fillRect(x + 1.5, r * rh + 1.5, 25, rh - 3)
+      }
+    }
+    // 톱니(이빨) 줄
+    for (let x = 0; x < w; x += 28) {
+      ctx.fillStyle = '#55595d'
+      ctx.fillRect(x + 1.5, 4 * rh + 1.5, 12, 12)
+    }
+  }, { repeat: true })
+}
+
+// 분홍 판벽: 분홍(주토) 벽면 + 검은 선 테두리 + 붉은 틀 (1장 = 칸 하나)
+export function getPinkPanelTexture() {
+  return canvasTexture('pinkPanel', 256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#8f3a2c'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#e39a86'
+    ctx.fillRect(8, 8, w - 16, h - 16)
+    ctx.strokeStyle = '#2b2422'
+    ctx.lineWidth = 2
+    ctx.strokeRect(18, 16, w - 36, h - 32)
+    ctx.strokeStyle = '#f7eee4'
+    ctx.lineWidth = 1
+    ctx.strokeRect(22, 20, w - 44, h - 40)
+  })
+}
+
+// 초록 창 두 짝: 붉은 틀 안에 초록 정자살 창 (닫힌 덧창) + 양옆 분홍 판 (1장 = 칸 하나)
+export function getGreenWindowTexture() {
+  return canvasTexture('greenWindow', 256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#8f3a2c'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#e39a86'
+    ctx.fillRect(8, 8, w - 16, h - 16)
+    const x0 = w * 0.3
+    const x1 = w * 0.7
+    ctx.fillStyle = '#8f3a2c'
+    ctx.fillRect(x0 - 6, 10, x1 - x0 + 12, h - 20)
+    for (const [a, b] of [[x0, (x0 + x1) / 2 - 1], [(x0 + x1) / 2 + 1, x1]]) {
+      ctx.fillStyle = '#3f8a6a'
+      ctx.fillRect(a, 14, b - a, h - 28)
+      ctx.strokeStyle = '#1f4f3c'
+      ctx.lineWidth = 2
+      for (let x = a + 7; x < b - 3; x += 8) { ctx.beginPath(); ctx.moveTo(x, 16); ctx.lineTo(x, h - 16); ctx.stroke() }
+      for (let y = 22; y < h - 16; y += 9) { ctx.beginPath(); ctx.moveTo(a + 2, y); ctx.lineTo(b - 2, y); ctx.stroke() }
+      ctx.strokeStyle = '#5fae8a'
+      ctx.lineWidth = 3
+      ctx.strokeRect(a + 1.5, 15.5, b - a - 3, h - 31)
+    }
+    ctx.fillStyle = '#2b2422'
+    ctx.fillRect((x0 + x1) / 2 - 5, h / 2 - 2, 3, 6)
+    ctx.fillRect((x0 + x1) / 2 + 2, h / 2 - 2, 3, 6)
+  })
+}
+
+// 팔각 교창: 분홍 벽면 가운데 팔각 붉은 테 + 빗살(사선 격자) 창 + 검은 선 테두리 (1장 = 칸 하나)
+export function getOctagonWindowTexture() {
+  return canvasTexture('octagonWindow', 256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#8f3a2c'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#e39a86'
+    ctx.fillRect(8, 8, w - 16, h - 16)
+    const oct = (cx, cy, rx, ry, cut) => {
+      ctx.beginPath()
+      ctx.moveTo(cx - rx + cut, cy - ry)
+      ctx.lineTo(cx + rx - cut, cy - ry)
+      ctx.lineTo(cx + rx, cy - ry + cut)
+      ctx.lineTo(cx + rx, cy + ry - cut)
+      ctx.lineTo(cx + rx - cut, cy + ry)
+      ctx.lineTo(cx - rx + cut, cy + ry)
+      ctx.lineTo(cx - rx, cy + ry - cut)
+      ctx.lineTo(cx - rx, cy - ry + cut)
+      ctx.closePath()
+    }
+    ctx.strokeStyle = '#2b2422'
+    ctx.lineWidth = 2
+    oct(w / 2, h / 2, 96, 46, 22)
+    ctx.stroke()
+    ctx.fillStyle = '#8f3a2c'
+    oct(w / 2, h / 2, 76, 34, 16)
+    ctx.fill()
+    ctx.save()
+    oct(w / 2, h / 2, 68, 27, 13)
+    ctx.clip()
+    ctx.fillStyle = '#efe6cf'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#3a2e26'
+    ctx.lineWidth = 2
+    for (let d = -h; d < w + h; d += 9) {
+      ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d + h, h); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(d + h, 0); ctx.lineTo(d, h); ctx.stroke()
+    }
+    ctx.restore()
+  })
+}

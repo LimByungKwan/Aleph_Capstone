@@ -12,6 +12,7 @@ import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
 import PalaceSeatPrompt from './PalaceSeatPrompt.jsx'
 import RickshawMenu from './RickshawMenu.jsx'
+import PalaceGuideMenu from './PalaceGuideMenu.jsx'
 import CarDriveHint from './CarDriveHint.jsx'
 import PalaceTour from './PalaceTour.jsx'
 import SpecialAccess from './SpecialAccess.jsx'
@@ -53,6 +54,7 @@ export default function UiRoot() {
       {!inCinema && !specialEra && <Tutorial />}
       <SceneHint />
       {!inCinema && <RickshawMenu />}
+      {!inCinema && <PalaceGuideMenu />}
       {!inCinema && <CarDriveHint />}
       {!inCinema && <PalaceSeatPrompt />}
       <PalaceTour enabled={!inCinema && !modal && !specialPanel} />
