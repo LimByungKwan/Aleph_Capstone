@@ -213,6 +213,13 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     res.json({ session: sessionJson(data.session) })
   })
 
+  // 저장된 토큰으로 다시 들어온 사람도 일일 접속자에 잡히게 (11/25) — 로그인을 다시 하지 않으면 /auth/login의 기록이 안 남음
+  // 화면(AdminLauncher → client.js logVisit)이 게임에 들어올 때 한 번 부름. 집계는 하루 한 사람 기준(daily_visitors 뷰)이라 여러 번 와도 셈은 같음
+  app.post('/me/visit', requireAuth, async (req, res) => {
+    await rpc(req.db, 'log_access')
+    res.json({ counted: true })
+  })
+
   app.get('/me', requireAuth, async (req, res) => {
     const profile = await loadProfile(req.db, req.user.id)
     res.json({ user: profileJson(req.user, profile) })
