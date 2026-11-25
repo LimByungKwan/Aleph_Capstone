@@ -11,6 +11,10 @@ import { useGameStore } from '../../../store/gameStore.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useWarps } from './bk_warpStore.js'
 
+// 같은 입력이면 같은 0~1 난수 (kit의 seeded는 난수 '함수'를 돌려줌 → 숫자로 한 번 뽑음)
+const srand = (n) => seeded(Math.round(n * 9973) + 7)()
+
+
 // 애니 구역(JM) 「센과 치히로의 행방불명」 배경 마을 (11/25 지민 요청: 교토 대신 영화 속 마을로 구역 전체를 다시) — 담당: 지민
 // 영화 순서: 붉은 탑 터널 → 풀밭 언덕 → 마른 강(징검돌) → 돌계단 → 텅 빈 음식점 거리(붉은 등·간판) → 붉은 다리(밑은 바다 위 철길)
 //   → 온천장. 온천장 옆 바깥 계단을 내려가면 맨 아래 보일러실, 안에는 층을 오가는 엘리베이터
@@ -158,7 +162,7 @@ export function JmEatery({ item }) {
     const n = Math.max(3, Math.floor((w - 2) / 0.55))
     for (let i = 0; i < n; i++) {
       const x = -((n - 1) * 0.55) / 2 + i * 0.55
-      out.push({ p: [x, base + 1.08, front - 1.25 + (i % 2) * 0.18], s: [0.17 + seeded(seed * 13 + i) * 0.06, 0.08, 0.17] })
+      out.push({ p: [x, base + 1.08, front - 1.25 + (i % 2) * 0.18], s: [0.17 + srand(seed * 13 + i) * 0.06, 0.08, 0.17] })
     }
     return out
   }, [w, front, seed])
@@ -460,7 +464,7 @@ export function JmBoilerRoom({ item }) {
   const front = d / 2
   const drawers = useMemo(() => drawerTexture(), [])
   const roof = useMemo(() => hipRoofGeometry(w + 1, d + 1, 1.4, 0.2), [w, d])
-  const coal = useMemo(() => range(28).map((i) => ({ p: [B.furnace[0] + 3.2 + (seeded(i) - 0.5) * 2.4, 0.15 + seeded(i + 40) * 0.35, B.furnace[1] + 1.8 + (seeded(i + 80) - 0.5) * 1.6], s: [0.35, 0.3, 0.35] })), [B])
+  const coal = useMemo(() => range(28).map((i) => ({ p: [B.furnace[0] + 3.2 + (srand(i) - 0.5) * 2.4, 0.15 + srand(i + 40) * 0.35, B.furnace[1] + 1.8 + (srand(i + 80) - 0.5) * 1.6], s: [0.35, 0.3, 0.35] })), [B])
   const [dx, dz, dw] = B.drawers
   const [kx, kz, kw, kd] = B.deck
   return (
@@ -888,7 +892,7 @@ export function JmYuLowerFacade({ item }) {
   const [w, h] = item.size
   const winTex = windowStripTexture('lattice')
   const eave = useMemo(() => hipRoofGeometry(w + 0.8, 2.2, 0.55, 0.06), [w])
-  const plants = useMemo(() => range(Math.round(w / 1.6)).map((i) => ({ p: [-w / 2 + 0.8 + i * 1.6, h + 0.35, 0.55], s: [0.5 + seeded(i) * 0.3, 0.45, 0.4] })), [w, h])
+  const plants = useMemo(() => range(Math.round(w / 1.6)).map((i) => ({ p: [-w / 2 + 0.8 + i * 1.6, h + 0.35, 0.55], s: [0.5 + srand(i) * 0.3, 0.45, 0.4] })), [w, h])
   return (
     <group>
       <Box p={[0, h / 2, 0]} s={[w, h, 0.6]} c="#8a7f6e" />
@@ -964,9 +968,9 @@ export function JmFlowerBush({ item }) {
   const seed = item.seed ?? 0
   const colors = [['#7aa7e8', '#9f8ee0', '#b9c8f2'], ['#e86a9a', '#f2a3c0', '#ffffff'], ['#d94f6a', '#f28aa0', '#ffd0dc']][seed % 3]
   const flowers = useMemo(() => colors.map((_, c) => range(10).map((i) => {
-    const a = seeded(seed * 31 + i * 3 + c) * Math.PI * 2
-    const r = 0.35 + seeded(seed + i * 7 + c * 11) * 0.5
-    return { p: [Math.cos(a) * r * (w / 2), h * (0.55 + seeded(i + c * 5 + seed) * 0.4), Math.sin(a) * r * (d / 2)], s: [0.22, 0.22, 0.22] }
+    const a = srand(seed * 31 + i * 3 + c) * Math.PI * 2
+    const r = 0.35 + srand(seed + i * 7 + c * 11) * 0.5
+    return { p: [Math.cos(a) * r * (w / 2), h * (0.55 + srand(i + c * 5 + seed) * 0.4), Math.sin(a) * r * (d / 2)], s: [0.22, 0.22, 0.22] }
   })), [w, h, d, seed, colors])
   return (
     <group>
@@ -1169,8 +1173,8 @@ export function JmPipeBridge({ item }) {
 export function JmHedge({ item }) {
   const [len, h, d] = item.size
   const seed = item.seed ?? 0
-  const bumps = useMemo(() => range(Math.max(3, Math.round(len / 1.1))).map((i) => ({ p: [-len / 2 + 0.55 + i * ((len - 1.1) / Math.max(1, Math.round(len / 1.1) - 1)), h * (0.55 + seeded(seed * 17 + i) * 0.2), (seeded(i + seed) - 0.5) * 0.3], s: [0.9, h * 0.55, d * 0.6] })), [len, h, d, seed])
-  const flowers = useMemo(() => [['#e47fb4', 0], ['#a98be0', 1], ['#ffffff', 2]].map(([c, k]) => ({ c, items: range(Math.round(len * 1.6)).map((i) => ({ p: [-len / 2 + seeded(i * 3 + k + seed * 7) * len, 0.5 + seeded(i * 5 + k * 11 + seed) * (h - 0.4), (seeded(i * 7 + k) > 0.5 ? 1 : -1) * (d / 2 + 0.05)], s: [0.22, 0.22, 0.22] })) })), [len, h, d, seed])
+  const bumps = useMemo(() => range(Math.max(3, Math.round(len / 1.1))).map((i) => ({ p: [-len / 2 + 0.55 + i * ((len - 1.1) / Math.max(1, Math.round(len / 1.1) - 1)), h * (0.55 + srand(seed * 17 + i) * 0.2), (srand(i + seed) - 0.5) * 0.3], s: [0.9, h * 0.55, d * 0.6] })), [len, h, d, seed])
+  const flowers = useMemo(() => [['#e47fb4', 0], ['#a98be0', 1], ['#ffffff', 2]].map(([c, k]) => ({ c, items: range(Math.round(len * 1.6)).map((i) => ({ p: [-len / 2 + srand(i * 3 + k + seed * 7) * len, 0.5 + srand(i * 5 + k * 11 + seed) * (h - 0.4), (srand(i * 7 + k) > 0.5 ? 1 : -1) * (d / 2 + 0.05)], s: [0.22, 0.22, 0.22] })) })), [len, h, d, seed])
   return (
     <group>
       <Box p={[0, h * 0.45, 0]} s={[len, h * 0.9, d * 0.85]} c="#5e9a44" />
@@ -1296,8 +1300,8 @@ export function JmBoilerBasement({ item }) {
     const pile = i < 34
     const [cx, cz] = B.coal
     return pile
-      ? { p: [cx + (seeded(i) - 0.5) * 1.4, 0.12 + seeded(i + 40) * 0.35, cz + (seeded(i + 80) - 0.5) * 1.2], s: [0.22, 0.18, 0.22] }
-      : { p: [B.furnace[0] + 2 + seeded(i) * 7, 0.08, B.furnace[1] + (seeded(i + 9) - 0.5) * 4], s: [0.14, 0.12, 0.14] }
+      ? { p: [cx + (srand(i) - 0.5) * 1.4, 0.12 + srand(i + 40) * 0.35, cz + (srand(i + 80) - 0.5) * 1.2], s: [0.22, 0.18, 0.22] }
+      : { p: [B.furnace[0] + 2 + srand(i) * 7, 0.08, B.furnace[1] + (srand(i + 9) - 0.5) * 4], s: [0.14, 0.12, 0.14] }
   }), [B])
   const [fx, fz] = B.furnace
   const [px, pz] = B.platform

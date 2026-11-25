@@ -144,40 +144,126 @@ export function ribbonGrid(points, width, step = 1.5) {
   return g
 }
 
-// (11/25 지민 요청) 아이돌(SG) 구역 해변 바다와 같은 색 띠 (공용 coastColors.js의 색 순서를 그대로):
-//   강둑 젖은 모래 → 흰 거품 줄 → 옥색 얕은 물 → 청록 → 짙은 파랑(가운데). 폭이 좁으면 가운데 색까지 다 못 감
-const BEACH_STOPS = [[0, '#cba978'], [0.5, '#eefbf1'], [0.9, '#94ddd0'], [2.6, '#53b8b9'], [5.5, '#369aa9'], [9, '#286f91']]
-function beachColorAt(dist) {
-  for (let i = 1; i < BEACH_STOPS.length; i++) {
-    const [d1, c1] = BEACH_STOPS[i]
+// (11/25 밤 지민 요청) 해변 색 띠 대신 강물: 강둑 쪽 탁한 초록빛 얕은 물 → 가운데 짙은 청록, 반투명이라 모래 바닥이 비침
+//   걸어 들어갈 수 있는 강(wade)은 물높이 0.45m, 걸으면 물방울·물결 (WadeSplash). 바다 조각은 짙은 파랑 한 색
+const RIVER_STOPS = [[0, '#7d8f62'], [0.8, '#6f9478'], [2.2, '#4f8f8f'], [5, '#3a7d8c'], [9, '#2f6a80']]
+const SEA_ONE = '#2a6f8e'
+function riverColorAt(dist) {
+  for (let i = 1; i < RIVER_STOPS.length; i++) {
+    const [d1, c1] = RIVER_STOPS[i]
     if (dist <= d1) {
-      const [d0, c0] = BEACH_STOPS[i - 1]
+      const [d0, c0] = RIVER_STOPS[i - 1]
       return new THREE.Color(c0).lerp(new THREE.Color(c1), (dist - d0) / (d1 - d0))
     }
   }
-  return new THREE.Color(BEACH_STOPS.at(-1)[1])
+  return new THREE.Color(RIVER_STOPS.at(-1)[1])
 }
-const BEACH_WATER = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.1, side: THREE.DoubleSide })
-// 강 띠 (로컬 x = 폭, z = 길이). edges: 'both' | 'none' (바다 조각 이음새엔 거품 줄을 안 그림)
-export function beachRiverGeometry(w, len, edges = 'both') {
-  const across = Math.max(8, Math.ceil(w / 0.5))
+const RIVER_WATER = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.82, side: THREE.DoubleSide, depthWrite: false })
+const SEA_WATER = new THREE.MeshStandardMaterial({ color: SEA_ONE, roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide })
+// 강 띠 (로컬 x = 폭, z = 길이). sea: 한 색(이음새 무늬 없음)
+export function riverGeometry(w, len, sea = false) {
+  const across = Math.max(8, Math.ceil(w / 0.6))
   const along = Math.max(2, Math.ceil(len / 1.5))
   const g = new THREE.PlaneGeometry(w, len, across, along)
   g.rotateX(-Math.PI / 2)
-  const pos = g.attributes.position
-  const colors = []
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i)
-    const dist = edges === 'none' ? 99 : w / 2 - Math.abs(x)
-    colors.push(...beachColorAt(dist).toArray())
+  if (!sea) {
+    const pos = g.attributes.position
+    const colors = []
+    for (let i = 0; i < pos.count; i++) colors.push(...riverColorAt(w / 2 - Math.abs(pos.getX(i))).toArray())
+    g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
   }
-  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
   g.attributes.position.setUsage(THREE.DynamicDrawUsage)
   return g
 }
-export function BeachWater({ w, len, y = 0.05, edges, far }) {
+export function RiverWater({ w, len, y = 0.05, sea = false, far }) {
   const ref = useRef(null)
-  const geo = useMemo(() => beachRiverGeometry(w, len, edges), [w, len, edges])
+  const geo = useMemo(() => riverGeometry(w, len, sea), [w, len, sea])
   useSeaWave(ref, geo, far)
-  return <mesh ref={ref} geometry={geo} material={BEACH_WATER} position={[0, y, 0]} userData={{ noMerge: true }} />
+  return <mesh ref={ref} geometry={geo} material={sea ? SEA_WATER : RIVER_WATER} position={[0, y, 0]} userData={{ noMerge: true }} />
+}
+
+// 걸어 들어간 강에서 물 튀기기: 캐릭터가 물 띠 안에서 움직이면 발밑에 물방울(위로 튀었다 떨어짐) + 둥근 물결
+//   공용 FootSplashes는 SG 해변 전용이라 애니 구역 강용으로 따로 (캐릭터 위치는 scene의 player에서 읽기만 함)
+const DROP_N = 48
+const RING_N = 8
+const DROP_M = new THREE.MeshBasicMaterial({ color: '#eaf6f4', transparent: true, opacity: 0.85 })
+export function WadeSplash({ w, len, y }) {
+  const group = useRef(null)
+  const drops = useRef(null)
+  const rings = useRef([])
+  const ringMats = useMemo(() => Array.from({ length: RING_N }, () => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })), [])
+  const st = useMemo(() => ({
+    player: null, last: new THREE.Vector3(), has: false, me: new THREE.Vector3(), t: 0, next: 0,
+    d: Array.from({ length: DROP_N }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0 })),
+    r: Array.from({ length: RING_N }, () => ({ x: 0, z: 0, life: 0 })), di: 0, ri: 0,
+    m: new THREE.Matrix4(), q: new THREE.Quaternion(), s: new THREE.Vector3(),
+  }), [])
+  useFrame(({ scene }, dt) => {
+    if (!group.current) return
+    if (!st.player?.parent) st.player = scene.getObjectByName('player') ?? null
+    const step = Math.min(dt, 0.05)
+    st.t += step
+    if (st.player) {
+      st.player.getWorldPosition(st.me)
+      group.current.worldToLocal(st.me)
+      const inside = Math.abs(st.me.x) < w / 2 - 0.2 && Math.abs(st.me.z) < len / 2 && st.me.y < y + 1.6 && st.me.y > -1
+      const moved = st.has ? Math.hypot(st.me.x - st.last.x, st.me.z - st.last.z) : 0
+      st.last.copy(st.me)
+      st.has = true
+      if (inside && moved > 0.02 && st.t > st.next) {
+        st.next = st.t + 0.07
+        for (let k = 0; k < 4; k++) {
+          const d = st.d[st.di++ % DROP_N]
+          d.p.set(st.me.x + (Math.random() - 0.5) * 0.4, y, st.me.z + (Math.random() - 0.5) * 0.4)
+          d.v.set((Math.random() - 0.5) * 1.6, 1.6 + Math.random() * 1.4, (Math.random() - 0.5) * 1.6)
+          d.life = 0.7
+        }
+        if (Math.random() < 0.5) {
+          const r = st.r[st.ri++ % RING_N]
+          r.x = st.me.x
+          r.z = st.me.z
+          r.life = 1
+        }
+      }
+    }
+    const mesh = drops.current
+    if (mesh) {
+      st.d.forEach((d, i) => {
+        if (d.life > 0) {
+          d.life -= step
+          d.v.y -= 9.8 * step
+          d.p.addScaledVector(d.v, step)
+          if (d.p.y < y) d.life = 0
+        }
+        const sc = d.life > 0 ? 0.05 : 0
+        st.s.set(sc, sc, sc)
+        st.m.compose(d.p, st.q, st.s)
+        mesh.setMatrixAt(i, st.m)
+      })
+      mesh.instanceMatrix.needsUpdate = true
+    }
+    st.r.forEach((r, i) => {
+      const ring = rings.current[i]
+      if (!ring) return
+      if (r.life > 0) r.life -= step * 0.9
+      ring.visible = r.life > 0
+      if (ring.visible) {
+        ring.position.set(r.x, y + 0.02, r.z)
+        ring.scale.setScalar(0.3 + (1 - r.life) * 1.6)
+        ringMats[i].opacity = 0.55 * r.life
+      }
+    })
+  })
+  return (
+    <group ref={group}>
+      <instancedMesh ref={drops} args={[null, DROP_M, DROP_N]} frustumCulled={false}>
+        <sphereGeometry args={[1, 6, 4]} />
+      </instancedMesh>
+      {ringMats.map((m, i) => (
+        <mesh key={i} ref={(el) => (rings.current[i] = el)} rotation={[-Math.PI / 2, 0, 0]} visible={false} material={m}>
+          <ringGeometry args={[0.85, 1, 24]} />
+        </mesh>
+      ))}
+    </group>
+  )
 }

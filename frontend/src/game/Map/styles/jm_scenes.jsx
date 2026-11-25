@@ -1,257 +1,359 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
-import { Ball, Box, Cyl, texMat } from './kit.jsx'
+import { Ball, Box, Cyl, GEO, Instances, mat, seeded, texMat } from './kit.jsx'
 import { getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
 import { getTiledTexture } from './textures.js'
 
-// 애니 구역(JM) 명장면 ③·⑥ (11/25 밤 지민이 장면을 다시 고름) — 담당: 지민
-// ③ 「마녀 배달부 키키」 모티브: 바다가 보이는 언덕 돌길, 길 양옆 파스텔 벽·주황 지붕 집, 언덕 위 빵집(줄무늬 차양·빵 진열창)과 시계탑
-// ⑥ 「귀를 기울이면」 모티브: 주택가 사이 긴 계단(가운데 쇠 난간), 전봇대·전깃줄, 계단 위 작은 광장의 골동품점(큰 괘종시계 창)·벤치·나무
-// 영화 속 가게 이름·캐릭터는 쓰지 않음 (간판은 우리 글자). 로컬 +z = 골목(입구) 쪽. 걷는 판정은 생성 스크립트(gen-jm-kyoto.mjs)
+// 같은 입력이면 같은 0~1 난수 (kit의 seeded는 난수 '함수'를 돌려줌 → 숫자로 한 번 뽑음)
+const srand = (n) => seeded(Math.round(n * 9973) + 7)()
+
+
+// 애니 구역(JM) 명장면 ②③④⑥ (11/25 밤 지민이 다시 고름: 낡은 일본 요괴 마을에 어울리는 옛 일본·신령·숲 장면) — 담당: 지민
+// ② 「너의 이름은.」 모티브: 산 위 분화구 속 거대한 나무 뿌리 밑 바위 사당 (금줄·종이 장식), 이끼 돌계단
+// ③ 「귀멸의 칼날」 모티브: 보라 등나무 꽃이 지붕처럼 드리운 밤 숲길, 돌등, 떨어진 꽃잎
+// ④ 「원령공주」 모티브: 이끼 낀 거대한 고목 숲, 안개 낀 연못 가운데 작은 섬 (정령·캐릭터는 넣지 않음)
+// ⑥ 「나츠메 우인장」 모티브: 매미 우는 여름 숲 돌계단 위 작은 붉은 도리이와 사당, 작은 과자 노점
+// 영화 속 고유 이름·캐릭터는 쓰지 않음. 로컬 +z = 골목(입구) 쪽. 걷는 판정은 생성 스크립트(gen-jm-kyoto.mjs)
 // 담 없이 놓는 장면이라 네모난 바닥판 대신 가장자리가 부드러운 둥근 바닥(ScenePad)을 깜
 
 const range = (n) => Array.from({ length: n }, (_, i) => i)
+const rnd = (i) => srand(i * 7.13 + 3.1)
 
-// 둥근 바닥: 타원형 얇은 판 (가장자리 쪽 색은 거리 돌바닥에 가깝게)
+// 둥근 바닥: 타원형 얇은 판
 export function ScenePad({ w, d, color = '#8a8a72', inset = 1.5 }) {
   return (
-    <group>
-      <mesh position={[0, 0.015, 0]} scale={[(w - inset) / 2, 1, (d - inset) / 2]}>
-        <cylinderGeometry args={[1, 1, 0.03, 40]} />
-        <meshStandardMaterial color={color} roughness={1} polygonOffset polygonOffsetFactor={-1} />
-      </mesh>
-    </group>
+    <mesh position={[0, 0.015, 0]} scale={[(w - inset) / 2, 1, (d - inset) / 2]}>
+      <cylinderGeometry args={[1, 1, 0.03, 40]} />
+      <meshStandardMaterial color={color} roughness={1} polygonOffset polygonOffsetFactor={-1} />
+    </mesh>
   )
 }
 
-const PASTEL = ['#f2d7b0', '#e9c3c3', '#cfe0c9', '#f4e6a8', '#d6dce9', '#f0c9a0']
-const ORANGE_ROOF = '#c8642f'
-function EuroHouse({ p, w = 3.4, h = 8, d = 5, seed = 0, face = 1 }) {
-  const roof = useMemo(() => hipRoofGeometry(w + 0.5, d + 0.5, 1.8, 0.1), [w, d])
-  const wall = PASTEL[seed % PASTEL.length]
+const BARK = mat('#4a3626', { roughness: 1 })
+const BARK_OLD = mat('#5a5040', { roughness: 1, flat: true })
+const LEAF = mat('#3f6e34', { roughness: 1, flat: true })
+const LEAF_DEEP = mat('#2f5a2c', { roughness: 1, flat: true })
+const LEAF_SUMMER = mat('#4f8a3a', { roughness: 1, flat: true })
+const MOSS = mat('#5f8a3e', { roughness: 1, flat: true })
+const ROCK = mat('#7d7a70', { roughness: 1, flat: true })
+const ROCK_MOSS = mat('#6a7a52', { roughness: 1, flat: true })
+const ROPE = mat('#d9c48a', { roughness: 0.9 })
+const PAPER = mat('#f7f3ea', { roughness: 0.8, double: true })
+const LANTERN_GLOW = mat('#fff1c8', { emissive: '#ffcf7a', emissiveIntensity: 1.2 })
+const SHRINE_WOOD = mat('#8a6a48', { roughness: 0.9 })
+const SHRINE_RED = mat('#c0392b', { roughness: 0.6 })
+
+// 큰 나무 (줄기 + 덩어리 잎)
+function Tree({ p, h = 8, r = 0.35, leaf = LEAF, crown = 2.6, s = 0 }) {
+  const blobs = useMemo(() => range(5).map((i) => [(rnd(s + i) - 0.5) * crown, h * (0.78 + rnd(s + i + 9) * 0.22), (rnd(s + i + 17) - 0.5) * crown, crown * (0.55 + rnd(s + i + 31) * 0.35)]), [h, crown, s])
   return (
     <group position={p}>
-      <Box p={[0, h / 2, 0]} s={[w, h, d]} c={wall} />
-      <mesh geometry={roof} position={[0, h, 0]}>
-        <meshStandardMaterial color={seed % 3 === 1 ? '#a8502a' : ORANGE_ROOF} flatShading side={THREE.DoubleSide} />
-      </mesh>
-      {/* 길 쪽 창 (초록 덧문) + 꽃 상자 */}
-      {range(Math.floor(h / 2.6)).map((k) => (
-        <group key={k} position={[face * (w / 2 + 0.02), 1.6 + k * 2.6, 0]} rotation={[0, (face * Math.PI) / 2, 0]}>
-          <Box p={[0, 0, 0]} s={[0.9, 1.2, 0.04]} c="#ffe8b8" />
-          {[-1, 1].map((s) => (
-            <Box key={s} p={[s * 0.7, 0, 0.02]} s={[0.45, 1.2, 0.04]} c="#3f7a5c" />
-          ))}
-          {k === 0 && <Box p={[0, -0.75, 0.15]} s={[1.0, 0.25, 0.3]} c="#b8352a" />}
-        </group>
+      <Cyl p={[0, h * 0.42, 0]} rad={r} h={h * 0.84} m={BARK} />
+      {blobs.map(([x, y, z, rr], i) => (
+        <mesh key={i} geometry={GEO.ico} material={i % 2 ? leaf : LEAF_DEEP} position={[x, y, z]} scale={rr} />
       ))}
-      <Cyl p={[w * 0.25, h + 1.3, d * 0.2]} rad={0.25} h={1.2} c="#8a5a3a" />
     </group>
   )
 }
-
-// ── ③ 빵집 언덕길 ─────────────────────────
-export function BakeryHill({ w, d, slope }) {
-  const { z0, z1, h } = slope
-  const len = z0 - z1
-  const rw = w - 7
-  const tilt = Math.atan2(h, len)
-  const stone = useMemo(() => getTiledTexture('stone', rw / 2, Math.hypot(len, h) / 2), [rw, len, h])
-  const stoneTop = useMemo(() => getTiledTexture('stone', rw / 2, (z1 + d / 2) / 2), [rw, z1, d])
-  const yAt = (z) => (z >= z0 ? 0 : z <= z1 ? h : (h * (z0 - z)) / len)
-  const awning = useMemo(() => {
-    const c = document.createElement('canvas')
-    c.width = 128
-    c.height = 32
-    const ctx = c.getContext('2d')
-    for (let i = 0; i < 8; i++) {
-      ctx.fillStyle = i % 2 ? '#ffffff' : '#c0392b'
-      ctx.fillRect(i * 16, 0, 16, 32)
-    }
-    const t = new THREE.CanvasTexture(c)
-    t.colorSpace = THREE.SRGBColorSpace
-    return t
-  }, [])
-  return (
-    <group>
-      {/* 돌길 비탈 + 위 평지 */}
-      <mesh position={[0, h / 2 + 0.04, (z0 + z1) / 2]} rotation={[-Math.PI / 2 + tilt, 0, 0]}>
-        <planeGeometry args={[rw, Math.hypot(len, h)]} />
-        <primitive object={texMat(stone)} attach="material" />
-      </mesh>
-      <mesh position={[0, h + 0.04, (z1 - d / 2) / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[rw, z1 + d / 2]} />
-        <primitive object={texMat(stoneTop)} attach="material" />
-      </mesh>
-      {/* 길 양옆 집 (비탈 따라 한 단씩 올라감) */}
-      {[-1, 1].map((s) => [7, 1, -5, -10.5].map((z, k) => (
-        <EuroHouse key={`${s}${k}`} p={[s * (w / 2 - 1.8), yAt(z), z]} h={8 + ((k + (s > 0 ? 1 : 0)) % 2) * 2} seed={k * 2 + (s > 0 ? 1 : 0)} face={-s} />
-      )))}
-      {/* 길가 가로등 + 계단식 화분 */}
-      {[-1, 1].map((s) => [4, -2].map((z) => (
-        <group key={`${s}${z}`} position={[s * (rw / 2 - 0.4), yAt(z), z]}>
-          <Cyl p={[0, 1.6, 0]} rad={0.06} h={3.2} c="#2a2622" />
-          <Ball p={[0, 3.3, 0]} rad={0.2} c="#fff2c8" />
-        </group>
-      )))}
-      {/* 언덕 위 빵집: 2층, 줄무늬 차양, 빵 진열창, 매달린 빵 간판 */}
-      <group position={[-1.5, h, -12]}>
-        <Box p={[0, 3.5, -0.3]} s={[8, 7, 1.4]} c="#f4e6c8" />
-        <Box p={[0, 1.4, 0.45]} s={[6.4, 2.2, 0.1]} c="#5a3d2a" />
-        <mesh position={[0, 1.5, 0.52]}>
-          <planeGeometry args={[5.6, 1.6]} />
-          <meshStandardMaterial color="#ffe2a8" emissive="#ffb45c" emissiveIntensity={0.5} />
-        </mesh>
-        {range(7).map((i) => (
-          <mesh key={i} position={[-2.4 + i * 0.8, 1.0, 0.6]} scale={[0.3, 0.16, 0.2]}>
-            <sphereGeometry args={[1, 10, 8]} />
-            <meshStandardMaterial color={i % 2 ? '#c88a3a' : '#b06a2a'} roughness={0.8} />
-          </mesh>
-        ))}
-        <mesh position={[0, 2.8, 0.9]} rotation={[0.5, 0, 0]}>
-          <planeGeometry args={[6.6, 1.2]} />
-          <meshStandardMaterial map={awning} side={THREE.DoubleSide} />
-        </mesh>
-        <mesh position={[0, 4.3, 0.42]}>
-          <planeGeometry args={[4.2, 0.9]} />
-          <GlowMaterial glow={0.5} map={getJpSignTexture('海辺のパン屋', '#f4ead2', '#7a3a12', 4.2 / 0.9)} />
-        </mesh>
-        <group position={[3.6, 3.4, 1.0]}>
-          <Box p={[0, 0, -0.4]} s={[0.06, 0.06, 0.9]} c="#2a2622" />
-          <mesh position={[0, -0.35, 0]} scale={[0.35, 0.22, 0.08]}>
-            <torusGeometry args={[1, 0.4, 8, 16]} />
-            <meshStandardMaterial color="#c88a3a" />
-          </mesh>
-        </group>
-        {range(4).map((i) => (
-          <Box key={i} p={[-3 + i * 2, 5.6, 0.42]} s={[0.9, 1.1, 0.04]} c="#ffe8b8" />
-        ))}
-        <mesh position={[0, 7, -0.3]} geometry={hipRoofGeometry(8.6, 2.2, 1.4, 0.1)}>
-          <meshStandardMaterial color={ORANGE_ROOF} flatShading side={THREE.DoubleSide} />
-        </mesh>
-      </group>
-      {/* 시계탑 */}
-      <group position={[w / 2 - 5.2, h, -11.2]}>
-        <Box p={[0, 6.5, 0]} s={[2.4, 13, 2.4]} c="#e9dcc0" />
-        <mesh position={[0, 11, 1.22]}>
-          <circleGeometry args={[0.85, 28]} />
-          <meshStandardMaterial color="#fffaf0" emissive="#fff2c8" emissiveIntensity={0.3} />
-        </mesh>
-        <Box p={[0.15, 11.2, 1.25]} s={[0.06, 0.6, 0.02]} c="#1a1210" r={[0, 0, -0.5]} />
-        <Box p={[-0.1, 10.9, 1.25]} s={[0.05, 0.45, 0.02]} c="#1a1210" r={[0, 0, 1]} />
-        <mesh position={[0, 13.8, 0]}>
-          <coneGeometry args={[1.9, 2.4, 4]} />
-          <meshStandardMaterial color="#3f6e58" flatShading />
-        </mesh>
-      </group>
-      {/* 장면 팻말 쪽 바다 쪽 하늘빛 (난간 너머) */}
-      <Box p={[0, h + 1.0, -d / 2 + 0.6]} s={[rw, 0.08, 0.08]} c="#f2ead2" />
-    </group>
-  )
-}
-
-// ── ⑥ 언덕 위 골동품점 계단 ─────────────────
-// stair: { z0, z1, h, w, top } (② 신사 계단과 같은 값 구조). 계단 디딤판은 생성 스크립트의 계단 겉모습(A)
-const JP_WALL = ['#efe9dc', '#e3dccb', '#d9d2c2', '#f2ede2']
-function JpHouse({ p, w = 5, h = 6.5, d = 5, seed = 0 }) {
-  const roof = useMemo(() => hipRoofGeometry(w + 0.6, d + 0.6, 1.4, 0.1), [w, d])
+function StoneLantern({ p, glow = true }) {
   return (
     <group position={p}>
-      <Box p={[0, h / 2, 0]} s={[w, h, d]} c={JP_WALL[seed % JP_WALL.length]} />
-      <mesh geometry={roof} position={[0, h, 0]}>
-        <meshStandardMaterial color="#5e615f" flatShading side={THREE.DoubleSide} />
+      <Box p={[0, 0.15, 0]} s={[0.7, 0.3, 0.7]} m={ROCK} />
+      <Cyl p={[0, 0.7, 0]} rad={0.14} h={0.8} m={ROCK} />
+      <Box p={[0, 1.25, 0]} s={[0.55, 0.45, 0.55]} m={glow ? LANTERN_GLOW : ROCK} />
+      <mesh position={[0, 1.65, 0]} material={ROCK}>
+        <coneGeometry args={[0.5, 0.4, 4]} />
       </mesh>
-      {[1.6, 4.4].map((y) => (
-        <Box key={y} p={[0, y, d / 2 + 0.02]} s={[w * 0.5, 1.1, 0.04]} c="#bcd3dc" />
-      ))}
-      <Box p={[0, 3.4, d / 2 + 0.4]} s={[w * 0.7, 0.1, 0.8]} c="#8a8a8a" />
-      <Box p={[w * 0.3, 5.0, d / 2 + 0.2]} s={[0.9, 0.6, 0.4]} c="#d6d6d0" />
     </group>
   )
 }
-export function HillStairs({ w, d, stair }) {
+function Boulder({ p, s = 1, moss = false, seed = 0 }) {
+  return <mesh geometry={GEO.rock} material={moss ? ROCK_MOSS : ROCK} position={p} scale={[s * (0.9 + rnd(seed) * 0.4), s * (0.6 + rnd(seed + 3) * 0.3), s * (0.9 + rnd(seed + 5) * 0.4)]} rotation={[0, rnd(seed + 7) * 6, 0]} />
+}
+
+// ── ② 산 위 신체 사당 ─────────────────────────
+// stair: { z0, z1, h, w, top }. 계단 디딤판은 생성 스크립트의 계단 겉모습(C 이끼 정원)
+export function ShintaiShrine({ w, d, stair }) {
   const { z0, z1, h, w: sw, top } = stair
   const len = z0 - z1
-  const poles = [[-sw / 2 - 1, 6], [sw / 2 + 1, -1], [-sw / 2 - 1, -6]]
   const yAt = (z) => (z >= z0 ? 0 : z <= z1 ? h : (h * (z0 - z)) / len)
+  const tz = z1 - top / 2 // 위 마당 가운데
+  const cliffs = useMemo(() => {
+    const out = []
+    for (let i = 0; i < 18; i++) {
+      const side = i % 2 ? 1 : -1
+      const z = z0 + 1 - (i >> 1) * 1.9
+      out.push({ p: [side * (sw / 2 + 1.4 + rnd(i) * 1.2), yAt(z) * 0.6, z], s: 1.4 + rnd(i + 40) * 1.1, seed: i })
+    }
+    return out
+  }, [z0, sw])
+  const shide = range(8)
   return (
     <group>
-      <ScenePad w={w} d={d} color="#9a9688" />
-      {/* 가운데 쇠 난간 */}
-      {range(8).map((i) => {
-        const z = z0 - (i * len) / 7
-        return <Cyl key={i} p={[0, yAt(z) + 0.5, z]} rad={0.04} h={1.0} c="#7a7a78" />
-      })}
-      <mesh position={[0, h / 2 + 0.95, (z0 + z1) / 2]} rotation={[Math.atan2(h, len), 0, 0]}>
-        <cylinderGeometry args={[0.035, 0.035, Math.hypot(len, h), 6]} />
-        <meshStandardMaterial color="#9a9a96" metalness={0.5} roughness={0.4} />
-      </mesh>
-      {/* 계단 양옆 주택 (한 단씩 높아짐) */}
-      {[-1, 1].map((s) => [0, 1, 2].map((k) => (
-        <JpHouse key={`${s}${k}`} p={[s * (sw / 2 + 3.6), yAt(z0 - 2.5 - k * 5.2) * 0.85, z0 - 2.5 - k * 5.2]} w={5.6} h={6.5 + k * 0.6} d={4.6} seed={k + (s > 0 ? 2 : 0)} />
-      )))}
-      {/* 전봇대 + 전깃줄 */}
-      {poles.map(([x, z], i) => (
-        <Cyl key={i} p={[x, yAt(z) + 4.5, z]} rad={0.13} h={9} c="#8a8578" />
+      <ScenePad w={w} d={d} color="#6f7f58" />
+      {/* 계단 양옆 바위 벼랑 (산을 오르는 느낌) + 삼나무 */}
+      {cliffs.map((c, i) => (
+        <Boulder key={i} p={c.p} s={c.s} moss={i % 3 === 0} seed={c.seed} />
       ))}
-      {poles.slice(0, -1).map(([x, z], i) => {
-        const [x2, z2] = poles[i + 1]
-        const a = [x, yAt(z) + 8.6, z]
-        const b = [x2, yAt(z2) + 8.6, z2]
-        const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
-        const mid = a.map((v, j) => (v + b[j]) / 2)
-        const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]).normalize()
-        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
-        return (
-          <mesh key={`w${i}`} position={mid} quaternion={q}>
-            <cylinderGeometry args={[0.015, 0.015, L, 4]} />
-            <meshStandardMaterial color="#1a1a1a" />
-          </mesh>
-        )
-      })}
-      {/* 계단 위 광장: 골동품점(큰 괘종시계 창) + 벤치 + 나무 + 난간 */}
-      <group position={[0, h, z1 - top + 1.6]}>
-        <Box p={[0, 3, -0.2]} s={[7, 6, 1.6]} c="#6b4a30" />
-        <mesh position={[0, 6.3, -0.2]} geometry={hipRoofGeometry(7.6, 2.2, 1.4, 0.1)}>
-          <meshStandardMaterial color="#3f5d4c" flatShading side={THREE.DoubleSide} />
-        </mesh>
-        <mesh position={[-1.6, 2.0, 0.62]}>
-          <planeGeometry args={[2.4, 2.6]} />
-          <meshStandardMaterial color="#ffe2a8" emissive="#ffb45c" emissiveIntensity={0.55} />
-        </mesh>
-        <group position={[-1.6, 2.1, 0.66]}>
-          <Box p={[0, 0, 0]} s={[0.7, 2.0, 0.06]} c="#4a2f1f" />
-          <mesh position={[0, 0.5, 0.04]}>
-            <circleGeometry args={[0.24, 20]} />
-            <meshStandardMaterial color="#fffaf0" />
-          </mesh>
-          <Box p={[0, -0.3, 0.04]} s={[0.04, 0.6, 0.02]} c="#b8913c" />
-        </group>
-        <Box p={[1.8, 1.2, 0.62]} s={[1.2, 2.4, 0.06]} c="#3a2a1c" />
-        <mesh position={[0, 4.6, 0.62]}>
-          <planeGeometry args={[4.2, 0.85]} />
-          <GlowMaterial glow={0.5} map={getJpSignTexture('時計の骨董店', '#2a1a12', '#e8c35a', 4.2 / 0.85)} />
-        </mesh>
-        <group position={[-4.5, 0, 3]}>
-          <Box p={[0, 0.45, 0]} s={[1.8, 0.1, 0.5]} c="#8a6a48" />
-          {[-0.75, 0.75].map((x) => (
-            <Box key={x} p={[x, 0.22, 0]} s={[0.1, 0.44, 0.45]} c="#3a2a1c" />
+      {[[-1, 2], [1, -1], [-1, -4], [1, 3.5]].map(([s, z], i) => (
+        <Tree key={i} p={[s * (sw / 2 + 4.2), yAt(z) * 0.5, z]} h={11} r={0.4} crown={2.2} leaf={LEAF_DEEP} s={i * 11} />
+      ))}
+      {/* 위 마당: 분화구 테두리처럼 둘러선 이끼 바위 */}
+      <group position={[0, h, tz]}>
+        <ScenePad w={12} d={top} color="#6a8a4a" inset={0.4} />
+        {range(14).map((i) => {
+          const a = (i / 14) * Math.PI * 2
+          if (Math.sin(a) > 0.7) return null // 계단 쪽은 비움
+          return <Boulder key={i} p={[Math.cos(a) * 5.4, 0.3, Math.sin(a) * 2.6]} s={0.8 + rnd(i + 60) * 0.5} moss seed={i + 60} />
+        })}
+        {/* 거대한 나무 + 뿌리 밑 바위 사당 */}
+        <group position={[0, 0, -0.5]}>
+          <mesh geometry={GEO.rock} material={ROCK_MOSS} position={[0, 0.9, -0.3]} scale={[2.0, 1.4, 1.8]} />
+          <Cyl p={[0, 4.5, -0.6]} rad={1.3} h={7} m={BARK_OLD} />
+          {range(6).map((i) => {
+            const a = (i / 6) * Math.PI * 2
+            return <Cyl key={i} p={[Math.cos(a) * 1.4, 0.6, -0.6 + Math.sin(a) * 1.2]} rad={0.3} h={1.6} m={BARK_OLD} r={[Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5]} />
+          })}
+          {range(7).map((i) => (
+            <mesh key={i} geometry={GEO.ico} material={i % 2 ? LEAF : LEAF_DEEP} position={[(rnd(i + 80) - 0.5) * 6, 8 + rnd(i + 90) * 2.5, -0.6 + (rnd(i + 99) - 0.5) * 5]} scale={2.4 + rnd(i + 70) * 1.2} />
           ))}
-        </group>
-        <group position={[4.6, 0, 2.5]}>
-          <Cyl p={[0, 1.8, 0]} rad={0.2} h={3.6} c="#5a4636" />
-          <mesh position={[0, 4.2, 0]} scale={[1.8, 1.4, 1.8]}>
-            <sphereGeometry args={[1, 10, 8]} />
-            <meshStandardMaterial color="#5f8f4a" flatShading />
+          {/* 금줄(시메나와) + 종이 장식(시데) */}
+          <mesh position={[0, 3.2, -0.6]} rotation={[Math.PI / 2, 0, 0]} material={ROPE}>
+            <torusGeometry args={[1.42, 0.12, 8, 28]} />
           </mesh>
+          {shide.map((i) => {
+            const a = (i / shide.length) * Math.PI * 2
+            return <Box key={i} p={[Math.cos(a) * 1.48, 2.85, -0.6 + Math.sin(a) * 1.48]} s={[0.14, 0.5, 0.02]} r={[0, -a, 0]} m={PAPER} />
+          })}
+          {/* 작은 바위 사당 (뿌리 앞) */}
+          <group position={[0, 0, 1.4]}>
+            <Box p={[0, 0.25, 0]} s={[1.2, 0.5, 0.9]} m={ROCK} />
+            <Box p={[0, 0.85, 0]} s={[0.8, 0.7, 0.6]} m={SHRINE_WOOD} />
+            <mesh position={[0, 1.35, 0]} geometry={hipRoofGeometry(1.2, 1.0, 0.4, 0.05)}>
+              <meshStandardMaterial color="#5e615f" flatShading side={THREE.DoubleSide} />
+            </mesh>
+            <Box p={[0, 0.85, 0.31]} s={[0.4, 0.4, 0.02]} c="#1a1210" />
+            <Box p={[0, 1.15, 0.45]} s={[1.0, 0.06, 0.06]} m={ROPE} />
+          </group>
         </group>
+        {[-1, 1].map((s) => (
+          <StoneLantern key={s} p={[s * 2.6, 0, 1.6]} />
+        ))}
+        <pointLight position={[0, 4, 2]} intensity={5} distance={16} color="#ffb27a" />
       </group>
     </group>
   )
 }
 
-// 「초속 5센티미터」 건널목 쪽 비탈 돌길 그림 (생성 스크립트의 jm_crossing_slope와 같은 자리, 소품 기준 = 비탈 아래 끝)
+// ── ③ 등나무 꽃 숲길 ─────────────────────────
+const WISTERIA = [mat('#b48ad6', { emissive: '#6a3a9a', emissiveIntensity: 0.25 }), mat('#9a6ccc', { emissive: '#5a2a8a', emissiveIntensity: 0.25 }), mat('#d4b2ec', { emissive: '#7a4aaa', emissiveIntensity: 0.25 })]
+export function WisteriaPath({ w, d }) {
+  const trunks = useMemo(() => {
+    const out = []
+    for (const side of [-1, 1]) for (let k = 0; k < 5; k++) out.push([side * 3.4, 9 - k * 4.4])
+    return out
+  }, [])
+  // 늘어진 꽃송이: 길 위로 맞닿는 덩굴 지붕 아래 매달린 원뿔 (색 3가지)
+  const clusters = useMemo(() => [0, 1, 2].map((c) => range(110).map((i) => {
+    const z = 11 - rnd(i * 3 + c) * 22
+    const x = (rnd(i * 5 + c * 13) - 0.5) * 10
+    const len = 0.7 + rnd(i * 7 + c) * 0.9
+    const y = 4.3 - Math.abs(x) * 0.08 - len / 2
+    return { p: [x, y, z], s: [0.18, len, 0.18] }
+  })), [])
+  const petals = useMemo(() => range(140).map((i) => ({ p: [(rnd(i + 300) - 0.5) * 9, 0.03, 11 - rnd(i + 400) * 22], s: [0.08, 0.01, 0.06] })), [])
+  const flies = useRef(null)
+  const flySeeds = useMemo(() => range(24).map((i) => ({ x: (rnd(i + 500) - 0.5) * 10, z: 10 - rnd(i + 600) * 20, y: 0.8 + rnd(i + 700) * 2, p: rnd(i + 800) * 6.28 })), [])
+  useFrame(({ clock }) => {
+    const m = flies.current
+    if (!m) return
+    const t = clock.elapsedTime
+    const o = new THREE.Object3D()
+    flySeeds.forEach((f, i) => {
+      o.position.set(f.x + Math.sin(t * 0.6 + f.p) * 0.6, f.y + Math.sin(t * 1.3 + f.p) * 0.3, f.z + Math.cos(t * 0.5 + f.p) * 0.6)
+      o.scale.setScalar(0.04 + 0.03 * Math.max(0, Math.sin(t * 2 + f.p)))
+      o.updateMatrix()
+      m.setMatrixAt(i, o.matrix)
+    })
+    m.instanceMatrix.needsUpdate = true
+  })
+  const gravel = useMemo(() => getTiledTexture('gardenPath', 1.5, d / 2.4), [d])
+  return (
+    <group>
+      <ScenePad w={w} d={d} color="#4f5a3e" />
+      <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3.2, d - 2]} />
+        <primitive object={texMat(gravel)} attach="material" />
+      </mesh>
+      {/* 등나무 줄기(구불) + 길 위로 맞닿는 덩굴 시렁 */}
+      {trunks.map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <Cyl p={[0, 1.8, 0]} rad={0.28} h={3.6} m={BARK} r={[0, 0, (x > 0 ? -1 : 1) * 0.12]} />
+          <Cyl p={[-Math.sign(x) * 1.2, 3.9, 0]} rad={0.16} h={3.0} m={BARK} r={[0, 0, Math.PI / 2]} />
+          <mesh geometry={GEO.ico} material={LEAF} position={[-Math.sign(x) * 0.8, 4.4, 0]} scale={[2.4, 0.7, 2.2]} />
+        </group>
+      ))}
+      {clusters.map((items, c) => (
+        <Instances key={c} geometry={GEO.cone} material={WISTERIA[c]} items={items.map((it) => ({ ...it, r: [Math.PI, 0, 0] }))} />
+      ))}
+      <Instances geometry={GEO.box} material={WISTERIA[2]} items={petals} />
+      {/* 돌등 줄 (길 양옆) */}
+      {[-1, 1].map((s) => [6.8, 0.2, -6.4].map((z) => <StoneLantern key={`${s}${z}`} p={[s * 2.2, 0, z]} />))}
+      <instancedMesh ref={flies} args={[null, mat('#e8ff9a', { emissive: '#c8ff5a', emissiveIntensity: 2 }), flySeeds.length]} frustumCulled={false}>
+        <sphereGeometry args={[1, 6, 4]} />
+      </instancedMesh>
+      {/* 길 끝 작은 돌 표석 */}
+      <group position={[0, 0, -10.5]}>
+        <Box p={[0, 0.9, 0]} s={[0.7, 1.8, 0.35]} m={ROCK} />
+      </group>
+      <pointLight position={[0, 3, 0]} intensity={4} distance={14} color="#c9a0ff" />
+    </group>
+  )
+}
+
+// ── ④ 이끼 숲과 신령의 연못 ─────────────────────
+const POND = new THREE.MeshStandardMaterial({ color: '#3d6f6a', roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.9 })
+const MIST = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide })
+const SHAFT = new THREE.MeshBasicMaterial({ color: '#fff6d8', transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })
+export function MossForest({ w, d, pond }) {
+  const giants = [[-9, -6], [10.5, 5], [-11, 6]]
+  const ferns = useMemo(() => range(70).map((i) => {
+    const x = (rnd(i + 900) - 0.5) * (w - 3)
+    const z = (rnd(i + 950) - 0.5) * (d - 3)
+    if (Math.hypot((x - pond.x) / pond.rx, (z - pond.z) / pond.rz) < 1.15) return null
+    return { p: [x, 0.25, z], s: [0.45, 0.3, 0.45], r: [0, rnd(i) * 6, 0] }
+  }).filter(Boolean), [w, d, pond])
+  const ripple = useRef(null)
+  useFrame(({ clock }) => {
+    if (ripple.current) ripple.current.position.y = 0.12 + Math.sin(clock.elapsedTime * 0.8) * 0.01
+  })
+  return (
+    <group>
+      <ScenePad w={w} d={d} color="#4f7a34" />
+      {/* 거대한 고목 3그루 (뿌리가 퍼진 이끼 낀 줄기) */}
+      {giants.map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <Cyl p={[0, 6, 0]} rad={1.15} h={12} m={BARK_OLD} />
+          {range(5).map((k) => {
+            const a = (k / 5) * Math.PI * 2 + i
+            return <Cyl key={k} p={[Math.cos(a) * 1.3, 0.5, Math.sin(a) * 1.3]} rad={0.32} h={1.4} m={MOSS} r={[Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6]} />
+          })}
+          <Cyl p={[0, 1.2, 0]} rad={1.2} h={1.6} m={MOSS} />
+          {range(6).map((k) => (
+            <mesh key={k} geometry={GEO.ico} material={k % 2 ? LEAF_DEEP : LEAF} position={[(rnd(i * 10 + k) - 0.5) * 7, 11 + rnd(i * 10 + k + 5) * 3, (rnd(i * 10 + k + 9) - 0.5) * 7]} scale={2.8 + rnd(k + i) * 1.3} />
+          ))}
+        </group>
+      ))}
+      {/* 이끼 바위 + 고사리 */}
+      {range(10).map((i) => (
+        <Boulder key={i} p={[(rnd(i + 120) - 0.5) * (w - 4), 0.25, (rnd(i + 140) - 0.5) * (d - 4)]} s={0.6 + rnd(i + 160) * 0.8} moss seed={i + 120} />
+      ))}
+      <Instances geometry={GEO.cone} material={mat('#5f9a3a', { flat: true })} items={ferns} />
+      {/* 연못: 이끼 둑 + 물 + 가운데 작은 섬과 마른 나무 */}
+      <group position={[pond.x, 0, pond.z]}>
+        <mesh position={[0, 0.06, 0]} scale={[pond.rx + 0.6, 1, pond.rz + 0.6]} material={MOSS}>
+          <cylinderGeometry args={[1, 1, 0.12, 36]} />
+        </mesh>
+        <mesh ref={ripple} position={[0, 0.12, 0]} scale={[pond.rx, 1, pond.rz]} material={POND}>
+          <cylinderGeometry args={[1, 1, 0.02, 36]} />
+        </mesh>
+        <mesh position={[1, 0.25, -0.5]} scale={[1.4, 0.4, 1.1]} material={MOSS}>
+          <sphereGeometry args={[1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        </mesh>
+        <Cyl p={[1, 1.6, -0.5]} rad={0.15} h={2.6} m={BARK_OLD} r={[0, 0, 0.15]} />
+        <Cyl p={[1.5, 2.6, -0.5]} rad={0.07} h={1.2} m={BARK_OLD} r={[0, 0, -0.8]} />
+        {range(3).map((i) => (
+          <mesh key={i} position={[0, 0.4 + i * 0.4, 0]} rotation={[-Math.PI / 2, 0, i]} material={MIST}>
+            <circleGeometry args={[pond.rx * (1.1 + i * 0.15), 24]} />
+          </mesh>
+        ))}
+      </group>
+      {/* 숲 사이 빛줄기 */}
+      {[[-3, 2], [6, -4], [-6, -2]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 6, z]} rotation={[0.25, i, 0.15]} material={SHAFT}>
+          <cylinderGeometry args={[0.6, 2.2, 12, 10, 1, true]} />
+        </mesh>
+      ))}
+      <pointLight position={[pond.x, 5, pond.z]} intensity={3} distance={14} color="#d8ffd0" />
+    </group>
+  )
+}
+
+// ── ⑥ 여름 숲 속 작은 신사 ─────────────────────
+// stair: { z0, z1, h, w, top }. 계단 디딤판은 생성 스크립트 겉모습(C)
+export function NatsumeShrine({ w, d, stair }) {
+  const { z0, z1, h, w: sw, top } = stair
+  const len = z0 - z1
+  const yAt = (z) => (z >= z0 ? 0 : z <= z1 ? h : (h * (z0 - z)) / len)
+  const tz = z1 - top / 2
+  return (
+    <group>
+      <ScenePad w={w} d={d} color="#5a7f3a" />
+      {/* 계단 양옆 우거진 여름 나무 (판정 = 줄기) */}
+      {[-1, 1].map((s) => [0, 1, 2].map((k) => {
+        const z = z0 - 2 - k * 4.6
+        return <Tree key={`${s}${k}`} p={[s * (sw / 2 + 2.4), yAt(z) * 0.8, z]} h={9 + k} r={0.32} crown={3} leaf={LEAF_SUMMER} s={k * 7 + (s > 0 ? 3 : 0)} />
+      }))}
+      {[-1, 1].map((s) => (
+        <Boulder key={s} p={[s * (sw / 2 + 0.6), 0.2, z0 - 0.5]} s={0.6} moss seed={s + 10} />
+      ))}
+      {/* 위 마당: 작은 붉은 도리이 → 사당 (방울 줄, 새전함) + 옆 과자 노점 */}
+      <group position={[0, h, 0]}>
+        <ScenePad w={11} d={top} color="#6a8a4a" inset={0.4} />
+        <group position={[0, 0, -4.2]}>
+          {[-1, 1].map((s) => (
+            <Cyl key={s} p={[s * 1.3, 1.5, 0]} rad={0.13} h={3} m={SHRINE_RED} />
+          ))}
+          <Box p={[0, 3.0, 0]} s={[3.6, 0.18, 0.24]} m={SHRINE_RED} />
+          <Box p={[0, 2.55, 0]} s={[3.0, 0.12, 0.14]} m={SHRINE_RED} />
+          <Box p={[0, 3.14, 0]} s={[3.9, 0.08, 0.3]} c="#2a1a12" />
+        </group>
+        <group position={[0, 0, tz + 0.5 - 0]}>
+          <Box p={[0, 0.25, -5.6 + 5.6]} s={[2.4, 0.5, 2]} m={ROCK} />
+        </group>
+        <group position={[0, 0, -10.6]}>
+          <Box p={[0, 0.3, 0]} s={[2.2, 0.6, 1.8]} m={ROCK} />
+          <Box p={[0, 1.15, 0]} s={[1.6, 1.1, 1.3]} m={SHRINE_WOOD} />
+          <mesh position={[0, 1.7, 0]} geometry={hipRoofGeometry(2.4, 2.0, 0.7, 0.08)}>
+            <meshStandardMaterial color="#5e615f" flatShading side={THREE.DoubleSide} />
+          </mesh>
+          <Cyl p={[0, 1.6, 0.85]} rad={0.015} h={1.0} c="#c0392b" />
+          <Ball p={[0, 2.05, 0.85]} rad={0.12} c="#d4a83e" />
+          <Box p={[0, 0.85, 1.1]} s={[0.9, 0.5, 0.45]} c="#5a3d2a" />
+          {range(5).map((i) => (
+            <Box key={i} p={[-0.36 + i * 0.18, 1.11, 1.1]} s={[0.04, 0.02, 0.4]} c="#2a1a12" />
+          ))}
+        </group>
+        {[-1, 1].map((s) => (
+          <StoneLantern key={s} p={[s * 2.4, 0, -7.4]} glow={false} />
+        ))}
+        {/* 과자 노점 (쿠폰 가게 자리) */}
+        <group position={[3.5, 0, -9]} rotation={[0, -0.6, 0]}>
+          <Box p={[0, 0.5, 0]} s={[1.8, 1.0, 0.8]} c="#7a5634" />
+          {[-0.8, 0.8].map((x) => (
+            <Cyl key={x} p={[x, 1.3, -0.3]} rad={0.05} h={2.6} c="#5a3d2a" />
+          ))}
+          <Box p={[0, 2.6, -0.1]} s={[2.0, 0.08, 1.2]} c="#c0392b" />
+          <mesh position={[0, 2.1, 0.32]}>
+            <planeGeometry args={[1.6, 0.7]} />
+            <GlowMaterial glow={0.4} map={getJpSignTexture('妖の菓子屋', '#f2ead8', '#2a1a10', 1.6 / 0.7)} side={THREE.DoubleSide} />
+          </mesh>
+          {range(5).map((i) => (
+            <mesh key={i} position={[-0.6 + i * 0.3, 1.08, 0.1]} scale={[0.12, 0.08, 0.12]}>
+              <sphereGeometry args={[1, 8, 6]} />
+              <meshStandardMaterial color={i % 2 ? '#f2ead8' : '#c88a5a'} />
+            </mesh>
+          ))}
+        </group>
+        <pointLight position={[0, 4, -7]} intensity={3} distance={14} color="#fff2c8" />
+      </group>
+    </group>
+  )
+}
+
+// 동쪽 단 → ④ 숲으로 내려가는 비탈 돌길 그림 (생성 스크립트의 jm_crossing_slope와 같은 자리, 소품 기준 = 비탈 아래 끝)
 export function JmSlopeRoad({ item }) {
   const [w, h, len] = item.size
   const tilt = Math.atan2(h, len)

@@ -11,7 +11,7 @@ import { getJpSignTexture, GlowMaterial, JmSakuraBloom } from './jm_landmarks.js
 import { JmCanal, JmCrossing } from './jm_kyoto.jsx'
 import { hipRoofGeometry } from './geometry.js'
 import { JmBusStop } from './jm_shops.jsx'
-import { BakeryHill, HillStairs, ScenePad } from './jm_scenes.jsx'
+import { MossForest, NatsumeShrine, ScenePad, ShintaiShrine, WisteriaPath } from './jm_scenes.jsx'
 
 // 애니메이션 구역(JM) 「명장면 공간」 — 담당: 지민 (11/24)
 // 계단 거리 가게 문(jmPortalDoor) 앞에서 E → 화면이 잠깐 어두워지고 맵 밖(남쪽 바다 위 멀리)의 장면 공간(jmSceneRoom)으로 이동
@@ -252,8 +252,10 @@ export function JmSceneRoom({ item }) {
       {room.kind === 'totoro' && <TotoroRainStop w={w} d={d} />}
       {room.kind === 'stairs' && <ShrineStairs w={w} d={d} stair={room.stair} />}
       {room.kind === 'rock' && <SplitRock w={w} d={d} />}
-      {room.kind === 'bakery' && <BakeryHill w={w} d={d} slope={room.slope} />}
-      {room.kind === 'hillstairs' && <HillStairs w={w} d={d} stair={room.stair} />}
+      {room.kind === 'shintai' && <ShintaiShrine w={w} d={d} stair={room.stair} />}
+      {room.kind === 'wisteria' && <WisteriaPath w={w} d={d} />}
+      {room.kind === 'forest' && <MossForest w={w} d={d} pond={room.pond} />}
+      {room.kind === 'natsume' && <NatsumeShrine w={w} d={d} stair={room.stair} />}
       {room.kind === 'crossing' && <SakuraCrossing w={w} d={d} />}
       {room.kind === 'onsen' && <OnsenMotif w={w} d={d} bridge={room.bridge} />}
       {/* 입구 쪽 장면 안내판 */}
