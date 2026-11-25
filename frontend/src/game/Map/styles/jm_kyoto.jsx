@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { Ball, Box, Cyl, GEO, Instances, mat } from './kit.jsx'
 import { getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
-import { SeaWater, seaPlane } from './jm_water.jsx'
+import { BeachWater, SeaWater, seaPlane } from './jm_water.jsx'
 
 // 애니메이션 구역(JM) — 교토 온천 마을 「유아카리초(湯灯町)」 스타일. 담당: 지민
 // 분위기 참고: 교토 옛 거리(산넨자카·기온·후시미 이나리·기요미즈 무대) + 강을 끼고 여러 층 목조 여관이 늘어선 온천 거리.
@@ -711,7 +711,7 @@ export function JmCanal({ item }) {
           <dodecahedronGeometry args={[1, 0]} />
         </mesh>
       ))}
-      <SeaWater deep={water.deep} surface={water.surface} y={0.045} gap={0.03} far={60 + len / 2} />
+      {item.beach ? <BeachWater w={w} len={len} edges={item.beach === 'sea' ? 'none' : 'both'} far={60 + len / 2} /> : <SeaWater deep={water.deep} surface={water.surface} y={0.045} gap={0.03} far={60 + len / 2} />}
       {rocks.up.map((rk, i) => (
         <group key={`r${i}`} position={rk.p}>
           <mesh scale={[rk.r, rk.r * 0.55, rk.r * 0.85]} rotation={[0, rk.rot, 0]} material={rk.moss ? MOSS_ROCK : RIVER_ROCK}>

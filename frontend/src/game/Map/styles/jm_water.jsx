@@ -143,3 +143,41 @@ export function ribbonGrid(points, width, step = 1.5) {
   g.attributes.position.setUsage(THREE.DynamicDrawUsage)
   return g
 }
+
+// (11/25 지민 요청) 아이돌(SG) 구역 해변 바다와 같은 색 띠 (공용 coastColors.js의 색 순서를 그대로):
+//   강둑 젖은 모래 → 흰 거품 줄 → 옥색 얕은 물 → 청록 → 짙은 파랑(가운데). 폭이 좁으면 가운데 색까지 다 못 감
+const BEACH_STOPS = [[0, '#cba978'], [0.5, '#eefbf1'], [0.9, '#94ddd0'], [2.6, '#53b8b9'], [5.5, '#369aa9'], [9, '#286f91']]
+function beachColorAt(dist) {
+  for (let i = 1; i < BEACH_STOPS.length; i++) {
+    const [d1, c1] = BEACH_STOPS[i]
+    if (dist <= d1) {
+      const [d0, c0] = BEACH_STOPS[i - 1]
+      return new THREE.Color(c0).lerp(new THREE.Color(c1), (dist - d0) / (d1 - d0))
+    }
+  }
+  return new THREE.Color(BEACH_STOPS.at(-1)[1])
+}
+const BEACH_WATER = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.1, side: THREE.DoubleSide })
+// 강 띠 (로컬 x = 폭, z = 길이). edges: 'both' | 'none' (바다 조각 이음새엔 거품 줄을 안 그림)
+export function beachRiverGeometry(w, len, edges = 'both') {
+  const across = Math.max(8, Math.ceil(w / 0.5))
+  const along = Math.max(2, Math.ceil(len / 1.5))
+  const g = new THREE.PlaneGeometry(w, len, across, along)
+  g.rotateX(-Math.PI / 2)
+  const pos = g.attributes.position
+  const colors = []
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const dist = edges === 'none' ? 99 : w / 2 - Math.abs(x)
+    colors.push(...beachColorAt(dist).toArray())
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+  g.attributes.position.setUsage(THREE.DynamicDrawUsage)
+  return g
+}
+export function BeachWater({ w, len, y = 0.05, edges, far }) {
+  const ref = useRef(null)
+  const geo = useMemo(() => beachRiverGeometry(w, len, edges), [w, len, edges])
+  useSeaWave(ref, geo, far)
+  return <mesh ref={ref} geometry={geo} material={BEACH_WATER} position={[0, y, 0]} userData={{ noMerge: true }} />
+}

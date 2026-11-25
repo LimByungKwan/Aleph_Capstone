@@ -14,7 +14,8 @@ const SHOP_OFFERS = {
   // 11/25 애니 구역 명장면 마당 옆 가게 (명장면과 같은 작품)
   shop_jm_donguri: { title: '도토리 찻집 보리차 한 잔 무료 쿠폰', discount: 'FREE TEA', perk: '보리차 한 잔 무료', menu: '도토리 쿠키와 보리차', validDays: 30 },
   shop_jm_kumihimo: { title: '매듭끈 가게 만들기 체험 20% 할인권', discount: '20% OFF', perk: '매듭끈 만들기 20% 할인', menu: '손목 매듭끈 만들기', validDays: 30 },
-  shop_jm_fuji: { title: '등꽃 찻집 경단 1+1 쿠폰', discount: '1+1', perk: '등꽃 경단 하나 더', menu: '등꽃 경단과 말차', validDays: 30 },
+  shop_jm_fuji: { title: '언덕길 빵집 갓 구운 빵 1+1 쿠폰', discount: '1+1', perk: '갓 구운 빵 하나 더', menu: '갓 구운 빵과 우유', validDays: 30 },
+  shop_jm_antique: { title: '시계 골동품점 엽서 한 장 무료 쿠폰', discount: 'FREE', perk: '골동품점 엽서 한 장', menu: '오래된 괘종시계 구경', validDays: 30 },
   shop_jm_sakura: { title: '벚꽃떡 가게 벚꽃 찹쌀떡 1+1 쿠폰', discount: '1+1', perk: '벚꽃 찹쌀떡 하나 더', menu: '벚꽃 찹쌀떡', validDays: 30 },
   shop_jm_manju: { title: '온천 찐빵 가게 찐빵 하나 무료 쿠폰', discount: 'FREE', perk: '팥 찐빵 하나 무료', menu: '온천 김에 찐 팥 찐빵', validDays: 30 },
 }

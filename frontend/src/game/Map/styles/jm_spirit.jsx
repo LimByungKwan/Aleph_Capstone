@@ -583,32 +583,9 @@ export const useJmElevator = (() => {
 })()
 
 // (11/25 지민 요청) 탄 느낌: 문 닫힘 → 어두운 화면 가운데 층 숫자가 한 층씩 바뀌며 덜컹 → 도착하면 그 층 칸의 문이 닫힌 채 시작해서 열림
-let rideEl = null
-function rideShow(text) {
-  if (typeof document === 'undefined') return
-  if (!rideEl) {
-    rideEl = document.createElement('div')
-    rideEl.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:41;font:900 64px "Malgun Gothic",sans-serif;color:#f2c94c;text-shadow:0 0 24px rgba(255,180,60,.6);transition:opacity .3s'
-    document.body.appendChild(rideEl)
-  }
-  rideEl.textContent = text ?? ''
-  rideEl.style.opacity = text ? '1' : '0'
-  if (text) rideEl.animate([{ transform: 'translateY(-3px)' }, { transform: 'translateY(3px)' }, { transform: 'translateY(0)' }], { duration: 260 })
-}
 const floorName = (key) => (key === 'B' ? 'B1' : `${key}F`)
 // 마지막 도착 기록: 도착한 칸은 문이 닫힌 채 시작했다가 열림
 const lastArrive = { kind: null, key: null, t: 0 }
-
-let fadeEl = null
-function fade(on) {
-  if (typeof document === 'undefined') return
-  if (!fadeEl) {
-    fadeEl = document.createElement('div')
-    fadeEl.style.cssText = 'position:fixed;inset:0;background:#05060a;opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:40'
-    document.body.appendChild(fadeEl)
-  }
-  fadeEl.style.opacity = on ? '1' : '0'
-}
 
 function cageTexture() {
   return canvasTexture('jmspirit:cage', 256, 512, (ctx, w, h) => {
@@ -674,8 +651,45 @@ export function JmElevator({ item }) {
   const gateL = useRef(null)
   const gateR = useRef(null)
   const [riding, setRiding] = useState(false)
+  const [rideIdx, setRideIdx] = useState(null)
+  const ride = useRef(null)
+  const rideFloor = useRef(null)
+  const body = useRef(null)
 
   useFrame(({ clock }, dt) => {
+    // 타고 가는 중: 칸이 위·아래로 움직이고 캐릭터를 칸 바닥에 맞춰 같이 옮김
+    const r = ride.current
+    if (r) {
+      const t = Math.min(1, (performance.now() - r.t0) / r.dur)
+      const e = t * t * (3 - 2 * t)
+      const y = r.y0 + (r.y1 - r.y0) * e
+      if (body.current) body.current.position.y = y - r.y0 + Math.sin(t * 40) * 0.01
+      useGameStore.setState({ inputLocked: true })
+      useWarps.getState().goto({ exact: [r.x, y, r.z] })
+      let nearest = 0
+      E.stops.forEach((st, i) => {
+        if (Math.abs(st.pos[1] - y) < Math.abs(E.stops[nearest].pos[1] - y)) nearest = i
+      })
+      if (nearest !== rideFloor.current) {
+        rideFloor.current = nearest
+        setRideIdx(nearest)
+      }
+      if (t >= 1) {
+        lastArrive.kind = E.kind ?? 'staff'
+        lastArrive.key = r.stop.key
+        lastArrive.t = performance.now()
+        useWarps.getState().goto({ exact: r.stop.pos })
+        ride.current = null
+        if (body.current) body.current.position.y = 0
+        setRiding(false)
+        setRideIdx(null)
+        rideFloor.current = null
+        doorTarget.current = 0
+        setTimeout(() => {
+          if (!useGameStore.getState().openPanel) useGameStore.setState({ inputLocked: false })
+        }, 200)
+      }
+    }
     // 레버는 고른 눈금 각도로 부드럽게
     if (lever.current) lever.current.position.y += (slotY(grab ? sel : meIndex) - lever.current.position.y) * Math.min(1, dt * 10)
     // 접이식 철문: 목표값 쪽으로 천천히 (1초쯤)
@@ -728,32 +742,14 @@ export function JmElevator({ item }) {
         return
       }
       const to = E.stops.findIndex((x) => x.key === stop.key)
-      const dir = Math.sign(to - meIndex)
       const steps = Math.abs(to - meIndex)
       setRiding(true)
       useGameStore.setState({ inputLocked: true })
-      doorTarget.current = 1 // 문 닫힘
-      const STEP = 520
+      doorTarget.current = 1 // 문 닫힘 (1초쯤)
       setTimeout(() => {
-        fade(true)
-        for (let i = 0; i <= steps; i++) {
-          setTimeout(() => rideShow(`${dir > 0 ? '▲' : '▼'} ${floorName(E.stops[meIndex + dir * i].key)}`), 300 + i * STEP)
-        }
-        setTimeout(() => {
-          lastArrive.kind = E.kind ?? 'staff'
-          lastArrive.key = stop.key
-          lastArrive.t = performance.now()
-          const finish = () => {
-            rideShow(null)
-            fade(false)
-            if (!useGameStore.getState().openPanel) useGameStore.setState({ inputLocked: false })
-          }
-          useWarps.getState().goto({ exact: stop.pos, label: stop.label, onArrive: () => setTimeout(finish, 300), onFail: finish })
-          setTimeout(finish, 2500)
-          setRiding(false)
-          doorTarget.current = 0
-        }, 300 + steps * STEP + 450)
-      }, 1000)
+        const from = E.stops[meIndex].pos
+        ride.current = { y0: from[1], y1: stop.pos[1], x: stop.pos[0], z: stop.pos[2], t0: performance.now(), dur: Math.max(2000, steps * 1500), stop }
+      }, 1100)
     }
     const down = (event) => {
       if (event.repeat) return
@@ -777,10 +773,10 @@ export function JmElevator({ item }) {
   }, [near, grab, sel, meIndex, n, E])
 
   const size = useThree((s) => s.size)
-  const target = E.stops[grab ? sel : meIndex]
+  const target = E.stops[grab || riding ? sel : meIndex]
   const kbd = (k) => <kbd style={{ padding: '0 5px', borderRadius: 4, background: '#e8c35a', color: '#111', fontSize: 11, fontWeight: 700 }}>{k}</kbd>
   return (
-    <group>
+    <group ref={body}>
       <group ref={anchor} position={[0, 0.2, 0]} />
       {/* 바닥판 + 천장 + 세 면 놋쇠 격자 + 열린 쪽 접힌 문 */}
       <Box p={[0, 0.05, 0]} s={[w, 0.1, d]} c="#3b2a1c" />
@@ -861,7 +857,9 @@ export function JmElevator({ item }) {
                 })}
               </div>
               {riding ? (
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#ffb3a7' }}>문이 닫혀요… 출발!</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#f2c94c', textAlign: 'center' }}>
+                  {rideIdx == null ? '문이 닫혀요…' : `${E.stops.findIndex((x) => x.key === target?.key) > meIndex ? '▲' : '▼'} ${floorName(E.stops[rideIdx].key)}`}
+                </div>
               ) : grab ? (
                 <div style={{ fontSize: 13 }}>
                   <div>{kbd('W')} {kbd('↑')} 레버 올리기 (위층)</div>

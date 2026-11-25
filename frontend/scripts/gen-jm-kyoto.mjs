@@ -123,9 +123,9 @@ terrain.push(...keep.terrain) // jm_tower_deck: 무대 → BK 전망대
 // ─────────────────────────────────────────────
 const RIVER = { z: -39, w: 22 }
 for (const [k, cx, len] of [['w', -65, 126], ['e', 65, 126]]) {
-  prop(`jm_river_${k}`, 'jmCanal', [cx, RIVER.z], [RIVER.w, 0.1, len], { rotationDeg: 90, natural: true, collider: [RIVER.w - 0.8, 1, len] })
+  prop(`jm_river_${k}`, 'jmCanal', [cx, RIVER.z], [RIVER.w, 0.1, len], { rotationDeg: 90, natural: true, beach: true, curb: false, collider: [RIVER.w - 0.8, 1, len] })
 }
-prop('jm_river_ford', 'jmCanal', [0, RIVER.z], [RIVER.w, 0.1, 4], { rotationDeg: 90, natural: true, collider: false, curb: false })
+prop('jm_river_ford', 'jmCanal', [0, RIVER.z], [RIVER.w, 0.1, 4], { rotationDeg: 90, natural: true, beach: true, collider: false, curb: false })
 for (let i = 0; i < 10; i++) {
   road(`jm_river_stone_${i + 1}`, null, [i % 2 ? -0.5 : 0.5, r2(RIVER.z + RIVER.w / 2 - 1.3 - i * 2.15)], [1.5, 0.3, 1.2], { color: '#8d877c' })
 }
@@ -153,8 +153,11 @@ terrain.push({ type: 'platform', id: 'jm_town_north', rect: [-15.5, -150, 15.5, 
   rails: [{ edge: 'south', gaps: [[-5, 5]] }, { edge: 'west', gaps: [[-126.5, -123.5]] }, { edge: 'east', gaps: [[-126.5, -123.5], [-148.5, -145.5]] }, { edge: 'north', gaps: [[-3.2, 3.2]] }] })
 terrain.push({ type: 'platform', id: 'jm_town_west', rect: [-95, -108, -16, -76], height: T_W, surface: 'stone',
   rails: [{ edge: 'east', gaps: [[-93, -87]] }, { edge: 'north' }, { edge: 'south' }] })
-terrain.push({ type: 'platform', id: 'jm_town_east', rect: [16, -108, 95, -76], height: T_E, surface: 'stone',
-  rails: [{ edge: 'west', gaps: [[-93, -87]] }, { edge: 'north' }, { edge: 'south' }] })
+terrain.push({ type: 'platform', id: 'jm_town_east', rect: [16, -108, 64, -76], height: T_E, surface: 'stone',
+  rails: [{ edge: 'west', gaps: [[-93, -87]] }, { edge: 'east', gaps: [[-94.5, -89.5]] }, { edge: 'north' }, { edge: 'south' }] })
+// (11/25 지민 요청) 「초속 5센티미터」 건널목은 내리막길 끝: 동쪽 단(8.4) 끝에서 긴 비탈로 바닥(6)까지 내려감
+terrain.push({ type: 'stairs', id: 'jm_crossing_slope', from: [72, -92, TOWN], to: [64, -92, T_E], width: 5, smooth: true })
+prop('jm_crossing_slope_road', 'jmSlopeRoad', [72, -92], [5, r2(T_E - TOWN), 8], { rotationDeg: 90, elevation: TOWN, collider: false })
 terrain.push({ type: 'stairs', id: 'jm_town_stairs_n', from: [0, -93, TOWN], to: [0, -97, T_N], width: 10 })
 terrain.push({ type: 'stairs', id: 'jm_town_stairs_w', from: [-12, -90, TOWN], to: [-16, -90, T_W], width: 6 })
 terrain.push({ type: 'stairs', id: 'jm_town_stairs_e', from: [10, -90, TOWN], to: [16, -90, T_E], width: 6 })
@@ -193,7 +196,7 @@ function eatery(id, position, rotationDeg, { w = 8, d = 10, h, floors, look, sig
 const MAIN_Z = [-65, -74, -83, -101, -110, -119, -131, -140]
 MAIN_Z.forEach((z, i) => {
   const elevation = i < 3 ? TOWN : T_N
-  eatery(`jm_eat_w${i + 1}`, [-10, z], 90, { elevation })
+  if (i !== 1) eatery(`jm_eat_w${i + 1}`, [-10, z], 90, { elevation }) // (11/25) z -74 자리는 ⑥ 언덕 계단 골목
   eatery(`jm_eat_e${i + 1}`, [10, z], -90, { elevation })
 })
 // 가로 거리 양쪽 (남쪽 줄 앞면 북쪽 = 180, 북쪽 줄 = 0): 서쪽 단 7.2 / 동쪽 단 8.4
@@ -212,7 +215,8 @@ for (const s of [-1, 1]) {
   eatery(`jm_eat_back_${k}a`, [s * 20.5, -115], 180, { w: 10, d: 12 })
   eatery(`jm_eat_back_${k}b`, [s * 20.5, -133], 0, { w: 10, d: 12 })
   // 마을 남쪽 끝 (풀밭에서 올려다보이는 앞면, 난간과 겹치지 않게 1.5m 안쪽) + 바깥쪽 큰 건물
-  ;[-30, -44, -58, -72].forEach((x, i) => eatery(`jm_eat_edge_${k}${i + 1}`, [s * -x, -68.5], 0, { w: 11, d: 11, floors: 3, h: 12.5 }))
+  // (11/25 지민 요청: 골목마다 가게를 채우지 않음) 남쪽 끝 줄은 동쪽 2채만, 서쪽은 ⑥ 언덕 계단 자리
+  if (s > 0) [-30, -44].forEach((x, i) => eatery(`jm_eat_edge_${k}${i + 1}`, [s * -x, -68.5], 0, { w: 11, d: 11, floors: 3, h: 12.5 }))
   if (s < 0) [-115, -127, -139].forEach((z, i) => eatery(`jm_eat_far_${k}${i + 1}`, [s * 64, z], 90, { w: 10, d: 12, floors: 3, h: 13 }))
 }
 // 큰길·가로 거리 위 등 줄
@@ -251,14 +255,18 @@ const SCENES = [
   { n: 1, kind: 'totoro', c: [-78, -92], rot: 90, w: 30, d: 28, e: T_W, title: '명장면 ① 「이웃집 토토로」', sub: '비 오는 숲속 정류장', stamp: 'spot_jm_crossing', spot: [4, 2, 0] },
   { n: 2, kind: 'stairs', c: [-37, -125], rot: 90, w: 22, d: 22, e: TOWN, title: '명장면 ② 「너의 이름은.」', sub: '노을 지는 붉은 난간 계단', stamp: 'spot_jm_stairs', spot: [0, -9, 4],
     stair: { z0: 4, z1: -6, h: 4, w: 4, top: 6 } },
-  { n: 3, kind: 'rock', c: [40, -126], rot: -90, w: 24, d: 26, e: TOWN, title: '명장면 ③ 「귀멸의 칼날」', sub: '안개 숲의 갈라진 바위', stamp: 'spot_jm_shrine', spot: [2.5, -1, 0] },
-  { n: 4, kind: 'crossing', c: [79, -92], rot: -90, w: 30, d: 21, e: T_E, title: '명장면 ④ 「초속 5센티미터」', sub: '벚꽃 날리는 철길 건널목', stamp: 'spot_jm_sakura_river', spot: [2.6, 1, 0] },
+  // (11/25 밤 지민이 다시 고름) ③ 귀멸의 칼날 → 마녀 배달부 키키 빵집 언덕길 (같은 스탬프 id 다시 씀), ⑥ 귀를 기울이면 언덕 계단 추가
+  { n: 3, kind: 'bakery', c: [40, -126], rot: -90, w: 24, d: 26, e: TOWN, title: '명장면 ③ 「마녀 배달부 키키」', sub: '바다가 보이는 빵집 언덕길', stamp: 'spot_jm_shrine', spot: [0, -7.5, 2.4],
+    slope: { z0: 11, z1: -4, h: 2.4 } },
+  { n: 4, kind: 'crossing', c: [80, -92], rot: -90, w: 30, d: 20, e: TOWN, title: '명장면 ④ 「초속 5센티미터」', sub: '벚꽃 날리는 비탈길 철길 건널목', stamp: 'spot_jm_sakura_river', spot: [2.6, 1, 0] },
+  { n: 6, kind: 'hillstairs', c: [-40, -68], rot: 90, w: 14, d: 30, e: TOWN, title: '명장면 ⑥ 「귀를 기울이면」', sub: '언덕 위 골동품점 계단', stamp: 'spot_jm_hill', spot: [0, -8, 4.4],
+    stair: { z0: 9, z1: -3, h: 4.4, w: 4, top: 10 }, shop: { id: 'shop_jm_antique', at: [0, -10.5] } },
 ]
 // 같은 작품 가게(쿠폰): 장면 바로 옆 음식점 간판을 바꿈. ⑤는 다리 앞 마지막 가게
 const SCENE_SHOPS = [
   { id: 'shop_jm_donguri', eat: 'jm_eat_arm_wn5', sign: { text: 'どんぐり茶屋', bg: '#2f4a2a', fg: '#fdf6e3' } },
   { id: 'shop_jm_kumihimo', eat: 'jm_eat_w6', sign: { text: '組紐 結び屋', bg: '#7a1d3a', fg: '#fdf6e3' } },
-  { id: 'shop_jm_fuji', eat: 'jm_eat_e6', sign: { text: '藤の花茶屋', bg: '#4b2e6b', fg: '#fdf6e3' } },
+  { id: 'shop_jm_fuji', eat: 'jm_eat_e6', sign: { text: '海辺のパン屋', bg: '#f4ead2', fg: '#7a3a12' } },
   { id: 'shop_jm_sakura', eat: 'jm_eat_arm_en5', sign: { text: '桜餅 花便り', bg: '#b8476a', fg: '#fdf6e3' } },
   { id: 'shop_jm_manju', eat: 'jm_eat_e8', sign: { text: '湯けむり饅頭', bg: '#7c2d12', fg: '#fdf6e3' } },
 ]
@@ -277,9 +285,9 @@ for (const sc of SCENES) {
   prop(`jm_scene_${sc.n}_sign`, 'jmArrowSign', L(sc.w / 2 - 2.5, sc.d / 2 - 1.2), [1.6, 2.1, 0.2], { rotationDeg: sc.rot + 15, ...E, signs: [{ text: `${sc.title.split(' 「')[0]}`, dir: 'right' }, { text: sc.sub, dir: 'right' }] })
   prop(`jm_scene_${sc.n}`, 'jmSceneRoom', sc.c, [16, 12, 16], {
     rotationDeg: sc.rot, collider: false, elevation: r2(sc.e + 0.02),
-    room: { kind: sc.kind, title: sc.title, sub: sc.sub, w: sc.w, d: sc.d, inMap: true, open: true, ...(sc.stair && { stair: sc.stair }) },
+    room: { kind: sc.kind, title: sc.title, sub: sc.sub, w: sc.w, d: sc.d, inMap: true, open: true, ...(sc.stair && { stair: sc.stair }), ...(sc.slope && { slope: sc.slope }) },
   })
-  if (sc.kind === 'stairs') {
+  if (sc.kind === 'stairs' || sc.kind === 'hillstairs') {
     const st = sc.stair
     terrain.push({ type: 'stairs', id: `jm_scene${sc.n}_stairs`, from: [...L(0, st.z0), sc.e], to: [...L(0, st.z1), sc.e + st.h], width: st.w })
     const corners = [L(-6, st.z1), L(6, st.z1), L(-6, st.z1 - st.top), L(6, st.z1 - st.top)]
@@ -289,12 +297,28 @@ for (const sc of SCENES) {
       rails: ['north', 'west', 'east'].map((e) => ({ edge: worldEdge(sc.rot, e) })) })
     for (const side of [-1, 1]) for (const k of [0, 1, 2]) wall(`jm_scene${sc.n}_house_${side < 0 ? 'l' : 'r'}${k}`, L(side * (st.w / 2 + 3.6), st.z0 - 2.5 - k * 5.2), [5.6, 9, 4.6], { rotationDeg: sc.rot, ...E })
   }
-  if (sc.kind === 'rock') wall(`jm_scene${sc.n}_rock`, L(0, -4.5), [3.6, 2.8, 3.6], { rotationDeg: sc.rot, ...E })
+  if (sc.kind === 'hillstairs') wall(`jm_scene${sc.n}_antique`, L(0, -12.4), [7, 6, 1.6], { rotationDeg: sc.rot, elevation: r2(sc.e + sc.stair.h) })
+  if (sc.kind === 'bakery') {
+    // 언덕길: 장면 폭 그대로 넓은 비탈(부드러운 경사) + 위 평지, 양옆 집과 뒤 빵집·시계탑은 벽
+    const sl = sc.slope
+    terrain.push({ type: 'stairs', id: `jm_scene${sc.n}_slope`, from: [...L(0, sl.z0), sc.e], to: [...L(0, sl.z1), sc.e + sl.h], width: r2(sc.w - 7), smooth: true })
+    const corners = [L(-(sc.w / 2 - 3.5), sl.z1), L(sc.w / 2 - 3.5, sl.z1), L(-(sc.w / 2 - 3.5), -sc.d / 2 + 0.5), L(sc.w / 2 - 3.5, -sc.d / 2 + 0.5)]
+    const xs = corners.map((p) => p[0])
+    const zs = corners.map((p) => p[1])
+    terrain.push({ type: 'platform', id: `jm_scene${sc.n}_top`, rect: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)], height: r2(sc.e + sl.h), surface: 'stone' })
+    for (const side of [-1, 1]) for (const [k, z] of [[0, 7], [1, 1], [2, -5], [3, -10.5]]) wall(`jm_scene${sc.n}_house_${side < 0 ? 'l' : 'r'}${k}`, L(side * (sc.w / 2 - 1.8), z), [3.4, 10, 5], { rotationDeg: sc.rot, ...E })
+    wall(`jm_scene${sc.n}_bakery`, L(-1.5, -12), [8, 7, 1.4], { rotationDeg: sc.rot, elevation: r2(sc.e + sl.h) })
+    wall(`jm_scene${sc.n}_tower`, L(sc.w / 2 - 5.2, -11.2), [2.4, 14, 2.4], { rotationDeg: sc.rot, elevation: r2(sc.e + sl.h) })
+  }
   const [sx, sz] = L(sc.spot[0], sc.spot[1])
   placePositions[sc.stamp] = toWorld([sx, sc.e + sc.spot[2], sz])
+  if (sc.shop) {
+    const [hx, hz] = L(...sc.shop.at)
+    placePositions[sc.shop.id] = toWorld([hx, r2(sc.e + (sc.stair?.h ?? 0)), hz])
+  }
 }
 // 골목 쌍둥이 등
-for (const [id, p, e] of [['jm_alley2_lamp', [-22.6, -123.2], TOWN], ['jm_alley3_lamp', [22.6, -123.2], TOWN], ['jm_alley1_lamp', [-62.4, -88], T_W], ['jm_alley4_lamp', [63.4, -88], T_E]]) {
+for (const [id, p, e] of [['jm_alley2_lamp', [-22.6, -123.2], TOWN], ['jm_alley3_lamp', [22.6, -123.2], TOWN], ['jm_alley1_lamp', [-62.4, -88], T_W], ['jm_alley4_lamp', [62.6, -88.6], T_E], ['jm_alley6_lamp', [-17, -71], TOWN]]) {
   prop(id, 'jmTwinLamp', p, [1.1, 3.4, 0.4], { collider: [0.3, 3.4, 0.3], elevation: e })
 }
 for (const s of SCENE_SHOPS) {
@@ -345,7 +369,7 @@ for (const [k, x0, x1, z0, z1] of [
 ]) {
   const w = r2(z1 - z0)
   const len = r2(x1 - x0)
-  prop(`jm_sea_${k}`, 'jmCanal', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [w, 0.1, len], { rotationDeg: 90, curb: false, collider: [w, 1, len] })
+  prop(`jm_sea_${k}`, 'jmCanal', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [w, 0.1, len], { rotationDeg: 90, curb: false, beach: 'sea', collider: [w, 1, len] })
 }
 prop('jm_sea_rail', 'jmSeaRail', [0, TRAIN.z], [3, 0.3, 250], { rotationDeg: 90, collider: false, submerged: true })
 road('jm_pier', null, [r2((PIER.x0 + PIER.x1) / 2), r2((PIER.z0 + PIER.z1) / 2)], [r2(PIER.x1 - PIER.x0), PIER.h, r2(PIER.z1 - PIER.z0)], { color: '#8d877c' })
@@ -751,9 +775,9 @@ prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collid
 // ─────────────────────────────────────────────
 for (const item of terrain) if (item.type === 'stairs') item.walls = false
 // 계단 겉모습 (jm_stairs.jsx 시안): A 자연석(기본) / B 붉은 목조 / D 밝은 화강암 / E 등불 계단
-const STAIR_LOOK = { jm_town_stairs: 'E', jm_dock_stairs: 'B', jm_scene2_stairs: 'D', jm_basement_stairs_1: 'B', jm_basement_stairs_2: 'B' }
+const STAIR_LOOK = { jm_town_stairs: 'E', jm_dock_stairs: 'B', jm_scene2_stairs: 'D', jm_scene6_stairs: 'A', jm_basement_stairs_1: 'B', jm_basement_stairs_2: 'B' }
 for (let k = 1; k <= 4; k++) STAIR_LOOK[`jm_yutoya_stairs_${k}`] = 'B'
-const STAIR_PREVIEW = Object.fromEntries(terrain.filter((t) => t.type === 'stairs' && !/^jm_(grand|yutoya)_bridge_ramp/.test(t.id)).map((t) => [t.id, STAIR_LOOK[t.id] ?? 'A']))
+const STAIR_PREVIEW = Object.fromEntries(terrain.filter((t) => t.type === 'stairs' && !/^jm_(grand|yutoya)_bridge_ramp|_slope$/.test(t.id)).map((t) => [t.id, STAIR_LOOK[t.id] ?? 'A']))
 for (const st of terrain.filter((t) => t.type === 'stairs' && STAIR_PREVIEW[t.id])) {
   const [ax, az, ah] = st.from
   const [bx, bz, bh] = st.to
