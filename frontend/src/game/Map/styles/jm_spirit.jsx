@@ -19,6 +19,15 @@ import { useWarps } from './bk_warpStore.js'
 // 앞면 = 로컬 +z. 걷는 판정은 생성 스크립트(gen-jm-kyoto.mjs)가 jmCollider·건물 상자로
 
 const range = (n) => Array.from({ length: n }, (_, i) => i)
+// 텍스처를 반복해서 붙이기 (복제본에 repeat)
+function tiled(base, rx, ry) {
+  const t = base.clone()
+  t.wrapS = THREE.RepeatWrapping
+  t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(rx, ry)
+  t.needsUpdate = true
+  return t
+}
 
 const STONE = mat('#8e877c', { roughness: 1 })
 const DARK = mat('#2a1a12', { roughness: 0.9 })
@@ -573,6 +582,23 @@ export const useJmElevator = (() => {
   }
 })()
 
+// (11/25 지민 요청) 탄 느낌: 문 닫힘 → 어두운 화면 가운데 층 숫자가 한 층씩 바뀌며 덜컹 → 도착하면 그 층 칸의 문이 닫힌 채 시작해서 열림
+let rideEl = null
+function rideShow(text) {
+  if (typeof document === 'undefined') return
+  if (!rideEl) {
+    rideEl = document.createElement('div')
+    rideEl.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:41;font:900 64px "Malgun Gothic",sans-serif;color:#f2c94c;text-shadow:0 0 24px rgba(255,180,60,.6);transition:opacity .3s'
+    document.body.appendChild(rideEl)
+  }
+  rideEl.textContent = text ?? ''
+  rideEl.style.opacity = text ? '1' : '0'
+  if (text) rideEl.animate([{ transform: 'translateY(-3px)' }, { transform: 'translateY(3px)' }, { transform: 'translateY(0)' }], { duration: 260 })
+}
+const floorName = (key) => (key === 'B' ? 'B1' : `${key}F`)
+// 마지막 도착 기록: 도착한 칸은 문이 닫힌 채 시작했다가 열림
+const lastArrive = { kind: null, key: null, t: 0 }
+
 let fadeEl = null
 function fade(on) {
   if (typeof document === 'undefined') return
@@ -641,10 +667,22 @@ export function JmElevator({ item }) {
   const n = E.stops.length
   const slotY = (i) => LEVER_Y0 + (n > 1 ? (i * LEVER_LEN) / (n - 1) : LEVER_LEN / 2)
   const lever = useRef(null)
+  // 문: 0 = 열림, 1 = 닫힘. 막 도착한 칸이면 닫힌 채 시작
+  const justArrived = () => lastArrive.kind === (E.kind ?? 'staff') && lastArrive.key === E.me && performance.now() - lastArrive.t < 5000
+  const door = useRef(justArrived() ? 1 : 0)
+  const doorTarget = useRef(0)
+  const gateL = useRef(null)
+  const gateR = useRef(null)
+  const [riding, setRiding] = useState(false)
 
   useFrame(({ clock }, dt) => {
     // 레버는 고른 눈금 각도로 부드럽게
     if (lever.current) lever.current.position.y += (slotY(grab ? sel : meIndex) - lever.current.position.y) * Math.min(1, dt * 10)
+    // 접이식 철문: 목표값 쪽으로 천천히 (1초쯤)
+    door.current += Math.sign(doorTarget.current - door.current) * Math.min(Math.abs(doorTarget.current - door.current), dt * 1.2)
+    const k = 0.12 + door.current * 0.88
+    if (gateL.current) gateL.current.scale.x = k
+    if (gateR.current) gateR.current.scale.x = k
     const t = clock.elapsedTime
     if (t < next.current) return
     next.current = t + 0.15
@@ -656,8 +694,21 @@ export function JmElevator({ item }) {
     if (inside !== near) {
       setNear(inside)
       if (!inside) setGrab(false)
+      if (inside && justArrived()) {
+        door.current = 1
+        doorTarget.current = 1
+        setTimeout(() => (doorTarget.current = 0), 900)
+      }
     }
   })
+
+  useEffect(() => {
+    if (!justArrived()) return undefined
+    door.current = 1
+    doorTarget.current = 1
+    const t = setTimeout(() => (doorTarget.current = 0), 700)
+    return () => clearTimeout(t)
+  }, [])
 
   // 레버를 잡는 동안 캐릭터 멈춤 (공용 inputLocked). 놓으면 되돌림
   useEffect(() => {
@@ -676,16 +727,33 @@ export function JmElevator({ item }) {
         useUiStore.getState().toast('엘리베이터는 아직 운행 준비 중이에요. 옆 계단을 이용해 주세요.', 'info')
         return
       }
-      fade(true)
+      const to = E.stops.findIndex((x) => x.key === stop.key)
+      const dir = Math.sign(to - meIndex)
+      const steps = Math.abs(to - meIndex)
+      setRiding(true)
+      useGameStore.setState({ inputLocked: true })
+      doorTarget.current = 1 // 문 닫힘
+      const STEP = 520
       setTimeout(() => {
-        useWarps.getState().goto({
-          exact: stop.pos,
-          label: stop.label,
-          onArrive: () => setTimeout(() => fade(false), 350),
-          onFail: () => fade(false),
-        })
-        setTimeout(() => fade(false), 2500)
-      }, 600)
+        fade(true)
+        for (let i = 0; i <= steps; i++) {
+          setTimeout(() => rideShow(`${dir > 0 ? '▲' : '▼'} ${floorName(E.stops[meIndex + dir * i].key)}`), 300 + i * STEP)
+        }
+        setTimeout(() => {
+          lastArrive.kind = E.kind ?? 'staff'
+          lastArrive.key = stop.key
+          lastArrive.t = performance.now()
+          const finish = () => {
+            rideShow(null)
+            fade(false)
+            if (!useGameStore.getState().openPanel) useGameStore.setState({ inputLocked: false })
+          }
+          useWarps.getState().goto({ exact: stop.pos, label: stop.label, onArrive: () => setTimeout(finish, 300), onFail: finish })
+          setTimeout(finish, 2500)
+          setRiding(false)
+          doorTarget.current = 0
+        }, 300 + steps * STEP + 450)
+      }, 1000)
     }
     const down = (event) => {
       if (event.repeat) return
@@ -733,9 +801,14 @@ export function JmElevator({ item }) {
       {[-1, 1].map((s) => (
         <group key={s}>
           <Box p={[s * (w / 2 - 0.05), h / 2, d / 2]} s={[0.12, h, 0.12]} m={BRASS} />
-          {range(5).map((i) => (
-            <Box key={i} p={[s * (w / 2 - 0.18 - i * 0.05), h / 2 - 0.1, d / 2 - 0.02]} s={[0.03, h - 0.4, 0.03]} m={BRASS} />
-          ))}
+          {/* 접이식 철문 한 짝: 바깥 기둥에 붙어 가운데로 늘어남 (scale.x) */}
+          <group ref={s < 0 ? gateL : gateR} position={[s * (w / 2 - 0.1), 0, d / 2 - 0.03]} scale={[0.12, 1, 1]}>
+            <mesh position={[-s * (w / 4 - 0.05), h / 2 - 0.1, 0]}>
+              <planeGeometry args={[w / 2 - 0.1, h - 0.4]} />
+              <meshStandardMaterial map={cage} transparent alphaTest={0.4} side={THREE.DoubleSide} metalness={0.6} roughness={0.35} color="#e8c35a" />
+            </mesh>
+            <Box p={[-s * (w / 2 - 0.12), h / 2 - 0.1, 0]} s={[0.05, h - 0.4, 0.05]} m={BRASS} />
+          </group>
         </group>
       ))}
       <Box p={[0, h + 0.05, d / 2]} s={[w + 0.2, 0.15, 0.15]} m={BRASS} />
@@ -787,7 +860,9 @@ export function JmElevator({ item }) {
                   )
                 })}
               </div>
-              {grab ? (
+              {riding ? (
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#ffb3a7' }}>문이 닫혀요… 출발!</div>
+              ) : grab ? (
                 <div style={{ fontSize: 13 }}>
                   <div>{kbd('W')} {kbd('↑')} 레버 올리기 (위층)</div>
                   <div>{kbd('S')} {kbd('↓')} 레버 내리기 (아래층)</div>
@@ -1174,6 +1249,282 @@ export function JmFloor({ item }) {
   )
 }
 
+// ── 지하 보일러실 (온천장 밑, 섬 지대 안을 비운 공간) — 지민이 보낸 장면 참고 ──
+// item.size [w, h, d] (가운데 기준), item.boiler: 생성 스크립트가 넘기는 상대 좌표들. 벽은 섬 지대 돌벽이 대신함
+// 캐릭터는 넣지 않음. 서랍장은 벽 두 면 가득(아래 작은 어두운 구멍), 높은 작업대 + 쇠 바퀴 + 유리 항아리 + 노란 주전자 + 사다리,
+// 둥근 계기판 달린 화덕 + 바닥 불구멍 + 석탄, 굵은 관·밸브 바퀴·작은 세면대, 꽃무늬 이불 더미, 작은 서랍장, 달력, 작은 미닫이문
+const JAR_GLASS = mat('#cfe3d6', { transparent: true, opacity: 0.45, roughness: 0.1 })
+const HERB_COLS = ['#7a9a3a', '#b0507a', '#6aa04a']
+const KETTLE = mat('#d9b23a', { roughness: 0.35, metalness: 0.4 })
+function futonTexture() {
+  return canvasTexture('jmspirit:futon', 256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#c0392b'
+    ctx.fillRect(0, 0, w, h)
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = i % 2 ? '#f2c94c' : '#f5e6c8'
+      const x = (i * 53) % w
+      const y = (i * 37) % h
+      for (let k = 0; k < 5; k++) {
+        ctx.beginPath()
+        ctx.ellipse(x + Math.cos((k / 5) * Math.PI * 2) * 9, y + Math.sin((k / 5) * Math.PI * 2) * 9, 7, 4, (k / 5) * Math.PI * 2, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  })
+}
+function ValveWheel({ p, r = 0.5, rot = [0, 0, 0] }) {
+  return (
+    <group position={p} rotation={rot}>
+      <mesh>
+        <torusGeometry args={[r, 0.05, 8, 24]} />
+        <primitive object={IRON} attach="material" />
+      </mesh>
+      {[0, 1, 2].map((i) => (
+        <Box key={i} p={[0, 0, 0]} s={[r * 2, 0.05, 0.05]} r={[0, 0, (i * Math.PI) / 3]} m={IRON} />
+      ))}
+      <Cyl p={[0, 0, 0]} rad={0.08} h={0.1} m={IRON} r={[Math.PI / 2, 0, 0]} />
+    </group>
+  )
+}
+export function JmBoilerBasement({ item }) {
+  const [w, h, d] = item.size
+  const B = item.boiler
+  const drawers = useMemo(() => drawerTexture(), [])
+  const futon = useMemo(() => futonTexture(), [])
+  const xL = -w / 2 + 0.05 // 서쪽 벽
+  const zN = -d / 2 + 0.05 // 북쪽 벽
+  const room = B.stairX // 보일러실 동쪽 끝 (계단 쪽 칸막이)
+  const coal = useMemo(() => range(60).map((i) => {
+    const pile = i < 34
+    const [cx, cz] = B.coal
+    return pile
+      ? { p: [cx + (seeded(i) - 0.5) * 1.4, 0.12 + seeded(i + 40) * 0.35, cz + (seeded(i + 80) - 0.5) * 1.2], s: [0.22, 0.18, 0.22] }
+      : { p: [B.furnace[0] + 2 + seeded(i) * 7, 0.08, B.furnace[1] + (seeded(i + 9) - 0.5) * 4], s: [0.14, 0.12, 0.14] }
+  }), [B])
+  const [fx, fz] = B.furnace
+  const [px, pz] = B.platform
+  return (
+    <group>
+      {/* 바닥 (판자) */}
+      <Box p={[0, 0.03, 0]} s={[w, 0.06, d]} c="#6b4a30" />
+      {/* 서랍장 벽 두 면 (북쪽 전체, 서쪽은 화덕 뒤까지) */}
+      <mesh position={[(xL + room) / 2, h / 2, zN + 0.02]}>
+        <planeGeometry args={[room - xL, h - 0.2]} />
+        <primitive object={texMat(tiled(drawers, (room - xL) / 6, 1.2), { emissive: '#ffffff', emissiveIntensity: 0.1 })} attach="material" />
+      </mesh>
+      <mesh position={[xL + 0.02, h / 2, (zN + fz - 2.2) / 2]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[fz - 2.2 - zN, h - 0.2]} />
+        <primitive object={texMat(tiled(drawers, (fz - 2.2 - zN) / 6, 1.2), { emissive: '#ffffff', emissiveIntensity: 0.1 })} attach="material" />
+      </mesh>
+      {/* 서랍장 아래 작은 어두운 구멍 + 앞 낮은 마루, 작은 상, 방석 */}
+      <Box p={[B.hole[0], 0.45, zN + 0.03]} s={[1.3, 0.9, 0.02]} c="#0b0806" />
+      <group position={[B.deck[0], 0, B.deck[1]]}>
+        <Box p={[0, 0.2, 0]} s={[3, 0.4, 1.6]} c="#8a6a48" />
+        <Box p={[0.6, 0.55, 0.1]} s={[0.9, 0.08, 0.6]} c="#3a2a1c" />
+        {[-1, 1].map((sx) => [-1, 1].map((sz) => <Box key={`${sx}${sz}`} p={[0.6 + sx * 0.38, 0.47, 0.1 + sz * 0.24]} s={[0.05, 0.14, 0.05]} c="#3a2a1c" />))}
+        <Box p={[-0.6, 0.45, 0.2]} s={[0.8, 0.1, 0.8]} c="#6a2a6a" />
+      </group>
+      {/* 높은 작업대: 나무 상자 + 앞 큰 쇠 바퀴 + 위 방석·주전자 + 옆 사다리, 앞 나무 상자 속 유리 항아리 3개 */}
+      <group position={[px, 0, pz]}>
+        <Box p={[0, 1.1, 0]} s={[3.2, 2.2, 1.6]} c="#7a3a26" />
+        {range(9).map((i) => (
+          <Box key={i} p={[-1.5 + i * 0.375, 1.1, 0.81]} s={[0.03, 2.1, 0.02]} c="#5a2a1a" />
+        ))}
+        <Box p={[0, 2.25, 0]} s={[3.4, 0.1, 1.8]} c="#5a2a1a" />
+        <ValveWheel p={[0.9, 1.3, 0.9]} r={0.55} />
+        <Box p={[-0.5, 2.4, -0.1]} s={[1.8, 0.2, 1.2]} c="#6a2a6a" />
+        <group position={[1.2, 2.3, 0.2]}>
+          <mesh position={[0, 0.25, 0]} scale={[0.3, 0.25, 0.3]} material={KETTLE}>
+            <sphereGeometry args={[1, 14, 10]} />
+          </mesh>
+          <Cyl p={[0.32, 0.28, 0]} rad={0.04} h={0.3} m={KETTLE} r={[0, 0, -0.8]} />
+          <mesh position={[0, 0.48, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <torusGeometry args={[0.18, 0.025, 6, 12, Math.PI]} />
+            <primitive object={KETTLE} attach="material" />
+          </mesh>
+        </group>
+        {/* 사다리 */}
+        {[-0.25, 0.25].map((dz) => (
+          <Box key={dz} p={[1.85, 1.15, 0.3 + dz]} s={[0.06, 2.3, 0.06]} c="#8a6a48" r={[0, 0, -0.12]} />
+        ))}
+        {range(6).map((i) => (
+          <Box key={i} p={[1.8 + i * 0.045, 0.3 + i * 0.38, 0.3]} s={[0.05, 0.05, 0.56]} c="#8a6a48" />
+        ))}
+      </group>
+      <group position={[B.jars[0], 0, B.jars[1]]}>
+        <Box p={[0, 0.15, 0]} s={[3.2, 0.3, 0.8]} c="#8a6a48" />
+        {[-1, 0, 1].map((i) => (
+          <group key={i} position={[i * 0.95, 0.3, 0]}>
+            <mesh position={[0, 0.5, 0]} scale={[0.32, 0.5, 0.32]}>
+              <sphereGeometry args={[1, 14, 10]} />
+              <meshStandardMaterial color={HERB_COLS[i + 1]} roughness={0.9} />
+            </mesh>
+            <mesh position={[0, 0.5, 0]} scale={[0.36, 0.55, 0.36]} material={JAR_GLASS}>
+              <sphereGeometry args={[1, 14, 10]} />
+            </mesh>
+            <Cyl p={[0, 1.08, 0]} rad={0.2} h={0.12} m={KETTLE} />
+          </group>
+        ))}
+      </group>
+      {/* 화덕: 둥근 큰 보일러 + 계기판 + 바닥 높이 불구멍 + 석탄 더미·흩어진 석탄 */}
+      <group position={[fx, 0, fz]}>
+        <Box p={[0, 2, 0]} s={[3, 4, 4]} c="#6a3a28" />
+        <mesh position={[0, 4, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1, 1, 1]}>
+          <cylinderGeometry args={[1.5, 1.5, 3, 20]} />
+          <meshStandardMaterial color="#5a3424" roughness={0.6} metalness={0.3} />
+        </mesh>
+        {[[-0.8, 3.2], [0.7, 3.4], [0, 2.4]].map(([z, y], i) => (
+          <group key={i} position={[1.52, y, z]} rotation={[0, Math.PI / 2, 0]}>
+            <mesh>
+              <circleGeometry args={[0.28, 20]} />
+              <meshStandardMaterial color="#f2ead2" />
+            </mesh>
+            <mesh position={[0, 0, -0.01]}>
+              <ringGeometry args={[0.28, 0.36, 20]} />
+              <meshStandardMaterial color="#b8913c" metalness={0.5} />
+            </mesh>
+            <Box p={[0.06, 0.06, 0.01]} s={[0.02, 0.2, 0.01]} c="#1a1210" r={[0, 0, -0.7]} />
+          </group>
+        ))}
+        <Box p={[1.51, 0.5, 0.3]} s={[0.04, 0.8, 1.2]} c="#120c08" />
+        <mesh position={[1.54, 0.45, 0.3]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[1.0, 0.6]} />
+          <primitive object={FIRE} attach="material" />
+        </mesh>
+        <pointLight position={[2.6, 1, 0.3]} intensity={6} distance={9} color="#ff7a2a" />
+        {[-1.2, 0, 1.2].map((z) => (
+          <Cyl key={z} p={[-0.6, (5.5 + h) / 2, z]} rad={0.3} h={h - 5.5} m={IRON} />
+        ))}
+      </group>
+      <Instances geometry={GEO.rock} material={mat('#1c1a18', { flat: true })} items={coal} />
+      {/* 들어오는 길: 남쪽 벽 굵은 관 + 밸브 바퀴, 작은 세면대 */}
+      {[0.4, 1.4].map((y) => (
+        <Cyl key={y} p={[(B.pipes.x0 + B.pipes.x1) / 2, y, B.pipes.z]} rad={0.35} h={B.pipes.x1 - B.pipes.x0} m={IRON} r={[0, 0, Math.PI / 2]} />
+      ))}
+      {[-4, -1, 2].map((dx) => (
+        <ValveWheel key={dx} p={[(B.pipes.x0 + B.pipes.x1) / 2 + dx, 1.9, B.pipes.z - 0.4]} r={0.35} />
+      ))}
+      {[-3, 1].map((dx, i) => (
+        <mesh key={dx} position={[(B.pipes.x0 + B.pipes.x1) / 2 + dx, 2.6 + i * 0.4, B.pipes.z - 0.3]} scale={[0.6, 0.4, 0.4]}>
+          <sphereGeometry args={[1, 8, 6]} />
+          <meshStandardMaterial color="#ffffff" transparent opacity={0.25} />
+        </mesh>
+      ))}
+      <group position={[B.sink[0], 0, B.sink[1]]}>
+        <Box p={[0, 0.85, 0]} s={[0.6, 0.15, 0.4]} c="#d6d1c6" />
+        <Cyl p={[0, 0.4, 0]} rad={0.05} h={0.8} c="#9d978c" />
+        <Box p={[0, 1.2, -0.15]} s={[0.05, 0.4, 0.05]} m={BRASS} />
+      </group>
+      {/* 꽃무늬 이불 더미 + 작은 서랍장 + 달력 */}
+      <group position={[B.futon[0], 0, B.futon[1]]}>
+        {[0, 1, 2].map((i) => (
+          <mesh key={i} position={[0, 0.12 + i * 0.18, 0]} scale={[1, 0.09, 0.7]}>
+            <boxGeometry args={[2 - i * 0.1, 2, 2 - i * 0.1]} />
+            <meshStandardMaterial map={futon} />
+          </mesh>
+        ))}
+      </group>
+      <group position={[B.chest[0], 0, B.chest[1]]}>
+        <Box p={[0, 0.55, 0]} s={[1.2, 1.1, 0.6]} c="#6b4a30" />
+        {[0.3, 0.65, 0.95].map((y) => (
+          <Box key={y} p={[0, y, 0.31]} s={[1.0, 0.02, 0.02]} c="#3a2a1c" />
+        ))}
+        {[0, 1].map((i) => (
+          <Cyl key={i} p={[-0.3 + i * 0.25, 1.25, 0]} rad={0.06} h={0.3} c="#e8dcc0" />
+        ))}
+      </group>
+      <Box p={[room - 0.15, 1.7, B.chest[1] + 1.4]} s={[0.02, 0.5, 0.4]} c="#f2ead2" />
+      {/* 계단 쪽 나무 칸막이 + 작은 미닫이문 (반쯤 열림) */}
+      {B.part && (() => {
+        const [a, b] = B.part.door
+        return (
+          <group>
+            <Box p={[B.part.x, h / 2, (zN + a) / 2]} s={[0.25, h, a - zN]} c="#6b4630" />
+            <Box p={[B.part.x, h / 2, (b + d / 2) / 2]} s={[0.25, h, d / 2 - b]} c="#6b4630" />
+            <Box p={[B.part.x, (B.part.h + h) / 2, (a + b) / 2]} s={[0.25, h - B.part.h, b - a]} c="#6b4630" />
+            {/* 열린 미닫이 판 (옆으로 밀려 있음) + 나무 문틀 */}
+            <Box p={[B.part.x + 0.18, B.part.h / 2, a - (b - a) / 2 + 0.05]} s={[0.06, B.part.h, b - a]} c="#8a6a48" />
+            {range(3).map((i) => (
+              <Box key={i} p={[B.part.x + 0.22, 0.4 + i * 0.6, a - (b - a) / 2 + 0.05]} s={[0.02, 0.04, b - a - 0.1]} c="#5a3d2a" />
+            ))}
+            <Box p={[B.part.x, B.part.h + 0.06, (a + b) / 2]} s={[0.35, 0.12, b - a + 0.3]} c="#3a2a1c" />
+            {[a, b].map((z) => (
+              <Box key={z} p={[B.part.x, B.part.h / 2, z]} s={[0.35, B.part.h, 0.1]} c="#3a2a1c" />
+            ))}
+          </group>
+        )
+      })()}
+      {/* 천장 관 + 매달린 등 */}
+      {[-d / 4, d / 4].map((z) => (
+        <Cyl key={z} p={[(xL + room) / 2, h - 0.6, z]} rad={0.2} h={room - xL} m={IRON} r={[0, 0, Math.PI / 2]} />
+      ))}
+      {[-4, 1].map((x) => (
+        <group key={x} position={[x, h - 1.6, 0]}>
+          <Cyl p={[0, 0.6, 0]} rad={0.02} h={1} m={IRON} />
+          <Ball p={[0, 0, 0]} rad={0.2} m={LANTERN_WHITE} />
+        </group>
+      ))}
+      <pointLight position={[px, h - 1.8, pz + 2.5]} intensity={5} distance={14} color="#ffcf8a" />
+    </group>
+  )
+}
+
+// ── 로비 구석 지하 계단실 (작은 문 + 「釜場」 노렌) ──
+// item.size [w, h, d] = 계단실(로컬 x·z), item.door [문 가운데 z(계단실 기준), 폭, 높이]. 문은 서쪽(-x) 벽
+export function JmBasementDoor({ item }) {
+  const [w, h, d] = item.size
+  const [dz, dw, dh] = item.door
+  const x = -w / 2
+  return (
+    <group>
+      {/* 서쪽 벽(문 자리 비움) + 북쪽 벽: 짙은 나무 판 */}
+      <Box p={[x, h / 2, (-d / 2 + dz - dw / 2) / 2]} s={[0.25, h, dz - dw / 2 + d / 2]} c="#5a3d2a" />
+      <Box p={[x, h / 2, (dz + dw / 2 + d / 2) / 2]} s={[0.25, h, d / 2 - dz - dw / 2]} c="#5a3d2a" />
+      <Box p={[x, (dh + h) / 2, dz]} s={[0.25, h - dh, dw]} c="#5a3d2a" />
+      <Box p={[0, h / 2, -d / 2]} s={[w, h, 0.25]} c="#5a3d2a" />
+      {/* 작은 문틀 + 노렌 + 문 위 등 */}
+      {[-1, 1].map((s) => (
+        <Box key={s} p={[x - 0.08, dh / 2, dz + s * (dw / 2 + 0.06)]} s={[0.14, dh, 0.12]} c="#2a1a12" />
+      ))}
+      <Box p={[x - 0.08, dh + 0.08, dz]} s={[0.16, 0.16, dw + 0.4]} c="#2a1a12" />
+      <mesh position={[x - 0.16, dh - 0.45, dz]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[dw - 0.1, 0.8]} />
+        <GlowMaterial glow={0.4} map={getJpSignTexture('釜場', '#2a1a12', '#f3e6c8', (dw - 0.1) / 0.8)} side={THREE.DoubleSide} />
+      </mesh>
+      <Ball p={[x - 0.3, dh + 0.45, dz]} rad={0.14} m={LANTERN_WHITE} />
+      <mesh position={[x - 0.14, dh + 0.9, dz]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[1.6, 0.45]} />
+        <GlowMaterial glow={0.5} map={getJpSignTexture('地下 釜場', '#f3e6c8', '#2a1a12', 1.6 / 0.45)} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
+// ── 깃발 단 굴뚝 ──
+export function JmChimney({ item }) {
+  const [, h] = item.size
+  return (
+    <group>
+      <Cyl p={[0, h / 2, 0]} rad={0.9} h={h} c="#7d5a48" />
+      {range(Math.floor(h / 6)).map((i) => (
+        <Cyl key={i} p={[0, 6 + i * 6, 0]} rad={0.95} h={0.25} c="#4a3a30" />
+      ))}
+      <Cyl p={[0, h + 0.2, 0]} rad={1.05} h={0.4} c="#2e2a26" />
+      <Box p={[1.6, h - 2, 0]} s={[2.4, 0.12, 0.12]} m={IRON} />
+      <mesh position={[2.3, h - 3.6, 0]}>
+        <planeGeometry args={[1.8, 2.8]} />
+        <meshStandardMaterial map={flagTexture()} side={THREE.DoubleSide} />
+      </mesh>
+      {range(4).map((i) => (
+        <mesh key={i} position={[0.3 * i, h + 1 + i * 1.3, 0.2 * i]} scale={[0.9 + i * 0.5, 0.6 + i * 0.3, 0.9 + i * 0.5]}>
+          <sphereGeometry args={[1, 10, 8]} />
+          <meshStandardMaterial color="#d9d4ce" transparent opacity={0.35 - i * 0.06} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 // ── 보이지 않는 벽(jmCollider): 높고 넓은 벽은 카메라 막이(camera-blocker)로도 등록 ──
 // 공용 FollowCamera는 이름이 camera-blocker인 물체만 피함. 애니 구역은 건물(buildings)이 없어 카메라가 벽을 뚫던 문제 (11/25)
 //   공용 카메라는 플레이 시작 때 한 번만 camera-blocker를 모으므로, 늦게 그려진 막이는 스스로 controls.colliderMeshes에 넣고 빠짐
@@ -1198,6 +1549,9 @@ export function JmCollider({ item }) {
 
 export const JM_SPIRIT_STYLES = {
   jmCollider: JmCollider,
+  jmBoilerBasement: JmBoilerBasement,
+  jmBasementDoor: JmBasementDoor,
+  jmChimney: JmChimney,
   jmFloor: JmFloor,
   jmEatery: JmEatery,
   jmLanternLine: JmLanternLine,

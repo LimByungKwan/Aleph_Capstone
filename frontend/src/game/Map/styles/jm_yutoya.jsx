@@ -25,6 +25,23 @@ const WOOD = '#8a5a3a'
 const STONE = '#9d978c'
 
 const range = (n) => Array.from({ length: n }, (_, i) => i)
+// 사각형 r([x0, z0, x1, z1])에서 구멍들을 뺀 조각들 (생성 스크립트 rectSub와 같은 식)
+function rectHoles(r, holes = []) {
+  let out = [r]
+  for (const h of holes) {
+    out = out.flatMap(([x0, z0, x1, z1]) => {
+      const [a0, b0, a1, b1] = [Math.max(x0, h[0]), Math.max(z0, h[1]), Math.min(x1, h[2]), Math.min(z1, h[3])]
+      if (a0 >= a1 || b0 >= b1) return [[x0, z0, x1, z1]]
+      const pcs = []
+      if (z0 < b0) pcs.push([x0, z0, x1, b0])
+      if (b1 < z1) pcs.push([x0, b1, x1, z1])
+      if (x0 < a0) pcs.push([x0, b0, a0, b1])
+      if (a1 < x1) pcs.push([a1, b0, x1, b1])
+      return pcs
+    })
+  }
+  return out
+}
 const GOLD_M = mat(GOLD, { metalness: 0.45, roughness: 0.4 })
 const GLOBE = mat('#fff6e0', { emissive: '#ffd99a', emissiveIntensity: 1.4, roughness: 0.4 })
 const SHOJI_M = mat('#ffeccc', { emissive: '#ffbf6e', emissiveIntensity: 0.6, roughness: 0.7 })
@@ -483,7 +500,9 @@ function YuExterior({ W, D, Y, sign }) {
   return (
     <group>
       {/* 돌 기단 + 앞 돌계단 */}
-      <Box p={[0, base / 2, 0]} s={[W + 1, base, D + 1]} c={STONE} />
+      {rectHoles([-(W + 1) / 2, -(D + 1) / 2, (W + 1) / 2, (D + 1) / 2], Y.floorHoles).map(([x0, z0, x1, z1], i) => (
+        <Box key={`bs${i}`} p={[(x0 + x1) / 2, base / 2, (z0 + z1) / 2]} s={[x1 - x0, base, z1 - z0]} c={STONE} />
+      ))}
       {range(3).map((i) => (
         <Box key={i} p={[0, 0.1 + i * 0.2, front + 1.7 - i * 0.4]} s={[9, 0.2, 0.4]} c="#b5ad9f" />
       ))}
@@ -608,10 +627,12 @@ function YuGroundHall({ W, D, Y }) {
   return (
     <group>
       {/* 마루 */}
-      <mesh position={[0, base + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[ix * 2, iz * 2]} />
-        <primitive object={texMat(planks)} attach="material" />
-      </mesh>
+      {rectHoles([-ix, -iz, ix, iz], Y.floorHoles).map(([x0, z0, x1, z1], i) => (
+        <mesh key={`fl${i}`} position={[(x0 + x1) / 2, base + 0.01, (z0 + z1) / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[x1 - x0, z1 - z0]} />
+          <primitive object={texMat(tiled(plankTexture(), (x1 - x0) / 1.6, (z1 - z0) / 1.6))} attach="material" />
+        </mesh>
+      ))}
       {/* 가운데 붉은 길 + 금 테 */}
       <Box p={[0, base + 0.03, (iz + pav.z1) / 2]} s={[2.2, 0.02, iz - pav.z1]} c="#8f2a24" />
       {[-1, 1].map((s) => (
@@ -839,6 +860,10 @@ function YuPavilion({ Y }) {
       {[-1, 1].map((s) => (
         <Box key={`gf${s}`} p={[s * (cw / 2 + 0.06), base + 1.8, f + 0.02]} s={[0.14, 3.6, 0.12]} m={GOLD_M} />
       ))}
+      <GuestDoors x={0} y={base} z={f + 0.08} face={1} cw={cw} />
+      {[1, 2, 3].map((k) => (
+        <GuestDoors key={`gd${k}`} x={0} y={lv[k]} z={pav.z0 - 0.08} face={-1} cw={cw} />
+      ))}
       <Box p={[0, base + 3.65, f + 0.02]} s={[cw + 0.4, 0.16, 0.14]} m={GOLD_M} />
       {/* 아래: 보라 휘장 + 매듭 (가운데 엘리베이터 문 자리는 비움) */}
       {folds.filter((i) => Math.abs(-w / 2 + 0.55 + (i * (w - 1.1)) / 8) > cw / 2 + 0.2).map((i) => (
@@ -913,6 +938,39 @@ function YuPavilion({ Y }) {
         })}
         <Ball p={[0, -1.2, 0]} rad={0.2} m={GLOBE} />
       </group>
+    </group>
+  )
+}
+
+// 손님용 엘리베이터 문짝: 붉은 옻칠 두짝문에 금 글자 「上」, 문 앞쪽으로 활짝 열려 있음 (face = 문이 보는 방향 ±z)
+function upTexture() {
+  return canvasTexture('jmyu:updoor', 128, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#9a2018'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#d4a83e'
+    ctx.lineWidth = 6
+    ctx.strokeRect(8, 8, w - 16, h - 16)
+    ctx.fillStyle = '#e8c35a'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = `bold ${Math.round(w * 0.8)}px ${JP_FONT}`
+    ctx.fillText('上', w / 2, h * 0.42)
+  })
+}
+function GuestDoors({ x, y, z, face, cw }) {
+  const map = upTexture()
+  const half = cw / 2
+  return (
+    <group position={[x, y, z]}>
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * half, 0, 0]} rotation={[0, face * s * -1.25, 0]}>
+          <mesh position={[-s * half / 2, 1.75, face * 0.03]} rotation={[0, face > 0 ? 0 : Math.PI, 0]}>
+            <planeGeometry args={[half - 0.05, 3.4]} />
+            <meshStandardMaterial map={map} side={THREE.DoubleSide} roughness={0.35} metalness={0.15} />
+          </mesh>
+          <Box p={[-s * half / 2, 1.75, 0]} s={[half - 0.05, 3.4, 0.05]} c="#6a1410" />
+        </group>
+      ))}
     </group>
   )
 }
