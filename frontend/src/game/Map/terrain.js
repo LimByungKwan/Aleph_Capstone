@@ -300,7 +300,9 @@ function buildCurvedDeck(deck, terrain) {
   }
   for (const side of [1, -1]) {
     const S = range(n + 1).map((i) => sidePoint(i, side))
+    const gap = deck.railGap?.side === side ? deck.railGap.segments : null
     for (let i = 0; i < n; i++) {
+      if (gap && i >= gap[0] && i < gap[1]) continue
       const [ax, ay, az] = S[i]
       const [bx, by, bz] = S[i + 1]
       const L = Math.hypot(bx - ax, bz - az)
@@ -313,6 +315,7 @@ function buildCurvedDeck(deck, terrain) {
       railBlocks.push({ p: [mid[0], mid[1] + 0.55, mid[2]], r, s: [0.1, 1.1, len] })
     }
     S.forEach(([x, y, z], i) => {
+      if (gap && i > gap[0] && i < gap[1]) return
       if (i % 2 === 0 || i === n) railPosts.push({ p: [x, y + RAIL_HEIGHT / 2, z], s: [0.05, RAIL_HEIGHT, 0.05] })
     })
     // 기둥 (약 2.5m마다)

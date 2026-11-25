@@ -59,7 +59,7 @@ export const useWarps = create((set, get) => ({
     return null
   },
   /** 구역 안 장소로 이동 (데이트 코스 미션 워프 등). 로그인 없이도 됨 (영화·드라마 구역 워프와 같음)
-   *  target: { center: [x, z] } 또는 { anchor: { name, local: [x, y, z] } }, label, onArrive() */
+   *  target: { center: [x, z] } 또는 { anchor: { name, local: [x, y, z] } }, clearance?, label, isValid(), onArrive(), onFail() */
   goto: (target) => set({ request: target }),
   done: () => set({ request: null }),
 }))

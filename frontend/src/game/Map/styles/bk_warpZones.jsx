@@ -7,10 +7,10 @@ import { GEO, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
 import { UNLOCK_RANGE, WARPS, isLoggedIn, useWarps } from './bk_warpStore.js'
 
-// 장소 근처에서 평평하고 비어 있는 자리 찾기 (바닥 높이를 재서 3×3m가 고른 곳). 못 찾으면 null
+// 장소 근처에서 평평하고 비어 있는 자리 찾기. 기본은 1m씩 주변을 재고, 좁은 입구는 도착점별로 조정.
 const ray = new THREE.Raycaster()
 const DOWN = new THREE.Vector3(0, -1, 0)
-function findSpot(scene, cx, cz) {
+function findSpot(scene, cx, cz, clearance = 1) {
   const meshes = []
   scene.traverse((o) => {
     if (o.isMesh && o.visible && !o.isInstancedMesh && !o.isSkinnedMesh) meshes.push(o)
@@ -25,7 +25,7 @@ function findSpot(scene, cx, cz) {
       const x = cx + Math.cos((a / 16) * Math.PI * 2) * r
       const z = cz + Math.sin((a / 16) * Math.PI * 2) * r
       const ys = []
-      for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) ys.push(height(x + dx, z + dz))
+      for (const dx of [-clearance, 0, clearance]) for (const dz of [-clearance, 0, clearance]) ys.push(height(x + dx, z + dz))
       if (ys.some((y) => y === null)) continue
       // 지붕 위(평평한 옥상)는 빼려고 데이트 코스 땅 높이(0~10m)만
       if (Math.max(...ys) - Math.min(...ys) < 0.15 && ys[4] < 12) return [x, ys[4], z]
@@ -58,6 +58,7 @@ export function WarpZones({ playerRef }) {
     if (request && player.body && typeof request === 'object') {
       // 구역 안 장소로 (데이트 코스 미션): 기준점 근처의 빈 자리를 찾아서
       done()
+      if (request.isValid && !request.isValid()) return
       let cx
       let cz
       if (request.anchor) {
@@ -68,14 +69,17 @@ export function WarpZones({ playerRef }) {
           cz = p.z
         }
       } else if (request.center) [cx, cz] = request.center
-      const spot = cx === undefined ? null : findSpot(scene, cx, cz)
+      const spot = cx === undefined ? null : findSpot(scene, cx, cz, request.clearance)
       if (spot) {
         player.body.setTranslation({ x: spot[0], y: spot[1] + 1.6, z: spot[2] }, true)
         player.body.setLinvel({ x: 0, y: 0, z: 0 }, true)
         useGameStore.getState().close()
         if (request.label) useUiStore.getState().toast(`🌀 ${request.label}(으)로 이동했어요`, 'ok')
         request.onArrive?.()
-      } else useUiStore.getState().toast('이동할 자리를 찾지 못했어요. 걸어서 가 주세요.', 'info')
+      } else {
+        useUiStore.getState().toast('이동할 자리를 찾지 못했어요. 걸어서 가 주세요.', 'info')
+        request.onFail?.()
+      }
       return
     }
     if (request && player.body) {

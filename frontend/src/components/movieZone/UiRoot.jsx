@@ -22,6 +22,7 @@ import BadgeBook, { BadgeButton } from '../badges/BadgeBook.jsx'
 import { PhotoButton, PhotoPreview } from '../photo/PhotoButton.jsx'
 import SoundDirector, { SoundToggle } from '../sound/SoundDirector.jsx'
 import DateMission from '../dateCourse/DateMission.jsx' // [병관] 데이트 코스 미션 (시간 탐정과 같은 모양)
+import { HudMore } from '../../game/Map/styles/bk_hudMenu.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -91,21 +92,19 @@ function Hud() {
     + Number(Boolean(timePass.couponIssuedAt)) + Number(Boolean(timePass.legacyCouponIssuedAt))
 
   return (
-    <nav className="ui-hud ui-interactive" aria-label="내 메뉴">
+    <nav className="ui-hud bk-hud ui-interactive" aria-label="내 메뉴">
       <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), openModal('stampbook'))}>
         📖 스탬프북 <span className="ui-count">{totalStamps}</span>
       </button>
-      <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), openModal('coupons'))}>
-        🎟 쿠폰함 {usable > 0 && <span className="ui-count">{usable}</span>}
-      </button>
-      <BadgeButton onOpen={() => openModal('badges')} />
       <PhotoButton />
-      <SoundToggle />
-      {user.role === 'owner' && (
-        <a className="ui-btn" href="#/owner">
-          🧑‍🍳 사장님 화면
-        </a>
-      )}
+      <HudMore>
+        <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), openModal('coupons'))}>
+          🎟 쿠폰함 {usable > 0 && <span className="ui-count">{usable}</span>}
+        </button>
+        <BadgeButton onOpen={() => openModal('badges')} />
+        <SoundToggle />
+        {user.role === 'owner' && <a className="ui-btn" href="#/owner">🧑‍🍳 사장님 화면</a>}
+      </HudMore>
     </nav>
   )
 }

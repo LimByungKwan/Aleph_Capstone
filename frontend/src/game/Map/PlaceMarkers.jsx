@@ -4,6 +4,7 @@ import Prop from './Prop.jsx'
 import LumiGuide from './LumiGuide.jsx'
 import { PLACE_COLORS, SHOW_PLACE_LABELS } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
+import { usePlaceLabelVisibility } from './styles/bk_placeLabelVisibility.js'
 
 const TYPE_LABELS = { spot: '촬영지', cafe: '카페', npc: 'NPC' }
 
@@ -17,6 +18,7 @@ function PlaceMarker({ place }) {
   const [x, y, z] = place.position
   const color = PLACE_COLORS[place.type] ?? '#999999'
   const isNpc = place.type === 'npc'
+  const labelRef = usePlaceLabelVisibility(place.position, isNpc)
   const labelHeight = isNpc ? 2.3 : 3.4
 
   return (
@@ -37,7 +39,7 @@ function PlaceMarker({ place }) {
           <capsuleGeometry args={[0.35, 1.0, 8, 16]} />
           <meshStandardMaterial color={color} />
         </mesh>
-      ) : place.zone !== 'SG' && ( // SG 지점은 건물 앞이라 기둥 없이 바닥 원과 이름표만
+      ) : place.zone !== 'SG' && place.zone !== 'BK' && ( // SG·BK는 기둥 없이 바닥 원과 이름표만 표시
         <mesh position={[0, 1.5, 0]} castShadow>
           <cylinderGeometry args={[0.15, 0.15, 3, 16]} />
           <meshStandardMaterial color={color} />
@@ -48,6 +50,8 @@ function PlaceMarker({ place }) {
         <Html portal={labelLayer} position={[0, labelHeight, 0]} center style={{ pointerEvents: 'none' }}>
           <div
             className="map-place-label"
+            ref={labelRef}
+            hidden
             style={{
               padding: '3px 8px',
               borderRadius: 6,

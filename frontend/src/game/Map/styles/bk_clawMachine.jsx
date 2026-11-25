@@ -194,6 +194,7 @@ function ClawGame({ item }) {
   const player = useRef(null)
   const lastLookup = useRef(-Infinity)
   const keys = useRef(new Set())
+  const touchKeys = useRef(new Map())
   const tmp = useMemo(() => ({ v: new THREE.Vector3(), me: new THREE.Vector3(), front: new THREE.Vector3(), q: new THREE.Quaternion(), look: new THREE.Vector3(), m: new THREE.Matrix4(), q2: new THREE.Quaternion() }), [])
 
   // 인형 상태: 기계 안 위치 x, z (y는 바닥), 집혔는지, 떨어지는 중인지, 이미 뽑혔는지
@@ -203,18 +204,21 @@ function ClawGame({ item }) {
 
   const store = () => useBkActivity.getState()
 
+  function open() {
+    const c = store().claw
+    const game = useGameStore.getState()
+    if (!c.near || c.active || game.openPanel || game.nearbyPlaceId) return
+    store().startClaw(levelOf(c).time)
+    resetClaw()
+    game.open({ type: 'bk_claw', placeId: item.id })
+    enterCloseUp()
+  }
+
   // 키 입력
   useEffect(() => {
     const down = (event) => {
       const c = store().claw
-      const game = useGameStore.getState()
-      if (event.code === 'KeyE' && !event.repeat && c.near && !c.active && !game.openPanel && !game.nearbyPlaceId) {
-        store().startClaw(levelOf(c).time)
-        resetClaw()
-        game.open({ type: 'bk_claw', placeId: item.id })
-        enterCloseUp()
-        return
-      }
+      if (event.code === 'KeyE' && !event.repeat && !c.active) return open()
       if (!c.active) return
       keys.current.add(event.code)
       if (event.code === 'Space' && !event.repeat && c.phase === 'move') startDrop()
@@ -223,11 +227,14 @@ function ClawGame({ item }) {
       if (picked && c.phase === 'move') setLevel(picked[0])
     }
     const up = (event) => keys.current.delete(event.code)
+    const clearInput = () => { keys.current.clear(); touchKeys.current.clear() }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', clearInput)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', clearInput)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id])
@@ -240,6 +247,7 @@ function ClawGame({ item }) {
         if (c.active && state.openPanel?.placeId !== item.id) {
           store().endClaw()
           keys.current.clear()
+          touchKeys.current.clear()
           exitCloseUp()
           // 집고 있던 인형은 그 자리에 떨어뜨림
           const cl = claw.current
@@ -287,6 +295,7 @@ function ClawGame({ item }) {
   }
 
   function startDrop() {
+    if (store().claw.phase !== 'move') return
     const cl = claw.current
     cl.timer = 0
     store().setClaw({ phase: 'drop', tries: store().claw.tries + 1, lastResult: null })
@@ -359,9 +368,9 @@ function ClawGame({ item }) {
     if (c.active) {
       switch (c.phase) {
         case 'move': {
-          const k = keys.current
-          const dx = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0)
-          const dz = (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0) - (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0)
+          const pressed = (code, alternate) => keys.current.has(code) || keys.current.has(alternate) || touchKeys.current.has(code)
+          const dx = Number(pressed('ArrowRight', 'KeyD')) - Number(pressed('ArrowLeft', 'KeyA'))
+          const dz = Number(pressed('ArrowDown', 'KeyS')) - Number(pressed('ArrowUp', 'KeyW'))
           const speed = levelOf(c).speed
           cl.x = THREE.MathUtils.clamp(cl.x + dx * speed * dt, -M.half[0], M.half[0])
           cl.z = THREE.MathUtils.clamp(cl.z + dz * speed * dt, -M.half[1], M.half[1])
@@ -525,14 +534,14 @@ function ClawGame({ item }) {
       </group>
       {/* 화면 안내: 기준점을 유리 상자 안에 둠 (drei Html은 기준점이 카메라 뒤면 숨겨서, 클로즈업 때도 항상 보이게) */}
       <group position={[0, M.floorY, M.z]}>
-        <ClawHud />
+        <ClawHud open={open} startDrop={startDrop} touchKeys={touchKeys} />
       </group>
     </>
   )
 }
 
 // 화면 안내: 기계 앞이면 "E 인형뽑기", 조작 중이면 남은 시간·획득 수·조작법
-function ClawHud() {
+function ClawHud({ open, startDrop, touchKeys }) {
   const setLevel = (level) => useBkActivity.getState().setClaw({ level, timeLeft: CLAW_LEVELS[level].time })
   const c = useBkActivity((state) => state.claw)
   const done = useBkActivity((state) => Boolean(state.completed.bk_claw))
@@ -545,9 +554,9 @@ function ClawHud() {
     <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }} onOcclude={keepVisible}>
       <div style={{ ...hudWrap, width: size.width, height: size.height }}>
         {showHint && (
-          <div style={chip}>
+          <button type="button" style={chip} onClick={open}>
             <kbd style={kbd}>E</kbd> 인형뽑기 하기 {done && '· 완료 ✓'}
-          </div>
+          </button>
         )}
         {c.active && (
           <div style={panel}>
@@ -583,6 +592,18 @@ function ClawHud() {
               )}{' '}
               · <kbd style={kbd}>ESC</kbd> 나가기
             </div>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+              {[["ArrowLeft", "왼쪽", "←"], ["ArrowUp", "앞", "↑"], ["ArrowDown", "뒤", "↓"], ["ArrowRight", "오른쪽", "→"]].map(([code, label, arrow]) => (
+                <button key={code} type="button" className="ui-btn" style={touchButton} aria-label={`집게 ${label}으로 이동`}
+                  disabled={c.phase !== 'move'} onPointerDown={(event) => {
+                    if (event.button !== 0) return
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    touchKeys.current.set(code, event.pointerId)
+                  }} onLostPointerCapture={(event) => { if (touchKeys.current.get(code) === event.pointerId) touchKeys.current.delete(code) }}>{arrow}</button>
+              ))}
+              <button type="button" className="ui-btn ui-btn--primary" style={touchButton} disabled={c.phase !== 'move'} onClick={startDrop}>내리기</button>
+              <button type="button" className="ui-btn" style={touchButton} onClick={() => useGameStore.getState().close()}>나가기</button>
+            </div>
           </div>
         )}
       </div>
@@ -591,8 +612,9 @@ function ClawHud() {
 }
 
 const hudWrap = { position: 'absolute', left: 0, top: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 72, boxSizing: 'border-box' }
-const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
-const panel = { width: 360, padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 14 }
+const chip = { padding: '6px 12px', border: 0, borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13, pointerEvents: 'auto', cursor: 'pointer' }
+const panel = { width: 'min(360px, calc(100vw - 28px))', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 14 }
+const touchButton = { pointerEvents: 'auto', touchAction: 'none' }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }
 const gauge = { position: 'relative', height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }
 const gaugeFill = { position: 'absolute', left: 0, top: 0, bottom: 0, background: '#f9a8d4' }
