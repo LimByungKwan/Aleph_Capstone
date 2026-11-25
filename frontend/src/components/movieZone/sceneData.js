@@ -27,8 +27,10 @@ export const sceneForPlace = (placeId) => SCENES[placeId] ?? null
 
 // 실제 작품명은 촬영 세트 이름표에 쓰고 대화는 프로젝트용으로 새로 작성했어요.
 export const ANALOG_SCENES = {
-  palace: { id: 'haewol-palace', retroScene: true, title: '해월궁 정전',
-    speaker: '궁궐을 지키는 수문장', synopsis: '문이 닫히기 전 마당을 둘러보시오. 달이 뜨면 정전의 기왓골마다 불빛이 한 줄씩 걸린다오.' },
+  palace: { id: 'haewol-palace', retroScene: true, title: '경복궁 근정전',
+    speaker: '궁궐을 지키는 수문장', synopsis: '문이 닫히기 전 마당을 둘러보시오. 품계석 사이를 지나 월대에 오르면, 달이 뜰 때 근정전 기왓골마다 불빛이 한 줄씩 걸린다오.' },
+  gyeongseong: { id: 'gyeongseong-street', retroScene: true, title: '1930 경성 거리',
+    speaker: '전차 정류장의 신문팔이 소년', synopsis: '전차가 땡땡 울리면 다방 축음기 소리도 멈춰요. 저 역 시계탑이 여섯 시를 치기 전에 극장 앞에 가 보세요!' },
   moonForest: { id: 'moon-forest', retroScene: true, title: '달빛 여우 사당',
     speaker: '숲의 수호자', synopsis: '달이 낮게 뜨는 날엔 숲길이 하나 더 생겨. 길을 잃으면 저 돌여우가 바라보는 쪽으로 걸어.' },
   moonHanok: { id: 'moon-hanok', retroScene: true, title: '달그림자 한옥',

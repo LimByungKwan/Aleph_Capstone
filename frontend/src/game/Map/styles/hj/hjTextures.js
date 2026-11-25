@@ -303,3 +303,199 @@ export function getFilmStripTexture() {
     { repeat: true },
   )
 }
+
+// 세로 간판 / 깃발 (1930년대 거리). 글자를 위에서 아래로 한 줄로 써요. 비율 1 : 4
+export function getVerticalSignTexture(text, bg = '#2b2420', fg = '#f3dfb0', border = true) {
+  return canvasTexture(`vsign:${text}:${bg}:${fg}:${border}`, 128, 512, (ctx, w, h) => {
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, w, h)
+    if (border) {
+      ctx.strokeStyle = fg
+      ctx.globalAlpha = 0.7
+      ctx.lineWidth = 6
+      ctx.strokeRect(10, 10, w - 20, h - 20)
+      ctx.globalAlpha = 1
+    }
+    const chars = [...text]
+    const size = Math.min(86, Math.floor((h - 50) / Math.max(1, chars.length)))
+    ctx.font = `bold ${size}px ${SERIF}`
+    ctx.fillStyle = fg
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const top = (h - size * chars.length) / 2 + size / 2
+    chars.forEach((c, i) => ctx.fillText(c, w / 2, top + i * size))
+  })
+}
+
+// 경성역 중앙홀 천장 스테인드글라스 (가운데 둥근 문양 + 색 유리 칸)
+export function getStainedGlassTexture() {
+  return canvasTexture('stainedGlass', 512, 256, (ctx, w, h) => {
+    const colors = ['#e3b04b', '#c8693a', '#7aa0b8', '#d9c27a', '#9c4a3a', '#6f8f5e', '#f0d9a0']
+    const rnd = seeded(19)
+    const cell = 32
+    for (let y = 0; y < h; y += cell) {
+      for (let x = 0; x < w; x += cell) {
+        ctx.fillStyle = colors[Math.floor(rnd() * colors.length)]
+        ctx.fillRect(x, y, cell, cell)
+      }
+    }
+    ctx.strokeStyle = '#2a2420'
+    ctx.lineWidth = 4
+    for (let x = 0; x <= w; x += cell) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke() }
+    for (let y = 0; y <= h; y += cell) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
+    // 가운데 원 문양
+    ctx.lineWidth = 8
+    for (const r of [96, 64, 30]) {
+      ctx.fillStyle = r === 96 ? '#f3dfa0' : r === 64 ? '#b8433a' : '#3f6f8f'
+      ctx.beginPath(); ctx.arc(w / 2, h / 2, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+    }
+    for (let i = 0; i < 8; i += 1) {
+      const a = (i / 8) * Math.PI * 2
+      ctx.beginPath(); ctx.moveTo(w / 2 + Math.cos(a) * 30, h / 2 + Math.sin(a) * 30); ctx.lineTo(w / 2 + Math.cos(a) * 96, h / 2 + Math.sin(a) * 96); ctx.stroke()
+    }
+    ctx.lineWidth = 10
+    ctx.strokeRect(5, 5, w - 10, h - 10)
+  })
+}
+
+// 귀빈실 벽지 (진한 바탕 + 마름모 꽃무늬)
+export function getDamaskTexture() {
+  return canvasTexture('damask', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#5a3a2c'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#c9a45e'
+    for (let y = 0; y < h; y += 64) {
+      for (let x = (y / 64) % 2 ? 32 : 0; x < w + 32; x += 64) {
+        ctx.beginPath()
+        ctx.moveTo(x, y + 8); ctx.lineTo(x + 14, y + 32); ctx.lineTo(x, y + 56); ctx.lineTo(x - 14, y + 32)
+        ctx.closePath(); ctx.fill()
+        ctx.beginPath(); ctx.arc(x, y + 32, 5, 0, Math.PI * 2); ctx.fillStyle = '#e6cf8f'; ctx.fill(); ctx.fillStyle = '#c9a45e'
+      }
+    }
+  }, { repeat: true })
+}
+
+// 총독부 중앙홀 바닥: 나침반 별 무늬 대리석 (가운데 원 + 8방 별 + 테두리 띠)
+export function getCompassFloorTexture() {
+  return canvasTexture('compassFloor', 1024, 1024, (ctx, w, h) => {
+    ctx.fillStyle = '#cfc8ba'
+    ctx.fillRect(0, 0, w, h)
+    const c = w / 2
+    // 테두리 띠
+    ctx.strokeStyle = '#5b5348'
+    ctx.lineWidth = 26
+    ctx.strokeRect(40, 40, w - 80, h - 80)
+    ctx.fillStyle = '#8f8576'
+    for (let i = 0; i < 12; i += 1) {
+      ctx.fillRect(80 + i * 72, 90, 40, 40)
+      ctx.fillRect(80 + i * 72, h - 130, 40, 40)
+    }
+    // 8방 별
+    const star = (r1, r2, n, rot, color) => {
+      ctx.beginPath()
+      for (let i = 0; i < n * 2; i += 1) {
+        const r = i % 2 ? r2 : r1
+        const a = rot + (i * Math.PI) / n
+        ctx.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r)
+      }
+      ctx.closePath()
+      ctx.fillStyle = color
+      ctx.fill()
+    }
+    star(440, 120, 4, -Math.PI / 2, '#e7e1d4')
+    star(330, 110, 4, -Math.PI / 4, '#a89c88')
+    // 가운데 원 문양
+    for (const [r, col] of [[150, '#3e3a35'], [120, '#c9b48a'], [92, '#2f4a5a'], [60, '#d8cfbd'], [24, '#8f2a22']]) {
+      ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill()
+    }
+    ctx.strokeStyle = '#d8cfbd'
+    ctx.lineWidth = 5
+    for (let i = 0; i < 16; i += 1) {
+      const a = (i / 16) * Math.PI * 2
+      ctx.beginPath(); ctx.moveTo(c + Math.cos(a) * 62, c + Math.sin(a) * 62); ctx.lineTo(c + Math.cos(a) * 118, c + Math.sin(a) * 118); ctx.stroke()
+    }
+  })
+}
+
+// 로비 바닥: 대각선 체크 대리석 (밝은 회색 / 어두운 회색). 한 장 = 2칸 × 2칸
+export function getCheckerMarbleTexture() {
+  return canvasTexture('checkerMarble', 256, 256, (ctx, w, h) => {
+    const rnd = seeded(7)
+    for (let y = 0; y < 2; y += 1) {
+      for (let x = 0; x < 2; x += 1) {
+        ctx.fillStyle = (x + y) % 2 ? '#4a4640' : '#cdc7bc'
+        ctx.fillRect(x * 128, y * 128, 128, 128)
+        ctx.strokeStyle = (x + y) % 2 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'
+        ctx.lineWidth = 2
+        for (let k = 0; k < 4; k += 1) {
+          ctx.beginPath()
+          ctx.moveTo(x * 128 + rnd() * 128, y * 128)
+          ctx.bezierCurveTo(x * 128 + rnd() * 128, y * 128 + 40, x * 128 + rnd() * 128, y * 128 + 90, x * 128 + rnd() * 128, y * 128 + 128)
+          ctx.stroke()
+        }
+      }
+    }
+  }, { repeat: true })
+}
+
+// 벽 대리석 판 (밝은 베이지에 결 무늬). 한 장 = 1.2m 판
+export function getMarbleWallTexture() {
+  return canvasTexture('marbleWall', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#d9d1c4'
+    ctx.fillRect(0, 0, w, h)
+    const rnd = seeded(11)
+    ctx.strokeStyle = 'rgba(120,108,92,0.35)'
+    for (let i = 0; i < 26; i += 1) {
+      ctx.lineWidth = 1 + rnd() * 2
+      const y = rnd() * h
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.bezierCurveTo(w * 0.3, y + rnd() * 30 - 15, w * 0.7, y + rnd() * 30 - 15, w, y + rnd() * 20 - 10); ctx.stroke()
+    }
+    ctx.strokeStyle = 'rgba(80,70,60,0.5)'
+    ctx.lineWidth = 3
+    ctx.strokeRect(0, 0, w, h)
+  }, { repeat: true })
+}
+
+// 벽 그림 (가상의 풍경화: 붉은 산 + 꽃 핀 나무) / 벽화 (가상의 하늘·구름·사람 실루엣)
+export function getLandscapePaintingTexture(kind = 'mountain') {
+  return canvasTexture(`painting:${kind}`, 512, 320, (ctx, w, h) => {
+    const rnd = seeded(kind.length * 13)
+    if (kind === 'mural') {
+      const g = ctx.createLinearGradient(0, 0, 0, h)
+      g.addColorStop(0, '#d9cdb2'); g.addColorStop(1, '#a89878')
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'
+      for (let i = 0; i < 6; i += 1) { ctx.beginPath(); ctx.ellipse(rnd() * w, rnd() * h * 0.5, 60 + rnd() * 40, 20, 0, 0, Math.PI * 2); ctx.fill() }
+      ctx.fillStyle = 'rgba(70,58,44,0.6)'
+      for (let i = 0; i < 5; i += 1) { const x = 80 + i * 90; ctx.fillRect(x, h * 0.55, 14, h * 0.35); ctx.beginPath(); ctx.arc(x + 7, h * 0.52, 12, 0, Math.PI * 2); ctx.fill() }
+      return
+    }
+    const g = ctx.createLinearGradient(0, 0, 0, h)
+    g.addColorStop(0, '#3a2a35'); g.addColorStop(1, '#6a4030')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#7a4a2e'
+    ctx.beginPath(); ctx.moveTo(0, h * 0.6)
+    for (let x = 0; x <= w; x += 32) ctx.lineTo(x, h * (0.28 + rnd() * 0.25))
+    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill()
+    ctx.fillStyle = '#4e3a2a'; ctx.fillRect(0, h * 0.78, w, h * 0.22)
+    ctx.fillStyle = '#3a2a20'; ctx.fillRect(w * 0.42, h * 0.58, 10, h * 0.25)
+    ctx.fillStyle = '#e9c4cf'
+    for (let i = 0; i < 70; i += 1) { ctx.beginPath(); ctx.arc(w * 0.43 + (rnd() - 0.5) * 120, h * 0.5 + (rnd() - 0.5) * 80, 6 + rnd() * 8, 0, Math.PI * 2); ctx.fill() }
+    ctx.strokeStyle = '#b08a3a'; ctx.lineWidth = 14; ctx.strokeRect(7, 7, w - 14, h - 14)
+  })
+}
+
+// 격자 유리 (사무실 반달 창 · 문 유리)
+export function getLatticeGlassTexture() {
+  return canvasTexture('latticeGlass', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = 'rgba(220,228,232,0.9)'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#f7f7f4'
+    ctx.lineWidth = 5
+    for (let i = 0; i <= 8; i += 1) {
+      ctx.beginPath(); ctx.moveTo((i * w) / 8, 0); ctx.lineTo((i * w) / 8, h); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(0, (i * h) / 8); ctx.lineTo(w, (i * h) / 8); ctx.stroke()
+    }
+    ctx.strokeStyle = '#2a211b'; ctx.lineWidth = 12; ctx.strokeRect(0, 0, w, h)
+  })
+}

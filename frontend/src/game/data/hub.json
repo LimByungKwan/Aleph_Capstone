@@ -1,5 +1,5 @@
 {
-  "ground": {"size": [260,440], "center": [0,-90], "color": "#648a49"},
+  "ground": {"size": [260,560], "center": [0,-30], "color": "#648a49"},
   "playerStart": [0,14],
   "playerStartYawDeg": 0,
 

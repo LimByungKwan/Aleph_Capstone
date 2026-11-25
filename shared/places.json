@@ -84,6 +84,42 @@
     "model": null
   },
   {
+    "id": "spot_hj_geunjeongjeon",
+    "type": "spot",
+    "zone": "HJ",
+    "name": "근정전 앞마당",
+    "work": "드라마 「왕실의 우산」",
+    "description": "품계석이 늘어선 근정전 앞마당. 왕비가 큰 우산을 받쳐 들고 왕자들을 지키러 달려 나오던 장면의 촬영지.",
+    "tags": ["드라마", "사극", "궁궐"],
+    "position": [-5.5, 0, 73],
+    "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "spot_hj_gyeonghoeru",
+    "type": "spot",
+    "zone": "HJ",
+    "name": "경회루 누각",
+    "work": "드라마 「홍천의 화공」",
+    "description": "연못 위 돌기둥 누각에서, 궁중 화공이 등불 아래 어진을 그리던 장면의 촬영지.",
+    "tags": ["드라마", "사극", "연못"],
+    "position": [-17.4, 0, 101],
+    "radius": 2.5,
+    "model": null
+  },
+  {
+    "id": "spot_hj_hyangwonjeong",
+    "type": "spot",
+    "zone": "HJ",
+    "name": "향원정 달밤 다리",
+    "work": "드라마 「동궁의 봄」",
+    "description": "연못 한가운데 정자로 이어진 붉은 다리 앞. 세자와 궁녀가 달빛 아래 처음 마주친 장면의 촬영지.",
+    "tags": ["드라마", "사극", "로맨스"],
+    "position": [12, 0, 131.8],
+    "radius": 2.5,
+    "model": null
+  },
+  {
     "id": "cafe_soran",
     "type": "cafe",
     "zone": "BK",
