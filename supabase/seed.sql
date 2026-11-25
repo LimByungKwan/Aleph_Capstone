@@ -17,7 +17,7 @@ insert into public.places (id, type, zone, name, work) values
   ('spot_jm_stairs', 'spot', 'JM', '명장면 ② 노을 지는 붉은 난간 계단', '애니메이션 「너의 이름은.」'),
   ('spot_jm_shrine', 'spot', 'JM', '명장면 ③ 안개 숲의 갈라진 바위', '애니메이션 「귀멸의 칼날」'),
   ('spot_jm_sakura_river', 'spot', 'JM', '명장면 ④ 벚꽃 날리는 철길 건널목', '애니메이션 「초속 5센티미터」'),
-  ('spot_jm_onsen', 'spot', 'JM', '명장면 ⑤ 붉은 다리 건너 옛 온천 본관', '애니메이션 「센과 치히로의 행방불명」'),
+  ('spot_jm_onsen', 'spot', 'JM', '명장면 ⑤ 온천장으로 가는 붉은 다리', '애니메이션 「센과 치히로의 행방불명」'),
   ('shop_jm_donguri', 'cafe', 'JM', '도토리 찻집 「どんぐり茶屋」', '애니메이션 「이웃집 토토로」'),
   ('shop_jm_kumihimo', 'cafe', 'JM', '매듭끈 가게 「組紐 結び屋」', '애니메이션 「너의 이름은.」'),
   ('shop_jm_fuji', 'cafe', 'JM', '등꽃 찻집 「藤の花茶屋」', '애니메이션 「귀멸의 칼날」'),

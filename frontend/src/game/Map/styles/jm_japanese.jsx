@@ -16,6 +16,7 @@ import { JM_PORTAL_STYLES } from './jm_portal.jsx'
 import { JM_YUTOYA_STYLES } from './jm_yutoya.jsx'
 import { JM_GINZAN_STYLES } from './jm_ginzan.jsx'
 import { JM_TUNNEL_STYLES } from './jm_tunnel.jsx'
+import { JM_SPIRIT_STYLES } from './jm_spirit.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -92,6 +93,7 @@ const JM_STYLES_RAW = {
   ...JM_GINZAN_STYLES,
   // 입구 붉은 터널 건물·두 얼굴 석상·돌 사당 (jm_tunnel.jsx, 11/25)
   ...JM_TUNNEL_STYLES,
+  ...JM_SPIRIT_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)

@@ -12,12 +12,19 @@ import { Box, Cyl, mat } from './kit.jsx'
 
 export const TUNNEL = { pass: 3.6, passH: 4.0, gate: { z0: 3, z1: 9, w: 14, h: 8.2 }, tube: { z0: -3, z1: 3 }, hall: { z0: -9, z1: -3, w: 10, h: 5.2 } }
 
-const RED_PLASTER = mat('#b4483b', { roughness: 0.95 })
+const RED_PLASTER = mat('#c25a50', { roughness: 0.95 })
+const GRIME = mat('#8f4a42', { roughness: 1 })
+const WOOD_D = mat('#4a3324', { roughness: 0.9 })
+const WIN_PALE = mat('#d8d6c4', { emissive: '#fff1c8', emissiveIntensity: 0.25, roughness: 0.6 })
+const PLAQUE = mat('#2b2622', { roughness: 0.7 })
+const PLAQUE_FRAME = mat('#5a4636', { roughness: 0.8 })
+const range = (n) => Array.from({ length: n }, (_, i) => i)
+const G1 = 5 // 아래층 회벽 높이
 const RED_DARK = mat('#8d3328', { roughness: 0.95 })
-const TRIM = mat('#efe3c8', { roughness: 0.9 })
+const MOSS_STONE = mat('#8a9266', { roughness: 1, flat: true })
 const STONE = mat('#8a8378', { roughness: 1, flat: true })
 const STONE_DARK = mat('#5d5850', { roughness: 1, flat: true })
-const ROOF = mat('#3c4a4a', { flat: true, roughness: 0.8, double: true })
+const ROOF = mat('#5e615f', { flat: true, roughness: 0.85, double: true })
 const DARK = mat('#0b0a09', { roughness: 1 })
 const TUBE_WALL = mat('#3a3631', { roughness: 1, double: true })
 const LAMP = mat('#ffe7b0', { emissive: '#ffc46a', emissiveIntensity: 1.4 })
@@ -58,15 +65,15 @@ function vaultGeometry(w, h, len) {
 export function JmTunnelGate() {
   const { pass, passH, gate, tube, hall } = TUNNEL
   const geo = useMemo(() => {
-    const front = archRing(gate.w, gate.h, pass, passH)
-    const back = archRing(gate.w, gate.h, pass, passH)
+    const front = archRing(gate.w, G1, pass, passH)
+    const back = archRing(gate.w, G1, pass, passH)
     const hallBack = archRing(hall.w, hall.h, pass, passH)
     const hallFront = archRing(hall.w, hall.h, pass, passH)
     const vault = vaultGeometry(pass, passH, tube.z1 - tube.z0 + 0.2)
-    const towerRoof = hipRoofGeometry(4.6, 4.6, 2.2, 0.15)
-    const gateRoof = hipRoofGeometry(gate.w + 0.8, gate.z1 - gate.z0 + 0.8, 1.6, 0.2)
+    const midRoof = hipRoofGeometry(gate.w + 1.6, gate.z1 - gate.z0 + 2.4, 0.9, 0.1)
+    const topRoof = hipRoofGeometry(gate.w - 1.4, gate.z1 - gate.z0 + 0.6, 2.2, 0.25)
     const hallRoof = hipRoofGeometry(hall.w + 0.8, hall.z1 - hall.z0 + 0.8, 1.2, 0.15)
-    return { front, back, hallBack, hallFront, vault, towerRoof, gateRoof, hallRoof }
+    return { front, back, hallBack, hallFront, vault, midRoof, topRoof, hallRoof }
   }, [gate.w, gate.h, gate.z0, gate.z1, hall.w, hall.h, hall.z0, hall.z1, pass, passH, tube.z0, tube.z1])
   const gz = (gate.z0 + gate.z1) / 2
   const gd = gate.z1 - gate.z0
@@ -75,60 +82,53 @@ export function JmTunnelGate() {
   const side = (gate.w - pass) / 2
   return (
     <group>
-      {/* ── 붉은 회벽 건물 (앞 아치 + 양쪽 덩어리 + 탑) ── */}
+      {/* ── (11/25 지민이 보낸 사진 참고) 바랜 분홍빛 붉은 회벽 탑 문 ──
+           아래층: 통짜 회벽 + 작은 어두운 아치(터널 입구), 밑동은 때 묻은 띠·이끼
+           위: 나무 발코니(난간·까치발) + 밝은 창 띠 → 회색 기와 처마 → 붉은 세로 살 위층 + 가운데 어두운 현판 → 회색 기와 지붕 */}
       <mesh geometry={geo.front} material={RED_PLASTER} position={[0, 0, gate.z1 - 0.6]} />
       <mesh geometry={geo.back} material={RED_PLASTER} position={[0, 0, gate.z0]} />
       {[-1, 1].map((s) => (
         <group key={s}>
-          <Box p={[s * (pass / 2 + side / 2), gate.h / 2, gz]} s={[side, gate.h, gd - 1.1]} m={RED_PLASTER} />
-          {/* 아래 돌 띠 + 흰 테두리 띠 + 작은 창 */}
-          <Box p={[s * (pass / 2 + side / 2), 0.5, gate.z1 + 0.02]} s={[side, 1, 0.12]} m={STONE} />
-          <Box p={[s * (pass / 2 + side / 2), gate.h - 0.5, gate.z1 + 0.04]} s={[side + 0.1, 0.3, 0.16]} m={TRIM} />
-          <Box p={[s * (pass / 2 + side / 2), 4.8, gate.z1 + 0.04]} s={[side + 0.1, 0.18, 0.12]} m={TRIM} />
-          {[0.3, 0.7].map((t) => (
-            <group key={t} position={[s * (pass / 2 + side * t), 6.4, gate.z1 + 0.05]}>
-              <Box p={[0, 0, 0]} s={[0.9, 1.2, 0.08]} m={TRIM} />
-              <Box p={[0, 0, 0.03]} s={[0.66, 0.96, 0.04]} m={DARK} />
-            </group>
-          ))}
-          {/* 모서리 기둥 */}
-          <Box p={[s * (gate.w / 2 - 0.25), gate.h / 2, gate.z1 - 0.1]} s={[0.55, gate.h, 0.5]} m={RED_DARK} />
-          {/* 담쟁이 */}
-          <Box p={[s * (gate.w / 2 - 0.6), 1.6, gate.z1 + 0.06]} s={[1.6, 3.2, 0.06]} m={MOSS} />
+          <Box p={[s * (pass / 2 + side / 2), G1 / 2, gz]} s={[side, G1, gd - 1.1]} m={RED_PLASTER} />
+          <Box p={[s * (pass / 2 + side / 2), 0.6, gate.z1 + 0.02]} s={[side, 1.2, 0.08]} m={GRIME} />
+          <Box p={[s * (gate.w / 2 - 0.9 - (s > 0 ? 1.4 : 0)), 1.3 + (s > 0 ? 0.8 : 0), gate.z1 + 0.05]} s={[1.8, 2.6, 0.05]} m={MOSS} />
+          <Box p={[s * (pass / 2 + side * 0.6), G1 - 1.2, gate.z1 + 0.03]} s={[1.4, 0.9, 0.04]} m={GRIME} />
         </group>
       ))}
-      {/* 아치 둘레 돌 + 머릿돌 */}
-      <Box p={[0, passH + 0.25, gate.z1 + 0.05]} s={[pass + 0.9, 0.5, 0.2]} m={STONE} />
-      <Box p={[0, passH + 0.45, gate.z1 + 0.1]} s={[0.6, 0.8, 0.22]} m={STONE_DARK} />
-      {[-1, 1].map((s) => (
-        <Box key={s} p={[s * (pass / 2 + 0.25), (passH - 1.8) / 2, gate.z1 + 0.05]} s={[0.5, passH - 1.8, 0.2]} m={STONE} />
+      <Box p={[0, passH + 0.12, gate.z1 + 0.02]} s={[pass + 0.4, 0.24, 0.1]} m={GRIME} />
+      {/* 아치 안이 사진처럼 어둡게 보이도록 굴 속 어둠 막 (걷는 판정 없음) */}
+      {[gate.z1 - 0.8, tube.z1 - 0.5].map((z) => (
+        <mesh key={z} position={[0, passH / 2, z]}>
+          <planeGeometry args={[pass, passH]} />
+          <meshBasicMaterial color="#050403" transparent opacity={0.55} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
       ))}
-      <mesh geometry={geo.gateRoof} material={ROOF} position={[0, gate.h, gz]} />
-      {/* 탑: 둥근 창(불빛) + 위 작은 지붕 + 꼭대기 장식 */}
-      <group position={[0, gate.h, gz]}>
-        <Box p={[0, 2.6, 0]} s={[3.8, 5.2, 3.8]} m={RED_PLASTER} />
-        <Box p={[0, 5.15, 0]} s={[4.1, 0.25, 4.1]} m={TRIM} />
-        <Box p={[0, 0.3, 0]} s={[4.1, 0.3, 4.1]} m={TRIM} />
-        {[-1, 1].map((s) => (
-          <group key={s}>
-            <mesh position={[0, 3.3, s * 1.92]} rotation={[0, s < 0 ? Math.PI : 0, 0]}>
-              <circleGeometry args={[0.95, 28]} />
-              <meshStandardMaterial color="#f6e7c4" emissive="#ffcf7a" emissiveIntensity={0.8} />
-            </mesh>
-            <mesh position={[0, 3.3, s * 1.915]} rotation={[0, s < 0 ? Math.PI : 0, 0]}>
-              <ringGeometry args={[0.95, 1.15, 28]} />
-              <meshStandardMaterial color="#efe3c8" side={THREE.DoubleSide} />
-            </mesh>
-            {[0, Math.PI / 2].map((a) => (
-              <Box key={a} p={[0, 3.3, s * 1.94]} s={[a ? 0.06 : 1.7, a ? 1.7 : 0.06, 0.02]} r={[0, 0, 0]} m={DARK} />
-            ))}
-            <Box p={[s * 1.92, 3.3, 0]} s={[0.06, 1.2, 0.8]} m={DARK} />
-          </group>
-        ))}
-        <mesh geometry={geo.towerRoof} material={ROOF} position={[0, 5.2, 0]} />
-        <Cyl p={[0, 7.7, 0]} rad={0.06} h={0.9} m={STONE_DARK} />
-        <Cyl p={[0, 8.2, 0]} rad={0.16} h={0.16} c="#c9a54a" />
-      </group>
+      {/* 발코니 바닥판 + 까치발 + 난간 */}
+      <Box p={[0, G1 + 0.17, gz + 0.5]} s={[gate.w + 0.6, 0.35, gd + 1.2]} m={WOOD_D} />
+      {range(8).map((i) => (
+        <Box key={`k${i}`} p={[-gate.w / 2 + 0.6 + (i * (gate.w - 1.2)) / 7, G1 - 0.25, gate.z1 + 0.6]} s={[0.22, 0.5, 0.9]} m={WOOD_D} />
+      ))}
+      <Box p={[0, G1 + 1.25, gate.z1 + 1.0]} s={[gate.w + 0.4, 0.1, 0.1]} m={WOOD_D} />
+      <Box p={[0, G1 + 0.75, gate.z1 + 1.0]} s={[gate.w + 0.4, 0.06, 0.06]} m={WOOD_D} />
+      {range(19).map((i) => (
+        <Box key={`r${i}`} p={[-gate.w / 2 - 0.2 + (i * (gate.w + 0.4)) / 18, G1 + 0.8, gate.z1 + 1.0]} s={[0.08, 0.9, 0.08]} m={WOOD_D} />
+      ))}
+      {/* 밝은 창 띠 (살창) */}
+      <Box p={[0, G1 + 1.15, gz]} s={[gate.w - 1, 1.6, gd - 0.6]} m={WIN_PALE} />
+      {range(14).map((i) => (
+        <Box key={`w${i}`} p={[-gate.w / 2 + 0.5 + (i * (gate.w - 1)) / 13, G1 + 1.15, gate.z1 - 0.28]} s={[0.07, 1.6, 0.04]} m={WOOD_D} />
+      ))}
+      <Box p={[0, G1 + 1.15, gate.z1 - 0.28]} s={[gate.w - 1, 0.06, 0.04]} m={WOOD_D} />
+      <mesh geometry={geo.midRoof} material={ROOF} position={[0, G1 + 1.95, gz]} />
+      {/* 위층: 붉은 세로 살 벽 + 가운데 어두운 현판 */}
+      <Box p={[0, G1 + 3.9, gz]} s={[gate.w - 3, 2.6, gd - 1.6]} m={RED_PLASTER} />
+      {range(16).map((i) => (
+        <Box key={`v${i}`} p={[-(gate.w - 3) / 2 + 0.3 + (i * (gate.w - 3.6)) / 15, G1 + 3.9, gz + (gd - 1.6) / 2 + 0.04]} s={[0.12, 2.3, 0.06]} m={RED_DARK} />
+      ))}
+      <Box p={[0, G1 + 3.95, gz + (gd - 1.6) / 2 + 0.1]} s={[3.6, 1.5, 0.08]} m={PLAQUE_FRAME} />
+      <Box p={[0, G1 + 3.95, gz + (gd - 1.6) / 2 + 0.15]} s={[3.2, 1.15, 0.04]} m={PLAQUE} />
+      <Box p={[0, G1 + 2.65, gz]} s={[gate.w - 2.6, 0.2, gd - 1.2]} m={WOOD_D} />
+      <mesh geometry={geo.topRoof} material={ROOF} position={[0, G1 + 5.2, gz]} />
       {/* ── 어두운 터널 (반원 굴, 바닥 돌, 희미한 등) + 위 흙 언덕 ── */}
       <mesh geometry={geo.vault} material={TUBE_WALL} position={[0, 0, (tube.z0 + tube.z1) / 2]} />
       {[-1, 1].map((s) => (
@@ -192,7 +192,7 @@ export function JmTwoFaceStatue() {
   return (
     <group>
       <Box p={[0, 0.2, 0]} s={[0.9, 0.4, 0.9]} m={STONE_DARK} />
-      <mesh position={[0, 1.05, 0]} scale={[0.42, 0.75, 0.34]} material={STONE}>
+      <mesh position={[0, 1.05, 0]} scale={[0.42, 0.75, 0.34]} material={MOSS_STONE}>
         <sphereGeometry args={[1, 14, 10]} />
       </mesh>
       {[-1, 1].map((s) => (

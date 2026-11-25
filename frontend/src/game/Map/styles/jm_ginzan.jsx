@@ -55,7 +55,7 @@ function verticalSignTexture(text, bg, fg, aspect) {
 }
 
 // 세로 간판: 판이 앞면과 직각으로 튀어나와 길을 따라 걸으면 읽힘 (양면)
-function VerticalSign({ text, p, h = 3.2, w = 0.62, bg = '#f4ead2', fg = '#2a1a10', glow = 0.75 }) {
+export function VerticalSign({ text, p, h = 3.2, w = 0.62, bg = '#f4ead2', fg = '#2a1a10', glow = 0.75 }) {
   const map = verticalSignTexture(text, bg, fg, w / h)
   return (
     <group position={p}>
