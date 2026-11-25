@@ -1143,11 +1143,24 @@ export function JmFloor({ item }) {
 
 // ── 보이지 않는 벽(jmCollider): 높고 넓은 벽은 카메라 막이(camera-blocker)로도 등록 ──
 // 공용 FollowCamera는 이름이 camera-blocker인 물체만 피함. 애니 구역은 건물(buildings)이 없어 카메라가 벽을 뚫던 문제 (11/25)
+//   공용 카메라는 플레이 시작 때 한 번만 camera-blocker를 모으므로, 늦게 그려진 막이는 스스로 controls.colliderMeshes에 넣고 빠짐
 export function JmCollider({ item }) {
   const [w, h, d] = item.size
   const block = item.camera ?? (h >= 1.8 && Math.max(w, d) >= 1.5 && !/_rail|_pier|_pillar|_post/.test(item.id))
+  const ref = useRef(null)
+  const controls = useThree((s) => s.controls)
+  useEffect(() => {
+    const mesh = ref.current
+    const list = controls?.colliderMeshes
+    if (!block || !mesh || !Array.isArray(list)) return undefined
+    if (!list.includes(mesh)) list.push(mesh)
+    return () => {
+      const i = list.indexOf(mesh)
+      if (i >= 0) list.splice(i, 1)
+    }
+  }, [controls, block])
   if (!block) return null
-  return <mesh name="camera-blocker" visible={false} geometry={GEO.box} position={[0, h / 2, 0]} scale={[w, h, d]} />
+  return <mesh ref={ref} name="camera-blocker" visible={false} geometry={GEO.box} position={[0, h / 2, 0]} scale={[w, h, d]} />
 }
 
 export const JM_SPIRIT_STYLES = {
