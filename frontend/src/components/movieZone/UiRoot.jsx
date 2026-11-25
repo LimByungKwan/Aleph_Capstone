@@ -11,6 +11,8 @@ import CinemaOverlay from './CinemaOverlay.jsx'
 import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
 import PalaceSeatPrompt from './PalaceSeatPrompt.jsx'
+import RickshawMenu from './RickshawMenu.jsx'
+import CarDriveHint from './CarDriveHint.jsx'
 import PalaceTour from './PalaceTour.jsx'
 import SpecialAccess from './SpecialAccess.jsx'
 import { selectTimePass, timePassCount, useSpecialAccess, useTimePass } from './specialAccessStore.js'
@@ -50,6 +52,8 @@ export default function UiRoot() {
       {!inCinema && <MobileControls />}
       {!inCinema && !specialEra && <Tutorial />}
       <SceneHint />
+      {!inCinema && <RickshawMenu />}
+      {!inCinema && <CarDriveHint />}
       {!inCinema && <PalaceSeatPrompt />}
       <PalaceTour enabled={!inCinema && !modal && !specialPanel} />
       <SpecialAccess enabled={!inCinema && !modal} />
