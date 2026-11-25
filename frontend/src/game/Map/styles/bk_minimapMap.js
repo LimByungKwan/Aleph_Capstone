@@ -302,18 +302,33 @@ function boundsAt([x, z], [w, d]) {
   return [x - w / 2, z - d / 2, x + w / 2, z + d / 2]
 }
 
+function mergeBounds(rects) {
+  return [
+    Math.min(...rects.map(([x]) => x)), Math.min(...rects.map(([, z]) => z)),
+    Math.max(...rects.map(([, , x]) => x)), Math.max(...rects.map(([, , , z]) => z)),
+  ]
+}
+
+const southBounds = southGroundExtension && boundsAt(
+  southGroundExtension.position, [southGroundExtension.size[0], southGroundExtension.size[2]],
+)
+export function minimapZoneBounds(zone) {
+  const bounds = boundsAt(zone.origin, zone.size)
+  if (zone.zoneId === 'HJ' && southBounds) return mergeBounds([bounds, southBounds])
+  if (zone.zoneId === 'SG') return mergeBounds([bounds, beachBounds])
+  return bounds
+}
+
 let baseMap
 export function getMinimapBase() {
   if (baseMap) return baseMap
   const ground = boundsAt(layout.ground.center ?? [0, 0], layout.ground.size)
   const playable = [...zones.map(({ origin, size }) => boundsAt(origin, size)), beachBounds]
-  if (southGroundExtension) {
-    const [w, , d] = southGroundExtension.size
-    playable.push(boundsAt(southGroundExtension.position, [w, d]))
-  }
+  if (southBounds) playable.push(southBounds)
+  const playableBounds = mergeBounds(playable)
   // 남북으로 긴 지형 전체를 내려다보는 대신 실제 테마 구역과 해변을 원 안에 맞춥니다.
-  const centerX = (Math.min(...playable.map(([x]) => x)) + Math.max(...playable.map(([, , x]) => x))) / 2
-  const centerZ = (Math.min(...playable.map(([, z]) => z)) + Math.max(...playable.map(([, , , z]) => z))) / 2
+  const centerX = (playableBounds[0] + playableBounds[2]) / 2
+  const centerZ = (playableBounds[1] + playableBounds[3]) / 2
   const allRadius = Math.max(...playable.map(([left, north, right, south]) =>
     Math.hypot(Math.max(centerX - left, right - centerX), Math.max(centerZ - north, south - centerZ)),
   ))
@@ -342,6 +357,6 @@ export function getMinimapBase() {
   drawWalkways(ctx)
   drawLandmarks(ctx)
 
-  baseMap = { canvas, minX, minZ, worldW, worldH, centerX, centerZ, allRadius }
+  baseMap = { canvas, minX, minZ, worldW, worldH, centerX, centerZ, allRadius, playableBounds }
   return baseMap
 }
