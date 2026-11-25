@@ -13,6 +13,11 @@ import { JM_BENCH_STYLES } from './jm_bench.jsx'
 import { JM_KYOTO_STYLES } from './jm_kyoto.jsx'
 import { JM_STAIR_STYLES } from './jm_stairs.jsx'
 import { JM_PORTAL_STYLES } from './jm_portal.jsx'
+import { JM_YUTOYA_STYLES } from './jm_yutoya.jsx'
+import { JM_GINZAN_STYLES } from './jm_ginzan.jsx'
+import { JM_TUNNEL_STYLES } from './jm_tunnel.jsx'
+import { JM_SPIRIT_STYLES } from './jm_spirit.jsx'
+import { JM_SCENE_STYLES } from './jm_scenes.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -40,7 +45,10 @@ const NO_MERGE = new Set([
   'jmBridgeDress', // 흔들다리(매 프레임 움직임)
   'jmWaterwheel', // 도는 바퀴
   'jmRiver', // 흐르는 물결
-  'jmCollider', // 그리는 것 없음
+  'jmCollider', // 그리는 것 없음 (높은 벽은 카메라 막이만)
+  'jmElevator', // 레버·다이얼 움직임, HUD
+  'jmSeaTrain', // 큰 메시 여러 개
+  'jmGrassTufts', // 이미 인스턴스 한 번에 그림
   'jmZoneLight', // 조명
   'jmGroundCover', // 이미 인스턴스 한 번에 그림
   'jmPathRibbon', // 이미 메시 하나
@@ -83,6 +91,14 @@ const JM_STYLES_RAW = {
   ...JM_STAIR_STYLES,
   // 명장면 공간 입구·공간 (jm_portal.jsx)
   ...JM_PORTAL_STYLES,
+  // 큰 여관 「湯灯屋」 외관·안 (jm_yutoya.jsx)
+  ...JM_YUTOYA_STYLES,
+  // 쌍둥이 가스등·흰 회벽 담·마당 문 (jm_ginzan.jsx, 11/25)
+  ...JM_GINZAN_STYLES,
+  // 입구 붉은 터널 건물·두 얼굴 석상·돌 사당 (jm_tunnel.jsx, 11/25)
+  ...JM_TUNNEL_STYLES,
+  ...JM_SPIRIT_STYLES,
+  ...JM_SCENE_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)

@@ -201,6 +201,14 @@ describe('회원가입 · 로그인', () => {
     assert.ok(calls.some((c) => c.rpc === 'log_access' && c.token === GOOD_TOKEN))
   })
 
+  test('다시 들어올 때 접속 기록: 로그인 없이는 401, 토큰이 있으면 log_access', async () => {
+    assert.equal((await api('POST', '/me/visit')).status, 401)
+    const res = await api('POST', '/me/visit', { token: GOOD_TOKEN })
+    assert.equal(res.status, 200)
+    assert.deepEqual(res.body, { counted: true })
+    assert.ok(calls.some((c) => c.rpc === 'log_access' && c.token === GOOD_TOKEN))
+  })
+
   test('만료된 refresh 토큰은 401', async () => {
     const res = await api('POST', '/auth/refresh', { body: { refreshToken: 'old' } })
     assert.equal(res.status, 401)

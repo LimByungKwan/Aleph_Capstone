@@ -26,6 +26,13 @@ function seedVisits() {
 // 가게별 쿠폰 혜택 (가상 가게, places.json의 가게 id 기준). discount = 티켓 왼쪽에 크게 보이는 짧은 표기
 export const SHOP_OFFERS = {
   shop_hj_snack: { title: '정류장 분식 떡볶이 사이즈 업 쿠폰', discount: 'SIZE UP', perk: '떡볶이 사이즈 업', menu: '비 오는 날 떡볶이', validDays: 30 },
+  // 11/25 애니 구역 명장면 마당 옆 가게 (명장면과 같은 작품)
+  shop_jm_donguri: { title: '도토리 찻집 보리차 한 잔 무료 쿠폰', discount: 'FREE TEA', perk: '보리차 한 잔 무료', menu: '도토리 쿠키와 보리차', validDays: 30 },
+  shop_jm_kumihimo: { title: '매듭끈 가게 만들기 체험 20% 할인권', discount: '20% OFF', perk: '매듭끈 만들기 20% 할인', menu: '손목 매듭끈 만들기', validDays: 30 },
+  shop_jm_fuji: { title: '등꽃 찻집 경단 1+1 쿠폰', discount: '1+1', perk: '등꽃 경단 하나 더', menu: '등꽃 경단과 말차', validDays: 30 },
+  shop_jm_antique: { title: '요괴 과자점 만주 하나 무료 쿠폰', discount: 'FREE', perk: '고양이 만주 하나 무료', menu: '고양이 모양 만주', validDays: 30 },
+  shop_jm_sakura: { title: '이끼 찻집 쑥떡 1+1 쿠폰', discount: '1+1', perk: '쑥떡 하나 더', menu: '쑥떡과 숲 차', validDays: 30 },
+  shop_jm_manju: { title: '온천 찐빵 가게 찐빵 하나 무료 쿠폰', discount: 'FREE', perk: '팥 찐빵 하나 무료', menu: '온천 김에 찐 팥 찐빵', validDays: 30 },
 }
 
 // 쿠폰함이 처음부터 비어 보이지 않게 넣는 샘플 쿠폰 (가상 가게 — places.json에 없는 가게라 사용 처리는 안 됨)

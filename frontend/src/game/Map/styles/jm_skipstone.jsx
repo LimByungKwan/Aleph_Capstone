@@ -27,6 +27,13 @@ const MIN_SPEED = 2.5
 const MAX_FIRST_SPEED = 11.5 // 너무 세게 던지면 첫 번째에 물에 박힘
 const NEAR_R = 2.4
 const RIPPLES = 10
+// (11/25 밤 지민 요청: 텍스트만 뜨고 움직임이 안 보임) 보이는 연출
+//   - 힘 모으는 동안 캐릭터 오른손 옆에 돌이 보이고 힘만큼 뒤로 당겨짐 (던지기 준비 자세 대신)
+//   - 날아가는 돌은 크게(지름 약 0.5m로 보이게) + 흰 꼬리, 튈 때마다 물방울·물결·횟수 숫자
+const STONE_VIS = 2.6
+const TRAIL_N = 14
+const SPRAY_N = 60
+const POP_N = 8
 
 const speedOf = (power) => 3 + 12 * power // 앞으로 나가는 속도 (m/s)
 
@@ -93,7 +100,28 @@ export function JmSkipSpot({ item }) {
   const phase = useRef(0)
   const stone = useRef(null)
   const env = useRef(null)
-  const tmp = useMemo(() => ({ a: new THREE.Vector3(), me: new THREE.Vector3() }), [])
+  const tmp = useMemo(() => ({ a: new THREE.Vector3(), me: new THREE.Vector3(), q: new THREE.Quaternion(), m: new THREE.Matrix4(), s: new THREE.Vector3(), p: new THREE.Vector3() }), [])
+  const handRef = useRef(null)
+  const trailRef = useRef(null)
+  const sprayRef = useRef(null)
+  const popRefs = useRef([])
+  const trail = useRef(Array.from({ length: TRAIL_N }, () => new THREE.Vector3(0, -99, 0)))
+  const spray = useRef(Array.from({ length: SPRAY_N }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0 })))
+  const sprayNext = useRef(0)
+  const pops = useRef(Array.from({ length: POP_N }, () => ({ t: 99, x: 0, z: 0, n: 0 })))
+  const popNext = useRef(0)
+  const popTex = useMemo(() => Array.from({ length: 10 }, (_, n) => canvasTexture(`skippop:${n}`, 128, 128, (ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h)
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'
+    ctx.strokeStyle = 'rgba(30,60,90,0.9)'
+    ctx.lineWidth = 10
+    ctx.font = `900 84px ${KR_FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.strokeText(String(n), w / 2, h / 2 + 4)
+    ctx.fillText(String(n), w / 2, h / 2 + 4)
+  })), [])
+  const popMats = useMemo(() => Array.from({ length: POP_N }, () => new THREE.SpriteMaterial({ transparent: true, depthWrite: false, depthTest: false })), [])
 
   // 월드 좌표 계산 (구역 좌표 + 구역 origin). anchor = item.position의 월드 위치
   function getEnv() {
@@ -169,6 +197,24 @@ export function JmSkipSpot({ item }) {
     controls.rotateTo(Math.atan2(-e.dir.x, -e.dir.z), 1.35, true)
   }
 
+  // 튈 때 물방울 (작게, 위로 살짝 튀었다 떨어짐)
+  function addSpray(x, z, count, up) {
+    for (let k = 0; k < count; k++) {
+      const d = spray.current[sprayNext.current]
+      sprayNext.current = (sprayNext.current + 1) % SPRAY_N
+      d.p.set(x, env.current.waterY, z)
+      d.v.set((Math.random() - 0.5) * 1.4, up * (0.6 + Math.random() * 0.6), (Math.random() - 0.5) * 1.4)
+      d.life = 0.6
+    }
+  }
+  function addPop(x, z, n) {
+    const p = pops.current[popNext.current]
+    popNext.current = (popNext.current + 1) % POP_N
+    p.t = 0
+    p.x = x
+    p.z = z
+    p.n = Math.min(9, n)
+  }
   function addRipple(x, z, big) {
     const r = ripples.current[nextRipple.current]
     nextRipple.current = (nextRipple.current + 1) % RIPPLES
@@ -220,8 +266,11 @@ export function JmSkipSpot({ item }) {
         if (r === 'bounce') {
           s.bounces++
           addRipple(s.x, s.z, false)
+          addSpray(s.x, s.z, 6, 1.6)
+          addPop(s.x, s.z, s.bounces)
         } else if (r === 'sink') {
           addRipple(s.x, s.z, true)
+          addSpray(s.x, s.z, 12, 2.2)
           finish(s.bounces)
         } else if (r === 'land' || s.t > 8) {
           finish(s.bounces)
@@ -231,8 +280,68 @@ export function JmSkipSpot({ item }) {
         stoneRef.current.visible = true
         stoneRef.current.position.set(s.x, s.y, s.z)
         stoneRef.current.rotation.y += delta * 20
+        // 꼬리: 지난 위치들을 한 칸씩 밀어 담음
+        for (let i = TRAIL_N - 1; i > 0; i--) trail.current[i].copy(trail.current[i - 1])
+        trail.current[0].set(s.x, s.y, s.z)
       }
     }
+    if (!stone.current) for (const v of trail.current) v.y = -99
+    if (trailRef.current) {
+      trail.current.forEach((v, i) => {
+        const sc = 0.09 * (1 - i / TRAIL_N)
+        tmp.s.set(sc, sc, sc)
+        tmp.m.compose(v, tmp.q.identity(), tmp.s)
+        trailRef.current.setMatrixAt(i, tmp.m)
+      })
+      trailRef.current.instanceMatrix.needsUpdate = true
+    }
+    // 손에 든 돌: 던지기 자세일 때 캐릭터 오른쪽 허리 높이, 힘 모으면 뒤로 당겨짐
+    if (handRef.current) {
+      const show = sk.active && !stone.current && player.current?.parent
+      handRef.current.visible = Boolean(show)
+      if (show) {
+        const back = sk.charging ? sk.power : 0
+        const rx = e.dir.z
+        const rz = -e.dir.x // 던지는 방향의 오른쪽
+        tmp.p.set(tmp.me.x + rx * 0.45 - e.dir.x * (0.15 + back * 0.6), tmp.me.y + 0.1 + back * 0.25, tmp.me.z + rz * 0.45 - e.dir.z * (0.15 + back * 0.6))
+        handRef.current.position.copy(tmp.p)
+        handRef.current.rotation.y += delta * (sk.charging ? 4 : 0.5)
+      }
+    }
+    // 물방울
+    if (sprayRef.current) {
+      spray.current.forEach((d, i) => {
+        if (d.life > 0) {
+          d.life -= delta
+          d.v.y -= G * Math.min(delta, 0.05)
+          d.p.addScaledVector(d.v, Math.min(delta, 0.05))
+          if (d.p.y < e.waterY) d.life = 0
+        }
+        const sc = d.life > 0 ? 0.035 : 0
+        tmp.s.set(sc, sc, sc)
+        tmp.m.compose(d.p, tmp.q.identity(), tmp.s)
+        sprayRef.current.setMatrixAt(i, tmp.m)
+      })
+      sprayRef.current.instanceMatrix.needsUpdate = true
+    }
+    // 튄 횟수 숫자: 튄 자리 위로 떠오르며 사라짐
+    pops.current.forEach((p, i) => {
+      const sp = popRefs.current[i]
+      if (!sp) return
+      if (p.t > 1.1) {
+        sp.visible = false
+        return
+      }
+      p.t += delta
+      sp.visible = true
+      if (popMats[i].map !== popTex[p.n]) {
+        popMats[i].map = popTex[p.n]
+        popMats[i].needsUpdate = true
+      }
+      sp.position.set(p.x, e.waterY + 0.6 + p.t * 0.8, p.z)
+      sp.scale.setScalar(0.7)
+      popMats[i].opacity = 1 - p.t / 1.1
+    })
 
     // 물보라 동그라미: 1초 동안 커지며 사라짐
     ripples.current.forEach((r, i) => {
@@ -258,10 +367,25 @@ export function JmSkipSpot({ item }) {
       <SkipMarker />
       {createPortal(
         <>
-          <mesh ref={stoneRef} visible={false} scale={[1, 0.35, 1]}>
+          <mesh ref={stoneRef} visible={false} scale={[STONE_VIS, STONE_VIS * 0.4, STONE_VIS]}>
             <sphereGeometry args={[0.09, 12, 8]} />
-            <meshStandardMaterial color="#8d8a84" />
+            <meshStandardMaterial color="#6f6b64" />
           </mesh>
+          <mesh ref={handRef} visible={false} scale={[1.6, 0.6, 1.6]}>
+            <sphereGeometry args={[0.09, 12, 8]} />
+            <meshStandardMaterial color="#6f6b64" />
+          </mesh>
+          <instancedMesh ref={trailRef} args={[null, null, TRAIL_N]} frustumCulled={false}>
+            <sphereGeometry args={[1, 6, 4]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.6} depthWrite={false} />
+          </instancedMesh>
+          <instancedMesh ref={sprayRef} args={[null, null, SPRAY_N]} frustumCulled={false}>
+            <sphereGeometry args={[1, 6, 4]} />
+            <meshBasicMaterial color="#eef8f8" transparent opacity={0.85} />
+          </instancedMesh>
+          {popMats.map((m, i) => (
+            <sprite key={`p${i}`} ref={(el) => (popRefs.current[i] = el)} material={m} visible={false} />
+          ))}
           {Array.from({ length: RIPPLES }, (_, i) => (
             <mesh key={i} ref={(m) => (rippleRefs.current[i] = m)} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
               <ringGeometry args={[0.8, 1, 24]} />

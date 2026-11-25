@@ -358,8 +358,8 @@ export async function getShopPromo({ shopId }) {
 
 /** 게임에 들어올 때 부름. 같은 사람은 하루 1번만 기록 — 응답: { counted: boolean } */
 export async function logVisit({ userId }) {
-  // shortcut: 서버에 접속 기록 라우트가 아직 없어 서버 모드는 건너뜀, /admin/stats 작업 때 서버 기록 추가
-  if (USE_SERVER) return { counted: false }
+  // 서버 모드: POST /me/visit (저장된 토큰으로 다시 들어와도 기록). 같은 날 여러 번은 서버 집계가 한 번으로 셈
+  if (USE_SERVER) return server.logVisit()
   const db = readDb()
   const day = dayKey()
   if (db.visits.some((v) => v.userId === userId && v.day === day)) return { counted: false }

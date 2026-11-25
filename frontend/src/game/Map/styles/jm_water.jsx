@@ -1,0 +1,308 @@
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
+
+// 애니 구역(JM) 물 — 담당: 지민
+// 11/25: 물(수로·개울·호수·강)을 맵 바다(혜진 구역 hjSea, hj/HjHarbor.jsx)와 똑같이 보이게 (지민 요청: "지금은 리얼하지 않아")
+//   hjSea 방식 그대로: 깊은 물색 불투명 판(#1f4f7a) 위에 반투명 물결 면(#3d84b8, 불투명도 0.88, 거칠기 0.25, 금속성 0.15)
+//   물결 = 꼭짓점 높이를 sin·cos로 (진폭 0.024, 주기·속도도 hjSea와 같음), 갱신은 초당 30번까지
+//   혜진 구역 파일은 고치지 않고 같은 값을 여기서 씀. 예전 흐름 줄무늬 텍스처·가장자리 거품 띠는 뺌 (바다엔 없음)
+//   애니 구역은 물이 작아서 카메라에서 먼 물은 물결 갱신을 쉼
+
+// 강·호수 띠는 점 방향에 따라 앞뒷면이 뒤집힐 수 있어서 양면으로 (보이는 모습은 hjSea와 같음)
+export const SEA_DEEP = new THREE.MeshStandardMaterial({ color: '#1f4f7a', side: THREE.DoubleSide })
+export const SEA_SURFACE = new THREE.MeshStandardMaterial({ color: '#3d84b8', transparent: true, opacity: 0.88, roughness: 0.25, metalness: 0.15, side: THREE.DoubleSide })
+// 겨울(호수·강이 얼었을 때)은 예전처럼 얼음 색 평면
+export const ICE = new THREE.MeshStandardMaterial({ color: '#bcd6ea', metalness: 0.3, roughness: 0.15, side: THREE.DoubleSide })
+
+const WAVE_AMP = 0.024
+const tmp = new THREE.Vector3()
+
+// hjSea와 같은 물결. geometry는 위를 보는 면(꼭짓점 x·z가 물 위치), base는 처음 꼭짓점 복사본
+// far: 카메라와 물 가운데 거리가 이보다 멀면 갱신을 쉼
+export function useSeaWave(ref, geometry, far = 80, still = false) {
+  const base = useMemo(() => Float32Array.from(geometry.attributes.position.array), [geometry])
+  const center = useMemo(() => {
+    geometry.computeBoundingSphere()
+    return geometry.boundingSphere
+  }, [geometry])
+  const lastTick = useRef(-1)
+  useFrame(({ clock, camera }) => {
+    const mesh = ref.current
+    if (!mesh || still) return
+    tmp.copy(center.center)
+    mesh.localToWorld(tmp)
+    if (tmp.distanceToSquared(camera.position) > (far + center.radius) ** 2) return
+    const t = clock.elapsedTime
+    const tick = Math.floor(t * 30)
+    if (lastTick.current === tick) return
+    lastTick.current = tick
+    const pos = mesh.geometry.attributes.position
+    for (let i = 0; i < pos.count; i += 1) {
+      const x = base[i * 3]
+      const z = base[i * 3 + 2]
+      pos.setY(i, base[i * 3 + 1] + Math.sin(x * 0.45 + t * 1.2) * WAVE_AMP + Math.cos(z * 0.38 + t * 0.9) * WAVE_AMP)
+    }
+    pos.needsUpdate = true
+  })
+}
+
+// 물결 면 + 깊은 물 판 한 쌍. surface는 잘게 나눈 위를 보는 면, deep은 같은 모양(꼭짓점 적어도 됨)
+// gap: 깊은 판 위로 물결 면을 띄우는 높이 (hjSea는 0.1)
+export function SeaWater({ surface, deep, y = 0, gap = 0.06, far }) {
+  const ref = useRef(null)
+  useSeaWave(ref, surface, far)
+  return (
+    <group position={[0, y, 0]}>
+      <mesh geometry={deep} material={SEA_DEEP} />
+      <mesh ref={ref} geometry={surface} material={SEA_SURFACE} position={[0, gap, 0]} userData={{ noMerge: true }} />
+    </group>
+  )
+}
+
+// 직사각형 물결 면 (hjSea처럼 1.5m 간격, 좁은 물은 최소 칸 수 보장)
+export function seaPlane(w, d, step = 1.5) {
+  const g = new THREE.PlaneGeometry(w, d, Math.max(2, Math.ceil(w / step)), Math.max(2, Math.ceil(d / step)))
+  g.rotateX(-Math.PI / 2)
+  g.attributes.position.setUsage(THREE.DynamicDrawUsage)
+  return g
+}
+
+// 호수 모양(가장자리가 살짝 울퉁불퉁한 타원) 물결 면: 가운데에서 가장자리까지 고리 여러 겹
+// wobble(a)는 JmLake의 가장자리 식과 같아야 함
+export function lakeGeometry(w, d, sx, sz, wobble, rings = 8, segs = 40) {
+  const pos = [0, 0, 0]
+  const idx = []
+  for (let r = 1; r <= rings; r++) {
+    const k = r / rings
+    for (let i = 0; i < segs; i++) {
+      const a = (i / segs) * Math.PI * 2
+      const wb = wobble(a)
+      // JmLake는 shape를 x-y 평면에 그리고 -90도 돌려 눕힘 → 눕힌 뒤 z = -y
+      pos.push(Math.cos(a) * (w / 2) * sx * wb * k, 0, -Math.sin(a) * (d / 2) * sz * wb * k)
+    }
+  }
+  const at = (r, i) => (r === 0 ? 0 : 1 + (r - 1) * segs + (i % segs))
+  for (let i = 0; i < segs; i++) idx.push(0, at(1, i + 1), at(1, i))
+  for (let r = 1; r < rings; r++) {
+    for (let i = 0; i < segs; i++) {
+      const a = at(r, i)
+      const b = at(r, i + 1)
+      const c = at(r + 1, i)
+      const e = at(r + 1, i + 1)
+      idx.push(a, b, c, b, e, c)
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  const n = g.attributes.normal
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0)
+  g.attributes.position.setUsage(THREE.DynamicDrawUsage)
+  return g
+}
+
+// 강(점 줄을 따라가는 띠) 물결 면: 길이 방향 step 간격, 폭 방향 칸 나눔
+export function ribbonGrid(points, width, step = 1.5) {
+  // 점 줄을 step 간격으로 다시 뽑음
+  const pts = [points[0]]
+  for (let i = 1; i < points.length; i++) {
+    const [ax, az] = points[i - 1]
+    const [bx, bz] = points[i]
+    const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / step))
+    for (let k = 1; k <= n; k++) pts.push([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n])
+  }
+  const across = Math.max(2, Math.ceil(width / step))
+  const pos = []
+  const idx = []
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[Math.max(0, i - 1)]
+    const b = pts[Math.min(pts.length - 1, i + 1)]
+    const dx = b[0] - a[0]
+    const dz = b[1] - a[1]
+    const L = Math.hypot(dx, dz) || 1
+    const nx = dz / L
+    const nz = -dx / L
+    for (let j = 0; j <= across; j++) {
+      const o = -width / 2 + (width * j) / across
+      pos.push(pts[i][0] + nx * o, 0, pts[i][1] + nz * o)
+    }
+    if (i > 0) {
+      const r0 = (i - 1) * (across + 1)
+      const r1 = i * (across + 1)
+      for (let j = 0; j < across; j++) idx.push(r0 + j, r1 + j, r0 + j + 1, r0 + j + 1, r1 + j, r1 + j + 1)
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  const n = g.attributes.normal
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0)
+  g.attributes.position.setUsage(THREE.DynamicDrawUsage)
+  return g
+}
+
+// (11/25 밤 지민 요청) 해변 색 띠 대신 강물: 강둑 쪽 탁한 초록빛 얕은 물 → 가운데 짙은 청록, 반투명이라 모래 바닥이 비침
+//   걸어 들어갈 수 있는 강(wade)은 물높이 0.45m, 걸으면 물방울·물결 (WadeSplash). 바다 조각은 짙은 파랑 한 색
+const RIVER_STOPS = [[0, '#7d8f62'], [0.8, '#6f9478'], [2.2, '#4f8f8f'], [5, '#3a7d8c'], [9, '#2f6a80']]
+const SEA_ONE = '#2a6f8e'
+function riverColorAt(dist) {
+  for (let i = 1; i < RIVER_STOPS.length; i++) {
+    const [d1, c1] = RIVER_STOPS[i]
+    if (dist <= d1) {
+      const [d0, c0] = RIVER_STOPS[i - 1]
+      return new THREE.Color(c0).lerp(new THREE.Color(c1), (dist - d0) / (d1 - d0))
+    }
+  }
+  return new THREE.Color(RIVER_STOPS.at(-1)[1])
+}
+const RIVER_WATER = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.82, side: THREE.DoubleSide, depthWrite: false })
+const SEA_WATER = new THREE.MeshStandardMaterial({ color: SEA_ONE, roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide })
+// 강 띠 (로컬 x = 폭, z = 길이). sea: 한 색(이음새 무늬 없음)
+export function riverGeometry(w, len, sea = false) {
+  // (렉 줄이기) 바다 조각은 물결을 움직이지 않으니 칸을 거의 안 나눔
+  const across = sea ? 2 : Math.max(8, Math.ceil(w / 0.6))
+  const along = sea ? 2 : Math.max(2, Math.ceil(len / 1.5))
+  const g = new THREE.PlaneGeometry(w, len, across, along)
+  g.rotateX(-Math.PI / 2)
+  if (!sea) {
+    const pos = g.attributes.position
+    const colors = []
+    for (let i = 0; i < pos.count; i++) colors.push(...riverColorAt(w / 2 - Math.abs(pos.getX(i))).toArray())
+    g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+  }
+  g.attributes.position.setUsage(THREE.DynamicDrawUsage)
+  return g
+}
+export function RiverWater({ w, len, y = 0.05, sea = false, far, still = false }) {
+  const ref = useRef(null)
+  const geo = useMemo(() => riverGeometry(w, len, sea), [w, len, sea])
+  useSeaWave(ref, geo, far, sea || still)
+  return <mesh ref={ref} geometry={geo} material={sea ? SEA_WATER : RIVER_WATER} position={[0, y, 0]} userData={{ noMerge: true }} />
+}
+
+// 걸어 들어간 강에서 물 튀기기: 캐릭터가 물 띠 안에서 움직이면 발밑에 물방울(위로 튀었다 떨어짐) + 둥근 물결
+//   공용 FootSplashes는 SG 해변 전용이라 애니 구역 강용으로 따로 (캐릭터 위치는 scene의 player에서 읽기만 함)
+const DROP_N = 48
+const RING_N = 8
+const DROP_M = new THREE.MeshBasicMaterial({ color: '#eaf6f4', transparent: true, opacity: 0.85 })
+export function WadeSplash({ w, len, y }) {
+  const group = useRef(null)
+  const drops = useRef(null)
+  const rings = useRef([])
+  const ringMats = useMemo(() => Array.from({ length: RING_N }, () => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })), [])
+  const st = useMemo(() => ({
+    player: null, last: new THREE.Vector3(), has: false, me: new THREE.Vector3(), t: 0, next: 0,
+    d: Array.from({ length: DROP_N }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0 })),
+    r: Array.from({ length: RING_N }, () => ({ x: 0, z: 0, life: 0 })), di: 0, ri: 0,
+    m: new THREE.Matrix4(), q: new THREE.Quaternion(), s: new THREE.Vector3(),
+  }), [])
+  useFrame(({ scene }, dt) => {
+    if (!group.current) return
+    if (!st.player?.parent) st.player = scene.getObjectByName('player') ?? null
+    const step = Math.min(dt, 0.05)
+    st.t += step
+    if (st.player) {
+      st.player.getWorldPosition(st.me)
+      group.current.worldToLocal(st.me)
+      const inside = Math.abs(st.me.x) < w / 2 - 0.2 && Math.abs(st.me.z) < len / 2 && st.me.y < y + 1.6 && st.me.y > -1
+      const moved = st.has ? Math.hypot(st.me.x - st.last.x, st.me.z - st.last.z) : 0
+      st.last.copy(st.me)
+      st.has = true
+      if (inside && moved > 0.02 && st.t > st.next) {
+        st.next = st.t + 0.12
+        for (let k = 0; k < 2; k++) {
+          const d = st.d[st.di++ % DROP_N]
+          d.p.set(st.me.x + (Math.random() - 0.5) * 0.4, y, st.me.z + (Math.random() - 0.5) * 0.4)
+          d.v.set((Math.random() - 0.5) * 0.9, 0.8 + Math.random() * 0.7, (Math.random() - 0.5) * 0.9)
+          d.life = 0.45
+        }
+        if (Math.random() < 0.3) {
+          const r = st.r[st.ri++ % RING_N]
+          r.x = st.me.x
+          r.z = st.me.z
+          r.life = 1
+        }
+      }
+    }
+    const mesh = drops.current
+    if (mesh) {
+      st.d.forEach((d, i) => {
+        if (d.life > 0) {
+          d.life -= step
+          d.v.y -= 9.8 * step
+          d.p.addScaledVector(d.v, step)
+          if (d.p.y < y) d.life = 0
+        }
+        const sc = d.life > 0 ? 0.03 : 0
+        st.s.set(sc, sc, sc)
+        st.m.compose(d.p, st.q, st.s)
+        mesh.setMatrixAt(i, st.m)
+      })
+      mesh.instanceMatrix.needsUpdate = true
+    }
+    st.r.forEach((r, i) => {
+      const ring = rings.current[i]
+      if (!ring) return
+      if (r.life > 0) r.life -= step * 0.9
+      ring.visible = r.life > 0
+      if (ring.visible) {
+        ring.position.set(r.x, y + 0.02, r.z)
+        ring.scale.setScalar(0.2 + (1 - r.life) * 0.8)
+        ringMats[i].opacity = 0.35 * r.life
+      }
+    })
+  })
+  return (
+    <group ref={group}>
+      <instancedMesh ref={drops} args={[null, DROP_M, DROP_N]} frustumCulled={false}>
+        <sphereGeometry args={[1, 6, 4]} />
+      </instancedMesh>
+      {ringMats.map((m, i) => (
+        <mesh key={i} ref={(el) => (rings.current[i] = el)} rotation={[-Math.PI / 2, 0, 0]} visible={false} material={m}>
+          <ringGeometry args={[0.85, 1, 24]} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// (11/25 밤) 걸어 들어가는 강이 떠 보이지 않게: 물 옆면(바닥 ~ 수면, 물빛 반투명) + 양쪽 낮은 흙·풀 둑(경사, 걷기 막이 없음)
+const SKIRT = new THREE.MeshStandardMaterial({ color: '#5f8a70', transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })
+const BANK = new THREE.MeshStandardMaterial({ color: '#6f8a48', roughness: 1, flatShading: true })
+const BANK_MUD = new THREE.MeshStandardMaterial({ color: '#7a6a4a', roughness: 1, flatShading: true })
+function bankGeometry(len, width, height) {
+  const sh = new THREE.Shape()
+  sh.moveTo(0, 0)
+  sh.lineTo(width, 0)
+  sh.lineTo(0, height)
+  sh.lineTo(0, 0)
+  const g = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false })
+  g.translate(0, 0, -len / 2)
+  return g
+}
+export function RiverBanks({ w, len, depth, ends = false }) {
+  const bank = useMemo(() => bankGeometry(len, 1.4, depth + 0.12), [len, depth])
+  const mud = useMemo(() => bankGeometry(len, 0.5, depth + 0.02), [len, depth])
+  return (
+    <group>
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh position={[s * (w / 2), depth / 2, 0]} rotation={[0, Math.PI / 2, 0]} material={SKIRT}>
+            <planeGeometry args={[len, depth]} />
+          </mesh>
+          {/* 바깥쪽으로 내려가는 풀 둑 + 물가 진흙 띠 */}
+          <mesh geometry={bank} material={BANK} position={[s * (w / 2), 0, 0]} scale={[s, 1, 1]} />
+          <mesh geometry={mud} material={BANK_MUD} position={[s * (w / 2), 0, 0]} scale={[-s, 1, 1]} />
+        </group>
+      ))}
+      {ends && [-1, 1].map((s) => (
+        <mesh key={`e${s}`} position={[0, depth / 2, s * (len / 2)]} material={SKIRT}>
+          <planeGeometry args={[w, depth]} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
