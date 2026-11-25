@@ -55,6 +55,18 @@ py -3.12 -m venv .venv
 - `course`는 걷는 순서 (광장에서 가까운 곳부터, 쿠폰 쓰는 카페는 마지막)
 - `nextPlaceId`: 맵에 다음 목적지로 표시할 장소
 
+### `POST /tarot` — 커플 타로 (요금 0원, LLM 안 부름)
+```json
+{ "a": { "name": "민지", "self": [0,1,2,3,0,1,2,3,0,1], "guess": [1,1,2,0,0,1,3,3,0,2] },
+  "b": { "name": "준호", "self": [...10개], "guess": [...10개] },
+  "seed": "선택: 같은 값이면 같은 카드" }
+```
+- 답은 질문 순서대로 보기 번호(0부터). 질문·카드·조언 데이터는 화면과 같이 쓰는 `shared/bk_tarot/`
+- 응답: `match`(%), `mismatches`, `cards`(3장 + 해석), `summary`, `talk`(대화 질문 3개), `mission`(데이트 코스 장소), `guard`(검사 기록), `seed`
+- LangGraph: `analyze_a ∥ analyze_b → compare → draw → retrieve(RAG) → interpret → guard ⇄ interpret (최대 2번) / fallback → mission` (`app/tarot.py`, `app/tarot_rag.py`)
+- 두 사람 답은 저장하지 않음. 잘못된 답이면 422
+- 터미널에서 바로 보기: `.venv/Scripts/python try_tarot.py` (`--ask` 직접 입력, `--why` RAG 점수, `--poison` guard 반복)
+
 ### `GET /health`
 `{ "ok": true, "places": 17 }`
 
@@ -94,3 +106,9 @@ Render 무료 Web Service는 카드 등록 없이 쓸 수 있고 요금이 나�
    (OpenAI를 쓰기로 정했을 때만 `LLM_API_Key`, `LLM_DAILY_LIMIT` 추가. 안 넣으면 요금 0원)
 5. 배포가 끝나면 `https://<서비스이름>.onrender.com/health` 가 `{"ok": true, ...}` 인지 확인
 6. Vercel 프로젝트 → Settings → Environment Variables 에 `VITE_AI_API_URL` = 위 주소 → Redeploy
+
+## 외부 API 키 (확장 계획용, `app/external.py`)
+- `TOUR_API_KEY`(한국관광공사 TourAPI), `KAKAO_REST_API_KEY`(카카오 맵)를 `.env`에서 **읽기만** 한다. 지금은 어디에도 호출하지 않는다 (기획서: 작품·가게는 가상, 실제 위치 기능 없음 → 요금·규칙 문제 없음).
+- `/health`의 `externalKeys`로 키가 들어 있는지만 확인 (`{"tourApi": true, "kakao": true}`). 키 값은 응답·로그에 절대 넣지 않는다.
+- 나중에 "실제 성지 연결" 단계에서 이 키로 **서버에서만** 호출한다 (브라우저로 키가 나가지 않게).
+- Render에는 실제로 쓸 때만 환경변수로 추가한다.

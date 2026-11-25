@@ -5,8 +5,8 @@
 // 좌표계 "A": ax = 궁궐 가운데 축(x = -8)에서 좌우 거리, az = 궁궐 깊이 방향 거리.
 //   - 근정전 아이템(haewol_palace)이 az = PALACE_ORIGIN_Z 자리에 있어요. 구역 z = 아이템 z + (az - PALACE_ORIGIN_Z).
 //   - 구역 입구에서 들어오면 광화문이 맨 앞, az가 커질수록 궁궐 깊숙한 곳이에요.
-// 이 파일 하나로 3D 모양(HjGyeongbokgung.jsx)과 충돌 박스(hj_drama.json의 gb_* 항목)를 만들어요.
-// 배치를 바꾸면 충돌 박스도 다시 만들어야 해요 (만드는 방법은 HjGyeongbokgung.jsx 맨 위 설명 참고).
+// 이 파일 하나로 3D 모양(HjGyeongbokPalace.jsx)과 충돌 박스(hj_drama.json의 gb_* 항목)를 만들어요.
+// 배치를 바꾸면 충돌 박스도 다시 만들어야 해요 (만드는 방법은 HjGyeongbokPalace.jsx 맨 위 설명 참고).
 
 export const AXIS_X = 0 // 궁궐 가운데 축 (구역 좌표 x)
 export const PALACE_ORIGIN_Z = -14 // haewol_palace 아이템 위치 z (근정전 실내·착석 좌표의 기준)

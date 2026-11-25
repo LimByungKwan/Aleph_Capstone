@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
+import { useLoadState } from '../store/loadState.js'
 
 // [SG 성능 최적화] 셰이더 미리 컴파일
 // three.js는 재질이 "처음 화면에 보일 때" 셰이더를 컴파일하고, 끝날 때까지 화면이 멈춘다 (걷다가 0.1~1초 끊김).
@@ -15,6 +16,7 @@ export default function ShaderWarmup({ trigger }) {
     const id = requestAnimationFrame(() => {
       const start = performance.now()
       gl.compileAsync(scene, camera).then(() => {
+        useLoadState.getState().setShadersReady() // 첫 로딩 화면이 이걸 보고 사라짐 (병관)
         if (import.meta.env.DEV) console.info(`[ShaderWarmup] ${gl.info.programs.length}개 셰이더 준비, ${Math.round(performance.now() - start)}ms`)
       })
     })

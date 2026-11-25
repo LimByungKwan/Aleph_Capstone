@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -166,12 +166,17 @@ function VermilionBridge({ points, width }) {
 //  - 바람: 잔잔하다가 가끔 돌풍. 걷는 바닥 충돌·난간(BK 데크)은 고정이라 판자는 바닥 위로만, 좌우는 조금만 움직이고
 //    내림줄 아래 끝은 난간에 붙여 둠 → 위 밧줄이 흔들리면 내림줄이 기울어지는 모양 (떨어져 보이지 않게)
 const SLATS_GAP = 0.34
+// 밧줄은 둥글게: 길이 방향(z)으로 누운 6각 원기둥 (지름 1 → setBeam에서 굵기로 늘림)
+const ROPE_GEO = new THREE.CylinderGeometry(0.5, 0.5, 1, 6).rotateX(Math.PI / 2)
+const SLAT_COLORS = ['#6e4b33', '#7a5638', '#5f4029', '#6a4a30', '#83603f', '#584032'].map((c) => new THREE.Color(c))
 const swayTmp = { a: new THREE.Vector3(), p: new THREE.Vector3(), d: new THREE.Vector3(), z: new THREE.Vector3(0, 0, 1) }
 function SuspensionBridge({ points, width }) {
   const anchor = useRef(null)
   const slatRef = useRef(null)
   const cableRef = useRef(null)
   const hangerRef = useRef(null)
+  const lineRef = useRef(null)
+  const stringerRef = useRef(null)
   const playerRef = useRef(null)
   const lastLookup = useRef(-Infinity)
   const amp = useRef(0.3)
@@ -188,6 +193,8 @@ function SuspensionBridge({ points, width }) {
     const sag = 2.0
     // 데크 난간이 가운데에서 1.25m라서, 탑·밧줄은 그 바깥 1.45m에 둠 (겹치지 않게)
     const k = 1.45 / (width / 2 - 0.02)
+    // 밧줄 손잡이는 데크 나무 난간 바로 바깥 (1.37m)
+    const kr = 1.37 / (width / 2 - 0.02)
     const deckAt = (t) => s[1] + (e[1] - s[1]) * t
     const cable = (side, t) => {
       const x = s[0] + (e[0] - s[0]) * t + nx * side * k
@@ -203,19 +210,52 @@ function SuspensionBridge({ points, width }) {
       const h = Math.max(4, Math.round(L / 1.4))
       for (let j = 1; j < h; j++) {
         const t = j / h
-        const bottom = { p: [s[0] + (e[0] - s[0]) * t + nx * side, deckAt(t) + RAIL_H, s[2] + (e[2] - s[2]) * t + nz * side], u: t, h: RAIL_H, lat: 0, vert: 0 }
+        const bottom = { p: [s[0] + (e[0] - s[0]) * t + nx * side * kr, deckAt(t) + RAIL_H, s[2] + (e[2] - s[2]) * t + nz * side * kr], u: t, h: RAIL_H, lat: 0.2 }
         hangers.push({ a: cable(side, t), b: bottom, t: 0.03 })
       }
     }
+    // 손잡이 밧줄(난간 높이) + 그 밑 그물(세로 줄 + 가운데 가로 줄 + 비스듬한 줄) + 판자 밑 세로 받침(나무 2줄)
+    //   흔들림은 판자와 같게(lat 0.2) 해서 다리 전체가 한 몸처럼 움직임
+    const lines = []
+    const stringers = []
+    const along = (side, t, h, off = kr) => ({
+      p: [s[0] + (e[0] - s[0]) * t + nx * side * off, deckAt(t) + h, s[2] + (e[2] - s[2]) * t + nz * side * off],
+      u: t,
+      h,
+      lat: 0.2,
+    })
+    const nSeg = 24
+    const nNet = Math.max(8, Math.round(L / 0.7))
+    for (const side of [1, -1]) {
+      for (let j = 0; j < nSeg; j++) {
+        lines.push({ a: along(side, j / nSeg, RAIL_H), b: along(side, (j + 1) / nSeg, RAIL_H), t: 0.055 })
+        lines.push({ a: along(side, j / nSeg, RAIL_H * 0.5), b: along(side, (j + 1) / nSeg, RAIL_H * 0.5), t: 0.025 })
+        stringers.push({ a: along(side, j / nSeg, 0.01, 0.8), b: along(side, (j + 1) / nSeg, 0.01, 0.8), t: 0.1 })
+      }
+      for (let j = 1; j < nNet; j++) {
+        const t = j / nNet
+        lines.push({ a: along(side, t, 0.07), b: along(side, t, RAIL_H), t: 0.02 })
+        if (j % 2 === 0) lines.push({ a: along(side, (j - 1) / nNet, 0.07), b: along(side, t, RAIL_H * 0.5), t: 0.015 })
+      }
+    }
     const towers = []
+    const ux = (e[0] - s[0]) / L
+    const uz = (e[2] - s[2]) / L
     for (const t of [0, 1]) {
       const base = cable(1, t).p
       const other = cable(-1, t).p
-      towers.push({ a: [base[0], deckAt(t), base[2]], top: deckAt(t) + towerH + 0.2, b: [other[0], deckAt(t), other[2]] })
+      const top = deckAt(t) + towerH + 0.2
+      // 고정줄: 탑 꼭대기에서 다리 반대쪽 바닥 돌 말뚝으로 (밧줄 당김을 받는 느낌)
+      const back = t === 0 ? -1 : 1
+      const guys = [base, other].map((q) => {
+        const peg = [q[0] + ux * back * 1.9, deckAt(t), q[2] + uz * back * 1.9]
+        return { a: [q[0], top - 0.35, q[2]], b: [peg[0], peg[1] + 0.15, peg[2]], peg }
+      })
+      towers.push({ a: [base[0], deckAt(t), base[2]], top, b: [other[0], deckAt(t), other[2]], guys })
     }
     const count = Math.floor(L / SLATS_GAP)
     const len = Math.hypot(nx, nz)
-    return { cables, hangers, towers, count, side: [nx / len, nz / len] }
+    return { cables, hangers, lines, stringers, towers, count, side: [nx / len, nz / len] }
   }, [seg, width])
   const { s, e, yaw } = seg
   const pitch = -Math.atan2(e[1] - s[1], Math.hypot(e[0] - s[0], e[2] - s[2]))
@@ -299,7 +339,23 @@ function SuspensionBridge({ points, width }) {
       data.hangers.forEach((c, i) => setBeam(hangerRef.current, i, moved(c.a, va), moved(c.b, vb), c.t))
       hangerRef.current.instanceMatrix.needsUpdate = true
     }
+    if (lineRef.current) {
+      data.lines.forEach((c, i) => setBeam(lineRef.current, i, moved(c.a, va), moved(c.b, vb), c.t))
+      lineRef.current.instanceMatrix.needsUpdate = true
+    }
+    if (stringerRef.current) {
+      data.stringers.forEach((c, i) => setBeam(stringerRef.current, i, moved(c.a, va), moved(c.b, vb), c.t))
+      stringerRef.current.instanceMatrix.needsUpdate = true
+    }
   })
+
+  // 판자마다 나무색을 조금씩 다르게 (낡은 판자가 섞인 느낌)
+  useLayoutEffect(() => {
+    const slats = slatRef.current
+    if (!slats) return
+    for (let i = 0; i < data.count; i++) slats.setColorAt(i, SLAT_COLORS[(i * 7 + (i % 3)) % SLAT_COLORS.length])
+    if (slats.instanceColor) slats.instanceColor.needsUpdate = true
+  }, [data.count])
 
   return (
     <group>
@@ -315,20 +371,43 @@ function SuspensionBridge({ points, width }) {
           ))}
           <Beam a={[tw.a[0], tw.top - 0.1, tw.a[2]]} b={[tw.b[0], tw.top - 0.1, tw.b[2]]} t={0.22} c={DARK_WOOD} />
           <Beam a={[tw.a[0], tw.top - 0.7, tw.a[2]]} b={[tw.b[0], tw.top - 0.7, tw.b[2]]} t={0.14} c={DARK_WOOD} />
+          {/* X자 버팀목 + 기둥 머리 덮개 + 고정줄·돌 말뚝 */}
+          <Beam a={[tw.a[0], tw.a[1] + 0.3, tw.a[2]]} b={[tw.b[0], tw.top - 0.8, tw.b[2]]} t={0.08} c={DARK_WOOD} />
+          <Beam a={[tw.b[0], tw.b[1] + 0.3, tw.b[2]]} b={[tw.a[0], tw.top - 0.8, tw.a[2]]} t={0.08} c={DARK_WOOD} />
+          {[tw.a, tw.b].map((p, j) => (
+            <mesh key={`cap${j}`} position={[p[0], tw.top + 0.08, p[2]]}>
+              <boxGeometry args={[0.34, 0.08, 0.34]} />
+              <meshStandardMaterial color="#2a1d15" />
+            </mesh>
+          ))}
+          {tw.guys.map((g, j) => (
+            <group key={`guy${j}`}>
+              <Beam a={g.a} b={g.b} t={0.05} c={ROPE} />
+              <mesh position={[g.peg[0], g.peg[1] + 0.12, g.peg[2]]}>
+                <boxGeometry args={[0.4, 0.24, 0.4]} />
+                <meshStandardMaterial color="#8c867c" />
+              </mesh>
+            </group>
+          ))}
         </group>
       ))}
       {/* 흔들리는 부분: 판자·밧줄·내림줄 (매 프레임 위치를 다시 계산) */}
       <instancedMesh ref={slatRef} args={[null, null, data.count]} frustumCulled={false}>
         <boxGeometry args={[width + 0.1, 0.05, SLATS_GAP * 0.78]} />
-        <meshStandardMaterial color="#6e4b33" />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={cableRef} args={[null, null, data.cables.length]} frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color={ROPE} />
+      <instancedMesh ref={cableRef} args={[ROPE_GEO, null, data.cables.length]} frustumCulled={false}>
+        <meshStandardMaterial color={ROPE} roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={hangerRef} args={[null, null, data.hangers.length]} frustumCulled={false}>
+      <instancedMesh ref={hangerRef} args={[ROPE_GEO, null, data.hangers.length]} frustumCulled={false}>
+        <meshStandardMaterial color={ROPE} roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={lineRef} args={[ROPE_GEO, null, data.lines.length]} frustumCulled={false}>
+        <meshStandardMaterial color="#a88f68" roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={stringerRef} args={[null, null, data.stringers.length]} frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color={ROPE} />
+        <meshStandardMaterial color="#4a3324" />
       </instancedMesh>
     </group>
   )

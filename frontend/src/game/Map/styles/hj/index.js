@@ -6,7 +6,8 @@ import HjEntranceGate from './HjEntranceGate.jsx'
 import { HjPortHouse, HjVillageGate, HjVillageWall } from './HjCoastalVillage.jsx'
 import { HjFoxAltar, HjMoonForest } from './HjMoonForest.jsx'
 import HjPalace from './HjPalace.jsx'
-import HjGyeongbokgung from './HjGyeongbokgung.jsx'
+import HjGyeongbokgung from './HjGyeongbokgung.jsx' // main 버전 (지금 맵에선 안 씀)
+import HjGyeongbokPalace from './HjGyeongbokPalace.jsx'
 import {
   HjBanner,
   HjGlobeLamp,
@@ -52,7 +53,8 @@ import { HjCyberGrid, HjCyberTower, HjEraBarrier, HjFloatingCar, HjLunarBase, Hj
 
 export const HJ_STYLES = {
   // 1930년대 경성 거리 (HjGyeongseong.jsx)
-  hjGyeongbokgung: HjGyeongbokgung, // 압축 경복궁 (배치: gyeongbokLayout.js)
+  hjGyeongbokPalace: HjGyeongbokPalace, // 압축 경복궁 (배치: gyeongbokLayout.js)
+  hjGyeongbokgung: HjGyeongbokgung, // main 버전 경복궁 (지금 맵에선 안 씀)
   hjModernBuilding: HjModernBuilding, // 근대 석조·벽돌 상가 (돔·원기둥·극장 간판)
   hjStation: HjStation, // 돔 지붕 역사 + 시계
   hjTramLine: HjTramLine, // 전차 선로 + 가공선

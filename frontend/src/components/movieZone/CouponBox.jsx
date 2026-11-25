@@ -3,6 +3,7 @@ import { formatDate, formatTime, listMyCoupons } from '../../api/client.js'
 import { dayKey } from '../../api/mockDb.js'
 import { useUiStore } from './uiStore.js'
 import { LoadingBlock, Modal, errorText, useAsync } from './common.jsx'
+import { TIME_COUPON_TITLE, selectTimePass, useTimePass } from './specialAccessStore.js'
 
 // [3. 개발 > 프론트엔드] 나의 골목 쿠폰함 (티켓 지갑)
 // - 전체 / 사용 가능 / 사용 완료 필터
@@ -24,11 +25,18 @@ export default function CouponBox({ onClose }) {
   const openModal = useUiStore((s) => s.openModal)
   const [filter, setFilter] = useState('all')
   const { data, loading, error, reload } = useAsync(() => listMyCoupons({ userId }), [userId])
+  const pass = useTimePass((state) => selectTimePass(state,userId))
+  const rewards = [
+    { discount:'30%', title:TIME_COUPON_TITLE, issuedAt:pass.couponIssuedAt },
+    { discount:'20%', title:'한복·개화기 의상 대여 20% 가상 체험 쿠폰', issuedAt:pass.legacyCouponIssuedAt },
+  ].filter(({ issuedAt }) => issuedAt)
+  const showTimeCoupon = rewards.length > 0 && filter !== 'used'
 
   const today = dayKey()
   const coupons = (data?.coupons ?? []).map((c) => ({ ...c, state: couponState(c, today) }))
   const shown = coupons.filter((c) => (filter === 'all' ? true : filter === 'active' ? c.state === 'active' : c.state !== 'active'))
-  const counts = { all: coupons.length, active: coupons.filter((c) => c.state === 'active').length, used: coupons.filter((c) => c.state !== 'active').length }
+  const rewardCount = rewards.length
+  const counts = { all: coupons.length + rewardCount, active: coupons.filter((c) => c.state === 'active').length + rewardCount, used: coupons.filter((c) => c.state !== 'active').length }
 
   return (
     <Modal title="🎟️ 나의 골목 쿠폰함" onClose={onClose} labelledBy="ui-coupon-title">
@@ -40,12 +48,25 @@ export default function CouponBox({ onClose }) {
         <div className="ui-segment" role="group" aria-label="쿠폰 필터">
           {FILTERS.map((f) => (
             <button key={f.id} type="button" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
-              {f.label} {data && <span style={{ opacity: 0.6 }}>{counts[f.id]}</span>}
+              {f.label} {(data || rewardCount > 0) && <span style={{ opacity: 0.6 }}>{counts[f.id]}</span>}
             </button>
           ))}
         </div>
       </div>
 
+      {showTimeCoupon && rewards.map(({ discount,title,issuedAt }) => (
+        <article key={discount} className="ui-ticket special-coupon">
+          <div className="ui-ticket__stub">
+            <span className="ui-ticket__brand">시간 탐정</span>
+            <strong className="ui-ticket__discount">{discount}</strong>
+          </div>
+          <div className="ui-ticket__body">
+            <h3 className="ui-ticket__title">{title}</h3>
+            <p className="ui-ticket__meta">{formatTime(issuedAt)} 발급 · 시간 탐정 코스 완주</p>
+            <span className="special-tag">가상 체험 전용</span>
+          </div>
+        </article>
+      ))}
       {loading && !data ? (
         <LoadingBlock rows={2} />
       ) : error ? (
@@ -55,7 +76,7 @@ export default function CouponBox({ onClose }) {
             다시 불러오기
           </button>
         </div>
-      ) : shown.length === 0 ? (
+      ) : shown.length === 0 && !showTimeCoupon ? (
         <div className="ui-empty">
           {filter === 'used' ? (
             <p style={{ margin: 0 }}>아직 사용한 쿠폰이 없어요.</p>

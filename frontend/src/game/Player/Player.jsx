@@ -2,10 +2,14 @@ import { useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { Ecctrl } from 'ecctrl'
+import { useJoystickStore } from 'ecctrl/input'
+import { useTouchInput } from '../../store/touchInput.js'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { updatePalaceSeating, usePalaceSeatStore } from '../../components/movieZone/palaceSeating.js'
+import { usePalaceTour } from '../../components/movieZone/palaceTourStore.js'
+import { useSpecialAccess } from '../../components/movieZone/specialAccessStore.js'
 import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 import CharacterModel from './CharacterModel.jsx'
 
@@ -34,6 +38,18 @@ export const KEYBOARD_MAP = [
 
 const NO_INPUT = { forward: false, backward: false, leftward: false, rightward: false, run: false, jump: false }
 
+// 키보드 + 모바일(조이스틱·버튼) 입력 합치기 (모바일 조작: components/mobile/MobileControls.jsx)
+function readInput(keys) {
+  const stick = useJoystickStore.getState().joysticks.default
+  const touch = useTouchInput.getState()
+  return {
+    ...keys,
+    joystick: stick?.active ? { x: stick.x, y: stick.y } : undefined,
+    run: keys.run || touch.run,
+    jump: keys.jump || touch.jump,
+  }
+}
+
 // 조작 가능한 캐릭터.
 // ecctrl 2.x는 키보드를 직접 읽지 않아서, 여기서 매 프레임 키 상태를 읽어 setMovement로 넘겨 줌.
 // playerRef: 카메라·센서가 캐릭터 위치를 알 수 있게 Scene에서 내려받는 ref
@@ -42,6 +58,7 @@ export default function Player({ playerRef, showModel = true }) {
   const [, getKeys] = useKeyboardControls()
   // 패널이 열려 있으면(inputLocked) 키 입력을 무시 → 캐릭터 정지
   const locked = useGameStore((state) => state.inputLocked)
+  const rhythmOpen = useGameStore((state) => ['sg_audition', 'sg_cheer'].includes(state.openPanel?.type))
   const seated = usePalaceSeatStore((state) => state.seated)
   useEffect(() => () => usePalaceSeatStore.getState().reset(), [])
 
@@ -49,8 +66,10 @@ export default function Player({ playerRef, showModel = true }) {
     const player = playerRef.current
     if (!player) return
 
-    const sitting = updatePalaceSeating(player, locked)
-    player.setMovement(locked || sitting ? NO_INPUT : getKeys())
+    const tour = usePalaceTour.getState()
+    const paused = locked || tour.open || Boolean(tour.activeActivity) || Boolean(useSpecialAccess.getState().panel)
+    const sitting = updatePalaceSeating(player, paused)
+    player.setMovement(paused || sitting ? NO_INPUT : readInput(getKeys()))
 
     // 맵 밖으로 떨어지면 시작 지점으로 리스폰
     if (player.currPos.y < RESPAWN_Y) {
@@ -72,7 +91,7 @@ export default function Player({ playerRef, showModel = true }) {
       jumpVel={PLAYER_JUMP_SPEED}
       enableToggleRun={false}
     >
-      {showModel && <CharacterModel playerRef={playerRef} palaceSeat={seated} />}
+      {showModel && !rhythmOpen && <CharacterModel playerRef={playerRef} palaceSeat={seated} />}
     </Ecctrl>
   )
 }

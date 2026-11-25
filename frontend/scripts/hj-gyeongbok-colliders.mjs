@@ -2,7 +2,7 @@
 // 사용법 (frontend 폴더에서):  node scripts/hj-gyeongbok-colliders.mjs
 //
 // gyeongbokLayout.js 배치를 읽어서 hj_drama.json을 고쳐요.
-//  1) haewol_palace → 압축 경복궁(style "hjGyeongbokgung"), 위치·크기를 배치 기준에 맞춤
+//  1) haewol_palace → 압축 경복궁(style "hjGyeongbokPalace"), 위치·크기를 배치 기준에 맞춤
 //  2) 근정전 월대·계단·실내 충돌 박스(haewol_terrace/throne/room_*)를 새 위치로 옮기고 gb_core_* 로 이름 바꿈 (처음 한 번만)
 //  3) 예전 해월궁 충돌 박스(haewol_* 의 나머지)를 지우고, 담장·전각·행각·연못 충돌 박스(gb_*)를 새로 만듦
 // 여러 번 실행해도 결과가 같아요.
@@ -52,7 +52,7 @@ if (palace && !wasOld && palace.position[0] !== L.AXIS_X) {
 if (palace) {
   const p = zone.props.find((item) => item.id === 'haewol_palace')
   p.position = [L.AXIS_X, p.position[1]]
-  p.style = 'hjGyeongbokgung'
+  p.style = 'hjGyeongbokPalace'
   // 아이템 z는 그대로 둠 (구역을 옮겨도 궁궐이 따라감). 처음 바꿀 때만 배치 기준 자리로
   if (wasOld) p.position = [L.AXIS_X, L.PALACE_ORIGIN_Z]
   zShift = p.position[1] - L.PALACE_ORIGIN_Z

@@ -37,7 +37,7 @@
     {"id": "gb_core_throne_step_2", "style": "hjBoothWallCollider", "position": [0, -68.7], "size": [4.75, 0.49, 0.37], "elevation": 0},
     {"id": "gb_core_throne_step_3", "style": "hjBoothWallCollider", "position": [0, -68.34], "size": [4.75, 0.62, 0.37], "elevation": 0},
     {"id": "gb_core_throne_step_4", "style": "hjBoothWallCollider", "position": [0, -67.98], "size": [4.75, 0.75, 0.37], "elevation": 0},
-    {"id": "haewol_palace", "style": "hjGyeongbokgung", "position": [0, -74], "size": [53, 9, 53], "collider": false},
+    {"id": "haewol_palace", "style": "hjGyeongbokPalace", "position": [0, -74], "size": [53, 9, 53], "collider": false},
     {"id": "gb_court_floor", "style": "hjBoothWallCollider", "position": [0, -39.5], "size": [74, 0.18, 103], "elevation": -0.022},
     {"id": "gb_wall_0", "style": "hjBoothWallCollider", "position": [-21.825, -91], "size": [30.35, 2.9, 1], "rotationDeg": 0},
     {"id": "gb_wall_1", "style": "hjBoothWallCollider", "position": [21.825, -91], "size": [30.35, 2.9, 1], "rotationDeg": 0},

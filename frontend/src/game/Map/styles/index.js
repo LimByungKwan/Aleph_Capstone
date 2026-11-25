@@ -24,13 +24,21 @@ import {
   RoundPlaza,
   Telescope,
   Terrace,
+  BkBlocker,
 } from './dateCourse.jsx'
 import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { SgStudio } from './sg_studio.jsx'
+import { SgCheer } from './sg_cheer.jsx'
+import { SG_AUDITION_STYLES } from './sg_audition.jsx'
+import { SG_DOME_STYLES } from './sg_dome.jsx'
+import { SG_DOME_SHOW_STYLES } from './sg_domeShow.jsx'
 import { SungrayBeach } from './beach.jsx'
 import { FestivalCart } from './festival.jsx'
 import { ClawBooth } from './bk_clawMachine.jsx'
+import { TarotBooth } from './bk_tarotBooth.jsx'
+import { GuideBoard } from './bk_guideBoard.jsx'
+import { SunsetPavilion } from './bk_sunsetPavilion.jsx'
 import { HubBuskingStage, HubClockTower, HubCompass, HubFoodTruck, HubMapBoard, HubPergola, HubSignpost, HubTreeBench } from './hub.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
@@ -80,6 +88,10 @@ export const STYLES = {
   landscape: Landscape,
   greenhouseCafe: GreenhouseCafe,
   clawBooth: ClawBooth, // 인형뽑기 부스 + 미니게임 (bk_clawMachine.jsx)
+  tarotBooth: TarotBooth, // 커플 타로 텐트 (bk_tarotBooth.jsx)
+  bkGuideBoard: GuideBoard, // 데이트 코스 안내판 (bk_guideBoard.jsx)
+  bkSunsetPavilion: SunsetPavilion,
+  bkBlocker: BkBlocker, // 데이트 코스: 눈에 안 보이는 충돌 상자 (커플 포토존 등)
   // K-POP (SG)
   stage: Stage,
   sungrayBeach: SungrayBeach,
@@ -87,6 +99,10 @@ export const STYLES = {
   agencyLobby: FilmingAlleyShop,
   artistLounge: FilmingAlleyShop,
   soundStudio: SgStudio,
+  cheerSpot: SgCheer, // 응원봉 리듬 게임 (sg_cheer.jsx)
+  ...SG_AUDITION_STYLES, // 썬그레이 오디션 세트·게이트·파일런 (sg_audition.jsx)
+  ...SG_DOME_STYLES, // 잠실 주경기장 느낌 돔 (sg_dome.jsx, Codex 작성)
+  ...SG_DOME_SHOW_STYLES, // 돔 바닥선 서치라이트·밤 폭죽 (sg_domeShow.jsx)
   bdayCafe: BdayCafe,
   popupStore: PopupStore,
   practiceRoom: FilmingAlleyShop,

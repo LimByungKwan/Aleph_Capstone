@@ -485,7 +485,7 @@ function ribbonGeometry(points, width, y, side = 0) {
 }
 
 let flowTexture = null
-function getFlowTexture() {
+export function getFlowTexture() {
   if (flowTexture || typeof document === 'undefined') return flowTexture
   const c = document.createElement('canvas')
   c.width = 64

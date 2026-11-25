@@ -15,6 +15,7 @@ import FollowCamera from './Player/FollowCamera.jsx'
 import PlaceSensors from './Interaction/PlaceSensors.jsx'
 import FootSplashes from './Player/FootSplashes.jsx'
 import InteractionKeys from './Interaction/InteractionKeys.jsx'
+import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { useGameStore } from '../store/gameStore.js'
 import {
   CAMERA_MAX_ZOOM_OUT,
@@ -33,6 +34,10 @@ import SettingsPanel from './SettingsPanel.jsx'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
 import ShaderWarmup from './ShaderWarmup.jsx'
 import PointLightLock from './PointLightLock.jsx'
+import { southGroundExtension } from './data/mapData.js'
+import PalaceTourPresence from '../components/movieZone/PalaceTourPresence.jsx'
+import MultiplayerPresence from './multiplayer/MultiplayerPresence.jsx' // [지민] 멀티 접속
+import { WarpZones } from './Map/styles/bk_warpZones.jsx' // [병관] 구역 워프존
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
@@ -61,18 +66,23 @@ export default function Scene() {
   return (
     <KeyboardControls map={KEYBOARD_MAP}>
       <div ref={labelLayer} style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <Canvas dpr={highDetail ? [1, 2] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
+        {/* 첫 접속 로딩 화면 (모델·텍스처 다운로드 + 셰이더 준비가 끝나면 사라짐) */}
+        <LoadingScreen />
+        {/* 고화질도 화면 해상도는 최대 1.5배까지 (2배면 그려야 할 픽셀이 1.8배 늘어 렉의 주원인) */}
+        <Canvas dpr={highDetail ? [1, 1.5] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
           <PastelSky />
 
           {/* 전체 조명 + 그림자 있는 태양광(밤에는 달빛) 1개 — 계절·시간대에 따라 색·세기가 바뀜 (그림자는 보고 있는 곳 주변만) */}
           <SkyAmbient />
           <SunLight castShadow={highDetail} />
+          {highDetail && <ShadowThrottle />}
 
           <MapLayout showStartMarker={!playing} highDetail={highDetail} />
           {playing && <SeasonalWeather playerRef={playerRef} />}
           <PlaceMarkers />
           <CourseMarker />
+          <WarpZones playerRef={playerRef} />
 
           {/* 물리 엔진(Rapier)은 처음에 잠깐 로딩이 필요해서 Suspense로 감쌈 */}
           <Suspense fallback={null}>
@@ -82,6 +92,8 @@ export default function Scene() {
               {playing && (
                 <>
                   <Player playerRef={playerRef} showModel={!firstPerson} />
+                  <PalaceTourPresence playerRef={playerRef} />
+                  <MultiplayerPresence playerRef={playerRef} />
                   <FootSplashes playerRef={playerRef} />
                   <PlaceSensors playerRef={playerRef} />
                   {firstPerson ? <FirstPersonCamera playerRef={playerRef} /> : <FollowCamera playerRef={playerRef} />}
@@ -108,6 +120,24 @@ const SHADOW_MIN_AREA = 35
 const lookTarget = new THREE.Vector3()
 
 const SUN_DISTANCE = Math.hypot(...SUN_POSITION)
+
+// 그림자 지도는 두 프레임에 한 번만 다시 그림 (그림자 계산이 고화질 렉의 가장 큰 원인)
+// 해·건물은 거의 안 움직여서 눈으로는 차이가 없음
+function ShadowThrottle() {
+  const gl = useThree((state) => state.gl)
+  const frame = useRef(0)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    return () => {
+      gl.shadowMap.autoUpdate = true
+    }
+  }, [gl])
+  useFrame(() => {
+    if (frame.current++ % 2 === 0) gl.shadowMap.needsUpdate = true
+  })
+  return null
+}
 
 function SunLight({ castShadow }) {
   const lightRef = useRef(null)
@@ -175,6 +205,10 @@ function SkyAmbient() {
 }
 
 // 둘러보기 카메라. 땅 밑으로 못 내려가고, 옆으로 끌면 땅과 평행하게 이동
+const overviewSouthLimit = southGroundExtension
+  ? Math.max(126, southGroundExtension.position[1] + southGroundExtension.size[2] / 2)
+  : 126
+
 function OverviewCamera() {
   const camera = useThree((state) => state.camera)
   const controlsRef = useRef(null)
@@ -253,7 +287,7 @@ function OverviewCamera() {
         if (!controls) return
         const { target } = controls
         const x = THREE.MathUtils.clamp(target.x, -126, 126)
-        const z = THREE.MathUtils.clamp(target.z, -126, 126)
+        const z = THREE.MathUtils.clamp(target.z, -126, overviewSouthLimit)
         camera.position.x += x - target.x
         camera.position.z += z - target.z
         target.x = x
@@ -265,54 +299,27 @@ function OverviewCamera() {
 
 // 왼쪽 위 안내 + 모드 전환 버튼 + (확인용) 게임 스토어 값
 function HelpPanel({ playing, onStart, onStop }) {
-  const [showHelp, setShowHelp] = useState(true)
-  const compactButton = { pointerEvents: 'auto', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, border: 0 }
+  const isTouch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+  const [showHelp, setShowHelp] = useState(false)
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 12,
-        left: 12,
-        padding: '10px 14px',
-        borderRadius: 8,
-        background: 'rgba(0, 0, 0, 0.55)',
-        color: '#fff',
-        fontSize: 13,
-        lineHeight: 1.6,
-        pointerEvents: 'none',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {showHelp && <strong style={{ marginRight: 'auto' }}>SceneWalk AI</strong>}
-        <button type="button" style={compactButton} aria-expanded={showHelp} aria-controls="scenewalk-help"
+    <div className="bk-game-help">
+      <div className="bk-game-help__bar">
+        <strong>SceneWalk AI</strong>
+        <button type="button" aria-expanded={showHelp} aria-controls="scenewalk-help"
           onClick={(event) => { setShowHelp(!showHelp); event.currentTarget.blur() }}>
-          {showHelp ? '안내 숨기기' : '안내 보기'}
+          조작 안내
+        </button>
+        <button type="button" onClick={playing ? onStop : onStart}>
+          {playing ? '맵 전체 보기' : `${CAMERA_VIEW === 'first' ? '1인칭' : '3인칭'}으로 플레이하기`}
         </button>
       </div>
-      <div id="scenewalk-help" hidden={!showHelp} style={{ marginTop: 6 }}>
-        {playing
+      <div id="scenewalk-help" className="bk-game-help__panel" hidden={!showHelp}>
+        {playing && isTouch
+          ? '왼쪽 조이스틱: 이동 · 화면 드래그: 시점 회전 · 두 손가락: 확대/축소 · E 버튼: 상호작용'
+          : playing
           ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
           : '왼쪽 드래그·방향키: 이동 · 오른쪽 드래그: 회전 · 휠: 확대/축소'}
-        <button
-          type="button"
-          onClick={playing ? onStop : onStart}
-          style={{
-            display: 'block',
-            marginTop: 8,
-            padding: '6px 12px',
-            border: 'none',
-            borderRadius: 6,
-            background: playing ? '#e5e7eb' : '#22c55e',
-            color: playing ? '#111' : '#fff',
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: 'pointer',
-            pointerEvents: 'auto',
-          }}
-        >
-          {playing ? '맵 전체 보기' : `▶ ${CAMERA_VIEW === 'first' ? '1인칭' : '3인칭'}으로 플레이하기`}
-        </button>
       </div>
     </div>
   )

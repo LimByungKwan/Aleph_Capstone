@@ -1,0 +1,43 @@
+/* 인증샷 (담당: 병관) */
+
+.ph-img {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--ui-surface-2);
+  box-shadow: 0 6px 18px rgba(120, 104, 84, 0.18);
+}
+.ph-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.ph-tip {
+  margin: 10px 0 0;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.ph-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: ph-flash 0.45s ease-out forwards;
+}
+@keyframes ph-flash {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ph-flash {
+    display: none;
+  }
+}

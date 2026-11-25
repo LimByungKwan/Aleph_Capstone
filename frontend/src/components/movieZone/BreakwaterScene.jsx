@@ -73,7 +73,7 @@ function SceneContent({ scene }) {
       issuedCoupons.forEach((c) => toast(`🎟 쿠폰이 발급됐어요: ${c.title}`, 'ok'))
     } catch (error) {
       // 이미 받은 스탬프면 사진만 남기고 안내
-      toast(errorText(error), error?.code === 'ALREADY_STAMPED' ? 'info' : 'error')
+      toast(errorText(error), ['ALREADY_STAMPED', 'LOGIN_REQUIRED'].includes(error?.code) ? 'info' : 'error') // [지민] 손님은 로그인 창이 함께 뜸 → 오류색 대신 안내색
     } finally {
       bumpData() // 스탬프북·쿠폰함 숫자 갱신
       setBusy(false)

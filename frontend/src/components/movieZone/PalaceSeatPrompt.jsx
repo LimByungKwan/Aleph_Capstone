@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useGameStore } from '../../store/gameStore.js'
 import { usePalaceSeatStore } from './palaceSeating.js'
 import { useUiStore } from './uiStore.js'
+import { usePalaceTour } from './palaceTourStore.js'
+import { useSpecialAccess } from './specialAccessStore.js'
 
 export default function PalaceSeatPrompt() {
   const nearby = usePalaceSeatStore(state => state.nearby)
@@ -9,7 +11,9 @@ export default function PalaceSeatPrompt() {
   const toggle = usePalaceSeatStore(state => state.toggle)
   const modal = useUiStore(state => state.modal)
   const locked = useGameStore(state => state.inputLocked)
-  const available = !modal && !locked && Boolean(nearby || seated)
+  const tourOpen = usePalaceTour(state => state.open)
+  const specialPanel = useSpecialAccess(state => state.panel)
+  const available = !modal && !locked && !tourOpen && !specialPanel && Boolean(nearby || seated)
   // 전차·기차에 타고 있으면 정차 여부가 계속 바뀌니 0.3초마다 문구를 새로 그려요
   const [, setTick] = useState(0)
   useEffect(() => {

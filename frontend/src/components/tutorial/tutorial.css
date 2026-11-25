@@ -1,0 +1,182 @@
+/* 게임 화면 메뉴와 루미의 첫 안내 (담당: 병관) */
+
+.bk-game-help {
+  position: absolute;
+  inset: 12px auto auto 12px;
+  z-index: 20;
+  max-width: calc(100% - 24px);
+  color: #304b3f;
+  font: 13px/1.5 system-ui, sans-serif;
+  pointer-events: none;
+}
+.bk-game-help__bar, .bk-game-help__panel, .ui-hud.bk-hud, .bk-hud-menu {
+  border: 1px solid var(--ui-border);
+  border-radius: 13px;
+  background: var(--ui-surface);
+  box-shadow: 0 4px 18px #192a2229;
+}
+.bk-game-help__bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+}
+.bk-game-help__bar strong { padding: 0 8px; white-space: nowrap; }
+.bk-game-help__bar button, .ui-hud.bk-hud > .ui-btn {
+  min-height: 34px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #304b3f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bk-game-help__bar button { pointer-events: auto; }
+.bk-game-help__bar button:hover, .bk-game-help__bar button[aria-expanded="true"],
+.ui-hud.bk-hud > .ui-btn:hover { background: var(--ui-sage-soft); }
+.bk-game-help__panel {
+  width: max-content;
+  max-width: min(380px, 100%);
+  margin-top: 7px;
+  padding: 10px 12px;
+}
+.ui-hud.bk-hud {
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+}
+.ui-hud.bk-hud .ui-btn { box-shadow: none; }
+.bk-hud-menu {
+  position: fixed;
+  inset: 59px 12px auto auto;
+  width: min(192px, calc(100vw - 24px));
+  max-height: calc(100dvh - 76px);
+  margin: 0;
+  padding: 5px;
+}
+.bk-hud-menu:popover-open { display: grid; gap: 2px; }
+.bk-hud-menu .ui-btn {
+  justify-content: flex-start;
+  min-height: 36px;
+  padding: 5px 9px;
+  border-color: transparent;
+  color: #304b3f;
+  font-size: 13px;
+  text-decoration: none;
+}
+.bk-hud-menu button[aria-pressed]::after { content: attr(aria-label); }
+@media (max-width: 620px) {
+  .bk-game-help { top: 60px; }
+  .bk-game-help__bar strong { display: none; }
+  .bk-game-help__bar button, .ui-hud.bk-hud > .ui-btn { padding-inline: 6px; }
+}
+
+.tut {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: max-content;
+  max-width: min(380px, calc(100% - 24px));
+  padding: 8px 9px 8px 11px;
+  border: 1px solid var(--ui-border);
+  border-left: 3px solid #ac657d;
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: 0 4px 18px #192a2229;
+  transform: translateX(-50%);
+}
+.tut--below-hud {
+  top: 108px; /* 위쪽 "루미 코스" 안내 아래로 */
+}
+@media (max-width: 700px) {
+  .tut { top: auto; bottom: 245px; }
+}
+@media (max-width: 600px) {
+  .tut { bottom: 257px; }
+}
+@media (pointer: coarse) {
+  .tut { top: auto; bottom: calc(166px + env(safe-area-inset-bottom)); }
+}
+.tut--done {
+  border-left-color: var(--ui-ok);
+}
+.tut__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tut__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #304b3f;
+  font-size: 13px;
+}
+.tut__step {
+  color: #8a4c62;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tut__text {
+  margin: 2px 0 0;
+  color: #524b45;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.tut__text b {
+  color: #83465c;
+}
+.tut__skip {
+  flex: none;
+  min-height: 30px;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-surface-2);
+  color: var(--ui-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tut__skip:hover {
+  color: var(--ui-text);
+}
+
+/* 루미 대화창 안 2단계 안내 + 예시 버튼 강조 */
+.lumi-course__tut {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #ffe3ee;
+  color: #b8436a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.lumi-course__chips.is-tutorial .lumi-course__chip {
+  border-color: #ff8fb8;
+  animation: tut-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tut-pulse {
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.35);
+  }
+}
+.tut__dist {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f3e5e8;
+  color: #83465c;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

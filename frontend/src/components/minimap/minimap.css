@@ -2,16 +2,21 @@
 
 .mm {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  right: 12px;
+  bottom: 12px;
   display: grid;
-  gap: 6px;
-  padding: 8px;
+  gap: 7px;
+  padding: 7px;
   border: 1px solid var(--ui-border);
-  border-radius: 16px;
-  background: rgba(255, 253, 248, 0.94);
-  box-shadow: var(--ui-shadow);
-  animation: ui-rise 0.2s ease-out;
+  border-radius: 14px;
+  background: var(--ui-surface);
+  box-shadow: 0 4px 18px #192a2229;
+  animation: mm-fade 0.2s ease-out; /* ui-rise는 가운데 정렬용(translateX -50%)이라 따로 */
+}
+@keyframes mm-fade {
+  from {
+    opacity: 0;
+  }
 }
 .mm__head {
   display: flex;
@@ -20,44 +25,52 @@
 }
 .mm__title {
   flex: 1;
+  padding-left: 3px;
+  color: #304b3f;
   font-size: 13px;
   font-weight: 700;
 }
 .mm__zoom {
   display: flex;
-  overflow: hidden;
-  border: 1px solid var(--ui-border);
+  gap: 2px;
+  padding: 2px;
   border-radius: 999px;
+  background: var(--ui-surface-2);
 }
 .mm__zoom button {
-  padding: 3px 9px;
+  min-height: 25px;
+  padding: 2px 8px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   color: var(--ui-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
 }
 .mm__zoom button.is-on {
-  background: var(--ui-accent);
-  color: var(--ui-accent-ink);
+  background: #e3ebe2;
+  color: #304b3f;
+  font-weight: 750;
 }
 .mm__close {
   width: 24px;
   height: 24px;
   border: 0;
   border-radius: 50%;
-  background: var(--ui-surface-2);
+  background: transparent;
   color: var(--ui-muted);
   cursor: pointer;
 }
 .mm__close:hover {
+  background: var(--ui-surface-2);
   color: var(--ui-text);
 }
 .mm__canvas {
   display: block;
+  width: 180px;
+  height: 180px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.8);
 }
 .mm-toggle {
   position: absolute;
@@ -83,4 +96,67 @@
     transform: scale(0.8);
     transform-origin: bottom right;
   }
+}
+@media (max-width: 600px) and (pointer: fine) {
+  .mm, .mm-toggle { bottom: 56px; }
+}
+
+/* 모바일(터치): 오른쪽 아래는 조작 버튼 자리라 미니맵은 오른쪽 위로, 조금 작게 */
+@media (pointer: coarse) {
+  .mm,
+  .mm-toggle {
+    top: calc(112px + env(safe-area-inset-top));
+    bottom: auto;
+    right: max(12px, env(safe-area-inset-right));
+  }
+  .mm {
+    transform: scale(0.72);
+    transform-origin: top right;
+  }
+}
+
+/* 워프존 이동 확인 창 (미니맵 위) */
+.mm-warp {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: 220px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: #304b3f;
+  font-size: 13px;
+  box-shadow: 0 4px 18px #192a2229;
+  text-align: center;
+}
+.mm-warp__title {
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.mm-warp p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+.mm-warp__btns {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.mm-warp__btns button {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-2);
+  color: #304b3f;
+  cursor: pointer;
+}
+.mm-warp__btns button.is-go {
+  border: none;
+  background: #426653;
+  color: #fff;
+  font-weight: 800;
+}
+@media (pointer: coarse) {
+  .mm-warp { top: calc(100% + 8px); bottom: auto; }
 }
