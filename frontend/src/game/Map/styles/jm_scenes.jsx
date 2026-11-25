@@ -429,4 +429,61 @@ export function JmGrassTufts({ item }) {
   )
 }
 
-export const JM_SCENE_STYLES = { jmSlopeRoad: JmSlopeRoad, jmGrassTufts: JmGrassTufts }
+// ── (11/25 밤 지민 요청) 굽이치는 강 띠 (맵 벽 바깥, 보이기만) ──
+// item.river = { points: [[x, z], ...] (소품 위치 기준), widths: [시작 폭, 끝 폭], y: [시작 물 높이, 끝 물 높이], sea: 끝 쪽을 바다색으로 }
+//   가운데 점들을 부드러운 곡선으로 잇고, 흐를수록 폭이 넓어짐. 단면 = 바깥 풀밭 → 풀 둑 → 진흙 → 얕은 물 → 깊은 물 (꼭짓점 색)
+const RIBBON_M = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.05 })
+function riverRibbonGeometry(R) {
+  const curve = new THREE.CatmullRomCurve3(R.points.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal')
+  const n = Math.max(8, Math.round(curve.getLength() / 2.5))
+  const [w0, w1] = R.widths
+  const [y0, y1] = R.y ?? [0.1, 0.1]
+  const C = (c) => new THREE.Color(c)
+  const sea = C('#286f91')
+  const pos = []
+  const col = []
+  const idx = []
+  // 단면: [가운데에서 거리(폭/2 기준 비율 또는 고정 m), 높이 더하기, 색]
+  const section = (half) => [
+    [half + 3.2, -0.22, C('#789957')], [half + 0.9, 0.1, C('#5f8748')], [half + 0.25, 0.04, C('#6f7a4c')], [half, 0, C('#8a7d5e')],
+    [half - 0.9, 0, C('#7d9a72')], [half * 0.6, 0, C('#4f8f8f')], [half * 0.25, 0, C('#35778a')],
+  ]
+  const cols = 14
+  for (let i = 0; i <= n; i++) {
+    const t = i / n
+    const p = curve.getPointAt(t)
+    const tan = curve.getTangentAt(t)
+    const nx = tan.z
+    const nz = -tan.x
+    const half = (w0 + (w1 - w0) * t) / 2
+    const y = y0 + (y1 - y0) * t
+    const sec = section(half)
+    const full = [...sec.map(([d, dy, c]) => [-d, dy, c]), ...sec.slice().reverse().map(([d, dy, c]) => [d, dy, c])]
+    const toSea = R.sea ? THREE.MathUtils.smoothstep(t, 0.8, 1) : 0
+    const fromSea = R.seaStart ? 1 - THREE.MathUtils.smoothstep(t, 0, 0.12) : 0
+    full.forEach(([d, dy, c], k) => {
+      const wob = k > 2 && k < 11 ? 0 : Math.sin(i * 1.7 + k) * 0.25 // 둑 바깥선은 살짝 들쭉날쭉
+      pos.push(p.x + nx * (d + Math.sign(d) * wob), y + dy, p.z + nz * (d + Math.sign(d) * wob))
+      const cc = c.clone()
+      if (k > 2 && k < 11) cc.lerp(sea, Math.max(toSea, fromSea))
+      col.push(cc.r, cc.g, cc.b)
+    })
+    if (i) for (let k = 0; k < cols - 1; k++) {
+      const a = (i - 1) * cols + k
+      const b = i * cols + k
+      idx.push(a, a + 1, b, a + 1, b + 1, b)
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
+}
+export function JmRiverRibbon({ item }) {
+  const geo = useMemo(() => riverRibbonGeometry(item.river), [item.river])
+  return <mesh geometry={geo} material={RIBBON_M} frustumCulled={false} />
+}
+
+export const JM_SCENE_STYLES = { jmSlopeRoad: JmSlopeRoad, jmGrassTufts: JmGrassTufts, jmRiverRibbon: JmRiverRibbon }

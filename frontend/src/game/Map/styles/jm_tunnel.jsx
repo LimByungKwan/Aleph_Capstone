@@ -85,9 +85,10 @@ export function JmTunnelGate({ item }) {
     const topRoof = hipRoofGeometry(gate.w - 1.4, gate.z1 - gate.z0 + 0.6, 2.2, 0.25)
     const hallRoof = hipRoofGeometry(hall.w + 0.8, hall.z1 - hall.z0 + 0.8, 2.8, 0.2)
     const bayRoof = hipRoofGeometry(4.2, 2.0, 2.2, 0.1)
+    const corRoof = hipRoofGeometry(pass + 2.8, tube.z1 - tube.z0 + 0.4, 1.3, 0.12)
     const wingRoof = hipRoofGeometry(wing.w + 1.0, gate.z1 - gate.z0 - 0.4, 1.5, 0.15)
     const towerRoof = hipRoofGeometry(wing.tower + 1.4, wing.tower + 1.4, 2.0, 0.2)
-    return { front, back, hallBack, hallFront, vault, midRoof, topRoof, hallRoof, niche, bayRoof, wingRoof, towerRoof }
+    return { front, back, hallBack, hallFront, vault, midRoof, topRoof, hallRoof, niche, bayRoof, wingRoof, towerRoof, corRoof }
   }, [gate.w, gate.h, gate.z0, gate.z1, hall.w, hall.h, hall.z0, hall.z1, pass, passH, tube.z0, tube.z1, wing.w, wing.tower])
   const gz = (gate.z0 + gate.z1) / 2
   const gd = gate.z1 - gate.z0
@@ -205,15 +206,18 @@ export function JmTunnelGate({ item }) {
       {[-1.5, 1.5].map((z) => (
         <Box key={z} p={[pass / 2 - 0.12, 2.6, z]} s={[0.1, 0.3, 0.3]} m={LAMP} />
       ))}
-      {[
-        [0, 0, 0, 11, 5.6, 7.8, MOUND],
-        [-5, 0, 0.4, 7, 3.6, 7, MOUND_DARK],
-        [5.2, 0, -0.4, 7, 3.3, 7, MOUND_DARK],
-      ].map(([x, y, z, sx, sy, sz, m], i) => (
-        <mesh key={i} position={[x, y, z]} scale={[sx / 2, sy, sz / 2]} material={m}>
-          <sphereGeometry args={[1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        </mesh>
+      {/* (11/25 밤 지민 요청: 산 덩어리가 뭔지 모르겠음) 언덕 대신 건물 사이를 잇는 붉은 회벽 복도 + 기와 지붕 */}
+      {[-1, 1].map((s) => (
+        <group key={`cor${s}`}>
+          <Box p={[s * (pass / 2 + 0.45), (passH + 0.5) / 2, (tube.z0 + tube.z1) / 2]} s={[0.7, passH + 0.5, tube.z1 - tube.z0]} m={RED_PLASTER} />
+          <Box p={[s * (pass / 2 + 0.82), 0.5, (tube.z0 + tube.z1) / 2]} s={[0.06, 1.0, tube.z1 - tube.z0]} m={GRIME} />
+          {[-1.5, 1.5].map((z) => (
+            <Box key={z} p={[s * (pass / 2 + 0.82), 2.6, z]} s={[0.06, 1.1, 1.3]} m={WIN_PALE} />
+          ))}
+        </group>
       ))}
+      <Box p={[0, passH + 0.6, (tube.z0 + tube.z1) / 2]} s={[pass + 2.2, 0.2, tube.z1 - tube.z0]} m={WOOD_D} />
+      <mesh geometry={geo.corRoof} material={ROOF} position={[0, passH + 0.7, (tube.z0 + tube.z1) / 2]} />
       {/* ── 대합실 같은 홀 (색유리 창 빛, 나무 의자) ── */}
       <Box p={[0, 0.04, hz]} s={[hall.w - 0.4, 0.08, hd]} m={HALL_FLOOR} />
       <mesh geometry={geo.hallBack} material={HALL_WALL} position={[0, 0, hall.z1 - 0.6]} />

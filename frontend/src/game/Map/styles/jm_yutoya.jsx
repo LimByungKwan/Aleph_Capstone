@@ -209,6 +209,20 @@ function NorenSplit({ w, h, y, z }) {
     </group>
   )
 }
+// 카메라가 radius보다 멀 때만 보임 (NearOnly의 반대): 멀리서는 문 안이 따뜻한 빛으로, 가까이 가면 진짜 로비가 보임
+function FarOnly({ radius, children }) {
+  const ref = useRef(null)
+  const acc = useRef(1)
+  const v = useMemo(() => new THREE.Vector3(), [])
+  useFrame(({ camera }, dt) => {
+    acc.current += dt
+    if (acc.current < 0.25 || !ref.current) return
+    acc.current = 0
+    ref.current.parent.getWorldPosition(v)
+    ref.current.visible = v.distanceTo(camera.position) > radius
+  })
+  return <group ref={ref} userData={{ noMerge: true }}>{children}</group>
+}
 const ENTRY_GLOW = new THREE.MeshStandardMaterial({ color: '#7a4a24', emissive: '#f0a85a', emissiveIntensity: 0.55, roughness: 1 })
 
 // 1층 옆벽 소나무 벽화
@@ -629,9 +643,11 @@ function YuExterior({ W, D, Y, sign }) {
         ))}
         <Box p={[0, base + doorH + 0.85, 3.0]} s={[6.8, 0.3, 0.3]} c={VERM} />
         {/* 문 안 어둠 + ゆ 노렌 */}
-        <mesh position={[0, base + doorH / 2, -wt - 0.05]} material={ENTRY_GLOW}>
-          <planeGeometry args={[door, doorH]} />
-        </mesh>
+        <FarOnly radius={34}>
+          <mesh position={[0, base + doorH / 2, -wt - 0.05]} material={ENTRY_GLOW}>
+            <planeGeometry args={[door, doorH]} />
+          </mesh>
+        </FarOnly>
         {/* 양옆으로 열어 둔 격자 미닫이문 + 문틀 + 문지방 */}
         {[-1, 1].map((sd) => (
           <group key={`d${sd}`}>

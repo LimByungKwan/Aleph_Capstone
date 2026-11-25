@@ -104,8 +104,7 @@ for (const s of [-1, 1]) {
   // (11/25 밤) 양옆 날개채 + 끝 망루 (jm_tunnel.jsx TUNNEL.wing과 같은 숫자)
   wall(`jm_tunnel_wing_${k}`, [s * ts(10.75), r2(TUN_Z + ts(6))], [ts(7.5), ts(4.2), ts(4.6)], { camera: true })
   wall(`jm_tunnel_tower_${k}`, [s * ts(15.7), r2(TUN_Z + ts(6))], [ts(2.8), ts(7.2), ts(2.8)], { camera: true })
-  wall(`jm_tunnel_tube_${k}`, [s * ts(2.0), TUN_Z], [ts(0.4), ts(4), ts(6)])
-  wall(`jm_tunnel_mound_${k}`, [s * ts(5.6), TUN_Z], [ts(6.8), ts(3), ts(6)])
+  wall(`jm_tunnel_tube_${k}`, [s * ts(2.25), TUN_Z], [ts(0.9), ts(4.5), ts(6)], { camera: true })
   wall(`jm_tunnel_hall_${k}`, [s * ts(4.8), r2(TUN_Z - ts(6))], [ts(0.4), ts(5.2), ts(6)])
   wall(`jm_tunnel_hall_back_${k}`, [s * ts(3.4), r2(TUN_Z - ts(3.3))], [ts(3.2), ts(5.2), ts(0.6)])
   wall(`jm_tunnel_hall_front_${k}`, [s * ts(3.4), r2(TUN_Z - ts(8.7))], [ts(3.2), ts(5.2), ts(0.6)])
@@ -258,39 +257,43 @@ ARM_X.forEach((x, i) => {
 for (const s of [-1, 1]) {
   const k = s < 0 ? 'w' : 'e'
   // ②③ 골목 양옆 뒷줄 (골목을 보고 섬)
-  eatery(`jm_eat_back_${k}a`, [s * 20.5, -115], 180, { w: 10, d: 12 })
-  eatery(`jm_eat_back_${k}b`, [s * 20.5, -133], 0, { w: 10, d: 12 })
+  // (11/25 밤 마을 압축) 뒷줄 가게·먼 서쪽 큰 건물은 뺌
   // 마을 남쪽 끝 (풀밭에서 올려다보이는 앞면, 난간과 겹치지 않게 1.5m 안쪽) + 바깥쪽 큰 건물
   // (11/25 지민 요청: 골목마다 가게를 채우지 않음) 남쪽 끝 줄은 동쪽 2채만, 서쪽은 ⑥ 언덕 계단 자리
   if (s > 0) [-30, -44].forEach((x, i) => eatery(`jm_eat_edge_${k}${i + 1}`, [s * -x, -68.5], 0, { w: 11, d: 11, floors: 3, h: 12.5 }))
-  if (s < 0) [-115, -127, -139].forEach((z, i) => eatery(`jm_eat_far_${k}${i + 1}`, [s * 64, z], 90, { w: 10, d: 12, floors: 3, h: 13 }))
 }
 // 큰길·가로 거리 위 등 줄
 for (const [z, e] of [[-69.5, TOWN], [-78.5, TOWN], [-105.5, T_N], [-114.5, T_N], [-135.5, T_N]]) prop(`jm_lantern_line_${-z}`, 'jmLanternLine', [0, z], [10, 5.4], { elevation: e, collider: false })
 for (const x of [25.5, 34.5, 43.5, 52.5]) for (const s of [-1, 1]) prop(`jm_lantern_line_x${s < 0 ? 'w' : 'e'}${x}`, 'jmLanternLine', [s * x, -90], [6, 5.4], { rotationDeg: 90, elevation: s < 0 ? T_W : T_E, collider: false })
 for (const [i, z, e] of [[1, -64, TOWN], [2, -88, TOWN], [3, -112, T_N], [4, -140, T_N]]) light(`jm_light_town_${i}`, [0, z], { elevation: e })
 for (const s of [-1, 1]) light(`jm_light_town_arm_${s < 0 ? 'w' : 'e'}`, [s * 40, -90], { elevation: s < 0 ? T_W : T_E })
-// 다리 앞 광장 (북쪽 단)
+// 다리 앞 광장 (북쪽 단) — (11/25 밤 마을 압축) 광장이 6m로 얕아져서 압축 뒤 좌표로 직접 둠: 다리 쪽 난간 앞에 한 줄
+const NO_REMAP = new Set()
+const fixedAt = (id) => { NO_REMAP.add(id); return id }
 for (const s of [-1, 1]) {
-  gasLamp(`jm_plaza_lamp_${s < 0 ? 'w' : 'e'}`, [s * 4.2, -143], { elevation: T_N })
-  stoneLantern(`jm_plaza_lantern_${s < 0 ? 'w' : 'e'}`, [s * 7.5, -145], { elevation: T_N })
-  bench(`jm_bench_plaza_${s < 0 ? 'w' : 'e'}`, [s * 11.5, -147.6], 180, T_N) // 다리·바다 쪽을 보고 앉음
+  gasLamp(fixedAt(`jm_plaza_lamp_${s < 0 ? 'w' : 'e'}`), [s * 7.4, -134.3], { elevation: T_N })
+  stoneLantern(fixedAt(`jm_plaza_lantern_${s < 0 ? 'w' : 'e'}`), [s * 14.4, -130.2], { elevation: T_N })
+  bench(fixedAt(`jm_bench_plaza_${s < 0 ? 'w' : 'e'}`), [s * 10.6, -134.3], 180, T_N) // 다리·바다 쪽을 보고 앉음
 }
 
 // (11/25 지민이 보낸 주먹밥 장면 참고) 다리 앞 동쪽 정원: 꽃 핀 키 큰 덤불 울타리, 풀밭, 흙길, 배추밭, 빨간 지붕 창고
 //   다리 앞 광장 동쪽 계단(7.4 → 6)으로 내려가 흙길을 따라감
-terrain.push({ type: 'stairs', id: 'jm_garden_stairs', from: [19.5, -147, TOWN], to: [15.5, -147, T_N], width: 3 })
-road('jm_garden_lawn', 'grass', [76, -129], [37, 0.04, 40], { elevation: r2(TOWN + 0.05) })
-road('jm_garden_path', null, [38.5, -147], [38, 0.06, 2.4], { elevation: TOWN, color: '#a8946e' })
-road('jm_garden_path_n', null, [66, -129], [2.4, 0.06, 34], { elevation: TOWN, color: '#a8946e' })
-for (const [i, x, z, len, r] of [[1, 76, -110.5, 30, 0], [2, 82, -123, 18, 0], [3, 59.5, -122, 16, 90], [4, 72.5, -138, 10, 90], [5, 84, -146, 16, 0], [6, 92, -130, 24, 90]]) {
-  prop(`jm_garden_hedge_${i}`, 'jmHedge', [x, z], [len, 2.4, 1.6], { rotationDeg: r, elevation: TOWN, seed: i })
+// (11/25 밤 마을 압축) 정원은 압축 뒤 좌표로 직접 둠 (아래 압축 단계에서 건드리지 않음: NO_REMAP)
+//   자리: x 55 ~ 77, z -135 ~ -109. 북쪽 단 동쪽 계단(z -133.2) → 흙길 → 정원
+terrain.push({ type: 'stairs', id: fixedAt('jm_garden_stairs'), from: [19.5, -133.2, TOWN], to: [15.5, -133.2, T_N], width: 3 })
+road(fixedAt('jm_garden_lawn'), 'grass', [66.5, -122], [20, 0.04, 24], { elevation: r2(TOWN + 0.05) })
+road(fixedAt('jm_garden_path'), null, [38.5, -133.2], [38, 0.06, 2.4], { elevation: TOWN, color: '#a8946e' })
+road(fixedAt('jm_garden_path_n'), null, [57.2, -122.5], [2.4, 0.06, 22], { elevation: TOWN, color: '#a8946e' })
+for (const [i, x, z, len, r] of [[1, 67, -110.2, 18, 0], [2, 76, -121, 20, 90], [3, 55, -119, 14, 90]]) {
+  prop(fixedAt(`jm_garden_hedge_${i}`), 'jmHedge', [x, z], [len, 2.4, 1.6], { rotationDeg: r, elevation: TOWN, seed: i })
 }
-prop('jm_garden_veggies', 'jmVeggiePatch', [82, -135], [14, 0.5, 8], { elevation: TOWN, collider: false })
-for (const [i, x, z, r] of [[1, 86, -116.5, 0], [2, 74, -117, 0]]) prop(`jm_garden_shed_${i}`, 'jmShed', [x, z], [6, 4.2, 5], { rotationDeg: r, elevation: TOWN })
-tree('jm_garden_sakura', 'jmSakura', [62, -143], { elevation: TOWN })
-tree('jm_garden_maple', 'jmMaple', [90, -142], { elevation: TOWN })
-light('jm_light_garden', [76, -130], { elevation: TOWN })
+prop(fixedAt('jm_garden_veggies'), 'jmVeggiePatch', [67.5, -127], [12, 0.5, 7], { elevation: TOWN, collider: false })
+prop(fixedAt('jm_garden_shed_1'), 'jmShed', [69, -115.5], [6, 4.2, 5], { elevation: TOWN })
+tree(fixedAt('jm_garden_sakura'), 'jmSakura', [60.5, -131.5], { elevation: TOWN })
+tree(fixedAt('jm_garden_maple'), 'jmMaple', [74.5, -132], { elevation: TOWN })
+light(fixedAt('jm_light_garden'), [66, -122], { elevation: TOWN })
+bench(fixedAt('jm_bench_garden_1'), [65, -132.2], 0, TOWN)
+bench(fixedAt('jm_bench_garden_2'), [74.6, -112.5], -90, TOWN)
 {
   const TER = [[-15.5, -150, 15.5, -97], [-95, -108, -16, -76], [16, -108, 64, -76]]
   mossCover('jm_moss_town', [-95, -150, 95, -60], TOWN, TER)
@@ -314,9 +317,6 @@ light('jm_light_garden', [76, -130], { elevation: TOWN })
   ]
   floors.forEach(([[x0, z0, x1, z1], hgt], i) => road(`jm_mossy_floor_${i + 1}`, 'mossyStone', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [r2(x1 - x0), 0.06, r2(z1 - z0)], { elevation: r2(hgt - 0.02) }))
 }
-bench('jm_bench_garden_1', [70, -144.6], 0, TOWN)
-bench('jm_bench_garden_2', [89.6, -127], -90, TOWN)
-grassPatch('jm_grass_garden', [76, -129], 0, 35, 38, r2(TOWN + 0.06), [], 0.8)
 
 // ─────────────────────────────────────────────
 // 6. 다른 작품 명장면 ①~④ — 담 없이 거리 사이사이 빈터에 (11/25 지민 요청: 담이 세트장 같다 → 뺌, 자리를 섞고 높이도 다르게)
@@ -337,11 +337,11 @@ const SCENES = [
 ]
 // 같은 작품 가게(쿠폰): 장면 바로 옆 음식점 간판을 바꿈. ⑤는 다리 앞 마지막 가게
 const SCENE_SHOPS = [
-  { id: 'shop_jm_donguri', eat: 'jm_eat_arm_wn5', sign: { text: 'どんぐり茶屋', bg: '#2f4a2a', fg: '#fdf6e3' } },
+  { id: 'shop_jm_donguri', eat: 'jm_eat_arm_wn3', sign: { text: 'どんぐり茶屋', bg: '#2f4a2a', fg: '#fdf6e3' } },
   { id: 'shop_jm_kumihimo', eat: 'jm_eat_w6', sign: { text: '組紐 結び屋', bg: '#7a1d3a', fg: '#fdf6e3' } },
   { id: 'shop_jm_fuji', eat: 'jm_eat_e6', sign: { text: '藤の花茶屋', bg: '#4b2e6b', fg: '#fdf6e3' } },
-  { id: 'shop_jm_sakura', eat: 'jm_eat_arm_en5', sign: { text: '苔むす茶屋', bg: '#2f4a2a', fg: '#e8f0d8' } },
-  { id: 'shop_jm_manju', eat: 'jm_eat_e8', sign: { text: '湯けむり饅頭', bg: '#7c2d12', fg: '#fdf6e3' } },
+  { id: 'shop_jm_sakura', eat: 'jm_eat_arm_en3', sign: { text: '苔むす茶屋', bg: '#2f4a2a', fg: '#e8f0d8' } },
+  { id: 'shop_jm_manju', eat: 'jm_eat_e7', sign: { text: '湯けむり饅頭', bg: '#7c2d12', fg: '#fdf6e3' } },
 ]
 const placePositions = {}
 function worldEdge(rot, local) {
@@ -469,9 +469,16 @@ road('jm_pier_step', null, [r2(PIER.x1 + 0.6), r2((SHOAL.z0 + PIER.z1) / 2)], [1
 // (11/25 밤 지민 선택: 보이기만 하는 물길) 여관 바다 → 서쪽 벽 밖 강 → SG 해변 바다. 맵 벽(x -130) 바깥이라 걸어갈 수는 없음
 //   벽 안쪽 풀밭 강(z -39)도 서쪽 끝에서 이 강으로 흘러듦. 월드 z = 구역 z - 85
 prop('jm_outer_bay', 'jmCanal', [-140, -188.5], [73, 0.1, 24], { rotationDeg: 90, curb: false, beach: 'sea', collider: false })
-prop('jm_outer_river', 'jmCanal', [-141, -7.5], [14, 0.1, 289], { natural: true, wade: true, view: true, depth: 0.3, curb: false, collider: false })
-prop('jm_outer_join', 'jmCanal', [-131, RIVER_Z], [22, 0.1, 6], { rotationDeg: 90, natural: true, wade: true, view: true, banks: false, depth: 0.3, curb: false, collider: false })
-prop('jm_outer_mouth', 'jmCanal', [-141, 147], [28, 0.1, 22], { rotationDeg: 90, curb: false, beach: 'sea', collider: false })
+// 굽이치는 강: 여관 바다(만) → 남쪽으로 구불구불 → SG 해변 바다. 흐를수록 넓어짐(12 → 34m). 점은 구역 좌표
+prop('jm_outer_river', 'jmRiverRibbon', [0, 0], [60, 0.5, 340], { collider: false, river: {
+  points: [[-143, -143], [-151, -128], [-163, -110], [-158, -90], [-144, -72], [-147, -50], [-162, -30], [-170, -5], [-158, 20], [-147, 42], [-152, 68], [-166, 92], [-163, 118], [-150, 138], [-146, 158]],
+  widths: [12, 34], y: [0.09, 0.07], sea: true, seaStart: true,
+} })
+// 풀밭 강(벽 안, 물 높이 0.3)이 서쪽 끝에서 벽을 넘어 휘어 내려가 큰 강에 합쳐짐 (합쳐질수록 넓어짐)
+prop('jm_outer_join', 'jmRiverRibbon', [0, 0], [40, 0.5, 30], { collider: false, river: {
+  points: [[-126, RIVER_Z], [-134, RIVER_Z - 0.5], [-141, RIVER_Z - 3], [-147, RIVER_Z - 9], [-150, RIVER_Z - 16]],
+  widths: [22, 15], y: [0.29, 0.1],
+} })
 prop('jm_sea_rail', 'jmSeaRail', [0, TRAIN.z], [3, 0.3, 250], { rotationDeg: 90, collider: false, submerged: true })
 road('jm_pier', null, [r2((PIER.x0 + PIER.x1) / 2), r2((PIER.z0 + PIER.z1) / 2)], [r2(PIER.x1 - PIER.x0), PIER.h, r2(PIER.z1 - PIER.z0)], { color: '#8d877c' })
 prop('jm_pier_sign', 'jmStationSign', [r2(PIER.x1 - 1.5), -162], [1.6, 2.4, 0.3], { rotationDeg: 0, elevation: PIER.h, signs: [{ text: '湯灯駅' }] })
@@ -795,8 +802,8 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
   light('jm_light_yutoya_rooms', at(0, 13), { elevation: el(14) })
 }
 // 섬 정원: 현관 앞 돌길, 양옆 정원(풀밭 + 꽃덤불 + 나무 + 가스등), 서쪽 끝에서 선착장으로 내려가는 바깥 계단
-prop('jm_ryokan_fox_w', 'jmFox', [-6.2, -148.4], [0.9, 1.8, 0.9], { mirror: true, elevation: T_N })
-prop('jm_ryokan_fox_e', 'jmFox', [6.2, -148.4], [0.9, 1.8, 0.9], { elevation: T_N })
+prop(fixedAt('jm_ryokan_fox_w'), 'jmFox', [-4.6, -134.2], [0.9, 1.8, 0.9], { mirror: true, elevation: T_N })
+prop(fixedAt('jm_ryokan_fox_e'), 'jmFox', [4.6, -134.2], [0.9, 1.8, 0.9], { elevation: T_N })
 road('jm_ryokan_path', 'stone', [0, -182], [4, 0.06, 6], { elevation: TOP })
 road('jm_ryokan_path_w', 'gardenPath', [-17.5, -180.4], [33, 0.06, 2], { elevation: TOP })
 for (const s of [-1, 1]) road(`jm_ryokan_path_side_${s < 0 ? 'w' : 'e'}`, 'gardenPath', [s * 29.5, -202], [2, 0.06, 40], { elevation: TOP })
@@ -924,6 +931,92 @@ for (const item of [...roads, ...terrain, ...buildings, ...props]) {
   ids.add(item.id)
 }
 for (const item of props) if (item.style === null) delete item.style
+
+// ─────────────────────────────────────────────
+// (11/25 밤 지민 승인) 마을 압축: 위에서 만든 배치에서 '띠'를 잘라내고 나머지를 당겨 붙임 (건물 크기는 그대로)
+//   세로: z -114 ~ -108 (큰길 가게 한 줄), z -147 ~ -138 (다리 앞 가게 한 줄) → 마을 90m → 75m, 다리·섬·바다·역은 15m 남쪽으로
+//   가로: 가로 거리 띠(z -108 ~ -76)에서 |x| 43.2 ~ 61.2 (가게 두 칸씩) → 마을 190m → 154m, ①·④ 장면은 18m 안쪽으로
+//   띠 안에 가운데가 있는 가게·등 줄·구역 등은 없앰. 길·바닥·단(네모)은 양 끝을 옮겨 줄임. 그 밖은 가운데만 옮김
+// ─────────────────────────────────────────────
+{
+  const Z_CUTS = [[-114, -108], [-147, -138]]
+  const X_CUT = [43.2, 61.2]
+  const BAND = [-108, -76]
+  const inBand = (z) => z >= BAND[0] && z <= BAND[1]
+  const inZCut = (z) => Z_CUTS.some(([n, sth]) => z > n && z < sth)
+  const inXCut = (x) => Math.abs(x) > X_CUT[0] && Math.abs(x) < X_CUT[1]
+  const mapZ = (z) => {
+    let base = z
+    let shift = 0
+    for (const [n, sth] of Z_CUTS) {
+      if (z <= n) shift += sth - n
+      else if (z < sth) base = sth
+    }
+    return r2(base + shift)
+  }
+  const mapX = (x) => {
+    const a = Math.abs(x)
+    const m = a >= X_CUT[1] ? a - (X_CUT[1] - X_CUT[0]) : a > X_CUT[0] ? X_CUT[0] : a
+    return r2(Math.sign(x) * m)
+  }
+  const skip = (id) => [...NO_REMAP].some((k) => id === k || id.startsWith(`${k}_`))
+  const DELETABLE = new Set(['jmEatery', 'jmLanternLine', 'jmZoneLight'])
+  const gone = new Set()
+  // 네모(길·바닥): 양 끝을 옮김
+  const rect = (it) => {
+    const turned = Math.abs((it.rotationDeg ?? 0) % 180) === 90
+    const [sx, sz] = turned ? [it.size[2], it.size[0]] : [it.size[0], it.size[2]]
+    const [cx, cz] = it.position
+    const useX = inBand(cz) || sx >= 100
+    const x0 = useX ? mapX(cx - sx / 2) : cx - sx / 2
+    const x1 = useX ? mapX(cx + sx / 2) : cx + sx / 2
+    const z0 = mapZ(cz - sz / 2)
+    const z1 = mapZ(cz + sz / 2)
+    it.position = [r2((x0 + x1) / 2), r2((z0 + z1) / 2)]
+    const [nx, nz] = [r2(x1 - x0), r2(z1 - z0)]
+    it.size = turned ? [nz, it.size[1], nx] : [nx, it.size[1], nz]
+    return nx > 0.05 && nz > 0.05
+  }
+  for (let i = roads.length - 1; i >= 0; i--) if (!skip(roads[i].id) && !rect(roads[i])) roads.splice(i, 1)
+  for (let i = props.length - 1; i >= 0; i--) {
+    const it = props[i]
+    if (skip(it.id)) continue
+    const [x, z] = it.position
+    if (it.style === 'jmFloor') {
+      if (!rect(it)) props.splice(i, 1)
+      continue
+    }
+    const cut = inZCut(z) || (inBand(z) && inXCut(x))
+    if (cut && DELETABLE.has(it.style)) {
+      gone.add(it.id)
+      props.splice(i, 1)
+      continue
+    }
+    it.position = [inBand(z) ? mapX(x) : x, mapZ(z)]
+    // 엘리베이터 층 자리(월드 좌표)도 같이
+    if (it.elevator?.stops) for (const st of it.elevator.stops) st.pos = [st.pos[0], st.pos[1], r2(mapZ(st.pos[2] - ZONE_ORIGIN_Z) + ZONE_ORIGIN_Z)]
+  }
+  // 없앤 가게의 카메라 막이도 없앰
+  for (let i = props.length - 1; i >= 0; i--) if (props[i].id.endsWith('_cam') && gone.has(props[i].id.slice(0, -4))) props.splice(i, 1)
+  for (const t of terrain) {
+    if (skip(t.id)) continue
+    if (t.rect) {
+      const [x0, z0, x1, z1] = t.rect
+      const useX = inBand((z0 + z1) / 2) || x1 - x0 >= 100
+      t.rect = [useX ? mapX(x0) : x0, mapZ(z0), useX ? mapX(x1) : x1, mapZ(z1)]
+      for (const rl of t.rails ?? []) if (rl.gaps) rl.gaps = rl.gaps.map((g) => g.map((v) => (rl.edge === 'west' || rl.edge === 'east' ? mapZ(v) : v)))
+    }
+    for (const k of ['from', 'to']) if (t[k]) t[k] = [inBand(t[k][1]) ? mapX(t[k][0]) : t[k][0], mapZ(t[k][1]), ...t[k].slice(2)]
+    if (t.position) t.position = [t.position[0], mapZ(t.position[1])]
+  }
+  // 정원 계단 자리에 맞춰 북쪽 단 동쪽 난간 틈을 다시
+  const north = terrain.find((t) => t.id === 'jm_town_north')
+  for (const rl of north.rails) if (rl.edge === 'east') rl.gaps = [[-120.5, -117.5], [-134.7, -131.7]]
+  for (const [id, pos] of Object.entries(placePositions)) {
+    const z = pos[2] - ZONE_ORIGIN_Z
+    placePositions[id] = [inBand(z) ? mapX(pos[0]) : pos[0], pos[1], r2(mapZ(z) + ZONE_ORIGIN_Z)]
+  }
+}
 
 const zone = {
   zoneId: 'JM',
