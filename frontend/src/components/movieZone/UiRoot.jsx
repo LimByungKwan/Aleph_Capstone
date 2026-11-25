@@ -9,6 +9,8 @@ import CinemaOverlay from './CinemaOverlay.jsx'
 import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
 import PalaceSeatPrompt from './PalaceSeatPrompt.jsx'
+import RickshawMenu from './RickshawMenu.jsx'
+import CarDriveHint from './CarDriveHint.jsx'
 import { CourseHud } from '../course/LumiCourse.jsx'
 import Minimap from '../minimap/Minimap.jsx'
 import { sceneForPlace } from './sceneData.js'
@@ -34,6 +36,8 @@ export default function UiRoot() {
       {!inCinema && <CourseHud />}
       {!inCinema && <Minimap />}
       <SceneHint />
+      {!inCinema && <RickshawMenu />}
+      {!inCinema && <CarDriveHint />}
       {!inCinema && <PalaceSeatPrompt />}
       <DialogBox />
       <BreakwaterScene />

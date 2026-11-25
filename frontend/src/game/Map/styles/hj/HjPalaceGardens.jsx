@@ -154,15 +154,15 @@ export function PalaceGardens({ Pavilion }) {
       <Box p={[-9.15, 0.247, -14.1]} s={[5.22, 0.25, 2.16]} c="#cabfa9" />
       <Box p={[-6.25, 0.212, -14.1]} s={[0.65, 0.115, 2.16]} c="#c2b79f" />
       <Pavilion position={[-15.8, 0.39, -14.26]} width={7.5} depth={5.55} height={2.74}
-        open upper ornate title="해월루" />
+        open upper ornate title="경회루" />
       {[-1, 1].map(side => <Box key={side} p={[-9.15, 0.68, -14.1 + side * 1.02]}
         s={[5.12, 0.11, 0.10]} c="#d0c6ac" />)}
       <Cyl p={[16.2, 0.19, 4.5]} rad={2.68} h={0.39} c="#8d8a75" geo={GEO.cyl8} />
       <Cyl p={[16.2, 0.389, 4.5]} rad={2.61} h={0.052} c="#7b8655" geo={GEO.cyl8} />
       <Pavilion position={[16.2, 0.42, 4.5]} width={4.35} depth={3.6} height={2.21}
-        open upper ornate title="연월정" />
+        open upper ornate title="향원정" />
       <Box p={[14.0, 0.24, 14.67]} s={[7.6, 0.16, 4.7]} c={STONE} />
-      <Pavilion position={[14, 0.31, 14.67]} width={5.8} depth={4.1} height={2.82} ornate title="소연당" />
+      <Pavilion position={[14, 0.31, 14.67]} width={5.8} depth={4.1} height={2.82} ornate title="자경전" />
       <Cyl p={[-20.35, 0.168, -10.64]} rad={1.1} h={0.26} c="#85866a" geo={GEO.cyl8} />
       <GardenPine position={[-20.35, 0.26, -10.64]} size={0.85} />
       <Cyl p={[20.8, 0.17, 0.85]} rad={1.02} h={0.29} c="#848575" geo={GEO.cyl8} />

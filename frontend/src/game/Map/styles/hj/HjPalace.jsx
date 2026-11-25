@@ -5,6 +5,7 @@ import { getSignTexture, getTiledTexture } from '../textures.js'
 import { DancheongBand, PalaceLatticeCorridor, PalaceTerrace } from './HjPalaceDetails.jsx'
 import { PalaceGardens } from './HjPalaceGardens.jsx'
 import HjPalaceInterior from './HjPalaceInterior.jsx'
+import { Deumu, GyeonghoeruPillars, HaetaePair, PumgyeStones } from './HjGyeongbok.jsx'
 import { THRONE_ROOM_POSITION } from '../../../../components/movieZone/palaceInteriorLayout.js'
 
 const PLASTER = '#dfd2b7'
@@ -45,7 +46,7 @@ function roofGeometry(width, depth, rise) {
   return mesh
 }
 
-function TiledRoof({ width, depth, rise, y }) {
+export function TiledRoof({ width, depth, rise, y }) {
   const geometry = useMemo(() => roofGeometry(width, depth, rise), [width, depth, rise])
   useEffect(() => () => geometry.dispose(), [geometry])
   return (
@@ -59,7 +60,7 @@ function TiledRoof({ width, depth, rise, y }) {
   )
 }
 
-function Pavilion({ position, width, depth, height, upper = false, open = false, ornate = false, interior = false, rotation = 0, title }) {
+export function Pavilion({ position, width, depth, height, upper = false, open = false, ornate = false, interior = false, rotation = 0, title }) {
   const columns = Math.max(4, Math.ceil(width / 2.05))
   const timbers = []
   for (const side of [-1, 1]) {
@@ -112,7 +113,7 @@ function Pavilion({ position, width, depth, height, upper = false, open = false,
   )
 }
 
-const arches = new Shape()
+export const arches = new Shape()
 arches.moveTo(-6.65, 0)
 for (const [center, radius] of [[-3.9, 1.07], [0, 1.45], [3.9, 1.07]]) {
   const springline = 2.65 - radius
@@ -146,7 +147,7 @@ export default function HjPalace({ item }) {
         <extrudeGeometry args={[arches, { depth: 2.5, bevelEnabled: false, curveSegments: 16 }]} />
         <meshStandardMaterial color={PLASTER} roughness={0.9} />
       </mesh>
-      <Pavilion position={[0, 3.2, -21.95]} width={15} depth={4.8} height={2.55} upper title="해월문" />
+      <Pavilion position={[0, 3.2, -21.95]} width={15} depth={4.8} height={2.55} upper title="광화문" />
       {[-1, 1].map((side) => (
         <group key={side}>
           <Box p={[side * 15.28, 1.13, -21.95]} s={[17.3, 2.1, 1.0]} c={PLASTER} />
@@ -159,14 +160,19 @@ export default function HjPalace({ item }) {
         </group>
       ))}
       <Pavilion position={[0, 0.17, 23.15]} width={46.7} depth={2.15} height={1.8} />
-      <Pavilion position={[0, 0.17, -6.25]} width={8.6} depth={4.1} height={2.74} open upper title="명월문" />
+      <Pavilion position={[0, 0.17, -6.25]} width={8.6} depth={4.1} height={2.74} open upper title="근정문" />
       <Box p={[0, 0.47, 13.3]} s={[18, 0.61, 14.2]} c="#b6ad98" />
       <Box p={[0, 0.81, 13.6]} s={[15.8, 0.22, 12.3]} c="#d7cfbd" />
       {[0.23, 0.36, 0.49, 0.62, 0.75].map((h, index) => (
         <Box key={h} p={[0, h / 2, 4.58 + index * 0.36]} s={[4.75, h, 0.37]} c={PLASTER} />
       ))}
-      <Pavilion position={THRONE_ROOM_POSITION} width={14.2} depth={8.1} height={3.8} upper ornate interior title="해월정전" />
+      <Pavilion position={THRONE_ROOM_POSITION} width={14.2} depth={8.1} height={3.8} upper ornate interior title="근정전" />
       <PalaceTerrace />
+      {/* 경복궁다운 디테일: 해태 · 품계석 · 드므 · 경회루 돌기둥 */}
+      <HaetaePair />
+      <PumgyeStones />
+      <Deumu />
+      <GyeonghoeruPillars />
       <PalaceGardens Pavilion={Pavilion} />
       <PalaceLatticeCorridor Pavilion={Pavilion} />
       <Instances geometry={GEO.box} material={GLOW} items={lamps} />

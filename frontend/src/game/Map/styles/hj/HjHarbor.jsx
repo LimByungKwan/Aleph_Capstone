@@ -42,10 +42,10 @@ export function HjSea({ item }) {
       {/* 바닥이 비치지 않게 깊은 물색 판 */}
       <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color="#1f4f7a" />
+        <meshStandardMaterial color={item.deepColor ?? "#1f4f7a"} />
       </mesh>
       <mesh ref={ref} geometry={geometry} position={[0, 0.11, 0]}>
-        <meshStandardMaterial color="#3d84b8" transparent opacity={0.88} roughness={0.25} metalness={0.15} />
+        <meshStandardMaterial color={item.surfaceColor ?? "#3d84b8"} transparent opacity={0.88} roughness={0.25} metalness={0.15} />
       </mesh>
       {item.wall !== false && <HarborRails boxes={seaRails(item)} />}
     </group>
