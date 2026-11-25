@@ -13,6 +13,7 @@ import { JM_BENCH_STYLES } from './jm_bench.jsx'
 import { JM_KYOTO_STYLES } from './jm_kyoto.jsx'
 import { JM_STAIR_STYLES } from './jm_stairs.jsx'
 import { JM_PORTAL_STYLES } from './jm_portal.jsx'
+import { JM_YUTOYA_STYLES } from './jm_yutoya.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -83,6 +84,8 @@ const JM_STYLES_RAW = {
   ...JM_STAIR_STYLES,
   // 명장면 공간 입구·공간 (jm_portal.jsx)
   ...JM_PORTAL_STYLES,
+  // 큰 여관 「湯灯屋」 외관·안 (jm_yutoya.jsx)
+  ...JM_YUTOYA_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)

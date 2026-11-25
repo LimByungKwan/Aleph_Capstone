@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
-import { Box, Cyl, mat } from './kit.jsx'
+import { Ball, Box, Cyl, GEO, Instances, mat } from './kit.jsx'
 import { getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
 import { getFlowTexture } from './jm_details.jsx'
 
@@ -132,6 +132,10 @@ const WALL_T = 0.25
 const LOBBY_WALL = '#e9dcc0'
 const BASE_H = 0.6
 const FLOOR_WOOD = ['#8a6243', '#7a5a3e', '#6f4a33', '#8d6a4a', '#5e4330']
+// 11/25 겉모습: 참고 사진(붉은 벽 + 초록 기와 + 금색 장식의 높은 온천 건물)처럼 — 벽은 붉게, 지붕·처마는 초록, 가운데 박공과 꼭대기 누각
+const GR_RED = '#b9483a'
+const GR_ROOF = '#3f6f5a'
+const GR_GOLD = '#c9a245'
 
 export function JmGrandRyokan({ item }) {
   const [w, , d] = item.size
@@ -141,6 +145,8 @@ export function JmGrandRyokan({ item }) {
   const bases = floors.reduce((acc, f) => [...acc, acc[acc.length - 1] + f.h], [BASE_H])
   const total = bases[bases.length - 1]
   const roof = useMemo(() => hipRoofGeometry(w + 2.4, d + 2.4, 3.4, 0.35), [w, d])
+  const crownRoof = useMemo(() => hipRoofGeometry(w * 0.4 + 1.8, d * 0.55 + 1.8, 1.9, 0.3), [w, d])
+  const gableRoof = useMemo(() => hipRoofGeometry(7.2, 2.6, 1.4, 0.35), [])
   return (
     <group>
       {/* 돌 기단 + 앞 계단 */}
@@ -154,11 +160,38 @@ export function JmGrandRyokan({ item }) {
       {/* 지붕 밑 판 + 큰 지붕 + 금색 꼭대기 장식 + 굴뚝(지붕 위만) */}
       <Box p={[0, total + 0.1, 0]} s={[w, 0.2, d]} c={DARK_WOOD} />
       <mesh geometry={roof} position={[0, total + 0.2, 0]}>
-        <meshStandardMaterial color={ROOF} flatShading side={THREE.DoubleSide} />
+        <meshStandardMaterial color={GR_ROOF} flatShading side={THREE.DoubleSide} />
       </mesh>
       {[-1, 1].map((s) => (
-        <Cyl key={s} p={[s * (w / 2 - 1.5), total + 3.9, 0]} rad={0.22} h={0.9} c="#c9a245" />
+        <Cyl key={s} p={[s * (w / 2 - 1.5), total + 3.9, 0]} rad={0.22} h={0.9} c={GR_GOLD} />
       ))}
+      {/* 큰 지붕 위 작은 누각 (사진의 꼭대기 층) + 금색 지붕 + 꼭대기 장식 */}
+      <group position={[0, total + 2.2, 0]}>
+        <Box p={[0, 1.3, 0]} s={[w * 0.4, 2.6, d * 0.55]} c={GR_RED} />
+        <Box p={[0, 1.35, d * 0.275 + 0.03]} s={[w * 0.4 - 0.8, 1.2, 0.05]} m={SHOJI} />
+        {range(7).map((i) => (
+          <Box key={i} p={[-w * 0.2 + 0.4 + (i * (w * 0.4 - 0.8)) / 6, 1.35, d * 0.275 + 0.07]} s={[0.08, 1.3, 0.05]} c={DARK_WOOD} />
+        ))}
+        <Box p={[0, 0.25, d * 0.275 + 0.35]} s={[w * 0.4, 0.08, 0.6]} c={WOOD} />
+        <Box p={[0, 0.95, d * 0.275 + 0.62]} s={[w * 0.4, 0.08, 0.08]} c={VERMILION} />
+        <mesh geometry={crownRoof} position={[0, 2.6, 0]}>
+          <meshStandardMaterial color={GR_GOLD} metalness={0.35} roughness={0.45} flatShading side={THREE.DoubleSide} />
+        </mesh>
+        <Cyl p={[0, 4.6, 0]} rad={0.18} h={0.7} c={GR_GOLD} />
+        <Ball p={[0, 5.05, 0]} rad={0.25} c={GR_GOLD} />
+      </group>
+      {/* 정면 가운데 박공 (처마 위로 내민 작은 지붕, 사진의 현관 위 둥근 지붕 자리) */}
+      {floors.slice(0, -1).map((f, k) =>
+        k % 2 === 0 ? (
+          <group key={`gable${k}`} position={[0, bases[k + 1] + 0.05, d / 2 + 1.25]}>
+            <mesh geometry={gableRoof}>
+              <meshStandardMaterial color={GR_ROOF} flatShading side={THREE.DoubleSide} />
+            </mesh>
+            <Box p={[0, 0.02, 1.25]} s={[k === 0 ? 7.4 : 6.2, 0.1, 0.12]} c={GR_GOLD} />
+            <Ball p={[0, 1.55, 0]} rad={0.2} c={GR_GOLD} />
+          </group>
+        ) : null,
+      )}
       <group position={[w * 0.36, total, -d * 0.2]}>
         <Cyl p={[0, 3.4, 0]} rad={0.6} h={6.8} c="#7d6c5e" />
         <Cyl p={[0, 6.9, 0]} rad={0.75} h={0.4} c="#3d3530" />
@@ -186,7 +219,7 @@ export function JmGrandRyokan({ item }) {
 }
 
 // 처마: 벽 바깥으로 비스듬히 내민 판 4장 (안에서 보이지 않게 벽 밖에만)
-function Eave({ w, d, y, out = 1.3 }) {
+function Eave({ w, d, y, out = 1.3, color = ROOF }) {
   const tilt = 0.42
   return (
     <group>
@@ -194,11 +227,11 @@ function Eave({ w, d, y, out = 1.3 }) {
         <group key={`fz${s}`}>
           <mesh position={[0, y - Math.sin(tilt) * out * 0.5, s * (d / 2 + Math.cos(tilt) * out * 0.5)]} rotation={[s * tilt, 0, 0]}>
             <boxGeometry args={[w + out * 2, 0.12, out]} />
-            <meshStandardMaterial color={ROOF} flatShading />
+            <meshStandardMaterial color={color} flatShading />
           </mesh>
           <mesh position={[s * (w / 2 + Math.cos(tilt) * out * 0.5), y - Math.sin(tilt) * out * 0.5, 0]} rotation={[0, 0, -s * tilt]}>
             <boxGeometry args={[out, 0.12, d]} />
-            <meshStandardMaterial color={ROOF} flatShading />
+            <meshStandardMaterial color={color} flatShading />
           </mesh>
         </group>
       ))}
@@ -240,13 +273,13 @@ function TowerFloor({ k, f, y, w, d, stair, last }) {
         </group>
       )}
       {/* 벽: 겉은 짙은 나무, 안쪽 면은 밝은 회벽 */}
-      <Box p={[0, y + h / 2, -d / 2 + WALL_T / 2]} s={[w, h, WALL_T]} c={first ? DARK_WOOD : WOOD} />
+      <Box p={[0, y + h / 2, -d / 2 + WALL_T / 2]} s={[w, h, WALL_T]} c={GR_RED} />
       <Box p={[0, y + h / 2, -d / 2 + WALL_T + 0.01]} s={[w - 0.6, h - 0.3, 0.02]} c={LOBBY_WALL} />
       {[-1, 1].map((s) => (
         <group key={s}>
-          <Box p={[s * (w / 2 - WALL_T / 2), y + h / 2, 0]} s={[WALL_T, h, d]} c={first ? DARK_WOOD : WOOD} />
+          <Box p={[s * (w / 2 - WALL_T / 2), y + h / 2, 0]} s={[WALL_T, h, d]} c={GR_RED} />
           <Box p={[s * (w / 2 - WALL_T - 0.01), y + h / 2, 0]} s={[0.02, h - 0.3, d - 0.6]} c={LOBBY_WALL} />
-          {first && <Box p={[s * (GRAND_DOOR / 2 + side / 2), y + h / 2, d / 2 - WALL_T / 2]} s={[side, h, WALL_T]} c={DARK_WOOD} />}
+          {first && <Box p={[s * (GRAND_DOOR / 2 + side / 2), y + h / 2, d / 2 - WALL_T / 2]} s={[side, h, WALL_T]} c={GR_RED} />}
           {first && <Box p={[s * (GRAND_DOOR / 2 + 0.1), y + h / 2, d / 2 - WALL_T / 2]} s={[0.22, h, WALL_T + 0.1]} c={VERMILION} />}
           {/* 옆면 창 불빛 */}
           <Box p={[s * (w / 2 + 0.03), y + h * 0.5, 0]} s={[0.05, h * 0.3, d - 2]} m={SHOJI} />
@@ -255,7 +288,7 @@ function TowerFloor({ k, f, y, w, d, stair, last }) {
       {first && <Box p={[0, y + h - 0.45, d / 2 - WALL_T / 2]} s={[GRAND_DOOR, 0.9, WALL_T]} c={DARK_WOOD} />}
       {first &&
         [-1, 1].map((s) => <Box key={`n${s}`} p={[s * 0.6, y + h - 1.25, d / 2 + 0.02]} s={[1.15, 0.75, 0.02]} c="#2d3a5c" />)}
-      {!first && <Box p={[0, y + h / 2, d / 2 - WALL_T / 2]} s={[w, h, WALL_T]} c={WOOD} />}
+      {!first && <Box p={[0, y + h / 2, d / 2 - WALL_T / 2]} s={[w, h, WALL_T]} c={GR_RED} />}
       {!first && !glass && <Box p={[0, y + h / 2, d / 2 - WALL_T - 0.01]} s={[w - 0.6, h - 0.3, 0.02]} c={LOBBY_WALL} />}
       {/* 바깥 앞면: 장지문 불빛 2줄(전망실은 큰 유리창 — 안에서도 밝게 보임) + 세로 살 */}
       {glass && <Box p={[0, y + h * 0.52, d / 2 + 0.03]} s={[bandW, h * 0.6, 0.05]} m={VIEW_GLASS} />}
@@ -281,7 +314,7 @@ function TowerFloor({ k, f, y, w, d, stair, last }) {
       {!first &&
         range(12).map((i) => <Box key={`bp${i}`} p={[-w / 2 + 0.5 + (i * (w - 1)) / 11, y + 0.5, d / 2 + 0.82]} s={[0.08, 0.9, 0.08]} c={VERMILION} />)}
       {/* 층 위 처마 + 처마 끝 제등 (꼭대기 층은 큰 지붕이 대신) */}
-      {!last && <Eave w={w} d={d} y={y + h - 0.05} out={first ? 1.5 : 1.2} />}
+      {!last && <Eave w={w} d={d} y={y + h - 0.05} out={first ? 1.5 : 1.2} color={GR_ROOF} />}
       {!last &&
         range(Math.round(w / 2.8)).map((i, _, all) => (
           <HangingLantern key={`hl${i}`} p={[-w / 2 + 1 + (i * (w - 2)) / Math.max(1, all.length - 1), y + h - 0.75, d / 2 + 1.05]} scale={first ? 1.15 : 0.95} />
@@ -914,6 +947,129 @@ export function JmBridgeRail({ item }) {
   )
 }
 
+// ── 여관 가는 큰 붉은 다리 (11/25) ─────────────────
+// 참고 사진: 붉은 난간 + 가로등 기둥이 양옆에 줄지어 선 넓은 다리, 가운데가 살짝 솟은 둥근(아치) 모양, 끝에 높은 건물이 정면으로 보이는 구도
+// size [폭, _, 길이]. 소품 기준점 = 다리 양 끝의 발 딛는 면 높이(elevation), 길이 방향 = z
+// item.arch: 가운데가 양 끝보다 높은 정도(m), item.piers: 교각 자리(로컬 z), item.depth: 양 끝 발 딛는 면에서 땅까지 높이
+// 걷는 판정은 생성 스크립트가 아치를 따라 깐 경사로(지형 stairs smooth)와 jmCollider 난간이 맡고, 여기서는 그림만
+//   (경사로의 돌 단은 이 다리 바닥판·옆 들보 안에 가려짐)
+const BRIDGE_DECK = mat('#cfcac0', { roughness: 0.9 })
+const BRIDGE_RED = mat('#d2412a', { roughness: 0.6 })
+const BRIDGE_PIER = mat('#8f897f', { flat: true, roughness: 1 })
+const BRIDGE_UNDER = mat('#5b4a3e', { flat: true, roughness: 1 })
+const GLOBE = mat('#fffaf0', { emissive: '#ffe9b8', emissiveIntensity: 1.2, roughness: 0.4 })
+const CAGE = mat('#2f2f2f', { roughness: 0.5 })
+const BRIDGE_LAMP_GAP = 7.4
+const BRIDGE_SEG = 36
+
+export const archHeight = (arch, len, z) => arch * Math.sin((Math.PI * (z + len / 2)) / len)
+
+export function JmGrandBridge({ item }) {
+  const [w, , len] = item.size
+  const arch = item.arch ?? 0
+  const depth = item.depth ?? 6
+  const piers = item.piers ?? []
+  const half = w / 2
+  const showLamps = item.lamps !== false // 여관 안 다리는 가로등 없이
+  const deckMat = item.deckColor ? mat(item.deckColor, { roughness: 0.7 }) : BRIDGE_DECK
+  const parts = useMemo(() => {
+    const y = (z) => archHeight(arch, len, z)
+    const deck = []
+    const lines = []
+    const reds = []
+    const under = []
+    const seg = len / BRIDGE_SEG
+    for (let i = 0; i < BRIDGE_SEG; i++) {
+      const z0 = -len / 2 + i * seg
+      const z1 = z0 + seg
+      const y0 = y(z0)
+      const y1 = y(z1)
+      const zm = (z0 + z1) / 2
+      const ym = (y0 + y1) / 2
+      const L = Math.hypot(seg, y1 - y0) + 0.02
+      const pitch = Math.atan2(y1 - y0, seg) // +z로 갈수록 올라가면 앞이 들려야 함 → x축 회전은 -pitch
+      const r = [-pitch, 0, 0]
+      deck.push({ p: [0, ym - 0.2, zm], r, s: [w, 0.4, L] })
+      lines.push({ p: [0, ym + 0.006, zm], r, s: [0.04, 0.01, L] })
+      for (const t of [-1 / 3, 1 / 3]) lines.push({ p: [t * w, ym + 0.006, zm], r, s: [0.05, 0.01, L] })
+      for (const side of [-1, 1]) {
+        const x = side * (half - 0.12)
+        reds.push({ p: [x, ym + 1.08, zm], r, s: [0.2, 0.14, L] }) // 손잡이
+        reds.push({ p: [x, ym + 0.62, zm], r, s: [0.1, 0.1, L] }) // 가운데 가로대
+        reds.push({ p: [x, ym + 0.14, zm], r, s: [0.16, 0.16, L] }) // 밑 가로대
+        reds.push({ p: [side * half, ym - 0.35, zm], r, s: [0.3, 0.7, L] }) // 아치를 따라 휘는 옆 들보
+        // 들보 밑 옆판(아래쪽은 평평): 경사로 돌 단을 가림
+        const bottom = item.underBottom ?? -0.75
+        const top = Math.min(y0, y1) - 0.5
+        if (top > bottom) under.push({ p: [side * (half - 0.05), (top + bottom) / 2, zm], s: [0.2, top - bottom, seg + 0.02] })
+      }
+    }
+    for (const side of [-1, 1]) {
+      const x = side * (half - 0.12)
+      const posts = Math.round(len / 1.5)
+      for (let k = 0; k <= posts; k++) {
+        const z = -len / 2 + (k * len) / posts
+        reds.push({ p: [x, y(z) + 0.58, z], s: [0.22, 1.16, 0.22] })
+      }
+      const bars = Math.round(len / 0.5)
+      for (let k = 0; k < bars; k++) {
+        const z = -len / 2 + ((k + 0.5) * len) / bars
+        reds.push({ p: [x, y(z) + 0.38, z], s: [0.05, 0.42, 0.05] })
+      }
+    }
+    // 가로줄 이음 (판석)
+    for (let z = -len / 2 + 1.8; z < len / 2; z += 1.8) lines.push({ p: [0, y(z) + 0.008, z], r: [-Math.atan((Math.PI * arch * Math.cos((Math.PI * (z + len / 2)) / len)) / len), 0, 0], s: [w - 0.6, 0.01, 0.04] })
+    return { deck, lines, reds, under }
+  }, [w, len, half, arch, item.underBottom])
+  const lamps = showLamps ? Math.max(2, Math.round(len / BRIDGE_LAMP_GAP) + 1) : 0
+  return (
+    <group>
+      <Instances geometry={GEO.box} material={deckMat} items={parts.deck} castShadow />
+      <Instances geometry={GEO.box} material={mat('#b4aea3')} items={parts.lines} />
+      <Instances geometry={GEO.box} material={BRIDGE_RED} items={parts.reds} castShadow />
+      <Instances geometry={GEO.box} material={BRIDGE_UNDER} items={parts.under} />
+      {/* 양 끝 기둥머리 금색 장식 */}
+      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <Cyl key={`${sx}${sz}`} p={[sx * (half - 0.12), 1.3, (sz * len) / 2]} rad={0.14} h={0.3} c="#c9a245" />))}
+      {/* 가로등 기둥: 붉은 기둥 + 위쪽 가로대(끝이 살짝 들림) + 안쪽으로 매단 둥근 등 */}
+      {range(lamps).flatMap((k) =>
+        [-1, 1].map((side) => {
+          const z = -len / 2 + 0.8 + (k * (len - 1.6)) / (lamps - 1)
+          return (
+            <group key={`${k}${side}`} position={[side * (half - 0.12), archHeight(arch, len, z), z]}>
+              <Box p={[0, 0.2, 0]} s={[0.5, 0.4, 0.5]} c="#2b2b2b" />
+              <Cyl p={[0, 2.6, 0]} rad={0.13} h={5.2} m={BRIDGE_RED} />
+              <Box p={[-side * 0.45, 5.05, 0]} s={[1.3, 0.12, 0.16]} m={BRIDGE_RED} />
+              <Box p={[-side * 1.12, 5.12, 0]} s={[0.22, 0.1, 0.16]} r={[0, 0, side * 0.45]} m={BRIDGE_RED} />
+              <Box p={[side * 0.2, 5.12, 0]} s={[0.2, 0.1, 0.16]} r={[0, 0, -side * 0.45]} m={BRIDGE_RED} />
+              <group position={[-side * 0.85, 4.35, 0]}>
+                <Cyl p={[0, 0.55, 0]} rad={0.02} h={0.3} m={CAGE} />
+                <Ball p={[0, 0, 0]} s={[0.3, 0.38, 0.3]} m={GLOBE} />
+                {[0, Math.PI / 2].map((a) => (
+                  <mesh key={a} rotation={[0, a, 0]} scale={[1, 1.27, 1]}>
+                    <torusGeometry args={[0.34, 0.015, 4, 20]} />
+                    <primitive object={CAGE} attach="material" />
+                  </mesh>
+                ))}
+                <Cyl p={[0, 0.42, 0]} rad={0.12} h={0.06} m={CAGE} />
+                <Cyl p={[0, -0.42, 0]} rad={0.1} h={0.05} m={CAGE} />
+              </group>
+            </group>
+          )
+        }),
+      )}
+      {/* 교각: 돌기둥 2개 + 붉은 가로 들보 */}
+      {piers.map((z) => (
+        <group key={z} position={[0, 0, z]}>
+          {[-1, 1].map((side) => (
+            <Box key={side} p={[side * (half - 0.7), -depth / 2 - 0.5, 0]} s={[0.9, depth - 1, 0.9]} m={BRIDGE_PIER} />
+          ))}
+          <Box p={[0, -0.95, 0]} s={[w - 0.4, 0.4, 0.5]} m={BRIDGE_RED} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
 // ── 마을 이름 돌비석 ───────────────────────────
 export function JmStoneMonument({ item }) {
   const [w, h, d] = item.size
@@ -984,5 +1140,6 @@ export const JM_KYOTO_STYLES = {
   jmCrossing: JmCrossing,
   jmYatai: JmYatai,
   jmBridgeRail: JmBridgeRail,
+  jmGrandBridge: JmGrandBridge,
   jmStoneMonument: JmStoneMonument,
 }
