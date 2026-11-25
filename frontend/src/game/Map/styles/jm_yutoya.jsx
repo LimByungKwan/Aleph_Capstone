@@ -2,15 +2,15 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { Ball, Box, Cyl, GEO, Instances, mat, texMat } from './kit.jsx'
-import { canvasTexture, getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
+import { canvasTexture, getJpSignTexture, GlowMaterial, JP_FONT } from './jm_landmarks.jsx'
 import { JmGrandBridge } from './jm_kyoto.jsx'
 
 // 애니메이션 구역(JM) 큰 여관 「湯灯屋」 (11/25 다시 지음) — 담당: 지민
 // 참고: 지민이 보낸 사진들
 //   외관: 붉은 벽 + 회색 격자창, 층마다 초록 기와 처마, 정면 가운데 둥근 박공(가라하후) 현관과 금색 현판, 지붕 위 누각·금 장식, 굴뚝, 큰 소나무
 //   안: 가운데가 꼭대기까지 뚫린 높은 홀, 홀 뒤 가운데 화려한 누각(보라 휘장·붉은 문·초록 둥근 지붕·금 현판·붉은 기둥·용 장식),
-//       층마다 붉은 난간 회랑 + 금색 꽃 패널, 금 원형 격자 천장과 둥근 등 샹들리에, 홀을 가로지르는 붉은 아치 다리, 1층 탕 칸막이 사이 가운데 길, 맨 위 연회장
-// 간판 글자는 우리 것(湯灯屋·天楽·帳場·宴会場)만 쓰고, 캐릭터는 넣지 않음
+//       층마다 붉은 난간 회랑 + 금색 꽃 패널, 금 원형 격자 천장과 둥근 등 샹들리에, 홀을 가로지르는 붉은 아치 다리, (11/25) 1층 로비 + 뒤채 목욕탕(번대·나무 패 판·나무 욕조), 2~4층 연회장, 꼭대기 주인 집무실
+// 간판 글자는 우리 것(湯灯屋·天楽·帳場·宴会場·大湯·番台·主人の間 등)만 쓰고, 캐릭터는 넣지 않음
 // 걷는 판정(바닥판·벽·난간·계단·누각·가구)은 생성 스크립트(gen-jm-kyoto.mjs 7-5)가 item.yutoya와 같은 값으로 깔고, 여기서는 그림만
 // 로컬 좌표: 건물 가운데, +z = 정면, y = 앞마당 바닥
 
@@ -368,7 +368,9 @@ export function JmYutoya({ item }) {
       <YuFloors W={W} D={D} Y={Y} />
       <YuPavilion Y={Y} />
       <YuInnerBridge Y={Y} />
-      <YuBanquet W={W} D={D} Y={Y} />
+      <YuBathWing Y={Y} />
+      <YuBanquetRooms W={W} D={D} Y={Y} />
+      <YuOffice W={W} D={D} Y={Y} />
     </group>
   )
 }
@@ -524,7 +526,7 @@ function YuExterior({ W, D, Y, sign }) {
 
 // ── 1층 큰 홀: 나무 마루, 가운데 붉은 길과 등불, 양옆 탕 칸, 앞쪽 접수대 ──
 function YuGroundHall({ W, D, Y }) {
-  const { base, wt, stalls: st, pav, lv } = Y
+  const { base, wt, pav, lv, bath } = Y
   const ix = W / 2 - wt
   const iz = D / 2 - wt
   const H = lv[1] - base
@@ -535,14 +537,6 @@ function YuGroundHall({ W, D, Y }) {
     for (let z = iz - 2.2; z > pav.z1 + 0.6; z -= 2.2) for (const s of [-1, 1]) out.push([s * 1.55, z])
     return out
   }, [iz, pav.z1])
-  const partitions = useMemo(() => {
-    const items = []
-    for (const s of [-1, 1]) {
-      items.push({ p: [s * st.x1, base + 0.75, (st.z[0] + st.z[3]) / 2], s: [0.12, 1.5, st.z[0] - st.z[3]] })
-      for (const z of st.z) items.push({ p: [(s * (st.x0 + st.x1)) / 2, base + 0.75, z], s: [st.x1 - st.x0, 1.5, 0.12] })
-    }
-    return items
-  }, [st, base])
   return (
     <group>
       {/* 마루 */}
@@ -562,22 +556,18 @@ function YuGroundHall({ W, D, Y }) {
           <Ball p={[0, 1.42, 0]} rad={0.2} m={GLOBE} />
         </group>
       ))}
-      {/* 탕 칸막이 (연초록 판 + 짙은 테) + 나무 욕조 */}
-      <Instances geometry={GEO.box} material={mat('#9dbf94', { roughness: 0.8 })} items={partitions} castShadow />
-      <Instances geometry={GEO.box} material={mat('#4f6b45')} items={partitions.map((it) => ({ p: [it.p[0], base + 1.52, it.p[2]], s: [it.s[0] + 0.04, 0.06, it.s[2] + 0.04] }))} />
-      {[-1, 1].flatMap((s) =>
-        range(3).map((k) => (
-          <group key={`${s}${k}`} position={[(s * (st.x0 + st.x1)) / 2 + s * 0.2, base, (st.z[k] + st.z[k + 1]) / 2]}>
-            <Cyl p={[0, 0.37, 0]} rad={0.85} h={0.74} c="#a0703f" geo={GEO.cyl48} />
-            <Cyl p={[0, 0.7, 0]} rad={0.78} h={0.02} m={WATER} geo={GEO.cyl48} />
-            {[0.15, 0.6].map((y) => (
-              <Cyl key={y} p={[0, y, 0]} rad={0.87} h={0.05} c="#3a2a1c" geo={GEO.cyl48} />
-            ))}
-            {/* 칸 안 작은 매트 */}
-            <Box p={[-s * 1.05, 0.02, 0]} s={[0.6, 0.02, 1.4]} c="#c9b98a" />
-          </group>
-        )),
-      )}
+      {/* (11/25) 홀 안 탕 칸막이는 없애고 1층은 로비만 — 목욕탕은 뒤 서쪽 문으로 꺾어 들어가는 뒤채 (YuBathWing) */}
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * 4.6, base, 2.5]}>
+          <Box p={[0, 0.25, 0]} s={[1.0, 0.5, 2.6]} c="#7f1d1d" />
+          <Box p={[s * 0.45, 0.6, 0]} s={[0.12, 0.7, 2.6]} c="#7f1d1d" />
+          <Box p={[0, 0.52, 0]} s={[1.04, 0.04, 2.64]} m={GOLD_M} />
+        </group>
+      ))}
+      <mesh position={[-ix + 0.06, base + 2.6, -iz + 2.6]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[1.6, 0.6]} />
+        <GlowMaterial glow={0.5} map={getJpSignTexture('大湯', '#1e3a8a', '#f5f0e6', 1.6 / 0.6)} side={THREE.DoubleSide} />
+      </mesh>
       {/* 앞쪽: 신발장 2개 + 접수대(帳場) */}
       {[-1, 1].map((s) => (
         <group key={s} position={[s * 3.2, base, iz - 0.6]}>
@@ -612,8 +602,23 @@ function YuGroundHall({ W, D, Y }) {
           <primitive object={texMat(pine)} attach="material" />
         </mesh>
       ))}
-      <Box p={[0, base + H / 2, -iz + 0.02]} s={[ix * 2, H, 0.02]} c="#6b4630" />
-      {[-8, 8].map((x) => (
+      {/* 뒷벽: 서쪽 모서리에 목욕탕으로 가는 문 (bath.door) */}
+      {(() => {
+        const dx0 = bath.door.x - bath.door.w / 2
+        const dx1 = bath.door.x + bath.door.w / 2
+        return (
+          <group>
+            <Box p={[(-ix + dx0) / 2, base + H / 2, -iz + 0.02]} s={[dx0 + ix, H, 0.02]} c="#6b4630" />
+            <Box p={[(dx1 + ix) / 2, base + H / 2, -iz + 0.02]} s={[ix - dx1, H, 0.02]} c="#6b4630" />
+            <Box p={[bath.door.x, base + bath.door.h + (H - bath.door.h) / 2, -iz + 0.02]} s={[bath.door.w, H - bath.door.h, 0.02]} c="#6b4630" />
+            <mesh position={[bath.door.x, base + bath.door.h - 0.45, -iz + 0.08]}>
+              <planeGeometry args={[bath.door.w - 0.2, 0.9]} />
+              <GlowMaterial glow={0.4} map={getJpSignTexture('ゆ', '#1e3a8a', '#f5f0e6', (bath.door.w - 0.2) / 0.9)} side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+        )
+      })()}
+      {[8].map((x) => (
         <group key={x} position={[x, base, -iz + 0.05]}>
           <Box p={[0, 1.2, 0]} s={[1.8, 2.4, 0.04]} c="#3a281c" />
           <Box p={[0, 1.2, 0.03]} s={[0.04, 2.3, 0.02]} m={GOLD_M} />
@@ -713,7 +718,8 @@ function YuFloors({ W, D, Y }) {
         </mesh>
       ))}
       {/* 2~5층 바깥벽 안쪽: 불 켜진 장지문 방 줄 + 짙은 살 (5층 뒷벽은 금 병풍이 대신) */}
-      {[1, 2, 3, 4].map((k) => {
+      {/* (11/25) 5층은 집무실 벽지(YuOffice)라 2~4층만 */}
+      {[1, 2, 3].map((k) => {
         const y = lv[k]
         const h = lv[k + 1] - lv[k]
         return (
@@ -851,73 +857,395 @@ function YuInnerBridge({ Y }) {
   )
 }
 
-// ── 5층 연회장: 금 병풍·무대·상 줄·분홍 연꽃 샹들리에·금 원형 격자 천장 ──
-function YuBanquet({ W, D, Y }) {
-  const { lv, wt } = Y
+// ── (11/25) 1층 로비 뒤 서쪽 문 → 뒤채 목욕탕 ─────────────
+// 모티브: 영화 속 온천장의 큰 탕 (탕 앞 번대에서 약탕 패를 받아 가는 흐름, 큰 나무 욕조, 김)
+//   번대(番台) 뒤 벽에 나무 패(札)가 줄줄이 걸린 판, 칸마다 큰 나무 욕조, 가운데 둥근 큰 욕조 위 물 내리는 관과 줄
+// 글자는 우리 것(大湯·薬湯·番台 등)만. 걷는 판정은 생성 스크립트(bath 값과 같음)
+function tagBoardTexture() {
+  const names = ['薬湯', '大湯', '桜湯', '菖蒲湯', '柚子湯', '泥湯', '金湯', '銀湯', '笹湯', '松湯', '梅湯', '竹湯']
+  return canvasTexture('jmyu:tags', 1024, 384, (ctx, w, h) => {
+    ctx.fillStyle = '#3a2618'
+    ctx.fillRect(0, 0, w, h)
+    const cols = 12
+    const tw = w / cols
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = c * tw + tw * 0.12
+        const y = r * (h / 2) + 14
+        ctx.fillStyle = (r + c) % 3 === 0 ? '#e9d3a5' : '#d9bf8a'
+        ctx.fillRect(x, y, tw * 0.76, h / 2 - 28)
+        ctx.fillStyle = '#7a1d12'
+        ctx.beginPath()
+        ctx.arc(x + tw * 0.38, y + 10, 4, 0, Math.PI * 2)
+        ctx.fill()
+        const text = names[(c + r * 5) % names.length]
+        ctx.fillStyle = '#2a1a10'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        const chars = [...text]
+        const step = (h / 2 - 50) / chars.length
+        ctx.font = `bold ${Math.min(tw * 0.5, step * 0.9)}px ${JP_FONT}`
+        chars.forEach((ch, i) => ctx.fillText(ch, x + tw * 0.38, y + 28 + step * (i + 0.5)))
+      }
+    }
+  })
+}
+
+function YuBathWing({ Y }) {
+  const { base, bath } = Y
+  const { x0, x1, z0, z1, h, door, part, counter, tubs, center } = bath
+  const cx = (x0 + x1) / 2
+  const cz = (z0 + z1) / 2
+  const wd = x1 - x0
+  const dd = z1 - z0
+  const planks = useMemo(() => tiled(plankTexture(), wd / 1.6, dd / 1.6), [wd, dd])
+  const tags = useMemo(() => tagBoardTexture(), [])
+  const roof = useMemo(() => hipRoofGeometry(wd + 1.4, dd + 1.4, 2.6, 0.3), [wd, dd])
+  return (
+    <group>
+      {/* 바닥(돌 단 + 나무 마루) */}
+      <Box p={[cx, base / 2, cz]} s={[wd + 0.6, base, dd + 0.3]} c={STONE} />
+      <mesh position={[cx, base + 0.01, cz]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[wd - 0.4, dd - 0.2]} />
+        <primitive object={texMat(planks)} attach="material" />
+      </mesh>
+      {/* 바깥벽(붉은 벽 + 흰 띠 + 위 격자 창) — 남쪽은 본관 뒷벽 */}
+      {[
+        [cx, z0 + 0.15, wd, 0.3],
+        [x0 + 0.15, cz, 0.3, dd],
+        [x1 - 0.15, cz, 0.3, dd],
+      ].map(([x, z, sx, sz], i) => (
+        <group key={i}>
+          <Box p={[x, base + h / 2, z]} s={[sx, h, sz]} c={RED} />
+          <Box p={[x, base + h - 0.6, z]} s={[sx + 0.04, 0.9, sz + 0.04]} c="#5c6b72" />
+          <Box p={[x, base + 0.4, z]} s={[sx + 0.06, 0.8, sz + 0.06]} c={STONE} />
+        </group>
+      ))}
+      {/* 안쪽 벽: 나무 판 (허리 높이까지 짙게) */}
+      {[
+        [cx, z0 + 0.32, wd - 0.7, 0.02],
+        [x0 + 0.32, cz, 0.02, dd - 0.2],
+        [x1 - 0.32, cz, 0.02, dd - 0.2],
+      ].map(([x, z, sx, sz], i) => (
+        <group key={`in${i}`}>
+          <Box p={[x, base + (h - 1.6) / 2, z]} s={[sx, h - 1.6, sz]} c="#9a6a40" />
+          <Box p={[x, base + 0.6, z]} s={[sx + (sz > 0.1 ? 0 : 0.01), 1.2, sz + 0.01]} c="#5a3d2a" />
+        </group>
+      ))}
+      <mesh geometry={roof} position={[cx, base + h, cz]}>
+        <meshStandardMaterial color={GREEN} flatShading side={THREE.DoubleSide} />
+      </mesh>
+      <Box p={[cx, base + h - 0.02, cz]} s={[wd, 0.04, dd]} c="#5a3d2a" />
+      {/* 탕 앞 칸막이(나무) + 가운데 통로 노렌 */}
+      <Box p={[(part.x0 + x1) / 2, base + h / 2, part.z]} s={[x1 - part.x0, h, 0.2]} c="#6b4630" />
+      <mesh position={[door.x, base + 2.1, part.z]}>
+        <planeGeometry args={[door.w - 0.2, 1.0]} />
+        <GlowMaterial glow={0.4} map={getJpSignTexture('大湯', '#7a1d12', '#f5f0e6', (door.w - 0.2) / 1.0)} side={THREE.DoubleSide} />
+      </mesh>
+      {/* 번대: 높은 나무 접수대 + 뒤 칸막이 벽의 나무 패 판 + 간판 */}
+      <group position={[counter.x, base, counter.z]}>
+        <Box p={[0, 0.55, 0]} s={[counter.w, 1.1, counter.d]} c="#4a2f1f" />
+        <Box p={[0, 1.13, 0]} s={[counter.w + 0.1, 0.06, counter.d + 0.1]} c="#2b1d14" />
+        <Box p={[-counter.w / 2 - 0.01, 0.6, 0]} s={[0.02, 0.8, counter.d - 0.2]} m={GOLD_M} />
+        {/* 주판·장부·등 */}
+        <Box p={[0.1, 1.2, -0.4]} s={[0.5, 0.06, 0.8]} c="#e9e1cf" />
+        <Box p={[0.1, 1.2, 0.5]} s={[0.35, 0.05, 0.6]} c="#3a281c" />
+        <Box p={[0.3, 1.45, 0.9]} s={[0.25, 0.4, 0.25]} m={GLOBE} />
+      </group>
+      <mesh position={[counter.x + 0.4, base + 2.5, part.z - 0.12]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[4.6, 1.7]} />
+        <primitive object={texMat(tags, { emissive: '#ffffff', emissiveIntensity: 0.15 })} attach="material" />
+      </mesh>
+      <mesh position={[counter.x + 0.4, base + 2.5, part.z + 0.12]}>
+        <planeGeometry args={[4.6, 1.7]} />
+        <primitive object={texMat(tags, { emissive: '#ffffff', emissiveIntensity: 0.15 })} attach="material" />
+      </mesh>
+      <mesh position={[counter.x - counter.w / 2 - 0.02, base + 3.6, counter.z]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[1.4, 0.5]} />
+        <GlowMaterial glow={0.5} map={getJpSignTexture('番台', '#3d2a1e', '#f3e6c8', 1.4 / 0.5)} side={THREE.DoubleSide} />
+      </mesh>
+      {/* 큰 탕: 나무 욕조들 + 가운데 둥근 큰 욕조 + 물 내리는 관과 줄 + 김 */}
+      {tubs.map(([x, z, s], i) => (
+        <group key={i} position={[x, base, z]}>
+          <Box p={[0, 0.45, 0]} s={[s, 0.9, s]} c="#a0703f" />
+          <Box p={[0, 0.92, 0]} s={[s - 0.3, 0.03, s - 0.3]} m={WATER} />
+          {[0.2, 0.7].map((y) => (
+            <Box key={y} p={[0, y, 0]} s={[s + 0.04, 0.06, s + 0.04]} c="#3a2a1c" />
+          ))}
+          <Box p={[0, 0.02, s / 2 + 0.5]} s={[s, 0.03, 0.8]} c="#c9b98a" />
+        </group>
+      ))}
+      <group position={[center.x, base, center.z]}>
+        <Cyl p={[0, 0.5, 0]} rad={center.r} h={1.0} c="#a0703f" geo={GEO.cyl48} />
+        <Cyl p={[0, 1.02, 0]} rad={center.r - 0.15} h={0.03} m={WATER} geo={GEO.cyl48} />
+        {[0.2, 0.8].map((y) => (
+          <Cyl key={y} p={[0, y, 0]} rad={center.r + 0.03} h={0.07} c="#3a2a1c" geo={GEO.cyl48} />
+        ))}
+        {/* 천장에서 내려오는 나무 관 + 당기는 줄 + 패 */}
+        <Box p={[0, h - 1.0, 0]} s={[0.3, 0.3, center.r * 2 + 3]} c="#5a3d2a" />
+        <Box p={[0, h - 2.0, center.r - 0.6]} s={[0.3, 1.9, 0.3]} c="#5a3d2a" />
+        <Cyl p={[0.6, h - 2.4, center.r - 0.4]} rad={0.02} h={2.6} c="#d8c79a" />
+        <Box p={[0.6, h - 3.8, center.r - 0.4]} s={[0.25, 0.4, 0.04]} c="#e9d3a5" />
+        {range(5).map((i) => (
+          <mesh key={i} position={[0.4 - i * 0.2, 1.6 + i * 0.7, -0.3 + i * 0.1]} material={STEAM_M} scale={[0.8 + i * 0.35, 0.45 + i * 0.15, 0.8 + i * 0.35]}>
+            <sphereGeometry args={[1, 10, 8]} />
+          </mesh>
+        ))}
+      </group>
+      {/* 벽 등 + 높은 창 빛 */}
+      {[[x0 + 0.35, cz - 3], [x0 + 0.35, cz + 3], [x1 - 0.35, cz - 3], [x1 - 0.35, cz + 3]].map(([x, z]) => (
+        <Box key={`${x}${z}`} p={[x, base + 2.6, z]} s={[0.2, 0.45, 0.35]} m={GLOBE} />
+      ))}
+      <mesh position={[cx, base + h - 1.0, z0 + 0.35]}>
+        <planeGeometry args={[wd - 2, 1]} />
+        <primitive object={SHOJI_M} attach="material" />
+      </mesh>
+    </group>
+  )
+}
+const STEAM_M = mat('#ffffff', { transparent: true, opacity: 0.2, roughness: 1 })
+
+// ── (11/25) 2~4층 연회장: 회랑 바깥쪽에 상·방석 줄, 뒤 금 병풍, 방 이름 현판 ──
+const ROOM_NAMES = ['松の間', '竹の間', '梅の間']
+function YuBanquetRooms({ W, D, Y }) {
+  const { lv, wt, void: V } = Y
+  const ix = W / 2 - wt
+  const iz = D / 2 - wt
+  const rows = useMemo(() => {
+    const trays = []
+    const cushions = []
+    const dishes = []
+    for (let k = 1; k <= 3; k++) {
+      const y = lv[k]
+      for (const zRow of [r1((V.z1 + iz) / 2 + 0.3), r1((V.z0 - iz) / 2 - 0.2)]) {
+        for (let x = -8.4; x <= 8.41; x += 2.1) {
+          trays.push({ p: [x, y + 0.2, zRow], s: [1.5, 0.08, 0.7] })
+          for (const s of [-1, 1]) cushions.push({ p: [x, y + 0.05, zRow + s * 0.75], s: [0.6, 0.1, 0.55] })
+          for (const dx of [-0.45, 0, 0.45]) dishes.push({ p: [x + dx, y + 0.26, zRow], s: [0.11, 0.04, 0.11] })
+        }
+      }
+    }
+    return { trays, cushions, dishes, legs: trays.map((t) => ({ p: [t.p[0], t.p[1] - 0.1, t.p[2]], s: [1.3, 0.12, 0.5] })) }
+  }, [lv, V, iz])
+  return (
+    <group>
+      <Instances geometry={GEO.box} material={mat('#5a1e14', { roughness: 0.5 })} items={rows.trays} />
+      <Instances geometry={GEO.box} material={mat('#2b1a12')} items={rows.legs} />
+      <Instances geometry={GEO.box} material={mat('#8f2a24')} items={rows.cushions} />
+      <Instances geometry={GEO.cyl} material={mat('#f1e8d6')} items={rows.dishes} />
+      {[1, 2, 3].map((k) => (
+        <group key={k}>
+          {/* 뒤 회랑 벽 금 병풍 */}
+          {range(8).map((i) => (
+            <mesh key={i} position={[-8 + i * (16 / 7), lv[k] + 1.3, -iz + 0.12 + (i % 2) * 0.1]} rotation={[0, (i % 2 ? -1 : 1) * 0.2, 0]}>
+              <planeGeometry args={[16 / 7 + 0.05, 2.2]} />
+              <primitive object={texMat(flowerPanelTexture(1), { emissive: '#ffffff', emissiveIntensity: 0.15 })} attach="material" />
+            </mesh>
+          ))}
+          {/* 방 이름 현판 (앞·뒤 회랑 위) */}
+          {[[0, iz - 0.08, Math.PI], [0, -iz + 0.3, 0]].map(([x, z, r], j) => (
+            <mesh key={j} position={[x, lv[k + 1] - 0.75, z]} rotation={[0, r, 0]}>
+              <planeGeometry args={[2.0, 0.6]} />
+              <GlowMaterial glow={0.5} map={getJpSignTexture(ROOM_NAMES[k - 1], '#2b1a12', '#e8c35a', 2.0 / 0.6)} side={THREE.DoubleSide} />
+            </mesh>
+          ))}
+          <mesh position={[-ix + 0.08, lv[k + 1] - 0.75, -8.2]} rotation={[0, Math.PI / 2, 0]}>
+            <planeGeometry args={[2.0, 0.6]} />
+            <GlowMaterial glow={0.5} map={getJpSignTexture('宴会場', '#2b1a12', '#e8c35a', 2.0 / 0.6)} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+const r1 = (n) => Math.round(n * 10) / 10
+
+// ── (11/25) 꼭대기 5층: 여관 주인의 집무실 ─────────────
+// 모티브: 영화 속 온천장 주인 할머니의 꼭대기 방 (서양식 호화 방: 붉은 무늬 벽지, 무늬 카펫, 금 장식, 큰 책상·높은 등받이 의자,
+//   벽난로, 책장, 큰 크리스털 샹들리에, 큰 도자기 항아리, 무거운 커튼, 금빛 문). 캐릭터는 넣지 않음
+function damaskTexture() {
+  return canvasTexture('jmyu:damask', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#7a1622'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#c9963e'
+    ctx.fillStyle = 'rgba(201,150,62,0.55)'
+    ctx.lineWidth = 3
+    for (const [cx, cy] of [[w / 2, h / 2], [0, 0], [w, 0], [0, h], [w, h]]) {
+      ctx.beginPath()
+      ctx.ellipse(cx, cy, 34, 58, 0, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(cx, cy - 46)
+      ctx.quadraticCurveTo(cx + 26, cy, cx, cy + 46)
+      ctx.quadraticCurveTo(cx - 26, cy, cx, cy - 46)
+      ctx.fill()
+    }
+  })
+}
+function carpetTexture() {
+  return canvasTexture('jmyu:carpet', 512, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#5b1a1a'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#d4a83e'
+    ctx.lineWidth = 10
+    ctx.strokeRect(20, 20, w - 40, h - 40)
+    ctx.lineWidth = 4
+    ctx.strokeRect(44, 44, w - 88, h - 88)
+    ctx.fillStyle = '#1f3a5f'
+    ctx.beginPath()
+    ctx.ellipse(w / 2, h / 2, 150, 110, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = '#e8c35a'
+    ctx.stroke()
+    ctx.fillStyle = '#d4a83e'
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2
+      ctx.beginPath()
+      ctx.arc(w / 2 + Math.cos(a) * 110, h / 2 + Math.sin(a) * 80, 10, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  })
+}
+function YuOffice({ W, D, Y }) {
+  const { lv, wt, office: O } = Y
   const y = lv[4]
   const h = lv[5] - lv[4]
   const ix = W / 2 - wt
   const iz = D / 2 - wt
   const coffer = useMemo(() => cofferTexture(), [])
-  const trays = useMemo(() => {
+  const damask = useMemo(() => damaskTexture(), [])
+  const carpet = useMemo(() => carpetTexture(), [])
+  const books = useMemo(() => {
     const out = []
-    for (const s of [-1, 1]) for (let z = 5.5; z > -5.5; z -= 1.3) out.push({ p: [s * 4.2, y + 0.18, z], s: [0.7, 0.12, 0.5] })
+    const cols = ['#7a1d12', '#1f3a5f', '#2f4a2a', '#5a3d2a', '#7c5a1a', '#3b2a4f']
+    for (const bc of O.bookcases) for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) {
+      out.push({ p: [bc[0] - 0.05, y + 0.45 + r * 0.62, bc[1] - 1.05 + i * 0.25 + (r % 2) * 0.04], s: [0.32, 0.42 + ((i * 7 + r) % 3) * 0.06, 0.18], c: cols[(i + r * 2) % cols.length] })
+    }
     return out
-  }, [y])
+  }, [O, y])
   return (
     <group>
-      {/* 천장 */}
+      {/* 천장(금 원형 격자) + 붉은 무늬 벽지 + 무늬 카펫 */}
       <mesh position={[0, lv[5] - 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[ix * 2, iz * 2]} />
         <primitive object={texMat(tiled(coffer, (ix * 2) / 1.4, (iz * 2) / 1.4))} attach="material" />
       </mesh>
-      {/* 뒷벽 금 병풍 (지그재그) */}
-      {range(12).map((i) => (
-        <mesh key={i} position={[-ix + 1.1 + i * ((ix * 2 - 2.2) / 11), y + 1.6, -iz + 0.5 + (i % 2) * 0.12]} rotation={[0, (i % 2 ? -1 : 1) * 0.22, 0]}>
-          <planeGeometry args={[(ix * 2 - 2.2) / 11 + 0.05, 2.8]} />
-          <primitive object={texMat(flowerPanelTexture(1), { emissive: '#ffffff', emissiveIntensity: 0.15 })} attach="material" />
-        </mesh>
-      ))}
-      {/* 무대 (충돌은 생성 스크립트 jm_yutoya_stage) */}
-      <Box p={[0, y + 0.225, -8.6]} s={[10, 0.45, 3.6]} c="#9a6a40" />
-      <Box p={[0, y + 0.225, -6.79]} s={[10, 0.45, 0.02]} c="#7a2218" />
-      {/* 무대 양옆 금 등롱 */}
-      {[-1, 1].map((s) => (
-        <group key={s} position={[s * 5.6, y, -7.2]}>
-          <Cyl p={[0, 0.8, 0]} rad={0.06} h={1.6} m={GOLD_M} />
-          <Box p={[0, 1.8, 0]} s={[0.5, 0.6, 0.5]} m={GLOBE} />
-          <Box p={[0, 2.15, 0]} s={[0.7, 0.1, 0.7]} m={GOLD_M} />
+      {[
+        [0, -iz + 0.06, ix * 2, 0],
+        [-ix + 0.06, 0, iz * 2, Math.PI / 2],
+        [ix - 0.06, 0, iz * 2, -Math.PI / 2],
+        [0, iz - 0.06, ix * 2, Math.PI],
+      ].map(([x, z, len, r], i) => (
+        <group key={i} position={[x, y, z]} rotation={[0, r, 0]}>
+          <mesh position={[0, h / 2, 0]}>
+            <planeGeometry args={[len, h]} />
+            <primitive object={texMat(tiled(damask, len / 1.2, h / 1.2))} attach="material" />
+          </mesh>
+          <Box p={[0, 0.5, 0.02]} s={[len, 1, 0.04]} c="#3b1d12" />
+          <Box p={[0, 1.02, 0.04]} s={[len, 0.06, 0.06]} m={GOLD_M} />
+          <Box p={[0, h - 0.25, 0.04]} s={[len, 0.3, 0.08]} m={GOLD_M} />
         </group>
       ))}
-      {/* 상 두 줄 + 방석 */}
-      <Instances geometry={GEO.box} material={mat('#5a2a1e')} items={trays} />
-      <Instances geometry={GEO.box} material={mat('#7f1d1d')} items={trays.map((t) => ({ p: [t.p[0] + Math.sign(t.p[0]) * 0.75, y + 0.04, t.p[2]], s: [0.55, 0.08, 0.55] }))} />
-      {/* 옆벽 위 금 꽃 패널 띠 */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (ix - 0.09), y + h - 0.45, 0]} rotation={[0, -s * (Math.PI / 2), 0]}>
-          <planeGeometry args={[iz * 2 - 0.6, 0.8]} />
-          <primitive object={texMat(flowerPanelTexture(10), { emissive: '#ffffff', emissiveIntensity: 0.12 })} attach="material" />
-        </mesh>
-      ))}
-      {/* 분홍 연꽃 샹들리에 */}
-      <group position={[0, lv[5] - 1.4, 0]}>
-        <Cyl p={[0, 0.7, 0]} rad={0.03} h={1.4} c={DARK} />
-        <Cyl p={[0, 0, 0]} rad={0.9} h={0.05} m={GOLD_M} />
-        {range(8).map((i) => {
-          const a = (i / 8) * Math.PI * 2
-          return (
-            <mesh key={i} position={[Math.cos(a) * 0.9, 0.12, Math.sin(a) * 0.9]}>
-              <coneGeometry args={[0.18, 0.3, 6, 1, true]} />
-              <meshStandardMaterial color="#f7b6c8" emissive="#ff8fb0" emissiveIntensity={0.9} side={THREE.DoubleSide} />
-            </mesh>
-          )
-        })}
-      </group>
-      {/* 연회장 간판 */}
-      <mesh position={[0, y + h - 0.6, -iz + 0.06]}>
-        <planeGeometry args={[2.4, 0.7]} />
-        <GlowMaterial glow={0.5} map={getJpSignTexture('宴会場', '#2b1a12', '#e8c35a', 2.4 / 0.7)} side={THREE.DoubleSide} />
+      <mesh position={[0, y + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[ix * 2 - 1, iz * 2 - 1]} />
+        <primitive object={texMat(tiled(carpet, 2, 2))} attach="material" />
       </mesh>
+      {/* 큰 책상 + 높은 등받이 의자 + 책상 위 물건 */}
+      <group position={[O.desk[0], y, O.desk[1]]}>
+        <Box p={[0, 0.45, 0]} s={[4.4, 0.9, 1.6]} c="#3b2216" />
+        <Box p={[0, 0.93, 0]} s={[4.6, 0.08, 1.75]} c="#2a170e" />
+        <Box p={[0, 0.5, 0.81]} s={[4.2, 0.6, 0.03]} m={GOLD_M} />
+        {[-1.6, 1.6].map((x) => (
+          <Box key={x} p={[x, 0.45, 0.83]} s={[0.5, 0.8, 0.04]} c="#5a2f1a" />
+        ))}
+        <Box p={[-1.2, 1.02, 0.1]} s={[0.9, 0.04, 0.6]} c="#efe6d2" />
+        <Box p={[-1.1, 1.06, 0.05]} s={[0.8, 0.04, 0.55]} c="#f7f1e3" />
+        {range(6).map((i) => (
+          <Box key={i} p={[1.1 + (i % 3) * 0.32, 1.02 + Math.floor(i / 3) * 0.12, -0.2]} s={[0.28, 0.11, 0.14]} m={GOLD_M} />
+        ))}
+        <Cyl p={[0.2, 1.2, -0.45]} rad={0.08} h={0.4} m={GOLD_M} />
+        <Ball p={[0.2, 1.5, -0.45]} rad={0.2} m={GLOBE} />
+      </group>
+      <group position={[O.chair[0], y, O.chair[1]]}>
+        <Box p={[0, 0.5, 0]} s={[1.2, 0.2, 1.1]} c="#8a1c24" />
+        <Box p={[0, 1.6, -0.5]} s={[1.2, 2.2, 0.2]} c="#8a1c24" />
+        <Box p={[0, 2.75, -0.5]} s={[1.4, 0.2, 0.26]} m={GOLD_M} />
+        {[-1, 1].map((s) => (
+          <group key={s}>
+            <Box p={[s * 0.62, 0.8, 0]} s={[0.12, 0.5, 1.1]} c="#5a1018" />
+            <Box p={[s * 0.5, 0.2, 0.4]} s={[0.1, 0.4, 0.1]} m={GOLD_M} />
+            <Box p={[s * 0.5, 0.2, -0.4]} s={[0.1, 0.4, 0.1]} m={GOLD_M} />
+          </group>
+        ))}
+      </group>
+      {/* 벽난로 + 위 금 거울 */}
+      <group position={[O.fire[0], y, O.fire[1]]} rotation={[0, Math.PI / 2, 0]}>
+        <Box p={[0, 0.8, 0]} s={[2.6, 1.6, 0.7]} c="#e6dccb" />
+        <Box p={[0, 1.65, 0.05]} s={[2.9, 0.14, 0.85]} c="#d6c9b2" />
+        <Box p={[0, 0.6, 0.3]} s={[1.3, 1.0, 0.12]} c="#1a1110" />
+        <mesh position={[0, 0.4, 0.33]}>
+          <planeGeometry args={[1.0, 0.55]} />
+          <meshStandardMaterial color="#ff8a2a" emissive="#ff6a10" emissiveIntensity={1.6} />
+        </mesh>
+        <Box p={[0, 2.7, 0.0]} s={[1.6, 1.8, 0.06]} m={GOLD_M} />
+        <Box p={[0, 2.7, 0.04]} s={[1.3, 1.5, 0.02]} c="#c9d6dc" />
+      </group>
+      {/* 책장 */}
+      {O.bookcases.map(([x, z], i) => (
+        <group key={i} position={[x, y, z]}>
+          <Box p={[0.1, 1.3, 0]} s={[0.5, 2.6, 2.5]} c="#3b2216" />
+          <Box p={[0.1, 2.65, 0]} s={[0.6, 0.12, 2.65]} m={GOLD_M} />
+        </group>
+      ))}
+      <Instances geometry={GEO.box} material={mat('#ffffff')} items={books} />
+      {/* 큰 도자기 항아리 */}
+      {O.vases.map(([x, z], i) => (
+        <group key={i} position={[x, y, z]}>
+          <mesh position={[0, 0.85, 0]} scale={[0.55, 0.85, 0.55]}>
+            <sphereGeometry args={[1, 16, 12]} />
+            <meshStandardMaterial color="#e9eef2" roughness={0.3} />
+          </mesh>
+          <Cyl p={[0, 1.75, 0]} rad={0.25} h={0.3} c="#e9eef2" />
+          <mesh position={[0, 0.85, 0]} scale={[0.56, 0.2, 0.56]}>
+            <sphereGeometry args={[1, 16, 8]} />
+            <meshStandardMaterial color="#1f3a8a" roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+      {/* 큰 크리스털 샹들리에 */}
+      <group position={[0, lv[5] - 0.4, -2]}>
+        <Cyl p={[0, -0.2, 0]} rad={0.04} h={0.6} m={GOLD_M} />
+        {[[1.2, -0.7, 10], [0.8, -1.2, 8], [0.4, -1.6, 6]].map(([r, yy, n], j) => (
+          <group key={j}>
+            <Cyl p={[0, yy, 0]} rad={r} h={0.05} m={GOLD_M} />
+            {range(n).map((i) => {
+              const a = (i / n) * Math.PI * 2
+              return <Ball key={i} p={[Math.cos(a) * r, yy - 0.25, Math.sin(a) * r]} rad={0.1} m={GLOBE} />
+            })}
+          </group>
+        ))}
+        <Ball p={[0, -2.0, 0]} rad={0.22} m={GLOBE} />
+      </group>
+      {/* 앞벽 무거운 커튼 */}
+      {[-8, -3, 3, 8].map((x) => (
+        <group key={x} position={[x, y, iz - 0.2]}>
+          {[-0.75, 0.75].map((dx) => (
+            <Box key={dx} p={[dx, h / 2 - 0.2, 0]} s={[0.9, h - 0.6, 0.15]} m={CURTAIN} />
+          ))}
+          <Box p={[0, h - 0.5, 0.02]} s={[2.6, 0.35, 0.2]} m={CURTAIN_DARK} />
+        </group>
+      ))}
+      {/* 계단 올라온 자리 금빛 문틀 + 방 이름 현판 */}
+      <group position={[O.door[0], y, O.door[1]]} rotation={[0, Math.PI / 2, 0]}>
+        {[-1, 1].map((s) => (
+          <Box key={s} p={[s * 1.3, 1.6, 0]} s={[0.25, 3.2, 0.3]} m={GOLD_M} />
+        ))}
+        <Box p={[0, 3.3, 0]} s={[3.0, 0.35, 0.35]} m={GOLD_M} />
+        <mesh position={[0, 3.9, 0]}>
+          <planeGeometry args={[1.8, 0.55]} />
+          <GlowMaterial glow={0.5} map={getJpSignTexture('主人の間', '#2b1a12', '#e8c35a', 1.8 / 0.55)} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
     </group>
   )
 }

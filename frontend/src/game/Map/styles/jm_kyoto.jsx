@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { Ball, Box, Cyl, GEO, Instances, mat } from './kit.jsx'
 import { getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
-import { getFlowTexture } from './jm_details.jsx'
+import { SeaWater, seaPlane } from './jm_water.jsx'
 
 // 애니메이션 구역(JM) — 교토 온천 마을 「유아카리초(湯灯町)」 스타일. 담당: 지민
 // 분위기 참고: 교토 옛 거리(산넨자카·기온·후시미 이나리·기요미즈 무대) + 강을 끼고 여러 층 목조 여관이 늘어선 온천 거리.
@@ -24,10 +24,6 @@ const range = (n) => Array.from({ length: n }, (_, i) => i)
 const SHOJI = mat('#ffe7b8', { emissive: '#ffb45e', emissiveIntensity: 0.75, roughness: 0.6 })
 const LANTERN = mat('#e0412c', { emissive: '#ff6a35', emissiveIntensity: 0.9 })
 const LAMP_GLOW = mat('#fff1cf', { emissive: '#ffcf7a', emissiveIntensity: 1.3 })
-// 수로 물은 반투명으로 바꿔 바닥이 살짝 비치게 (개울은 조금 더 초록빛)
-// 11/24: 물은 맵 바다(혜진 구역 hjSea)와 같은 느낌으로 — 깊은 물색 바닥 + 출렁이는 반투명 물결 면
-const WATER_DEEP = mat('#1f4f7a', { roughness: 0.6 })
-const WATER_SURFACE = new THREE.MeshStandardMaterial({ color: '#3d84b8', transparent: true, opacity: 0.86, roughness: 0.25, metalness: 0.15 })
 
 // 처마 밑에 매다는 붉은 제등 하나
 function HangingLantern({ p, scale = 1 }) {
@@ -669,12 +665,10 @@ function GrandRyokanLobby({ w, d, floor: F, ceil }) {
 // size [폭, _, 길이]. 물은 땅(0) 바로 위, 양옆에 낮은 돌 난간. 충돌은 JSON의 collider로 (다리 자리는 따로 비움)
 // item.natural: 골짜기 개울처럼 바닥 돌·물 위로 솟은 바위·거품을 더함 (온천 거리 수로는 깔끔하게)
 // 물 위에 흐르는 물결 무늬(길이 방향 -z로 흐름) + 돌둑 안쪽 가장자리 거품 줄
-const FOAM = mat('#f4fbff', { transparent: true, opacity: 0.55, roughness: 0.3 })
 const RIVER_ROCK = mat('#7d776e', { flat: true, roughness: 0.95 })
 const MOSS_ROCK = mat('#6b7356', { flat: true, roughness: 1 })
 const BED_STONE = mat('#5c5a52', { flat: true, roughness: 1 })
 // 같은 개울은 늘 같은 자리에 바위가 놓이게 (Math.random 대신 정해진 수열)
-const waveTmp = new THREE.Vector3()
 const seeded = (n) => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
   return x - Math.floor(x)
@@ -685,43 +679,13 @@ export function JmCanal({ item }) {
   const curb = item.curb ?? true
   const natural = item.natural ?? false
   const inner = w - 0.5
-  const flow = useMemo(() => {
-    const t = getFlowTexture()?.clone()
-    if (!t) return null
-    t.repeat.set(Math.max(1, inner / 1.6), Math.max(1, len / 3))
-    t.needsUpdate = true
-    return t
+  // 11/25: 물은 hjSea와 똑같이 (jm_water.jsx) — 깊은 물 판 + 반투명 물결 면. 흐름 줄무늬·거품 띠는 뺌
+  //   flowSpeed는 예전 데이터 호환용으로 받기만 함
+  const water = useMemo(() => {
+    const deep = new THREE.PlaneGeometry(inner, len)
+    deep.rotateX(-Math.PI / 2)
+    return { deep, surface: seaPlane(inner, len, Math.min(1.5, inner / 2)) }
   }, [inner, len])
-  const speed = item.flowSpeed ?? (natural ? 0.5 : 0.22)
-  // 출렁이는 물결 면 (hjSea와 같은 방식: 꼭짓점 높이를 sin 물결로, 갱신은 초당 30번까지, 멀면 쉼)
-  const surfaceRef = useRef(null)
-  const lastTick = useRef(-1)
-  const wave = useMemo(() => {
-    const g = new THREE.PlaneGeometry(inner, len, Math.max(2, Math.ceil(inner / 0.7)), Math.max(2, Math.ceil(len / 0.9)))
-    g.rotateX(-Math.PI / 2)
-    g.attributes.position.setUsage(THREE.DynamicDrawUsage)
-    return { g, base: Float32Array.from(g.attributes.position.array) }
-  }, [inner, len])
-  const amp = natural ? 0.035 : 0.022
-  useFrame(({ clock, camera }, delta) => {
-    if (flow) flow.offset.y -= delta * speed
-    const mesh = surfaceRef.current
-    if (!mesh) return
-    mesh.getWorldPosition(waveTmp)
-    if (waveTmp.distanceToSquared(camera.position) > (60 + len / 2) ** 2) return
-    const t = clock.elapsedTime
-    const tick = Math.floor(t * 30)
-    if (lastTick.current === tick) return
-    lastTick.current = tick
-    const pos = mesh.geometry.attributes.position
-    const { base } = wave
-    for (let i = 0; i < pos.count; i++) {
-      const x = base[i * 3]
-      const z = base[i * 3 + 2]
-      pos.setY(i, Math.sin(x * 1.6 + t * 1.8) * amp + Math.cos(z * 0.9 + t * (natural ? 2.6 : 1.3)) * amp)
-    }
-    pos.needsUpdate = true
-  })
   const rocks = useMemo(() => {
     if (!natural) return { up: [], bed: [] }
     const up = []
@@ -747,28 +711,11 @@ export function JmCanal({ item }) {
           <dodecahedronGeometry args={[1, 0]} />
         </mesh>
       ))}
-      <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]} material={WATER_DEEP}>
-        <planeGeometry args={[inner, len]} />
-      </mesh>
-      <mesh ref={surfaceRef} geometry={wave.g} position={[0, 0.07, 0]} material={WATER_SURFACE} userData={{ noMerge: true }} />
-      {flow && (
-        <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]} userData={{ noMerge: true }}>
-          <planeGeometry args={[inner, len]} />
-          <meshBasicMaterial map={flow} transparent opacity={natural ? 0.55 : 0.35} depthWrite={false} />
-        </mesh>
-      )}
-      {/* 돌둑에 부딪히는 가장자리 거품 */}
-      {[-1, 1].map((side) => (
-        <Box key={`f${side}`} p={[side * (inner / 2 - 0.08), 0.078, 0]} s={[0.16, 0.01, len]} m={FOAM} />
-      ))}
+      <SeaWater deep={water.deep} surface={water.surface} y={0.045} gap={0.03} far={60 + len / 2} />
       {rocks.up.map((rk, i) => (
         <group key={`r${i}`} position={rk.p}>
           <mesh scale={[rk.r, rk.r * 0.55, rk.r * 0.85]} rotation={[0, rk.rot, 0]} material={rk.moss ? MOSS_ROCK : RIVER_ROCK}>
             <dodecahedronGeometry args={[1, 0]} />
-          </mesh>
-          {/* 바위 둘레 하얀 물살 */}
-          <mesh position={[0, 0.075 - rk.p[1] + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOAM}>
-            <ringGeometry args={[rk.r * 0.9, rk.r * 1.15, 12]} />
           </mesh>
         </group>
       ))}
