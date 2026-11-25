@@ -212,14 +212,14 @@ export function WadeSplash({ w, len, y }) {
       st.last.copy(st.me)
       st.has = true
       if (inside && moved > 0.02 && st.t > st.next) {
-        st.next = st.t + 0.07
-        for (let k = 0; k < 4; k++) {
+        st.next = st.t + 0.12
+        for (let k = 0; k < 2; k++) {
           const d = st.d[st.di++ % DROP_N]
           d.p.set(st.me.x + (Math.random() - 0.5) * 0.4, y, st.me.z + (Math.random() - 0.5) * 0.4)
-          d.v.set((Math.random() - 0.5) * 1.6, 1.6 + Math.random() * 1.4, (Math.random() - 0.5) * 1.6)
-          d.life = 0.7
+          d.v.set((Math.random() - 0.5) * 0.9, 0.8 + Math.random() * 0.7, (Math.random() - 0.5) * 0.9)
+          d.life = 0.45
         }
-        if (Math.random() < 0.5) {
+        if (Math.random() < 0.3) {
           const r = st.r[st.ri++ % RING_N]
           r.x = st.me.x
           r.z = st.me.z
@@ -236,7 +236,7 @@ export function WadeSplash({ w, len, y }) {
           d.p.addScaledVector(d.v, step)
           if (d.p.y < y) d.life = 0
         }
-        const sc = d.life > 0 ? 0.05 : 0
+        const sc = d.life > 0 ? 0.03 : 0
         st.s.set(sc, sc, sc)
         st.m.compose(d.p, st.q, st.s)
         mesh.setMatrixAt(i, st.m)
@@ -250,8 +250,8 @@ export function WadeSplash({ w, len, y }) {
       ring.visible = r.life > 0
       if (ring.visible) {
         ring.position.set(r.x, y + 0.02, r.z)
-        ring.scale.setScalar(0.3 + (1 - r.life) * 1.6)
-        ringMats[i].opacity = 0.55 * r.life
+        ring.scale.setScalar(0.2 + (1 - r.life) * 0.8)
+        ringMats[i].opacity = 0.35 * r.life
       }
     })
   })

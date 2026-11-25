@@ -10,7 +10,8 @@ import { Box, Cyl, mat } from './kit.jsx'
 // 소품 하나로 그림: size [폭, 높이, 길이], 로컬 +z = 남쪽(입구 쪽). 로컬 z: 건물 앞 +9 ~ 뒤 +3, 터널 +3 ~ -3, 홀 -3 ~ -9
 // 걷는 판정(건물 양쪽 덩어리·터널 벽·홀 벽)은 생성 스크립트가 jmCollider로 (같은 숫자 TUNNEL)
 
-export const TUNNEL = { pass: 3.6, passH: 4.0, gate: { z0: 3, z1: 9, w: 14, h: 8.2 }, tube: { z0: -3, z1: 3 }, hall: { z0: -9, z1: -3, w: 10, h: 5.2 } }
+// wing: (11/25 밤 지민 요청: 입구를 좌우로 넓혀 웅장하게) 가운데 탑 문 양옆 낮은 날개채(폭 w, 높이 h) + 끝 망루(폭 tower, 높이 towerH)
+export const TUNNEL = { wing: { w: 7.5, h: 4.2, tower: 2.8, towerH: 7.2 }, pass: 3.6, passH: 4.0, gate: { z0: 3, z1: 9, w: 14, h: 8.2 }, tube: { z0: -3, z1: 3 }, hall: { z0: -9, z1: -3, w: 10, h: 5.2 } }
 
 const RED_PLASTER = mat('#c25a50', { roughness: 0.95 })
 const GRIME = mat('#8f4a42', { roughness: 1 })
@@ -64,7 +65,7 @@ function vaultGeometry(w, h, len) {
 }
 
 export function JmTunnelGate({ item }) {
-  const { pass, passH, gate, tube, hall } = TUNNEL
+  const { pass, passH, gate, tube, hall, wing } = TUNNEL
   const geo = useMemo(() => {
     const front = archRing(gate.w, G1, pass, passH)
     const back = archRing(gate.w, G1, pass, passH)
@@ -84,8 +85,10 @@ export function JmTunnelGate({ item }) {
     const topRoof = hipRoofGeometry(gate.w - 1.4, gate.z1 - gate.z0 + 0.6, 2.2, 0.25)
     const hallRoof = hipRoofGeometry(hall.w + 0.8, hall.z1 - hall.z0 + 0.8, 2.8, 0.2)
     const bayRoof = hipRoofGeometry(4.2, 2.0, 2.2, 0.1)
-    return { front, back, hallBack, hallFront, vault, midRoof, topRoof, hallRoof, niche, bayRoof }
-  }, [gate.w, gate.h, gate.z0, gate.z1, hall.w, hall.h, hall.z0, hall.z1, pass, passH, tube.z0, tube.z1])
+    const wingRoof = hipRoofGeometry(wing.w + 1.0, gate.z1 - gate.z0 - 0.4, 1.5, 0.15)
+    const towerRoof = hipRoofGeometry(wing.tower + 1.4, wing.tower + 1.4, 2.0, 0.2)
+    return { front, back, hallBack, hallFront, vault, midRoof, topRoof, hallRoof, niche, bayRoof, wingRoof, towerRoof }
+  }, [gate.w, gate.h, gate.z0, gate.z1, hall.w, hall.h, hall.z0, hall.z1, pass, passH, tube.z0, tube.z1, wing.w, wing.tower])
   const gz = (gate.z0 + gate.z1) / 2
   const gd = gate.z1 - gate.z0
   const hz = (hall.z0 + hall.z1) / 2
@@ -147,6 +150,52 @@ export function JmTunnelGate({ item }) {
       <Box p={[0, G1 + 3.95, gz + (gd - 1.6) / 2 + 0.15]} s={[3.2, 1.15, 0.04]} m={PLAQUE} />
       <Box p={[0, G1 + 2.65, gz]} s={[gate.w - 2.6, 0.2, gd - 1.2]} m={WOOD_D} />
       <mesh geometry={geo.topRoof} material={ROOF} position={[0, G1 + 5.2, gz]} />
+      {/* ── 양옆 날개채 + 끝 망루: 붉은 회벽, 막힌 아치 줄, 불 켜진 살창 띠, 회색 기와, 처마 등 ── */}
+      {[-1, 1].map((s) => {
+        const wx = s * (gate.w / 2 + wing.w / 2)
+        const wd = gd - 1.4
+        const fz = gz + wd / 2
+        const tx = s * (gate.w / 2 + wing.w + wing.tower / 2 - 0.2)
+        return (
+          <group key={`wing${s}`}>
+            <Box p={[wx, wing.h / 2, gz]} s={[wing.w, wing.h, wd]} m={RED_PLASTER} />
+            <Box p={[wx, 0.5, fz + 0.03]} s={[wing.w, 1.0, 0.06]} m={GRIME} />
+            {[-2.4, 0, 2.4].map((dx) => (
+              <group key={dx} position={[wx + dx, 0, fz + 0.04]}>
+                <mesh geometry={geo.niche} material={DARK} />
+                <Box p={[0, 2.62, 0]} s={[1.5, 0.14, 0.06]} m={GRIME} />
+              </group>
+            ))}
+            <Box p={[wx, wing.h - 0.65, fz + 0.03]} s={[wing.w - 0.8, 0.8, 0.06]} m={WIN_PALE} />
+            {range(13).map((i) => (
+              <Box key={i} p={[wx - (wing.w - 0.8) / 2 + (i * (wing.w - 0.8)) / 12, wing.h - 0.65, fz + 0.07]} s={[0.07, 0.8, 0.04]} m={WOOD_D} />
+            ))}
+            <Box p={[wx, wing.h + 0.1, gz]} s={[wing.w + 0.6, 0.2, wd + 0.8]} m={WOOD_D} />
+            <mesh geometry={geo.wingRoof} material={ROOF} position={[wx, wing.h + 0.2, gz]} />
+            {[-2.4, 0, 2.4].map((dx) => (
+              <group key={`l${dx}`} position={[wx + dx, wing.h - 0.1, fz + 0.75]}>
+                <Box p={[0, 0, 0]} s={[0.04, 0.5, 0.04]} m={WOOD_D} />
+                <Box p={[0, -0.5, 0]} s={[0.42, 0.6, 0.42]} m={LAMP} />
+                <Box p={[0, -0.17, 0]} s={[0.5, 0.06, 0.5]} m={WOOD_D} />
+                <Box p={[0, -0.83, 0]} s={[0.5, 0.06, 0.5]} m={WOOD_D} />
+              </group>
+            ))}
+            {/* 끝 망루 */}
+            <Box p={[tx, wing.towerH / 2, gz]} s={[wing.tower, wing.towerH, wing.tower]} m={RED_PLASTER} />
+            <Box p={[tx, 0.6, gz + wing.tower / 2 + 0.03]} s={[wing.tower, 1.2, 0.06]} m={GRIME} />
+            <Box p={[tx, wing.towerH - 1.5, gz]} s={[wing.tower + 0.9, 0.18, wing.tower + 0.9]} m={WOOD_D} />
+            <Box p={[tx, wing.towerH - 0.75, gz]} s={[wing.tower - 0.3, 1.1, wing.tower + 0.06]} m={WIN_PALE} />
+            <Box p={[tx, wing.towerH - 0.75, gz]} s={[wing.tower + 0.06, 1.1, wing.tower - 0.3]} m={WIN_PALE} />
+            {[-1, 1].map((c) => (
+              <Box key={c} p={[tx + c * (wing.tower / 2 + 0.4), wing.towerH - 1.0, gz + wing.tower / 2 + 0.4]} s={[0.08, 0.9, 0.08]} m={WOOD_D} />
+            ))}
+            <Box p={[tx, wing.towerH - 0.6, gz + wing.tower / 2 + 0.4]} s={[wing.tower + 0.9, 0.08, 0.08]} m={WOOD_D} />
+            <Box p={[tx, wing.towerH + 0.1, gz]} s={[wing.tower + 0.8, 0.2, wing.tower + 0.8]} m={WOOD_D} />
+            <mesh geometry={geo.towerRoof} material={ROOF} position={[tx, wing.towerH + 0.2, gz]} />
+            <Box p={[tx, wing.towerH + 2.5, gz]} s={[0.14, 0.9, 0.14]} m={PLAQUE_FRAME} />
+          </group>
+        )
+      })}
       {/* ── 어두운 터널 (반원 굴, 바닥 돌, 희미한 등) + 위 흙 언덕 ── */}
       <mesh geometry={geo.vault} material={TUBE_WALL} position={[0, 0, (tube.z0 + tube.z1) / 2]} />
       {[-1, 1].map((s) => (

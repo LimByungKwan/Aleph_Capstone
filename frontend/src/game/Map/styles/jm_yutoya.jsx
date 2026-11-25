@@ -5,6 +5,7 @@ import { hipRoofGeometry } from './geometry.js'
 import { Ball, Box, Cyl, GEO, Instances, mat, texMat } from './kit.jsx'
 import { canvasTexture, getJpSignTexture, GlowMaterial, JP_FONT } from './jm_landmarks.jsx'
 import { JmGrandBridge } from './jm_kyoto.jsx'
+import { WadeSplash } from './jm_water.jsx'
 
 // 애니메이션 구역(JM) 큰 여관 「湯灯屋」 (11/25 다시 지음) — 담당: 지민
 // 참고: 지민이 보낸 사진들
@@ -141,26 +142,74 @@ function flowerPanelTexture(n) {
 }
 
 // 회색 격자창 (바깥 창)
+// (11/25 밤 지민 요청: 입구 그림이 이상함) 바깥 격자창 = 안에서 불이 비치는 장지문 (크림색 종이 + 짙은 나무 살 + 굵은 틀)
 function latticeTexture() {
-  const tex = canvasTexture('yu-lattice', 128, 128, (ctx, w, h) => {
-    ctx.fillStyle = '#cfcabd'
+  const tex = canvasTexture('yu-lattice-shoji', 128, 128, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, 0, h)
+    g.addColorStop(0, '#f6dfa8')
+    g.addColorStop(1, '#eccb86')
+    ctx.fillStyle = g
     ctx.fillRect(0, 0, w, h)
-    ctx.strokeStyle = '#4a4440'
-    ctx.lineWidth = 4
-    for (let i = 0; i <= 4; i++) {
-      ctx.beginPath()
-      ctx.moveTo((i * w) / 4, 0)
-      ctx.lineTo((i * w) / 4, h)
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(0, (i * h) / 4)
-      ctx.lineTo(w, (i * h) / 4)
-      ctx.stroke()
-    }
+    ctx.fillStyle = '#3a2416'
+    // 가는 살: 가로 3칸 × 세로 4칸
+    for (let i = 1; i < 3; i++) ctx.fillRect((i * w) / 3 - 2, 0, 4, h)
+    for (let i = 1; i < 4; i++) ctx.fillRect(0, (i * h) / 4 - 2, w, 4)
+    // 굵은 틀
+    ctx.fillRect(0, 0, w, 8)
+    ctx.fillRect(0, h - 8, w, 8)
+    ctx.fillRect(0, 0, 8, h)
+    ctx.fillRect(w - 8, 0, 8, h)
   })
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   return tex
 }
+const SHOJI_GLOW = { emissive: '#ffffff', emissiveIntensity: 0.35 }
+// 현관 노렌: 남색 천에 흰 「ゆ」+ 아래 「온천」, 세 갈래로 갈라져 바람에 살짝 흔들림
+function norenTexture() {
+  return canvasTexture('yu-noren-ko', 384, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#1f3a6e'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'
+    ctx.fillRect(0, 0, w, 18)
+    ctx.fillStyle = '#f5f0e6'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = `bold 150px ${JP_FONT}`
+    ctx.fillText('ゆ', w / 2, h * 0.46)
+    ctx.font = 'bold 34px "Malgun Gothic", sans-serif'
+    ctx.fillText('온천', w / 2, h * 0.86)
+  })
+}
+function NorenSplit({ w, h, y, z }) {
+  const base = useMemo(() => norenTexture(), [])
+  const parts = useMemo(() => [0, 1, 2].map((i) => {
+    const t = base.clone()
+    t.needsUpdate = true
+    t.repeat.set(1 / 3, 1)
+    t.offset.set(i / 3, 0)
+    return new THREE.MeshStandardMaterial({ map: t, side: THREE.DoubleSide, roughness: 0.9, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.25 })
+  }), [base])
+  const refs = useRef([])
+  useFrame(({ clock }) => {
+    refs.current.forEach((m, i) => {
+      if (m) m.rotation.x = Math.sin(clock.elapsedTime * 1.3 + i * 1.1) * 0.05
+    })
+  })
+  const pw = w / 3 - 0.04
+  return (
+    <group position={[0, y, z]} userData={{ noMerge: true }}>
+      {parts.map((m, i) => (
+        <group key={i} ref={(el) => (refs.current[i] = el)} position={[(i - 1) * (w / 3), 0, 0]}>
+          <mesh position={[0, -h / 2, 0]} material={m}>
+            <planeGeometry args={[pw, h]} />
+          </mesh>
+        </group>
+      ))}
+      <Box p={[0, 0.04, 0]} s={[w + 0.3, 0.08, 0.08]} c="#2a1a12" />
+    </group>
+  )
+}
+const ENTRY_GLOW = new THREE.MeshStandardMaterial({ color: '#7a4a24', emissive: '#f0a85a', emissiveIntensity: 0.55, roughness: 1 })
 
 // 1층 옆벽 소나무 벽화
 function pineMuralTexture() {
@@ -458,7 +507,7 @@ function YuFacadeExtras({ W, D, Y, sign }) {
           <Box p={[0, 0, 0.5]} s={[bw, 1.7, 1.0]} c="#4a3426" />
           <mesh position={[0, 0.05, 1.01]}>
             <planeGeometry args={[bw - 0.3, 1.3]} />
-            <primitive object={texMat(tiled(lattice, Math.max(1, Math.round(bw / 0.9)), 2))} attach="material" />
+            <primitive object={texMat(tiled(lattice, Math.max(1, Math.round(bw / 0.9)), 2), SHOJI_GLOW)} attach="material" />
           </mesh>
           <Box p={[0, 1.0, 0.6]} s={[bw + 0.4, 0.14, 1.5]} c={GREEN} r={[0.22, 0, 0]} />
           <Box p={[0, -0.9, 0.55]} s={[bw + 0.1, 0.12, 1.1]} c="#2b1d14" />
@@ -470,7 +519,7 @@ function YuFacadeExtras({ W, D, Y, sign }) {
           <Box p={[0, 0.3, 0]} s={[11.2, 0.6, 0.5]} c={STONE} />
           <mesh position={[0, 1.4, 0.26]}>
             <planeGeometry args={[11, 1.6]} />
-            <primitive object={texMat(tiled(lattice, 12, 2))} attach="material" />
+            <primitive object={texMat(tiled(lattice, 12, 2), SHOJI_GLOW)} attach="material" />
           </mesh>
           <Box p={[0, 1.4, 0]} s={[11.2, 1.6, 0.2]} c="#e6e0d2" />
           <Box p={[0, 2.35, 0]} s={[11.6, 0.3, 0.9]} c={GREEN} />
@@ -542,7 +591,7 @@ function YuExterior({ W, D, Y, sign }) {
       {windows.map((w, i) => (
         <mesh key={i} position={w.p} rotation={[0, w.r, 0]}>
           <planeGeometry args={w.s} />
-          <primitive object={texMat(tiled(lattice, Math.max(1, Math.round(w.s[0] / 0.9)), Math.max(1, Math.round(w.s[1] / 0.9))))} attach="material" />
+          <primitive object={texMat(tiled(lattice, Math.max(1, Math.round(w.s[0] / 0.9)), Math.max(1, Math.round(w.s[1] / 0.9))), SHOJI_GLOW)} attach="material" />
         </mesh>
       ))}
       {/* 층마다 초록 처마 + 3층·5층 앞 붉은 발코니 난간 */}
@@ -565,7 +614,7 @@ function YuExterior({ W, D, Y, sign }) {
         {[1, 2, 3].map((k) => (
           <mesh key={k} position={[0, lv[k] + (lv[k + 1] - lv[k]) * 0.5, 1.23]}>
             <planeGeometry args={[7.6, (lv[k + 1] - lv[k]) * 0.55]} />
-            <primitive object={texMat(tiled(lattice, 8, 2))} attach="material" />
+            <primitive object={texMat(tiled(lattice, 8, 2), SHOJI_GLOW)} attach="material" />
           </mesh>
         ))}
         <Karahafu p={[0, lv[2] + 0.1, 1.2]} w={8.6} h={1.5} depth={2.2} board={false} />
@@ -580,11 +629,22 @@ function YuExterior({ W, D, Y, sign }) {
         ))}
         <Box p={[0, base + doorH + 0.85, 3.0]} s={[6.8, 0.3, 0.3]} c={VERM} />
         {/* 문 안 어둠 + ゆ 노렌 */}
-        <Box p={[0, base + doorH / 2, -wt - 0.05]} s={[door, doorH, 0.04]} c="#1a1210" />
-        <mesh position={[0, base + doorH - 0.75, 0.04]}>
-          <planeGeometry args={[door - 0.1, 1.3]} />
-          <GlowMaterial glow={0.3} map={getJpSignTexture('ゆ', '#2b4f8a', '#f5f0e6', (door - 0.1) / 1.3)} side={THREE.DoubleSide} />
+        <mesh position={[0, base + doorH / 2, -wt - 0.05]} material={ENTRY_GLOW}>
+          <planeGeometry args={[door, doorH]} />
         </mesh>
+        {/* 양옆으로 열어 둔 격자 미닫이문 + 문틀 + 문지방 */}
+        {[-1, 1].map((sd) => (
+          <group key={`d${sd}`}>
+            <mesh position={[sd * (door / 2 + 0.55), base + doorH * 0.45, 0.06]}>
+              <planeGeometry args={[1.1, doorH * 0.9]} />
+              <primitive object={texMat(tiled(lattice, 1, 3), SHOJI_GLOW)} attach="material" />
+            </mesh>
+            <Box p={[sd * (door / 2 + 0.06), base + doorH / 2, 0.08]} s={[0.14, doorH, 0.16]} c="#2a1a12" />
+          </group>
+        ))}
+        <Box p={[0, base + doorH + 0.05, 0.08]} s={[door + 0.4, 0.16, 0.18]} c="#2a1a12" />
+        <Box p={[0, base + 0.04, 0.1]} s={[door + 0.3, 0.08, 0.3]} c="#3a2a1c" />
+        <NorenSplit w={door - 0.1} h={1.5} y={base + doorH - 0.05} z={0.14} />
       </group>
       {/* 큰 지붕 */}
       <Box p={[0, R + 0.15, 0]} s={[W, 0.3, D]} c={RED_DARK} />
@@ -596,7 +656,7 @@ function YuExterior({ W, D, Y, sign }) {
         <Box p={[0, 2.4, 0]} s={[13, 4.8, 10]} c={RED} />
         <mesh position={[0, 2.6, 5.03]}>
           <planeGeometry args={[11.6, 2.4]} />
-          <primitive object={texMat(tiled(lattice, 12, 3))} attach="material" />
+          <primitive object={texMat(tiled(lattice, 12, 3), SHOJI_GLOW)} attach="material" />
         </mesh>
         <Box p={[0, 0.9, 5.45]} s={[13, 0.08, 0.9]} c={WOOD} />
         <Box p={[0, 1.8, 5.85]} s={[13, 0.1, 0.1]} c={VERM} />
@@ -964,7 +1024,7 @@ function YuPavilion({ Y }) {
 
 // 손님용 엘리베이터 문짝: 붉은 옻칠 두짝문에 금 글자 「上」, 문 앞쪽으로 활짝 열려 있음 (face = 문이 보는 방향 ±z)
 function upTexture() {
-  return canvasTexture('jmyu:updoor', 128, 256, (ctx, w, h) => {
+  return canvasTexture('jmyu:updoor-ko', 128, 256, (ctx, w, h) => {
     ctx.fillStyle = '#9a2018'
     ctx.fillRect(0, 0, w, h)
     ctx.strokeStyle = '#d4a83e'
@@ -975,6 +1035,8 @@ function upTexture() {
     ctx.textBaseline = 'middle'
     ctx.font = `bold ${Math.round(w * 0.8)}px ${JP_FONT}`
     ctx.fillText('上', w / 2, h * 0.42)
+    ctx.font = `bold ${Math.round(w * 0.17)}px "Malgun Gothic", sans-serif`
+    ctx.fillText('위로 가는 문', w / 2, h * 0.74)
   })
 }
 function GuestDoors({ x, y, z, face, cw }) {
@@ -1117,15 +1179,11 @@ function YuBathWing({ Y }) {
       {tubs.map(([x, z, s], i) => (
         <group key={i} position={[x, base, z]}>
           <Box p={[0, 0.45, 0]} s={[s, 0.9, s]} c="#a0703f" />
-          <Box p={[0, 0.92, 0]} s={[s - 0.3, 0.03, s - 0.3]} m={WATER} />
+          <Box p={[0, 0.88, 0]} s={[s - 0.3, 0.03, s - 0.3]} m={WATER} />
           {[0.2, 0.7].map((y) => (
             <Box key={y} p={[0, y, 0]} s={[s + 0.04, 0.06, s + 0.04]} c="#3a2a1c" />
           ))}
-          {range(3).map((k) => (
-            <mesh key={k} position={[0.2 - k * 0.2, 1.4 + k * 0.6, 0]} material={STEAM_M} scale={[0.6 + k * 0.3, 0.35 + k * 0.1, 0.6 + k * 0.3]}>
-              <sphereGeometry args={[1, 8, 6]} />
-            </mesh>
-          ))}
+          <WadeSplash w={s - 0.3} len={s - 0.3} y={0.9} />
         </group>
       ))}
       <group position={[center.x, base, center.z]}>
@@ -1138,12 +1196,10 @@ function YuBathWing({ Y }) {
         <Box p={[0, h - 2.0, center.r - 0.6]} s={[0.3, 1.9, 0.3]} c="#5a3d2a" />
         <Cyl p={[0.6, h - 2.4, center.r - 0.4]} rad={0.02} h={2.6} c="#d8c79a" />
         <Box p={[0.6, h - 3.8, center.r - 0.4]} s={[0.25, 0.4, 0.04]} c="#e9d3a5" />
-        {range(5).map((i) => (
-          <mesh key={i} position={[0.4 - i * 0.2, 1.6 + i * 0.7, -0.3 + i * 0.1]} material={STEAM_M} scale={[0.8 + i * 0.35, 0.45 + i * 0.15, 0.8 + i * 0.35]}>
-            <sphereGeometry args={[1, 10, 8]} />
-          </mesh>
-        ))}
+        <PourStream x={0.6} z={center.r - 0.4} top={h - 2.4} y={1.04} />
       </group>
+      <BathSteam base={base} tubs={tubs} center={center} />
+      <BathRipples base={base} tubs={tubs} center={center} />
       {/* 벽 등 + 서쪽 높은 창 빛 */}
       {[[x0 + 0.2, cz - 6], [x0 + 0.2, cz + 2], [x1 - 0.3, cz - 6], [x1 - 0.3, cz - 12]].map(([x, z]) => (
         <Box key={`${x}${z}`} p={[x, base + 2.8, z]} s={[0.2, 0.45, 0.35]} m={GLOBE} />
@@ -1155,7 +1211,120 @@ function YuBathWing({ Y }) {
     </group>
   )
 }
-const STEAM_M = mat('#ffffff', { transparent: true, opacity: 0.2, roughness: 1 })
+// (11/25 밤 지민 요청) 탕 김: 부드러운 김 그림(스프라이트)이 물 위에서 천천히 흔들리며 올라가 퍼지고 옅어짐 → 다시 아래에서 (반복)
+function steamTexture() {
+  return canvasTexture('jmyu:steam', 128, 128, (ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h)
+    for (let i = 0; i < 5; i++) {
+      const x = w / 2 + Math.cos(i * 1.7) * 14
+      const y = h / 2 + Math.sin(i * 2.3) * 12
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 44)
+      g.addColorStop(0, 'rgba(255,255,255,0.55)')
+      g.addColorStop(0.5, 'rgba(255,255,255,0.22)')
+      g.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, w, h)
+    }
+  })
+}
+const STEAM_RISE = 3.4 // 김이 올라가는 높이(m)
+function BathSteam({ base, tubs, center }) {
+  const map = useMemo(() => steamTexture(), [])
+  // 욕조마다 김 4장, 가운데 큰 욕조는 7장. 각 장은 시작 시각(phase)이 달라 끊기지 않고 계속 피어오름
+  const puffs = useMemo(() => {
+    const out = []
+    tubs.forEach(([x, z, s], i) => { for (let k = 0; k < 4; k++) out.push({ x, z, spread: s * 0.3, y0: 0.95, size: 1.6, phase: (k + i * 0.37) / 4, seed: i * 7 + k }) })
+    for (let k = 0; k < 7; k++) out.push({ x: center.x, z: center.z, spread: center.r * 0.5, y0: 1.1, size: 2.4, phase: k / 7, seed: 90 + k })
+    return out.map((p) => ({ ...p, m: new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, opacity: 0 }) }))
+  }, [tubs, center, map])
+  const refs = useRef([])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    puffs.forEach((p, i) => {
+      const sp = refs.current[i]
+      if (!sp) return
+      const u = (t * 0.16 + p.phase) % 1 // 0 → 1 동안 한 번 올라감 (약 6초)
+      const sway = Math.sin(t * 0.7 + p.seed) * 0.35 * u
+      sp.position.set(p.x + Math.cos(p.seed) * p.spread + sway, base + p.y0 + u * STEAM_RISE, p.z + Math.sin(p.seed * 1.3) * p.spread + sway * 0.6)
+      const sc = p.size * (0.5 + u * 1.3)
+      sp.scale.set(sc, sc, 1)
+      p.m.opacity = 0.42 * Math.sin(Math.PI * u) // 피어날 때·사라질 때 옅게
+      p.m.rotation = p.seed + t * 0.08
+    })
+  })
+  return (
+    <group>
+      {puffs.map((p, i) => (
+        <sprite key={i} ref={(el) => (refs.current[i] = el)} material={p.m} />
+      ))}
+    </group>
+  )
+}
+// 물 위 둥근 물결: 욕조마다 하나씩 가운데서 번져 나감 (반복)
+const RIPPLE_GEO = new THREE.RingGeometry(0.9, 1, 32)
+function BathRipples({ base, tubs, center }) {
+  const rings = useMemo(() => [
+    ...tubs.map(([x, z, s], i) => ({ x, z, y: 0.91, r: (s - 0.4) / 2, phase: i * 0.29 })),
+    { x: center.x, z: center.z, y: 1.05, r: center.r - 0.3, phase: 0.5 },
+  ].map((r) => ({ ...r, m: new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }) })), [tubs, center])
+  const refs = useRef([])
+  useFrame(({ clock }) => {
+    rings.forEach((r, i) => {
+      const m = refs.current[i]
+      if (!m) return
+      const u = (clock.elapsedTime * 0.35 + r.phase) % 1
+      m.scale.setScalar(0.15 + u * r.r)
+      r.m.opacity = 0.35 * (1 - u)
+    })
+  })
+  return rings.map((r, i) => (
+    <mesh key={i} ref={(el) => (refs.current[i] = el)} geometry={RIPPLE_GEO} material={r.m} position={[r.x, base + r.y, r.z]} rotation={[-Math.PI / 2, 0, 0]} />
+  ))
+}
+// 가운데 큰 욕조: 위 관에서 물줄기가 떨어지고 닿는 곳에 물방울이 조금씩 튐
+const STREAM_M = new THREE.MeshStandardMaterial({ color: '#cfe8ee', transparent: true, opacity: 0.55, roughness: 0.1, depthWrite: false })
+const DROP_M2 = new THREE.MeshBasicMaterial({ color: '#eef8f8', transparent: true, opacity: 0.8 })
+function PourStream({ x, z, top, y }) {
+  const stream = useRef(null)
+  const drops = useRef(null)
+  const N = 14
+  const st = useMemo(() => ({ d: Array.from({ length: N }, (_, i) => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), life: -i * 0.05 })), m: new THREE.Matrix4(), q: new THREE.Quaternion(), s: new THREE.Vector3() }), [])
+  useFrame(({ clock }, dt) => {
+    const step = Math.min(dt, 0.05)
+    if (stream.current) stream.current.scale.x = stream.current.scale.z = 1 + Math.sin(clock.elapsedTime * 23) * 0.12
+    const mesh = drops.current
+    if (!mesh) return
+    st.d.forEach((d, i) => {
+      d.life -= step
+      if (d.life <= 0 && d.life > -0.05) {
+        d.p.set(x, y, z)
+        d.v.set((Math.random() - 0.5) * 0.9, 0.6 + Math.random() * 0.6, (Math.random() - 0.5) * 0.9)
+        d.life = 0.4
+      }
+      if (d.life > 0) {
+        d.v.y -= 9.8 * step
+        d.p.addScaledVector(d.v, step)
+        if (d.p.y < y) d.life = 0
+      }
+      const sc = d.life > 0 ? 0.03 : 0
+      st.s.set(sc, sc, sc)
+      st.m.compose(d.p, st.q, st.s)
+      mesh.setMatrixAt(i, st.m)
+    })
+    mesh.instanceMatrix.needsUpdate = true
+  })
+  const len = top - y
+  return (
+    <group>
+      <mesh ref={stream} position={[x, y + len / 2, z]} material={STREAM_M}>
+        <cylinderGeometry args={[0.05, 0.08, len, 8, 1, true]} />
+      </mesh>
+      <instancedMesh ref={drops} args={[null, DROP_M2, N]} frustumCulled={false}>
+        <sphereGeometry args={[1, 6, 4]} />
+      </instancedMesh>
+    </group>
+  )
+}
 
 // ── (11/25) 2~4층 연회장: 회랑 바깥 앞뒤 띠에 방. 회랑 쪽은 그림 장지문(후스마) 벽, 방마다 한 칸이 열려 들어감 ──
 // 모티브: 영화 속 온천장 연회장 (긴 복도를 따라 그림 그린 미닫이문이 줄지어 있고, 안은 상과 방석이 줄지은 넓은 다다미 방)

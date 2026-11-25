@@ -470,7 +470,7 @@ function drawerTexture() {
   })
 }
 function flagTexture() {
-  return canvasTexture('jmspirit:flag', 192, 300, (ctx, w, h) => {
+  return canvasTexture('jmspirit:flag-ko', 192, 300, (ctx, w, h) => {
     ctx.fillStyle = '#f2ede2'
     ctx.fillRect(0, 0, w, h)
     ctx.strokeStyle = '#1a1210'
@@ -483,6 +483,8 @@ function flagTexture() {
     ctx.textBaseline = 'middle'
     ctx.font = `bold ${Math.round(w * 0.42)}px ${JP_FONT}`
     ctx.fillText('湯', w / 2, h * 0.46)
+    ctx.font = `bold ${Math.round(w * 0.16)}px "Malgun Gothic", sans-serif`
+    ctx.fillText('온천', w / 2, h * 0.86)
   })
 }
 export function JmBoilerRoom({ item }) {
@@ -1600,6 +1602,17 @@ export function JmBasementDoor({ item }) {
       <Box p={[x, h / 2, (dz + dw / 2 + d / 2) / 2]} s={[0.25, h, d / 2 - dz - dw / 2]} c="#5a3d2a" />
       <Box p={[x, (dh + h) / 2, dz]} s={[0.25, h - dh, dw]} c="#5a3d2a" />
       <Box p={[0, h / 2, -d / 2]} s={[w, h, 0.25]} c="#5a3d2a" />
+      {item.well && (
+        <group>
+          {/* 계단실: 두 계단 사이 판자 칸막이, 쉼터 뒤 벽, 1층 바닥 끝 나무 난간 */}
+          <Box p={[item.well.divider[0], -item.well.depth / 2, item.well.divider[1]]} s={[0.25, item.well.depth, item.well.divider[2]]} c="#4a3222" />
+          <Box p={[0, -item.well.depth / 2, item.well.back]} s={[w, item.well.depth, 0.25]} c="#3e2a1c" />
+          <Box p={[item.well.rail[0], 0.95, item.well.rail[1]]} s={[item.well.rail[2], 0.08, 0.12]} c="#2a1a12" />
+          {[-0.5, 0, 0.5].map((t) => (
+            <Box key={t} p={[item.well.rail[0] + t * (item.well.rail[2] - 0.2), 0.48, item.well.rail[1]]} s={[0.1, 0.95, 0.1]} c="#2a1a12" />
+          ))}
+        </group>
+      )}
       {/* 작은 문틀 + 노렌 + 문 위 등 */}
       {[-1, 1].map((s) => (
         <Box key={s} p={[x - 0.08, dh / 2, dz + s * (dw / 2 + 0.06)]} s={[0.14, dh, 0.12]} c="#2a1a12" />
