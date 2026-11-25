@@ -8,6 +8,7 @@ import { currentEpisodeStep, getDateEpisode } from '../../game/Map/styles/bk_dat
 import { EpisodePanel } from '../../game/Map/styles/bk_episodePanel.jsx'
 import { useEpisodeRoom } from '../../game/Map/styles/bk_episodeRoom.js'
 import { useWarps } from '../../game/Map/styles/bk_warpStore.js'
+import { DateCourseMap } from '../../game/Map/styles/bk_dateCourseMap.jsx'
 import { goToWineBar, WineTastingHud } from '../../game/Map/styles/bk_wineTasting.jsx'
 import { DATE_BADGE_COUNT, DATE_MISSIONS, DATE_STAMP_COUNT, getMission, inDateZone, mapPoint, openNearby, useDateMission } from '../../game/Map/styles/bk_dateMission.js'
 import './dateMission.css'
@@ -310,10 +311,6 @@ function Reward({ onClose }) {
   )
 }
 
-// 데이트 코스 안내판 지도: 구역 모양 + 미션 위치 핀 (누르면 워프) + 목록
-const MAP = { minX: 45, maxX: 125, minZ: -120, maxZ: 40, w: 160, h: 320 }
-const toMap = ([x, z]) => [((x - MAP.minX) / (MAP.maxX - MAP.minX)) * MAP.w, ((z - MAP.minZ) / (MAP.maxZ - MAP.minZ)) * MAP.h]
-
 function DateMap({ pass, onClose }) {
   const go = (m) => {
     onClose()
@@ -322,31 +319,15 @@ function DateMap({ pass, onClose }) {
   return (
     <Dialog badge="🗺️ 데이트 코스 안내판" title="데이트 코스 둘러보기" onClose={onClose}>
       <div className="special-dialog__body date-map">
-        <svg viewBox={`-10 -10 ${MAP.w + 20} ${MAP.h + 20}`} role="img" aria-label="데이트 코스 지도">
-          <rect x="0" y="0" width={MAP.w} height={MAP.h} rx="10" className="date-map__zone" />
-          <rect x="0" y={toMap([45, 0])[1] - 6} width={MAP.w} height="12" className="date-map__road" />
-          <text x={MAP.w / 2} y={toMap([45, 0])[1] - 10} className="date-map__label">입구 ← 중앙 광장</text>
-          <rect x={MAP.w * 0.1} y="4" width={MAP.w * 0.8} height={toMap([0, -40])[1] - 8} rx="40" className="date-map__hill" />
-          <text x={MAP.w / 2} y={MAP.h * 0.06} className="date-map__label">언덕 · 전망대</text>
-          {DATE_MISSIONS.map((m) => {
-            const [x, y] = toMap(mapPoint(m))
-            const state = pass.stamps[m.id] ? 'stamp' : pass.done[m.id] ? 'done' : 'todo'
-            return (
-              <g key={m.id} className="date-map__pin" data-state={state} transform={`translate(${x} ${y})`} onClick={() => go(m)} role="button" tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && go(m)} aria-label={`${m.short}로 워프`}>
-                <circle r="11" />
-                <text y="5">{m.icon}</text>
-              </g>
-            )
-          })}
-        </svg>
+        <DateCourseMap pass={pass} onWarp={go} />
         <ol className="special-route date-map__list">
-          {DATE_MISSIONS.map((m) => (
+          {DATE_MISSIONS.map((m, index) => (
             <li key={m.id}>
+              <span className="date-map__number" aria-hidden="true">{index + 1}</span>
               <span>
                 {pass.stamps[m.id] ? '✓' : pass.done[m.id] ? '◐' : '○'} {m.icon} <b>{m.short}</b> <small>{m.kind}</small>
               </span>
-              <button type="button" className="ui-btn" onClick={() => go(m)}>워프</button>
+              <button type="button" className="ui-btn" aria-label={`${m.short} 워프`} onClick={() => go(m)}>워프</button>
             </li>
           ))}
         </ol>
