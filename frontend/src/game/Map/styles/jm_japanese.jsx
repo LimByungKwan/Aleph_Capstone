@@ -44,7 +44,9 @@ const NO_MERGE = new Set([
   'jmBridgeDress', // 흔들다리(매 프레임 움직임)
   'jmWaterwheel', // 도는 바퀴
   'jmRiver', // 흐르는 물결
-  'jmCollider', // 그리는 것 없음
+  'jmCollider', // 그리는 것 없음 (높은 벽은 카메라 막이만)
+  'jmElevator', // 레버·다이얼 움직임, HUD
+  'jmSeaTrain', // 큰 메시 여러 개
   'jmZoneLight', // 조명
   'jmGroundCover', // 이미 인스턴스 한 번에 그림
   'jmPathRibbon', // 이미 메시 하나

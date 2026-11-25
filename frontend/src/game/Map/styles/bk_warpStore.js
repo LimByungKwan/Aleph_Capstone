@@ -38,6 +38,7 @@ function readOldLocal(userId) {
 export const useWarps = create((set, get) => ({
   unlocked: [], // 켜진 워프존 id (계정에서 불러옴)
   request: null, // 이동할 워프존 id (bk_warpZones.jsx가 처리하고 비움)
+  exact: true, // (11/25 지민) goto 요청의 exact: [x, 바닥 y, z]를 지원함 — 애니 구역 온천장 엘리베이터가 이 값을 보고 켜짐
   /** 켜기: 화면에는 바로 켜고, 계정에 저장. 저장이 실패하면 다시 끔 */
   unlock(id) {
     if (!isLoggedIn() || get().unlocked.includes(id)) return false

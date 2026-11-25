@@ -69,7 +69,8 @@ export function WarpZones({ playerRef }) {
           cz = p.z
         }
       } else if (request.center) [cx, cz] = request.center
-      const spot = cx === undefined ? null : findSpot(scene, cx, cz, request.clearance)
+      // (11/25 지민, 애니 구역 온천장 엘리베이터) exact: [x, 바닥 y, z] — 바닥을 재지 않고 그 자리로 (건물 안 위층처럼 위에서 재면 지붕에 걸리는 곳)
+      const spot = request.exact ? request.exact : cx === undefined ? null : findSpot(scene, cx, cz, request.clearance)
       if (spot) {
         player.body.setTranslation({ x: spot[0], y: spot[1] + 1.6, z: spot[2] }, true)
         player.body.setLinvel({ x: 0, y: 0, z: 0 }, true)

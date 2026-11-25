@@ -372,6 +372,7 @@ export function JmYutoya({ item }) {
       <YuBathWing Y={Y} />
       <YuBanquetRooms W={W} D={D} Y={Y} />
       <YuOffice W={W} D={D} Y={Y} />
+      <YuStaffShaft Y={Y} />
     </group>
   )
 }
@@ -814,24 +815,44 @@ function YuPavilion({ Y }) {
   const top = lv[4]
   const dragon = useMemo(() => dragonTexture(), [])
   const folds = range(9)
+  const cw = (Y.guest?.w ?? 2.8) + 0.2
+  const side = (w - cw) / 2
   return (
     <group>
-      {/* 몸체 (짙은 나무) */}
-      <Box p={[0, (base + top) / 2, cz - 0.2]} s={[w - 0.6, top - base, pav.z1 - pav.z0 - 0.4]} c={DARK} />
-      {/* 아래: 보라 휘장 + 매듭 */}
-      {folds.map((i) => (
+      {/* (11/25) 몸체 속은 손님용 엘리베이터 승강로: 양옆 짙은 나무 덩어리 + 층마다 앞·뒤 판 (1층은 앞, 2~4층은 뒤가 열림) */}
+      {[-1, 1].map((s) => (
+        <Box key={s} p={[s * (cw / 2 + side / 2), (base + top) / 2, cz]} s={[side, top - base, pav.z1 - pav.z0 - 0.2]} c={DARK} />
+      ))}
+      <Box p={[0, (base + 3.6 + lv[1]) / 2, f - 0.15]} s={[cw, lv[1] - base - 3.6, 0.3]} c={DARK} />
+      <Box p={[0, (base + lv[1]) / 2, pav.z0 + 0.15]} s={[cw, lv[1] - base, 0.3]} c={DARK} />
+      {[1, 2, 3].map((k) => (
+        <group key={k}>
+          <Box p={[0, (lv[k] + lv[k + 1]) / 2, f - 0.15]} s={[cw, lv[k + 1] - lv[k], 0.3]} c={DARK} />
+          <Box p={[0, lv[k] + 3.6 + (lv[k + 1] - lv[k] - 3.6) / 2, pav.z0 + 0.15]} s={[cw, lv[k + 1] - lv[k] - 3.6, 0.3]} c={DARK} />
+          {/* 뒤 회랑 쪽 금 문틀 + 층 현판 */}
+          {[-1, 1].map((s) => (
+            <Box key={s} p={[s * (cw / 2 + 0.06), lv[k] + 1.8, pav.z0 - 0.02]} s={[0.14, 3.6, 0.12]} m={GOLD_M} />
+          ))}
+          <Box p={[0, lv[k] + 3.65, pav.z0 - 0.02]} s={[cw + 0.4, 0.16, 0.14]} m={GOLD_M} />
+        </group>
+      ))}
+      {[-1, 1].map((s) => (
+        <Box key={`gf${s}`} p={[s * (cw / 2 + 0.06), base + 1.8, f + 0.02]} s={[0.14, 3.6, 0.12]} m={GOLD_M} />
+      ))}
+      <Box p={[0, base + 3.65, f + 0.02]} s={[cw + 0.4, 0.16, 0.14]} m={GOLD_M} />
+      {/* 아래: 보라 휘장 + 매듭 (가운데 엘리베이터 문 자리는 비움) */}
+      {folds.filter((i) => Math.abs(-w / 2 + 0.55 + (i * (w - 1.1)) / 8) > cw / 2 + 0.2).map((i) => (
         <Box key={i} p={[-w / 2 + 0.55 + (i * (w - 1.1)) / 8, base + 1.4, f + 0.05 + (i % 2) * 0.06]} s={[0.62, 2.8, 0.06]} m={i % 2 ? CURTAIN_DARK : CURTAIN} />
       ))}
-      <Box p={[0, base + 2.65, f + 0.14]} s={[w - 0.4, 0.35, 0.05]} m={CURTAIN} />
-      <Cyl p={[0, base + 1.9, f + 0.2]} rad={0.08} h={0.9} m={GOLD_M} />
+      <Box p={[0, base + 3.95, f + 0.14]} s={[w - 0.4, 0.35, 0.05]} m={CURTAIN} />
       {/* 발코니 판 + 금 장식 */}
-      <Box p={[0, base + 3.0, f + 0.5]} s={[w + 0.4, 0.4, 1.4]} c="#5a3a24" />
-      <Box p={[0, base + 3.0, f + 1.21]} s={[w + 0.4, 0.3, 0.04]} m={GOLD_M} />
+      <Box p={[0, base + 4.0, f + 0.5]} s={[w + 0.4, 0.4, 1.4]} c="#5a3a24" />
+      <Box p={[0, base + 4.0, f + 1.21]} s={[w + 0.4, 0.3, 0.04]} m={GOLD_M} />
       {range(5).map((i) => (
-        <Box key={i} p={[-w / 2 + 0.4 + (i * (w - 0.8)) / 4, base + 3.0, f + 1.24]} s={[0.3, 0.3, 0.03]} c="#7a2218" />
+        <Box key={i} p={[-w / 2 + 0.4 + (i * (w - 0.8)) / 4, base + 4.0, f + 1.24]} s={[0.3, 0.3, 0.03]} c="#7a2218" />
       ))}
       {/* 가운데: 붉은 두짝문 + 금 장식, 양옆 검은 기둥, 금 문틀 */}
-      <group position={[0, base + 3.2, f + 0.02]}>
+      <group position={[0, base + 4.3, f + 0.02]}>
         <Box p={[0, 1.6, 0]} s={[2.8, 3.0, 0.06]} c="#c0302a" />
         <Box p={[0, 1.6, 0.04]} s={[0.05, 3.0, 0.02]} m={GOLD_M} />
         {[-0.7, 0.7].flatMap((x) => [0.7, 1.6, 2.5].map((y) => <Box key={`${x}${y}`} p={[x, y, 0.05]} s={[0.4, 0.14, 0.03]} m={GOLD_M} />))}
@@ -860,15 +881,15 @@ function YuPavilion({ Y }) {
         <Box p={[0, -0.1, 0]} s={[w + 0.6, 0.2, pav.z1 - pav.z0 + 0.6]} c="#5a3a24" />
         {[-1, 1].map((s) => (
           <group key={s}>
-            <Box p={[0, 1.0, s * ((pav.z1 - pav.z0) / 2 + 0.25)]} s={[w + 0.6, 0.1, 0.1]} c={VERM} />
+            {s > 0 && <Box p={[0, 1.0, s * ((pav.z1 - pav.z0) / 2 + 0.25)]} s={[w + 0.6, 0.1, 0.1]} c={VERM} />}
             <Box p={[s * (w / 2 + 0.25), 1.0, 0]} s={[0.1, 0.1, pav.z1 - pav.z0 + 0.6]} c={VERM} />
           </group>
         ))}
         {range(7).map((i) => (
           <Box key={i} p={[-w / 2 - 0.25 + (i * (w + 0.5)) / 6, 0.5, (pav.z1 - pav.z0) / 2 + 0.25]} s={[0.1, 1.0, 0.1]} c={VERM} />
         ))}
-        {/* 위에서 빛나는 등 */}
-        <Ball p={[0, 1.0, 0]} rad={0.35} m={GLOBE} />
+        {/* 위에서 빛나는 등 (엘리베이터 칸 위로 올림) */}
+        <Ball p={[0, 3.9, 0.9]} rad={0.3} m={GLOBE} />
       </group>
       {/* 붉은 기둥 4개 (3층 → 천장) + 꼭대기 용 장식 판 */}
       {[-1, 1].flatMap((sx) =>
@@ -1304,6 +1325,61 @@ function carpetTexture() {
     }
   })
 }
+function mosaicTexture() {
+  return canvasTexture('jmyu:mosaic', 512, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#e9dcc0'
+    ctx.fillRect(0, 0, w, h)
+    const cols = ['#b8352a', '#1f4a7a', '#d4a83e', '#2f6b4a', '#e9dcc0']
+    const n = 16
+    const c = w / n
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const d = Math.abs(x - n / 2 + 0.5) + Math.abs(y - n / 2 + 0.5)
+      ctx.fillStyle = cols[Math.floor(d) % cols.length]
+      ctx.fillRect(x * c + 1, y * c + 1, c - 2, c - 2)
+    }
+    ctx.strokeStyle = '#d4a83e'
+    ctx.lineWidth = 10
+    ctx.strokeRect(5, 5, w - 10, h - 10)
+  })
+}
+function marbleTexture() {
+  return canvasTexture('jmyu:marble', 256, 256, (ctx, w, h) => {
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+      ctx.fillStyle = (x + y) % 2 ? '#2a2422' : '#efe6d6'
+      ctx.fillRect((x * w) / 4, (y * h) / 4, w / 4, h / 4)
+    }
+  })
+}
+function paintingTexture(k) {
+  return canvasTexture(`jmyu:painting:${k}`, 256, 192, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, 0, h)
+    g.addColorStop(0, ['#7aa6c9', '#d9a066', '#5a7a5a'][k % 3])
+    g.addColorStop(1, ['#2f4a6a', '#7a3a2a', '#2a3a2a'][k % 3])
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = 'rgba(255,240,200,0.6)'
+    ctx.beginPath()
+    ctx.arc(w * 0.7, h * 0.3, 22, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(20,20,20,0.5)'
+    ctx.beginPath()
+    ctx.moveTo(0, h)
+    ctx.lineTo(w * 0.35, h * 0.45)
+    ctx.lineTo(w * 0.6, h * 0.75)
+    ctx.lineTo(w, h * 0.5)
+    ctx.lineTo(w, h)
+    ctx.fill()
+  })
+}
+const PORCELAIN = mat('#eef2f5', { roughness: 0.25 })
+const COBALT = mat('#1f3a8a', { roughness: 0.3 })
+const VELVET = mat('#8a1c24', { roughness: 0.9 })
+const CUSHION_COLORS = ['#e86a9a', '#f2c94c', '#7aa7e8', '#59b36b', '#b05fd0', '#f28a3a', '#ffffff']
+
+// ── (11/25) 꼭대기 5층: 여관 주인의 방 ─────────────
+// 모티브(영화 설명): 엘리베이터가 꼭대기 모자이크 바닥 방으로 열림 → 큰 문 → 문이 몇 겹 더 → 집무실, 옆에 아기 방(쿠션 더미).
+//   호화로운 서양식 방: 붉은 무늬 벽지, 비싼 도자기 항아리가 줄지음, 금 장식, 큰 책상 위 금화, 벽난로, 책장, 샹들리에. 캐릭터는 넣지 않음
+// 배치(생성 스크립트 YU_OFFICE와 같은 숫자): 서쪽 칸막이 x -13 | 집무실 | 안쪽 문 x 7 | 문 사이 복도 | 큰 문 x 13 | 동쪽 모자이크 방
 function YuOffice({ W, D, Y }) {
   const { lv, wt, office: O } = Y
   const y = lv[4]
@@ -1313,17 +1389,68 @@ function YuOffice({ W, D, Y }) {
   const coffer = useMemo(() => cofferTexture(), [])
   const damask = useMemo(() => damaskTexture(), [])
   const carpet = useMemo(() => carpetTexture(), [])
+  const mosaic = useMemo(() => mosaicTexture(), [])
+  const marble = useMemo(() => marbleTexture(), [])
   const books = useMemo(() => {
     const out = []
     const cols = ['#7a1d12', '#1f3a5f', '#2f4a2a', '#5a3d2a', '#7c5a1a', '#3b2a4f']
-    for (const bc of O.bookcases) for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) {
-      out.push({ p: [bc[0] - 0.05, y + 0.45 + r * 0.62, bc[1] - 1.05 + i * 0.25 + (r % 2) * 0.04], s: [0.32, 0.42 + ((i * 7 + r) % 3) * 0.06, 0.18], c: cols[(i + r * 2) % cols.length] })
+    for (const [bx, bz] of O.bookcases) for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) {
+      out.push({ p: [bx + 0.15, y + 0.45 + r * 0.62, bz - 1.05 + i * 0.25 + (r % 2) * 0.04], s: [0.32, 0.42 + ((i * 7 + r) % 3) * 0.06, 0.18], c: cols[(i + r * 2) % cols.length] })
     }
     return out
   }, [O, y])
+  const coins = useMemo(() => {
+    const out = []
+    for (let i = 0; i < 40; i++) {
+      const a = seededR(i) * Math.PI * 2
+      const r = seededR(i + 50) * 0.5
+      out.push({ p: [O.desk[0] + 1.2 + Math.cos(a) * r, y + 1.0 + seededR(i + 9) * 0.25, O.desk[1] + Math.sin(a) * r * 0.6], s: [0.09, 0.02, 0.09] })
+    }
+    return out
+  }, [O, y])
+  const cushions = useMemo(() => range(26).map((i) => {
+    const [px, pz] = O.boh.pile
+    const layer = Math.floor(i / 9)
+    const a = (i % 9) / 9 * Math.PI * 2 + layer
+    const r = layer === 2 ? 0.4 : 1.2 - layer * 0.4
+    return { p: [px + Math.cos(a) * r, y + 0.35 + layer * 0.45, pz + Math.sin(a) * r], s: [0.75, 0.32, 0.6], c: CUSHION_COLORS[i % CUSHION_COLORS.length] }
+  }), [O, y])
+  const zPieces = (gap) => [[-iz, gap[0]], [gap[1], iz]]
+  // 칸막이 한 줄 (양면 벽지 + 문 위 상인방)
+  const Partition = ({ x, gap, color = '#3b1d12' }) => (
+    <group>
+      {zPieces(gap).map(([a, b]) => (
+        <group key={a}>
+          <Box p={[x, y + h / 2, (a + b) / 2]} s={[0.25, h, b - a]} c={color} />
+          {[-1, 1].map((f) => (
+            <mesh key={f} position={[x + f * 0.14, y + h / 2, (a + b) / 2]} rotation={[0, (f * Math.PI) / 2, 0]}>
+              <planeGeometry args={[b - a, h]} />
+              <primitive object={texMat(tiled(damask, (b - a) / 1.2, h / 1.2))} attach="material" />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      <Box p={[x, y + 3.6 + (h - 3.6) / 2, (gap[0] + gap[1]) / 2]} s={[0.3, h - 3.6, gap[1] - gap[0]]} c={color} />
+      {/* 금빛 문틀 + 활짝 열린 붉은 두짝문 */}
+      {[-1, 1].map((f) => (
+        <group key={f}>
+          <Box p={[x + f * 0.16, y + 1.8, gap[0] - 0.12]} s={[0.12, 3.6, 0.24]} m={GOLD_M} />
+          <Box p={[x + f * 0.16, y + 1.8, gap[1] + 0.12]} s={[0.12, 3.6, 0.24]} m={GOLD_M} />
+          <Box p={[x + f * 0.16, y + 3.7, (gap[0] + gap[1]) / 2]} s={[0.14, 0.24, gap[1] - gap[0] + 0.5]} m={GOLD_M} />
+        </group>
+      ))}
+      {[[gap[0], 1], [gap[1], -1]].map(([z, s]) => (
+        <group key={z} position={[x, y, z]} rotation={[0, s * 1.15, 0]}>
+          <Box p={[(gap[1] - gap[0]) / 4, 1.75, 0]} s={[(gap[1] - gap[0]) / 2, 3.4, 0.08]} c="#8a1622" />
+          <Box p={[(gap[1] - gap[0]) / 4, 1.75, 0.05]} s={[(gap[1] - gap[0]) / 2 - 0.25, 3.0, 0.02]} m={GOLD_M} />
+        </group>
+      ))}
+    </group>
+  )
+  const B = O.boh
   return (
     <group>
-      {/* 천장(금 원형 격자) + 붉은 무늬 벽지 + 무늬 카펫 */}
+      {/* 천장(금 원형 격자) + 바깥벽 붉은 무늬 벽지 */}
       <mesh position={[0, lv[5] - 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[ix * 2, iz * 2]} />
         <primitive object={texMat(tiled(coffer, (ix * 2) / 1.4, (iz * 2) / 1.4))} attach="material" />
@@ -1344,59 +1471,73 @@ function YuOffice({ W, D, Y }) {
           <Box p={[0, h - 0.25, 0.04]} s={[len, 0.3, 0.08]} m={GOLD_M} />
         </group>
       ))}
-      <mesh position={[0, y + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[ix * 2 - 1, iz * 2 - 1]} />
-        <primitive object={texMat(tiled(carpet, 2, 2))} attach="material" />
+      {/* 바닥: 집무실 카펫 / 문 사이 복도 흑백 대리석 / 동쪽 모자이크 방 */}
+      <mesh position={[(O.west.x + O.inner.x) / 2, y + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[O.inner.x - O.west.x - 0.6, iz * 2 - 0.6]} />
+        <primitive object={texMat(tiled(carpet, 1.4, 2))} attach="material" />
       </mesh>
-      {/* (11/25 오후) 서쪽 계단 앞 대기실 ↔ 집무실 칸막이: 가운데 금빛 큰 문 자리만 비움 (양면 벽지) */}
-      {O.part && [-1, 1].map((s) => {
-        const g = O.part.gap / 2
-        const len = iz - g
-        const z = s * (g + len / 2)
-        return (
-          <group key={s}>
-            <Box p={[O.part.x, y + h / 2, z]} s={[0.25, h, len]} c="#3b1d12" />
-            {[-1, 1].map((f) => (
-              <mesh key={f} position={[O.part.x + f * 0.14, y + h / 2, z]} rotation={[0, (f * Math.PI) / 2, 0]}>
-                <planeGeometry args={[len, h]} />
-                <primitive object={texMat(tiled(damask, len / 1.2, h / 1.2))} attach="material" />
-              </mesh>
-            ))}
-          </group>
-        )
-      })}
-      {O.part && (
-        <group position={[O.part.x, y, 0]}>
-          <Box p={[0, h - (h - 3.4) / 2, 0]} s={[0.3, h - 3.4, O.part.gap]} c="#3b1d12" />
-          {/* 활짝 열린 금장 두짝문 */}
-          {[-1, 1].map((s) => (
-            <group key={s} position={[0.1, 0, s * (O.part.gap / 2)]} rotation={[0, -s * 1.2, 0]}>
-              <Box p={[0.65, 1.7, 0]} s={[1.3, 3.3, 0.08]} c="#7a1622" />
-              <Box p={[0.65, 1.7, 0.05]} s={[1.0, 2.8, 0.02]} m={GOLD_M} />
-              <Ball p={[1.15, 1.6, 0.08]} rad={0.07} m={GOLD_M} />
-            </group>
-          ))}
-        </group>
-      )}
-      {/* 큰 책상 + 높은 등받이 의자 + 책상 위 물건 */}
+      <mesh position={[(O.inner.x + O.east.x) / 2, y + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[O.east.x - O.inner.x, iz * 2]} />
+        <primitive object={texMat(tiled(marble, (O.east.x - O.inner.x) / 2.4, (iz * 2) / 2.4))} attach="material" />
+      </mesh>
+      <mesh position={[(O.east.x + ix) / 2, y + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[ix - O.east.x, iz * 2]} />
+        <primitive object={texMat(tiled(mosaic, 1, (iz * 2) / (ix - O.east.x)))} attach="material" />
+      </mesh>
+      <Partition x={O.west.x} gap={O.west.gap} />
+      <Partition x={O.inner.x} gap={O.inner.gap} />
+      <Partition x={O.east.x} gap={O.east.gap} />
+      {/* 큰 문 왼쪽 한 짝은 닫힌 문 (모자이크 방 쪽에서 보이는 두 문) */}
+      <group position={[O.east.x + 0.16, y, O.east.fakeZ]}>
+        <Box p={[0, 1.9, 0]} s={[0.1, 3.8, 2.8]} c="#8a1622" />
+        <Box p={[0.06, 1.9, 0]} s={[0.02, 3.3, 2.3]} m={GOLD_M} />
+        <Box p={[0.08, 1.9, 0]} s={[0.03, 3.3, 0.06]} m={GOLD_M} />
+        <Ball p={[0.15, 1.7, 0.5]} rad={0.12} m={GOLD_M} />
+      </group>
+      {/* 아기 방: 벽 2면(문 자리 비움) + 알록달록 쿠션 더미 + 공 */}
+      <group>
+        <Box p={[B.x1, y + h / 2, (-iz + B.z1) / 2]} s={[0.2, h, B.z1 + iz]} c="#f2d6c8" />
+        {[[B.x0, B.doorX - B.doorW / 2], [B.doorX + B.doorW / 2, B.x1]].map(([a, b]) => (
+          <Box key={a} p={[(a + b) / 2, y + h / 2, B.z1]} s={[b - a, h, 0.2]} c="#f2d6c8" />
+        ))}
+        <Box p={[B.doorX, y + 3.2 + (h - 3.2) / 2, B.z1]} s={[B.doorW, h - 3.2, 0.2]} c="#f2d6c8" />
+        {cushions.map((c, i) => (
+          <mesh key={i} geometry={GEO.sphere} position={c.p} scale={c.s}>
+            <meshStandardMaterial color={c.c} roughness={0.9} />
+          </mesh>
+        ))}
+        {[[-11.5, -11], [-6, -16], [-5.5, -11.5]].map(([x, z], i) => (
+          <Ball key={i} p={[x, y + 0.35, z]} rad={0.35} c={CUSHION_COLORS[(i * 2 + 1) % CUSHION_COLORS.length]} />
+        ))}
+      </group>
+      {/* 큰 책상 + 금화 더미 + 돈 자루 + 촛대 + 높은 등받이 의자 */}
       <group position={[O.desk[0], y, O.desk[1]]}>
         <Box p={[0, 0.45, 0]} s={[4.4, 0.9, 1.6]} c="#3b2216" />
         <Box p={[0, 0.93, 0]} s={[4.6, 0.08, 1.75]} c="#2a170e" />
         <Box p={[0, 0.5, 0.81]} s={[4.2, 0.6, 0.03]} m={GOLD_M} />
-        {[-1.6, 1.6].map((x) => (
-          <Box key={x} p={[x, 0.45, 0.83]} s={[0.5, 0.8, 0.04]} c="#5a2f1a" />
-        ))}
         <Box p={[-1.2, 1.02, 0.1]} s={[0.9, 0.04, 0.6]} c="#efe6d2" />
         <Box p={[-1.1, 1.06, 0.05]} s={[0.8, 0.04, 0.55]} c="#f7f1e3" />
-        {range(6).map((i) => (
-          <Box key={i} p={[1.1 + (i % 3) * 0.32, 1.02 + Math.floor(i / 3) * 0.12, -0.2]} s={[0.28, 0.11, 0.14]} m={GOLD_M} />
+        <Cyl p={[-0.2, 1.2, -0.45]} rad={0.08} h={0.4} m={GOLD_M} />
+        {[-0.35, -0.2, -0.05].map((x) => (
+          <group key={x}>
+            <Cyl p={[x, 1.55, -0.45]} rad={0.025} h={0.3} c="#f7f1e3" />
+            <Ball p={[x, 1.75, -0.45]} rad={0.035} m={GLOBE} />
+          </group>
         ))}
-        <Cyl p={[0.2, 1.2, -0.45]} rad={0.08} h={0.4} m={GOLD_M} />
-        <Ball p={[0.2, 1.5, -0.45]} rad={0.2} m={GLOBE} />
       </group>
+      <Instances geometry={GEO.cyl} material={GOLD_M} items={coins} />
+      {[[O.desk[0] + 3, O.desk[1] + 0.4], [O.desk[0] + 3.4, O.desk[1] - 0.5], [O.desk[0] - 3, O.desk[1]]].map(([x, z], i) => (
+        <group key={i} position={[x, y, z]}>
+          <mesh position={[0, 0.4, 0]} scale={[0.4, 0.45, 0.4]}>
+            <sphereGeometry args={[1, 12, 10]} />
+            <meshStandardMaterial color="#c9b38a" roughness={1} />
+          </mesh>
+          <Cyl p={[0, 0.85, 0]} rad={0.12} h={0.12} c="#7a5a3a" />
+        </group>
+      ))}
       <group position={[O.chair[0], y, O.chair[1]]}>
-        <Box p={[0, 0.5, 0]} s={[1.2, 0.2, 1.1]} c="#8a1c24" />
-        <Box p={[0, 1.6, -0.5]} s={[1.2, 2.2, 0.2]} c="#8a1c24" />
+        <Box p={[0, 0.5, 0]} s={[1.2, 0.2, 1.1]} m={VELVET} />
+        <Box p={[0, 1.6, -0.5]} s={[1.2, 2.2, 0.2]} m={VELVET} />
         <Box p={[0, 2.75, -0.5]} s={[1.4, 0.2, 0.26]} m={GOLD_M} />
         {[-1, 1].map((s) => (
           <group key={s}>
@@ -1406,56 +1547,104 @@ function YuOffice({ W, D, Y }) {
           </group>
         ))}
       </group>
-      {/* 벽난로 + 위 금 거울 */}
-      <group position={[O.fire[0], y, O.fire[1]]} rotation={[0, Math.PI / 2, 0]}>
+      {/* 벽난로(안쪽 문 칸막이에 붙음, 서쪽을 봄) + 위 금 거울 */}
+      <group position={[O.fire[0], y, O.fire[1]]} rotation={[0, -Math.PI / 2, 0]}>
         <Box p={[0, 0.8, 0]} s={[2.6, 1.6, 0.7]} c="#e6dccb" />
         <Box p={[0, 1.65, 0.05]} s={[2.9, 0.14, 0.85]} c="#d6c9b2" />
         <Box p={[0, 0.6, 0.3]} s={[1.3, 1.0, 0.12]} c="#1a1110" />
-        <mesh position={[0, 0.4, 0.33]}>
+        <mesh position={[0, 0.4, 0.37]}>
           <planeGeometry args={[1.0, 0.55]} />
           <meshStandardMaterial color="#ff8a2a" emissive="#ff6a10" emissiveIntensity={1.6} />
         </mesh>
-        <Box p={[0, 2.7, 0.0]} s={[1.6, 1.8, 0.06]} m={GOLD_M} />
-        <Box p={[0, 2.7, 0.04]} s={[1.3, 1.5, 0.02]} c="#c9d6dc" />
+        <Box p={[0, 2.8, 0.0]} s={[1.7, 1.9, 0.06]} m={GOLD_M} />
+        <Box p={[0, 2.8, 0.04]} s={[1.4, 1.6, 0.02]} c="#c9d6dc" />
+        {[-1, 1].map((s) => (
+          <group key={s} position={[s * 1.1, 1.75, 0.2]}>
+            <Cyl p={[0, 0.2, 0]} rad={0.05} h={0.4} m={GOLD_M} />
+            <Ball p={[0, 0.48, 0]} rad={0.07} m={GLOBE} />
+          </group>
+        ))}
       </group>
-      {/* 책장 */}
+      {/* 책장 (서쪽 칸막이 집무실 쪽 면, 동쪽을 봄) */}
       {O.bookcases.map(([x, z], i) => (
         <group key={i} position={[x, y, z]}>
-          <Box p={[0.1, 1.3, 0]} s={[0.5, 2.6, 2.5]} c="#3b2216" />
-          <Box p={[0.1, 2.65, 0]} s={[0.6, 0.12, 2.65]} m={GOLD_M} />
+          <Box p={[-0.05, 1.3, 0]} s={[0.5, 2.6, 2.5]} c="#3b2216" />
+          <Box p={[-0.05, 2.65, 0]} s={[0.6, 0.12, 2.65]} m={GOLD_M} />
         </group>
       ))}
       <Instances geometry={GEO.box} material={mat('#ffffff')} items={books} />
-      {/* 큰 도자기 항아리 */}
-      {O.vases.map(([x, z], i) => (
+      {/* 붉은 벨벳 소파 + 낮은 탁자 위 찻잔 */}
+      <group position={[O.sofa[0], y, O.sofa[1]]}>
+        <Box p={[0, 0.35, 0]} s={[3.0, 0.4, 1.0]} m={VELVET} />
+        <Box p={[0, 0.85, 0.4]} s={[3.0, 0.8, 0.2]} m={VELVET} />
+        {[-1, 1].map((s) => (
+          <Box key={s} p={[s * 1.45, 0.6, 0]} s={[0.15, 0.5, 1.0]} m={VELVET} />
+        ))}
+        <Box p={[0, 1.27, 0.42]} s={[3.1, 0.06, 0.26]} m={GOLD_M} />
+      </group>
+      <group position={[O.table[0], y, O.table[1]]}>
+        <Box p={[0, 0.42, 0]} s={[1.6, 0.06, 0.9]} c="#2a170e" />
+        {[-1, 1].map((sx) => [-1, 1].map((sz) => <Box key={`${sx}${sz}`} p={[sx * 0.7, 0.2, sz * 0.35]} s={[0.06, 0.4, 0.06]} m={GOLD_M} />))}
+        <Cyl p={[0, 0.55, 0]} rad={0.12} h={0.2} c="#f1e8d6" />
+        {[-0.4, 0.4].map((x) => (
+          <Cyl key={x} p={[x, 0.49, 0.1]} rad={0.06} h={0.08} c="#f1e8d6" />
+        ))}
+      </group>
+      {/* 앞벽 진열장 (유리 + 금 장식품) */}
+      {O.cabinets.map(([x, z], i) => (
         <group key={i} position={[x, y, z]}>
-          <mesh position={[0, 0.85, 0]} scale={[0.55, 0.85, 0.55]}>
-            <sphereGeometry args={[1, 16, 12]} />
-            <meshStandardMaterial color="#e9eef2" roughness={0.3} />
-          </mesh>
-          <Cyl p={[0, 1.75, 0]} rad={0.25} h={0.3} c="#e9eef2" />
-          <mesh position={[0, 0.85, 0]} scale={[0.56, 0.2, 0.56]}>
-            <sphereGeometry args={[1, 16, 8]} />
-            <meshStandardMaterial color="#1f3a8a" roughness={0.3} />
+          <Box p={[0, 0.95, 0]} s={[2.2, 1.9, 0.5]} c="#3b2216" />
+          <Box p={[0, 1.1, -0.26]} s={[1.9, 1.3, 0.02]} m={mat('#cfe3ea', { transparent: true, opacity: 0.35, roughness: 0.1 })} />
+          {[-0.6, 0, 0.6].map((dx) => (
+            <Ball key={dx} p={[dx, 1.15, -0.05]} rad={0.13} m={GOLD_M} />
+          ))}
+          <Box p={[0, 1.95, 0]} s={[2.3, 0.1, 0.55]} m={GOLD_M} />
+        </group>
+      ))}
+      {/* 도자기 항아리 줄 (청화 백자 + 키 큰 병) */}
+      {O.vases.map(([x, z], i) => {
+        const tall = i % 3 === 1
+        return (
+          <group key={i} position={[x, y, z]}>
+            <mesh position={[0, tall ? 1.0 : 0.8, 0]} scale={tall ? [0.42, 1.0, 0.42] : [0.55, 0.8, 0.55]} material={PORCELAIN}>
+              <sphereGeometry args={[1, 16, 12]} />
+            </mesh>
+            <mesh position={[0, tall ? 1.0 : 0.8, 0]} scale={tall ? [0.43, 0.25, 0.43] : [0.56, 0.2, 0.56]} material={COBALT}>
+              <sphereGeometry args={[1, 16, 8]} />
+            </mesh>
+            <Cyl p={[0, tall ? 2.05 : 1.65, 0]} rad={tall ? 0.16 : 0.25} h={0.3} m={PORCELAIN} />
+            <Cyl p={[0, 0.06, 0]} rad={0.5} h={0.12} c="#2a170e" />
+          </group>
+        )
+      })}
+      {/* 뒷벽 금 액자 그림 */}
+      {[-9, 1, 18].map((x, i) => (
+        <group key={x} position={[x, y + 2.6, -iz + 0.12]}>
+          <Box p={[0, 0, 0]} s={[2.4, 1.8, 0.08]} m={GOLD_M} />
+          <mesh position={[0, 0, 0.05]}>
+            <planeGeometry args={[2.1, 1.5]} />
+            <primitive object={texMat(paintingTexture(i))} attach="material" />
           </mesh>
         </group>
       ))}
-      {/* 큰 크리스털 샹들리에 */}
-      <group position={[0, lv[5] - 0.4, -2]}>
-        <Cyl p={[0, -0.2, 0]} rad={0.04} h={0.6} m={GOLD_M} />
-        {[[1.2, -0.7, 10], [0.8, -1.2, 8], [0.4, -1.6, 6]].map(([r, yy, n], j) => (
-          <group key={j}>
-            <Cyl p={[0, yy, 0]} rad={r} h={0.05} m={GOLD_M} />
-            {range(n).map((i) => {
-              const a = (i / n) * Math.PI * 2
-              return <Ball key={i} p={[Math.cos(a) * r, yy - 0.25, Math.sin(a) * r]} rad={0.1} m={GLOBE} />
-            })}
-          </group>
-        ))}
-        <Ball p={[0, -2.0, 0]} rad={0.22} m={GLOBE} />
-      </group>
+      {/* 크리스털 샹들리에: 집무실 2개 + 모자이크 방 1개 */}
+      {[[-3, -4], [-3, 9], [18.4, 2]].map(([cx, cz]) => (
+        <group key={`${cx}${cz}`} position={[cx, lv[5] - 0.4, cz]}>
+          <Cyl p={[0, -0.2, 0]} rad={0.04} h={0.6} m={GOLD_M} />
+          {[[1.2, -0.7, 10], [0.8, -1.2, 8], [0.4, -1.6, 6]].map(([r, yy, n], j) => (
+            <group key={j}>
+              <Cyl p={[0, yy, 0]} rad={r} h={0.05} m={GOLD_M} />
+              {range(n).map((k) => {
+                const a = (k / n) * Math.PI * 2
+                return <Ball key={k} p={[Math.cos(a) * r, yy - 0.25, Math.sin(a) * r]} rad={0.1} m={GLOBE} />
+              })}
+            </group>
+          ))}
+          <Ball p={[0, -2.0, 0]} rad={0.22} m={GLOBE} />
+        </group>
+      ))}
       {/* 앞벽 무거운 커튼 */}
-      {[-8, -3, 3, 8].map((x) => (
+      {[-18, -8, 2, 18].map((x) => (
         <group key={x} position={[x, y, iz - 0.2]}>
           {[-0.75, 0.75].map((dx) => (
             <Box key={dx} p={[dx, h / 2 - 0.2, 0]} s={[0.9, h - 0.6, 0.15]} m={CURTAIN} />
@@ -1463,16 +1652,74 @@ function YuOffice({ W, D, Y }) {
           <Box p={[0, h - 0.5, 0.02]} s={[2.6, 0.35, 0.2]} m={CURTAIN_DARK} />
         </group>
       ))}
-      {/* 계단 올라온 자리 금빛 문틀 + 방 이름 현판 */}
-      <group position={[O.door[0], y, O.door[1]]} rotation={[0, Math.PI / 2, 0]}>
-        {[-1, 1].map((s) => (
-          <Box key={s} p={[s * 1.3, 1.6, 0]} s={[0.25, 3.2, 0.3]} m={GOLD_M} />
-        ))}
-        <Box p={[0, 3.3, 0]} s={[3.0, 0.35, 0.35]} m={GOLD_M} />
-        <mesh position={[0, 3.9, 0]}>
-          <planeGeometry args={[1.8, 0.55]} />
-          <GlowMaterial glow={0.5} map={getJpSignTexture('主人の間', '#2b1a12', '#e8c35a', 1.8 / 0.55)} side={THREE.DoubleSide} />
+      {/* 서쪽 대기실 문 위 방 이름 현판 */}
+      <mesh position={[O.west.x - 0.2, y + 4.1, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[1.8, 0.55]} />
+        <GlowMaterial glow={0.5} map={getJpSignTexture('主人の間', '#2b1a12', '#e8c35a', 1.8 / 0.55)} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[O.east.x + 0.2, y + 4.1, (O.east.gap[0] + O.east.gap[1]) / 2]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[1.8, 0.55]} />
+        <GlowMaterial glow={0.5} map={getJpSignTexture('主人の間', '#2b1a12', '#e8c35a', 1.8 / 0.55)} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+const seededR = (i) => {
+  const x = Math.sin(i * 127.1 + 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+
+// ── (11/25) 구석 직원용 엘리베이터 승강로: 1층 바닥 ~ 지붕 위 기계실까지 이어진 철 격자 + 놋쇠 틀 ──
+// 영화 속 손잡이로 움직이는 옛 엘리베이터 느낌. 열린 쪽 = 서쪽(-x). 칸 그림은 층마다 jmElevator 소품(생성 스크립트)
+const SHAFT_IRON = mat('#2a2622', { roughness: 0.55, metalness: 0.4 })
+const SHAFT_LATTICE = mat('#3a3430', { roughness: 0.6, metalness: 0.3 })
+function YuStaffShaft({ Y }) {
+  const { elev: E, lv, base } = Y
+  if (!E) return null
+  const top = lv[5]
+  const w = E.w + 0.3
+  const x0 = E.x - w / 2
+  const bars = useMemo(() => {
+    const out = []
+    for (const s of [-1, 1]) {
+      const z = E.z + s * (w / 2)
+      for (let y = base + 0.4; y < top; y += 0.9) out.push({ p: [E.x, y, z], s: [w, 0.05, 0.05] })
+      for (let i = 0; i <= 6; i++) out.push({ p: [x0 + (i * w) / 6, (base + top) / 2, z], s: [0.04, top - base, 0.04] })
+    }
+    return out
+  }, [E, w, x0, base, top])
+  return (
+    <group>
+      {/* 네 모서리 기둥 (1층 바닥 ~ 지붕) */}
+      {[-1, 1].map((sx) => [-1, 1].map((sz) => (
+        <Box key={`${sx}${sz}`} p={[E.x + sx * (w / 2), (base + top) / 2, E.z + sz * (w / 2)]} s={[0.18, top - base, 0.18]} m={SHAFT_IRON} />
+      )))}
+      <Instances geometry={GEO.box} material={SHAFT_LATTICE} items={bars} />
+      {/* 층마다 열린 쪽 문틀 + 층 다이얼 + 바닥 문턱 */}
+      {[0, 1, 2, 3, 4].map((k) => (
+        <group key={k} position={[x0 - 0.02, lv[k], E.z]}>
+          <Box p={[0, 0.03, 0]} s={[0.3, 0.06, w]} m={GOLD_M} />
+          {[-1, 1].map((s) => (
+            <Box key={s} p={[0, 1.8, s * (w / 2 - 0.08)]} s={[0.14, 3.6, 0.16]} m={GOLD_M} />
+          ))}
+          <Box p={[0, 3.7, 0]} s={[0.18, 0.2, w + 0.2]} m={GOLD_M} />
+          <mesh position={[-0.1, 4.2, 0]} rotation={[0, -Math.PI / 2, 0]}>
+            <circleGeometry args={[0.4, 20, 0, Math.PI]} />
+            <meshStandardMaterial color="#e8d9a8" emissive="#ffcf7a" emissiveIntensity={0.4} side={THREE.DoubleSide} />
+          </mesh>
+          <Box p={[-0.12, 4.35, 0]} s={[0.02, 0.3, 0.03]} c={DARK} r={[(k / 4 - 0.5) * 2.4, 0, 0]} />
+        </group>
+      ))}
+      {/* 케이블 + 지붕 위 기계실 (도르래) */}
+      {[-0.4, 0.4].map((dz) => (
+        <Cyl key={dz} p={[E.x, (base + top) / 2 + 1, E.z + dz]} rad={0.025} h={top - base + 2} m={SHAFT_IRON} />
+      ))}
+      <group position={[E.x, top + 0.3, E.z]}>
+        <Box p={[0, 1.1, 0]} s={[w + 0.6, 2.2, w + 0.6]} c="#7d2a22" />
+        <mesh position={[0, 2.2, 0]} geometry={GEO.box} scale={[w + 1.2, 0.2, w + 1.2]}>
+          <meshStandardMaterial color={GREEN} />
         </mesh>
+        <Cyl p={[0, 1.2, w / 2 + 0.31]} rad={0.5} h={0.1} m={SHAFT_IRON} r={[Math.PI / 2, 0, 0]} />
       </group>
     </group>
   )
