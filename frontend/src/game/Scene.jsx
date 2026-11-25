@@ -299,58 +299,27 @@ function OverviewCamera() {
 
 // 왼쪽 위 안내 + 모드 전환 버튼 + (확인용) 게임 스토어 값
 function HelpPanel({ playing, onStart, onStop }) {
-  // 모바일(터치)은 화면이 좁아서 안내를 접은 채 시작
   const isTouch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
-  const [showHelp, setShowHelp] = useState(!isTouch)
-  const compactButton = { pointerEvents: 'auto', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, border: 0 }
+  const [showHelp, setShowHelp] = useState(false)
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 12,
-        left: 12,
-        padding: '10px 14px',
-        borderRadius: 8,
-        background: 'rgba(0, 0, 0, 0.55)',
-        color: '#fff',
-        fontSize: 13,
-        lineHeight: 1.6,
-        pointerEvents: 'none',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {showHelp && <strong style={{ marginRight: 'auto' }}>SceneWalk AI</strong>}
-        <button type="button" style={compactButton} aria-expanded={showHelp} aria-controls="scenewalk-help"
+    <div className="bk-game-help">
+      <div className="bk-game-help__bar">
+        <strong>SceneWalk AI</strong>
+        <button type="button" aria-expanded={showHelp} aria-controls="scenewalk-help"
           onClick={(event) => { setShowHelp(!showHelp); event.currentTarget.blur() }}>
-          {showHelp ? '안내 숨기기' : '안내 보기'}
+          조작 안내
+        </button>
+        <button type="button" onClick={playing ? onStop : onStart}>
+          {playing ? '맵 전체 보기' : `${CAMERA_VIEW === 'first' ? '1인칭' : '3인칭'}으로 플레이하기`}
         </button>
       </div>
-      <div id="scenewalk-help" hidden={!showHelp} style={{ marginTop: 6 }}>
+      <div id="scenewalk-help" className="bk-game-help__panel" hidden={!showHelp}>
         {playing && isTouch
           ? '왼쪽 조이스틱: 이동 · 화면 드래그: 시점 회전 · 두 손가락: 확대/축소 · E 버튼: 상호작용'
           : playing
           ? 'WASD: 이동 · Shift: 달리기 · Space: 점프 · 마우스 드래그: 시점 회전 · E: 상호작용 · ESC: 닫기'
           : '왼쪽 드래그·방향키: 이동 · 오른쪽 드래그: 회전 · 휠: 확대/축소'}
-        <button
-          type="button"
-          onClick={playing ? onStop : onStart}
-          style={{
-            display: 'block',
-            marginTop: 8,
-            padding: '6px 12px',
-            border: 'none',
-            borderRadius: 6,
-            background: playing ? '#e5e7eb' : '#22c55e',
-            color: playing ? '#111' : '#fff',
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: 'pointer',
-            pointerEvents: 'auto',
-          }}
-        >
-          {playing ? '맵 전체 보기' : `▶ ${CAMERA_VIEW === 'first' ? '1인칭' : '3인칭'}으로 플레이하기`}
-        </button>
       </div>
     </div>
   )

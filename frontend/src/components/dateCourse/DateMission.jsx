@@ -11,9 +11,7 @@ import { useWarps } from '../../game/Map/styles/bk_warpStore.js'
 import { DATE_BADGE_COUNT, DATE_MISSIONS, DATE_STAMP_COUNT, getMission, inDateZone, mapPoint, openNearby, useDateMission } from '../../game/Map/styles/bk_dateMission.js'
 import './dateMission.css'
 
-// 데이트 코스 미션 화면 (담당: 병관) — 영화·드라마 구역 "시간 탐정"(혜진 님 SpecialAccess.jsx)과 같은 모양
-//   위: [데이트 코스] 띠 / 오른쪽: 미션 목록(○ ◐ ✓ + 워프) / 장소 카드(설명·하는 법·📍 내 근처·스탬프) / 지도 / 완주 보상
-// 모양은 cinema.css의 special-* 클래스를 그대로 써서 두 구역이 같은 느낌 (색만 dateMission.css에서 분홍으로)
+// 데이트 코스 미션 화면 (담당: 병관) — 접이식 미션 목록, 장소 카드, 지도와 완주 보상
 
 const EMPTY = { done: {}, stamps: {} }
 const NEAR = 10 // 이 거리(m) 안이면 [워프] 대신 [안내]
@@ -77,7 +75,7 @@ export default function DateMission({ enabled = true }) {
   const episodeLabel = episodeInvite ? '💌 데이트 초대' : episodeRoom?.letter ? '💌 골목 편지 열기' : episodeRoom ? '💌 함께 걷는 중'
     : episodeInProgress ? (episodeNext ? '💌 에피소드 이어 하기' : '💌 엔딩 엽서 쓰기') : '💌 데이트 에피소드'
   const [here, setHere] = useState({ inZone: false, atCafe: false, atMural: false, x: 0, z: 0 })
-  const [expanded, setExpanded] = useState(() => !window.matchMedia?.('(max-width: 700px)').matches)
+  const [expanded, setExpanded] = useState(false)
 
   // 데이트 코스 구역 안에 있는지 (0.5초마다)
   useEffect(() => {
@@ -140,29 +138,26 @@ export default function DateMission({ enabled = true }) {
 
   return (
     <>
-      {here.inZone && (
-        <p className="special-era" data-era="date">
-          <b>[데이트 코스]</b> <span>커플 미션 {DATE_STAMP_COUNT}곳 · 스탬프 {stampCount} / {DATE_STAMP_COUNT}</span>
-        </p>
-      )}
-      {here.inZone && (
-        <aside className="special-tracker date-tracker ui-interactive" aria-label="데이트 코스 미션">
-          <button className="special-tracker__toggle" type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
-            데이트 코스 미션: {doneCount} / {DATE_STAMP_COUNT} 완료 <span aria-hidden="true">{expanded ? '−' : '+'}</span>
+      {here.inZone && !panelOpen && (
+        <aside className="date-tracker ui-interactive" aria-label="데이트 코스 미션">
+          <button className="date-tracker__toggle" type="button" aria-expanded={expanded} aria-controls="date-tracker-content"
+            onClick={(e) => { if (e.detail > 0) e.currentTarget.blur(); setExpanded((open) => !open) }}>
+            <span>데이트 코스</span>
+            <span className="date-tracker__count" aria-label={`스탬프 ${stampCount}개 / ${DATE_STAMP_COUNT}개`}>{stampCount}/{DATE_STAMP_COUNT}</span>
+            <span aria-hidden="true">{expanded ? '⌃' : '⌄'}</span>
           </button>
           {expanded && (
-            <div>
-              <div className="restoration-line">
-                <span>스탬프 {stampCount} / {DATE_STAMP_COUNT}</span>
+            <div className="date-tracker__body" id="date-tracker-content">
+              <div className="date-tracker__progress">
+                <span>체험 {doneCount}/{DATE_STAMP_COUNT}</span>
                 {stampCount >= DATE_BADGE_COUNT && <span>💗 데이트 탐험가</span>}
               </div>
-              <section className="special-stop-group">
-                <h3>💕 데이트 코스</h3>
+              <section aria-label="미션 목록">
                 <ul>
                   {DATE_MISSIONS.map((m) => (
                     <li key={m.id}>
                       <span>
-                        <span aria-label={pass.stamps[m.id] ? '획득 완료' : pass.done[m.id] ? '체험 완료' : '미완료'}>{pass.stamps[m.id] ? '✓' : pass.done[m.id] ? '◐' : '○'}</span> {m.short}
+                        <span className="date-tracker__state" aria-label={pass.stamps[m.id] ? '스탬프 획득' : pass.done[m.id] ? '체험 완료' : '미완료'}>{pass.stamps[m.id] ? '✓' : pass.done[m.id] ? '◐' : '○'}</span> {m.short}
                         <small>{m.kind}</small>
                       </span>
                       <button type="button" onClick={() => (near(m) ? openCard(m.id) : warpTo(m))} aria-label={m.short + (near(m) ? ' 안내 보기' : ' 바로 이동')}>
@@ -173,10 +168,10 @@ export default function DateMission({ enabled = true }) {
                 </ul>
               </section>
               <div className="date-tracker__foot">
-                <button type="button" className="ui-btn" onClick={openMap}>🗺️ 데이트 코스 지도</button>
+                <button type="button" className="ui-btn" onClick={openMap}>코스 지도</button>
                 <button type="button" className="ui-btn" onClick={() => useWarps.getState().goto({
                   center: [61, -37.8], label: '정자 가는 산책로 입구',
-                })}>🏮 정자 가는 산책로 입구</button>
+                })}>정자 가는 길</button>
                 <button type="button" className="ui-btn" onClick={() => openCard('episodes')}>{episodeLabel}</button>
                 {stampCount === DATE_STAMP_COUNT && <button type="button" className="ui-btn" onClick={() => openCard('reward')}>완주 보상 보기</button>}
               </div>
