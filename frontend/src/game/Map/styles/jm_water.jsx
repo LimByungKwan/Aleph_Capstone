@@ -176,10 +176,10 @@ export function riverGeometry(w, len, sea = false) {
   g.attributes.position.setUsage(THREE.DynamicDrawUsage)
   return g
 }
-export function RiverWater({ w, len, y = 0.05, sea = false, far }) {
+export function RiverWater({ w, len, y = 0.05, sea = false, far, still = false }) {
   const ref = useRef(null)
   const geo = useMemo(() => riverGeometry(w, len, sea), [w, len, sea])
-  useSeaWave(ref, geo, far, sea)
+  useSeaWave(ref, geo, far, sea || still)
   return <mesh ref={ref} geometry={geo} material={sea ? SEA_WATER : RIVER_WATER} position={[0, y, 0]} userData={{ noMerge: true }} />
 }
 

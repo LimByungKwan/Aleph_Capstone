@@ -446,10 +446,15 @@ const BR = { x: 0, z0: -150, z1: -179, w: 6, arch: 1.5, seg: 8 }
 const ISLAND = { x0: -36, x1: 36, z0: -224.8, z1: -179 }
 const DOCK = { x0: -36, x1: -8, z0: -179, z1: -164 }
 // (11/25 지민이 보낸 전차 장면 참고) 선착장에서 바다 위 작은 정거장 부두 → 세워 둔 2량 전차 (문으로 들어가 안을 볼 수 있음)
-const PIER = { x0: -32, x1: -10, z0: -164, z1: -159.4, h: 0.75 }
-const TRAIN = { x: -21, z: -158, len: 11, w: 2.6, floor: 0.9 }
+// (11/25 밤 지민 요청) 역은 바다 한가운데로: 선착장 → 짧은 돌 턱 → 물에 잠긴 선로를 따라 얕은 물(발목 깊이)을 걸어 서쪽 역까지
+const RIVER_Z = -39
+const PIER = { x0: -91, x1: -69, z0: -164, z1: -159.4, h: 0.75 }
+const TRAIN = { x: -80, z: -158, len: 11, w: 2.6, floor: 0.9 }
+const LINK = { x0: -36, x1: -30, z0: -164, z1: -161 } // 선착장 북쪽 끝 돌 턱
+const SHOAL = { x0: PIER.x1, x1: LINK.x1, z0: -161, z1: -155 } // 걸을 수 있는 얕은 물 띠 (선로 위)
 for (const [k, x0, x1, z0, z1] of [
-  ['s_w', -128, PIER.x0, -164, -152], ['s_e', PIER.x1, 128, -164, -152], ['s_m', PIER.x0, PIER.x1, -152, -155.4],
+  ['s_w', -128, PIER.x0, -164, -152], ['s_m', PIER.x0, PIER.x1, -155.4, -152],
+  ['s_a', SHOAL.x0, LINK.x0, -164, SHOAL.z0], ['s_b', SHOAL.x0, SHOAL.x1, SHOAL.z1, -152], ['s_e', SHOAL.x1, 128, -164, -152],
   ['w', -128, DOCK.x0, DOCK.z0, DOCK.z1], ['e', DOCK.x1, 128, DOCK.z0, DOCK.z1],
   ['nw', -128, ISLAND.x0, ISLAND.z0, ISLAND.z1], ['ne', ISLAND.x1, 128, ISLAND.z0, ISLAND.z1],
 ]) {
@@ -457,9 +462,19 @@ for (const [k, x0, x1, z0, z1] of [
   const len = r2(x1 - x0)
   prop(`jm_sea_${k}`, 'jmCanal', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [w, 0.1, len], { rotationDeg: 90, curb: false, beach: 'sea', collider: [w, 1, len] })
 }
+// 얕은 물 띠: 모래 바닥이 비치는 발목 깊이 물, 걸으면 물 튐 (둑 없음)
+prop('jm_sea_shoal', 'jmCanal', [r2((SHOAL.x0 + SHOAL.x1) / 2), r2((SHOAL.z0 + SHOAL.z1) / 2)], [r2(SHOAL.z1 - SHOAL.z0), 0.1, r2(SHOAL.x1 - SHOAL.x0)], { rotationDeg: 90, natural: true, wade: true, depth: 0.12, banks: false, curb: false, collider: false })
+road('jm_pier_link', null, [r2((LINK.x0 + LINK.x1) / 2), r2((LINK.z0 + LINK.z1) / 2)], [r2(LINK.x1 - LINK.x0), 0.2, r2(LINK.z1 - LINK.z0)], { color: '#8d877c' })
+road('jm_pier_step', null, [r2(PIER.x1 + 0.6), r2((SHOAL.z0 + PIER.z1) / 2)], [1.2, 0.38, r2(PIER.z1 - SHOAL.z0)], { color: '#8d877c' })
+// (11/25 밤 지민 선택: 보이기만 하는 물길) 여관 바다 → 서쪽 벽 밖 강 → SG 해변 바다. 맵 벽(x -130) 바깥이라 걸어갈 수는 없음
+//   벽 안쪽 풀밭 강(z -39)도 서쪽 끝에서 이 강으로 흘러듦. 월드 z = 구역 z - 85
+prop('jm_outer_bay', 'jmCanal', [-140, -188.5], [73, 0.1, 24], { rotationDeg: 90, curb: false, beach: 'sea', collider: false })
+prop('jm_outer_river', 'jmCanal', [-141, -7.5], [14, 0.1, 289], { natural: true, wade: true, view: true, depth: 0.3, curb: false, collider: false })
+prop('jm_outer_join', 'jmCanal', [-131, RIVER_Z], [22, 0.1, 6], { rotationDeg: 90, natural: true, wade: true, view: true, banks: false, depth: 0.3, curb: false, collider: false })
+prop('jm_outer_mouth', 'jmCanal', [-141, 147], [28, 0.1, 22], { rotationDeg: 90, curb: false, beach: 'sea', collider: false })
 prop('jm_sea_rail', 'jmSeaRail', [0, TRAIN.z], [3, 0.3, 250], { rotationDeg: 90, collider: false, submerged: true })
 road('jm_pier', null, [r2((PIER.x0 + PIER.x1) / 2), r2((PIER.z0 + PIER.z1) / 2)], [r2(PIER.x1 - PIER.x0), PIER.h, r2(PIER.z1 - PIER.z0)], { color: '#8d877c' })
-prop('jm_pier_sign', 'jmStationSign', [-30.5, -162], [1.6, 2.4, 0.3], { rotationDeg: 0, elevation: PIER.h, signs: [{ text: '湯灯駅' }] })
+prop('jm_pier_sign', 'jmStationSign', [r2(PIER.x1 - 1.5), -162], [1.6, 2.4, 0.3], { rotationDeg: 0, elevation: PIER.h, signs: [{ text: '湯灯駅' }] })
 // 전차 2량: 로컬 +z = 진행 방향(동쪽, rotationDeg 90), 문은 남쪽(부두 쪽) 옆면
 for (const [k, cx] of [['a', TRAIN.x - 6], ['b', TRAIN.x + 6]]) {
   prop(`jm_train_${k}`, 'jmSeaTrain', [r2(cx), TRAIN.z], [TRAIN.w, 3.4, TRAIN.len], { rotationDeg: 90, collider: false, floor: TRAIN.floor, head: k === 'b' ? 1 : -1, sign: '湯灯' })

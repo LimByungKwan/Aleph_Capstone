@@ -713,9 +713,9 @@ export function JmCanal({ item }) {
       ))}
       {item.wade ? (
         <group>
-          <RiverWater w={w} len={len} y={item.depth ?? 0.3} far={60 + len / 2} />
-          <WadeSplash w={w} len={len} y={item.depth ?? 0.3} />
-          <RiverBanks w={w} len={len} depth={item.depth ?? 0.3} ends={item.ends} />
+          <RiverWater w={w} len={len} y={item.depth ?? 0.3} far={60 + len / 2} still={item.view} />
+          {!item.view && <WadeSplash w={w} len={len} y={item.depth ?? 0.3} />}
+          {item.banks !== false && <RiverBanks w={w} len={len} depth={item.depth ?? 0.3} ends={item.ends} />}
         </group>
       ) : item.beach === 'sea' ? (
         <RiverWater w={w} len={len} sea y={0.06} far={60 + len / 2} />
