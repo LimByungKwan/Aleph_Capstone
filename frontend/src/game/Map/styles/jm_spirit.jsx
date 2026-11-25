@@ -1280,10 +1280,85 @@ export function JmFieldHut({ item }) {
 }
 
 // ── 높은 곳 바닥 그림 (길·풀밭·흙길): item.floor = TILE_METERS 무늬 이름 또는 없음(item.color 단색) ──
+// (11/25 밤 지민 요청) 돌과 이끼가 섞인 바닥 무늬: 크기 다른 회색 돌 + 틈 이끼 + 군데군데 돌 위 이끼 (3m 한 칸으로 반복)
+function mossyStoneBase() {
+  // 바닥은 돌, 이끼는 '틈에 끼고 가장자리를 덮는' 느낌 (잔디처럼 넓게 덮지 않음)
+  return canvasTexture('jmspirit:mossystone2', 512, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#39432a' // 돌 틈 = 짙은 이끼
+    ctx.fillRect(0, 0, w, h)
+    let seed = 11
+    const r = () => srand(seed++ * 0.53)
+    // 틈 이끼 알갱이
+    for (let i = 0; i < 900; i++) {
+      ctx.fillStyle = r() < 0.5 ? '#4a5a30' : '#2f3822'
+      ctx.fillRect(r() * w, r() * h, 2, 2)
+    }
+    const stones = []
+    const rows = 7
+    for (let j = 0; j < rows; j++) {
+      const y = (j * h) / rows
+      let x = -r() * 60
+      while (x < w) {
+        const sw = 46 + r() * 70
+        const sh = h / rows - 4 - r() * 4
+        const g = 128 + Math.floor(r() * 36)
+        const ry = y + 2 + r() * 2
+        for (const dx of [0, w, -w]) {
+          const rx = x + dx + 2
+          ctx.fillStyle = `rgb(${g},${g - 3},${g - 10})`
+          ctx.beginPath()
+          const rr = 9
+          ctx.moveTo(rx + rr, ry)
+          ctx.arcTo(rx + sw, ry, rx + sw, ry + sh, rr)
+          ctx.arcTo(rx + sw, ry + sh, rx, ry + sh, rr)
+          ctx.arcTo(rx, ry + sh, rx, ry, rr)
+          ctx.arcTo(rx, ry, rx + sw, ry, rr)
+          ctx.fill()
+          // 돌 결 (밝고 어두운 점)
+          for (let k = 0; k < 10; k++) {
+            ctx.fillStyle = r() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
+            ctx.fillRect(rx + r() * sw, ry + r() * sh, 3, 3)
+          }
+          if (dx === 0) stones.push([rx, ry, sw, sh])
+        }
+        x += sw + 3 + r() * 3
+      }
+    }
+    // 돌 가장자리·모서리를 덮은 작은 이끼 얼룩 (몇몇 돌만)
+    for (const [rx, ry, sw, sh] of stones) {
+      if (r() > 0.45) continue
+      const n = 2 + Math.floor(r() * 4)
+      for (let k = 0; k < n; k++) {
+        const edge = r() < 0.5
+        const cx = edge ? rx + (r() < 0.5 ? 0 : sw) + (r() - 0.5) * 10 : rx + r() * sw
+        const cy = edge ? ry + r() * sh : ry + (r() < 0.5 ? 0 : sh) + (r() - 0.5) * 8
+        const rad = 4 + r() * 11
+        const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+        gr.addColorStop(0, 'rgba(78,98,46,0.9)')
+        gr.addColorStop(0.7, 'rgba(66,84,40,0.55)')
+        gr.addColorStop(1, 'rgba(60,78,38,0)')
+        ctx.fillStyle = gr
+        ctx.beginPath()
+        ctx.arc(cx, cy, rad, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  })
+}
 export function JmFloor({ item }) {
   const [w, h, d] = item.size
   const tile = TILE_METERS[item.floor]
-  const map = useMemo(() => (tile ? getTiledTexture(item.floor, w / tile, d / tile) : null), [item.floor, tile, w, d])
+  const map = useMemo(() => {
+    if (item.floor === 'mossyStone') {
+      const t = mossyStoneBase().clone()
+      t.wrapS = THREE.RepeatWrapping
+      t.wrapT = THREE.RepeatWrapping
+      t.repeat.set(w / 3, d / 3)
+      t.needsUpdate = true
+      return t
+    }
+    return tile ? getTiledTexture(item.floor, w / tile, d / tile) : null
+  }, [item.floor, tile, w, d])
   return (
     <mesh position={[0, 0.03 + Math.min(h, 0.06) / 2, 0]} receiveShadow>
       <boxGeometry args={[w, Math.min(h, 0.06), d]} />

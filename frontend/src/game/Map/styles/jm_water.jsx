@@ -268,3 +268,41 @@ export function WadeSplash({ w, len, y }) {
     </group>
   )
 }
+
+// (11/25 밤) 걸어 들어가는 강이 떠 보이지 않게: 물 옆면(바닥 ~ 수면, 물빛 반투명) + 양쪽 낮은 흙·풀 둑(경사, 걷기 막이 없음)
+const SKIRT = new THREE.MeshStandardMaterial({ color: '#5f8a70', transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })
+const BANK = new THREE.MeshStandardMaterial({ color: '#6f8a48', roughness: 1, flatShading: true })
+const BANK_MUD = new THREE.MeshStandardMaterial({ color: '#7a6a4a', roughness: 1, flatShading: true })
+function bankGeometry(len, width, height) {
+  const sh = new THREE.Shape()
+  sh.moveTo(0, 0)
+  sh.lineTo(width, 0)
+  sh.lineTo(0, height)
+  sh.lineTo(0, 0)
+  const g = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false })
+  g.translate(0, 0, -len / 2)
+  return g
+}
+export function RiverBanks({ w, len, depth, ends = false }) {
+  const bank = useMemo(() => bankGeometry(len, 1.4, depth + 0.12), [len, depth])
+  const mud = useMemo(() => bankGeometry(len, 0.5, depth + 0.02), [len, depth])
+  return (
+    <group>
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh position={[s * (w / 2), depth / 2, 0]} rotation={[0, Math.PI / 2, 0]} material={SKIRT}>
+            <planeGeometry args={[len, depth]} />
+          </mesh>
+          {/* 바깥쪽으로 내려가는 풀 둑 + 물가 진흙 띠 */}
+          <mesh geometry={bank} material={BANK} position={[s * (w / 2), 0, 0]} scale={[s, 1, 1]} />
+          <mesh geometry={mud} material={BANK_MUD} position={[s * (w / 2), 0, 0]} scale={[-s, 1, 1]} />
+        </group>
+      ))}
+      {ends && [-1, 1].map((s) => (
+        <mesh key={`e${s}`} position={[0, depth / 2, s * (len / 2)]} material={SKIRT}>
+          <planeGeometry args={[w, depth]} />
+        </mesh>
+      ))}
+    </group>
+  )
+}

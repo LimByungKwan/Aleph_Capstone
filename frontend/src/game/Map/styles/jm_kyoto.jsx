@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { Ball, Box, Cyl, GEO, Instances, mat } from './kit.jsx'
 import { getJpSignTexture, GlowMaterial } from './jm_landmarks.jsx'
-import { RiverWater, SeaWater, seaPlane, WadeSplash } from './jm_water.jsx'
+import { RiverBanks, RiverWater, SeaWater, seaPlane, WadeSplash } from './jm_water.jsx'
 
 // 애니메이션 구역(JM) — 교토 온천 마을 「유아카리초(湯灯町)」 스타일. 담당: 지민
 // 분위기 참고: 교토 옛 거리(산넨자카·기온·후시미 이나리·기요미즈 무대) + 강을 끼고 여러 층 목조 여관이 늘어선 온천 거리.
@@ -713,8 +713,9 @@ export function JmCanal({ item }) {
       ))}
       {item.wade ? (
         <group>
-          <RiverWater w={w} len={len} y={item.depth ?? 0.45} far={60 + len / 2} />
-          <WadeSplash w={w} len={len} y={item.depth ?? 0.45} />
+          <RiverWater w={w} len={len} y={item.depth ?? 0.3} far={60 + len / 2} />
+          <WadeSplash w={w} len={len} y={item.depth ?? 0.3} />
+          <RiverBanks w={w} len={len} depth={item.depth ?? 0.3} ends={item.ends} />
         </group>
       ) : item.beach === 'sea' ? (
         <RiverWater w={w} len={len} sea y={0.06} far={60 + len / 2} />

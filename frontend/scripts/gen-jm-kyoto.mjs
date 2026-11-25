@@ -50,7 +50,22 @@ const gasLamp = (id, position, extra = {}) => prop(id, 'jmGasLamp', position, [0
 const stoneLantern = (id, position, extra = {}) => prop(id, 'jmLantern', position, [0.8, 2.2, 0.8], extra)
 const light = (id, position, extra = {}) => prop(id, 'jmZoneLight', position, [0.1, 14, 0.1], { collider: false, ...extra })
 const toWorld = ([x, y, z]) => [r2(x), r2(y), r2(z + ZONE_ORIGIN_Z)]
+const bench = (id, position, rotationDeg, elevation = 0) => prop(id, 'jmBench', position, [1.8, 0.5, 0.5], { rotationDeg, elevation })
 // (11/25 밤) 바닥 풀: 장면 로컬 사각형을 14m 이하 조각으로 잘라 jmGrassTufts 소품으로 (조각마다 거리 숨기기)
+
+// (11/25 밤 지민 요청: 돌바닥만이라 딱딱함) 돌바닥 위에 드문드문 이끼 조각 + 풀 포기 (14m 조각, 높은 단 아래 바닥 조각은 건너뜀)
+function mossCover(id, [x0, z0, x1, z1], elevation, skip = []) {
+  const nx = Math.ceil((x1 - x0) / 14)
+  const nz = Math.ceil((z1 - z0) / 14)
+  const tw = r2((x1 - x0) / nx)
+  const td = r2((z1 - z0) / nz)
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const cx = r2(x0 + tw * (i + 0.5))
+    const cz = r2(z0 + td * (j + 0.5))
+    if (skip.some(([a0, b0, a1, b1]) => cx > a0 && cx < a1 && cz > b0 && cz < b1)) continue
+    prop(`${id}_${i}_${j}`, 'jmGrassTufts', [cx, cz], [tw, 0.6, td], { elevation: r2(elevation + 0.07), collider: false, grass: { origin: [cx, cz], density: 0, moss: 0.05 } }) // 풀잎 없이 이끼 조각만
+  }
+}
 function grassPatch(id, c, rot, w, d, elevation, avoid = [], density = 1.2) {
   const nx = Math.ceil(w / 14)
   const nz = Math.ceil(d / 14)
@@ -137,12 +152,23 @@ terrain.push(...keep.terrain) // jm_tower_deck: 무대 → BK 전망대
 // ─────────────────────────────────────────────
 const RIVER = { z: -39, w: 22 }
 for (const [k, cx, len] of [['w', -65, 126], ['e', 65, 126]]) {
-  prop(`jm_river_${k}`, 'jmCanal', [cx, RIVER.z], [RIVER.w, 0.1, len], { rotationDeg: 90, natural: true, wade: true, depth: 0.45, curb: false, collider: false })
+  prop(`jm_river_${k}`, 'jmCanal', [cx, RIVER.z], [RIVER.w, 0.1, len], { rotationDeg: 90, natural: true, wade: true, depth: 0.3, curb: false, collider: false })
 }
-prop('jm_river_ford', 'jmCanal', [0, RIVER.z], [RIVER.w, 0.1, 4], { rotationDeg: 90, natural: true, wade: true, depth: 0.45, collider: false, curb: false })
+prop('jm_river_ford', 'jmCanal', [0, RIVER.z], [RIVER.w, 0.1, 4], { rotationDeg: 90, natural: true, wade: true, depth: 0.3, collider: false, curb: false })
+// (11/25 밤) 물에 잠기던 징검돌을 물(0.3) 위로: 양 끝은 0.35(둑에서 한 걸음), 가운데는 0.55
 for (let i = 0; i < 10; i++) {
-  road(`jm_river_stone_${i + 1}`, null, [i % 2 ? -0.5 : 0.5, r2(RIVER.z + RIVER.w / 2 - 1.3 - i * 2.15)], [1.5, 0.3, 1.2], { color: '#8d877c' })
+  const h = i === 0 || i === 9 ? 0.35 : 0.55
+  road(`jm_river_stone_${i + 1}`, null, [i % 2 ? -0.5 : 0.5, r2(RIVER.z + RIVER.w / 2 - 1.3 - i * 2.15)], [1.7, h, 1.4], { color: '#8d877c' })
 }
+
+// (11/25 밤 지민 승인) 물수제비: 강 남쪽 둑 돌무더기 앞에서 E → Space로 힘 조절 → 강 하류(서쪽)로 던짐 (jm_skipstone.jsx)
+//   물 높이 0.3m에 맞춰 소품 높이 0.25 (체험은 소품 높이 + 0.05를 수면으로 계산)
+prop('jm_skip_spot', 'jmSkipSpot', [-14, -27.6], [1.4, 0.3, 1], {
+  collider: false, rotationDeg: 200, elevation: 0.25,
+  skip: { start: [-14.4, -29], dir: [-0.894, -0.447], width: 19, points: [[-14, -37], [-24, -38.5], [-34, -39], [-46, -39], [-58, -39], [-72, -39], [-86, -39], [-100, -39]] },
+})
+bench('jm_bench_river_1', [-20, -26.8], 180)
+bench('jm_bench_river_2', [12, -26.8], 180)
 
 // ─────────────────────────────────────────────
 // 4. 긴 돌계단 (0 → 6m) + 마을 입구 문
@@ -242,6 +268,7 @@ for (const s of [-1, 1]) light(`jm_light_town_arm_${s < 0 ? 'w' : 'e'}`, [s * 40
 for (const s of [-1, 1]) {
   gasLamp(`jm_plaza_lamp_${s < 0 ? 'w' : 'e'}`, [s * 4.2, -143], { elevation: T_N })
   stoneLantern(`jm_plaza_lantern_${s < 0 ? 'w' : 'e'}`, [s * 7.5, -145], { elevation: T_N })
+  bench(`jm_bench_plaza_${s < 0 ? 'w' : 'e'}`, [s * 11.5, -147.6], 180, T_N) // 다리·바다 쪽을 보고 앉음
 }
 
 // (11/25 지민이 보낸 주먹밥 장면 참고) 다리 앞 동쪽 정원: 꽃 핀 키 큰 덤불 울타리, 풀밭, 흙길, 배추밭, 빨간 지붕 창고
@@ -258,6 +285,31 @@ for (const [i, x, z, r] of [[1, 86, -116.5, 0], [2, 74, -117, 0]]) prop(`jm_gard
 tree('jm_garden_sakura', 'jmSakura', [62, -143], { elevation: TOWN })
 tree('jm_garden_maple', 'jmMaple', [90, -142], { elevation: TOWN })
 light('jm_light_garden', [76, -130], { elevation: TOWN })
+{
+  const TER = [[-15.5, -150, 15.5, -97], [-95, -108, -16, -76], [16, -108, 64, -76]]
+  mossCover('jm_moss_town', [-95, -150, 95, -60], TOWN, TER)
+  mossCover('jm_moss_north', TER[0], T_N)
+  mossCover('jm_moss_west', TER[1], T_W)
+  mossCover('jm_moss_east', TER[2], T_E)
+  // 돌·이끼 섞인 바닥 판 (공용 지형 돌바닥 위에 한 겹, 큰길 돌길보다 조금 아래)
+  const cut = (r, holes) => holes.reduce((pcs, hh) => pcs.flatMap(([x0, z0, x1, z1]) => {
+    const [a0, b0, a1, b1] = [Math.max(x0, hh[0]), Math.max(z0, hh[1]), Math.min(x1, hh[2]), Math.min(z1, hh[3])]
+    if (a0 >= a1 || b0 >= b1) return [[x0, z0, x1, z1]]
+    const o = []
+    if (z0 < b0) o.push([x0, z0, x1, b0])
+    if (b1 < z1) o.push([x0, b1, x1, z1])
+    if (x0 < a0) o.push([x0, b0, a0, b1])
+    if (a1 < x1) o.push([a1, b0, x1, b1])
+    return o
+  }), [r])
+  const floors = [
+    ...cut([-95, -150, 95, -60], TER).map((r) => [r, TOWN]),
+    [TER[0], T_N], [TER[1], T_W], [TER[2], T_E],
+  ]
+  floors.forEach(([[x0, z0, x1, z1], hgt], i) => road(`jm_mossy_floor_${i + 1}`, 'mossyStone', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [r2(x1 - x0), 0.06, r2(z1 - z0)], { elevation: r2(hgt - 0.02) }))
+}
+bench('jm_bench_garden_1', [70, -144.6], 0, TOWN)
+bench('jm_bench_garden_2', [89.6, -127], -90, TOWN)
 grassPatch('jm_grass_garden', [76, -129], 0, 35, 38, r2(TOWN + 0.06), [], 0.8)
 
 // ─────────────────────────────────────────────
@@ -328,6 +380,11 @@ for (const sc of SCENES) {
     wall(`jm_scene${sc.n}_pond`, L(pd.x, pd.z), [r2(pd.rx * 1.7), 1, r2(pd.rz * 1.7)], { rotationDeg: sc.rot, ...E })
     for (const [k, x, z] of [[0, -9, -6], [1, 10.5, 5], [2, -11, 6]]) wall(`jm_scene${sc.n}_giant_${k}`, L(x, z), [2.4, 12, 2.4], { rotationDeg: sc.rot, ...E })
   }
+  // 장면 안 앉는 자리 (E로 앉기)
+  if (sc.kind === 'shintai') bench(`jm_bench_s${sc.n}`, L(-3.6, -6.9), sc.rot + 180, r2(sc.e + sc.stair.h))
+  if (sc.kind === 'natsume') bench(`jm_bench_s${sc.n}`, L(-3.2, -6.2), sc.rot + 180, r2(sc.e + sc.stair.h))
+  if (sc.kind === 'wisteria') for (const [k, x, z, r] of [[1, 2.6, 2.4, -90], [2, -2.6, -2, 90]]) bench(`jm_bench_s${sc.n}_${k}`, L(x, z), sc.rot + r, sc.e)
+  if (sc.kind === 'forest') bench(`jm_bench_s${sc.n}`, L(-4.6, 3.2), sc.rot + 180, sc.e)
   // 풀이 많은 장면은 바닥 풀 (길·계단·연못 자리는 비움)
   if (sc.kind === 'totoro') grassPatch(`jm_grass_s${sc.n}`, sc.c, sc.rot, sc.w - 2, sc.d - 2, r2(sc.e + 0.02), [{ strip: 2.2 }], 1.0)
   if (sc.kind === 'shintai' || sc.kind === 'natsume') grassPatch(`jm_grass_s${sc.n}`, sc.c, sc.rot, sc.w - 2, sc.d - 2, r2(sc.e + 0.02), [{ strip: sc.stair.w / 2 + 0.6 }], 1.1)
@@ -703,6 +760,7 @@ for (const [i, x, z, s] of [[1, -33.5, -187.5, 'jmSakura'], [2, 33.5, -187.5, 'j
 prop('jm_ryokan_sign_stairs', 'jmArrowSign', [-31.5, -181.9], [1.6, 2.1, 0.2], { elevation: TOP, rotationDeg: 20, signs: [{ text: '선착장', dir: 'left' }, { text: '바다 위 전차', dir: 'left' }] })
 light('jm_light_ryokan', [0, -182], { elevation: TOP })
 light('jm_light_ryokan_garden', [-30, -205], { elevation: TOP })
+for (const s of [-1, 1]) bench(`jm_bench_ryokan_${s < 0 ? 'w' : 'e'}`, [s * 32, -199], s < 0 ? 90 : -90, TOP)
 
 // ─────────────────────────────────────────────
 // 9. 지하 보일러실 (로비 구석 작은 문 → 꺾인 나무 계단 8 → 4 → 0m) + 섬 앞 바깥 계단(선착장·전차)

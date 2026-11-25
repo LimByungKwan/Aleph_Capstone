@@ -403,10 +403,27 @@ export function JmGrassTufts({ item }) {
     }
     return out
   }, [w, d, ox, oz, g.density, g.avoid])
+  // 이끼 조각 (돌바닥 위 드문드문 얇은 원판, 2색)
+  const moss = useMemo(() => {
+    const n = Math.round(w * d * (g.moss ?? 0))
+    const out = [[], []]
+    let seed = Math.round((ox * 13 + oz * 29 + d * 3) * 10) + 777
+    const r = () => srand(seed++ * 0.41)
+    for (let i = 0; i < n; i++) {
+      const x = (r() - 0.5) * w
+      const z = (r() - 0.5) * d
+      const sx = 0.4 + r() * 1.3
+      out[r() < 0.6 ? 0 : 1].push({ p: [x, 0.01 + (i % 4) * 0.002, z], s: [sx * 0.6, 0.02, sx * 0.6 * (0.5 + r() * 0.6)], r: [0, r() * 6, 0] })
+    }
+    return out
+  }, [w, d, ox, oz, g.moss])
   return (
     <group>
       {groups.map((items, i) => (
         <Instances key={i} geometry={GEO.cone} material={mat(GRASS_COLORS[i], { flat: true, roughness: 1 })} items={items} />
+      ))}
+      {moss.map((items, i) => (
+        <Instances key={`m${i}`} geometry={GEO.cyl8} material={mat(i ? '#3f4f2c' : '#4f5f34', { roughness: 1 })} items={items} />
       ))}
     </group>
   )
