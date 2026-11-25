@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { layout, southGroundExtension } from '../data/mapData.js'
 import { TerrainColliders } from './Terrain.jsx'
 import { GEO } from './styles/kit.jsx'
+import { BkDateColliders } from './styles/bk_dateColliders.jsx'
 import { HjHarborCollider } from './styles/hj/HjHarbor.jsx'
 import { palaceGroundsColliders } from './styles/hj/gyeongbokgungLayout.js'
 import { specialAccessColliders } from './styles/hj/specialAccessLayout.js'
@@ -72,6 +73,7 @@ export default function Colliders() {
         {[...layout.buildings, ...layout.props, ...palaceBoxes].map((item) => (
           <BoxCollider key={item.id} item={item} />
         ))}
+        <BkDateColliders props={layout.props} />
       </RigidBody>
 
       {/* 길·광장 바닥 (윗면 = 눈에 보이는 바닥 높이) */}

@@ -4,11 +4,13 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
 import { useBkActivity } from './bk_activityStore.js'
+import { getMission } from './bk_dateMission.js'
 import { GEO, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
 import { nightGlow } from './dateCourse.jsx'
 import { TarotSession } from './bk_tarotQuestions.jsx'
 import { tarotRoom, useTarotRoom } from './bk_tarotRoom.js'
+import { useWarps } from './bk_warpStore.js'
 
 // 데이트 코스 구역(BK) 커플 타로 텐트. 담당: 병관
 //
@@ -127,12 +129,29 @@ function TarotInteraction({ item }) {
         tarotRoom.leave()
       }
     })
-    // 같이 보기 방이 생기면(초대 수락) 두 사람 모두 타로 화면을 엶
+    // 서버가 같이 보기 방을 열면 초대받은 사람만 텐트 앞으로 이동
     const unsubRoom = useTarotRoom.subscribe((state, prev) => {
-      if (state.room && state.room !== prev.room) {
+      const room = state.room
+      if (!room || room.roomId === prev.room?.roomId) return
+      const stillInRoom = () => useTarotRoom.getState().room?.roomId === room.roomId
+      const openTarot = () => {
+        if (!stillInRoom()) return
         store().setTarot({ active: true })
         useGameStore.getState().open({ type: 'bk_tarot', placeId: item.id })
       }
+      if (room.role !== 'b' || store().tarot.near) {
+        openTarot()
+        return
+      }
+      const mission = getMission('tarot')
+      // 워프가 열린 패널을 먼저 닫으므로, 도착한 다음 타로 화면을 엶
+      useWarps.getState().goto({
+        anchor: mission.anchor,
+        label: mission.short,
+        isValid: stillInRoom,
+        onArrive: openTarot,
+        onFail: openTarot,
+      })
     })
     return () => {
       window.removeEventListener('keydown', down)
@@ -194,13 +213,13 @@ function TarotHud() {
   )
 }
 
-// 같이 보기 초대 받기 (텐트 근처에서만 초대가 오므로 텐트 앞에서 보임)
+// 초대받은 사람은 어디서든 수락해 함께 볼 수 있음
 function InviteCard({ invite }) {
   return (
     <div style={inviteBox}>
       <div style={{ fontSize: 22 }}>💌</div>
       <div style={{ fontWeight: 700, margin: '2px 0 4px' }}>{invite.from.name}님이 커플 타로를 같이 보자고 해요</div>
-      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>각자 폰에서 질문 10개에 답하면, 같은 카드가 두 화면에 펼쳐져요</div>
+      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>수락하면 타로 텐트 앞으로 이동해요. 각자 질문 10개에 답하면 같은 카드가 두 화면에 펼쳐져요.</div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
         <button type="button" style={ghost} onClick={() => tarotRoom.respond(false)}>다음에</button>
         <button type="button" style={yes} onClick={() => tarotRoom.respond(true)}>같이 보기 🔮</button>

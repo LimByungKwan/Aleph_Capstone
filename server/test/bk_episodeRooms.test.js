@@ -6,6 +6,7 @@ import { test } from 'node:test'
 import WebSocket from 'ws'
 import { attachRealtime, REALTIME_PATH } from '../src/realtime.js'
 import { LETTER_STATIONS } from '../../shared/bk_letterPuzzle.js'
+import { PAVILION_CENTER, PAVILION_FLOOR, PAVILION_PADS } from '../../shared/bk_pavilion.js'
 
 const origin = 'http://localhost:5173'
 
@@ -53,6 +54,34 @@ async function invite(a, b, episodeId = 'alley') {
   await a.next('episode.invited')
   return b.next('episode.offer')
 }
+
+test('노을등 정자: 서버가 발판을 확인하고 서로 다른 자리의 두 사람에게 같은 질문을 보낸다', async (t) => {
+  const connect = await setup(t)
+  const a = await connect()
+  const b = await connect()
+  const event = 'episode.pavilion.status'
+  const [x, z] = PAVILION_CENTER
+  const move = (client, pad, y = PAVILION_FLOOR + 1) => client.send({ t: 'move', p: [x + PAVILION_PADS[pad], y, z], r: 0, s: 0, g: true })
+  const light = (client, mood) => client.send({ t: 'episode.pavilion.light', mood })
+
+  move(a, 0, 1)
+  light(a, 'calm')
+  assert.equal((await a.next(event)).status, 'off_pad')
+  move(a, 0)
+  light(a, 'calm')
+  assert.equal((await a.next(event)).status, 'waiting')
+  move(b, 0)
+  light(b, 'flutter')
+  assert.equal((await b.next(event)).status, 'waiting')
+  b.send({ t: 'episode.pavilion.cancel' })
+  move(b, 1)
+  light(b, 'flutter')
+  const [first, second] = await Promise.all([a.next(event), b.next(event)])
+  assert.deepEqual(first, second)
+  assert.equal(first.status, 'lit')
+  assert.deepEqual(first.moods, ['calm', 'flutter'])
+  assert.match(first.prompt, /다시 걷고 싶은 길/)
+})
 
 test('데이트 에피소드: 두 사람이 같은 단계를 끝내야 동시에 다음 단계와 엔딩이 열린다', async (t) => {
   const connect = await setup(t)

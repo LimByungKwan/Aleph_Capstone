@@ -50,35 +50,56 @@ export function FountainCoinToss({ item }) {
   const heartGeo = useMemo(() => heartGeometry(), [])
   const heartSeeds = useMemo(() => Array.from({ length: HEART_COUNT }, (_, i) => ({ a: (i / HEART_COUNT) * Math.PI * 2, speed: 0.8 + ((i * 37) % 10) / 20, r: 0.3 + ((i * 53) % 10) / 25 })), [])
 
+  function open() {
+    const game = useGameStore.getState()
+    const c = useBkActivity.getState().coin
+    if (!c.near || c.active || game.openPanel || game.nearbyPlaceId) return
+    useBkActivity.getState().startCoin()
+    game.open({ type: 'bk_coin', placeId: item.id })
+    faceFountain()
+  }
+
+  function charge() {
+    const store = useBkActivity.getState()
+    if (!store.coin.active || store.coin.charging || toss.current) return
+    phase.current = 0
+    store.setCoin({ charging: true, power: 0 })
+  }
+
+  function release() {
+    const store = useBkActivity.getState()
+    if (!store.coin.active || !store.coin.charging) return
+    store.setCoin({ charging: false })
+    launch(store.coin.power)
+  }
+
+  function cancelCharge() {
+    const store = useBkActivity.getState()
+    if (store.coin.charging) store.setCoin({ charging: false, power: 0 })
+  }
+
   // 키 입력: E(던지기 모드), Space(힘 모으기 → 떼면 던지기)
   useEffect(() => {
     const down = (event) => {
-      if (event.repeat) return
-      const c = useBkActivity.getState().coin
-      const game = useGameStore.getState()
-      if (event.code === 'KeyE' && c.near && !c.active && !game.openPanel && !game.nearbyPlaceId) {
-        useBkActivity.getState().startCoin()
-        // 캐릭터를 멈춤 (ESC로 나가기) — placeId가 places.json에 없어서 대화창은 뜨지 않음
-        game.open({ type: 'bk_coin', placeId: item.id })
-        faceFountain()
-      }
-      if (event.code === 'Space' && c.active && !toss.current) {
-        phase.current = 0
-        useBkActivity.getState().setCoin({ charging: true, power: 0 })
-      }
+      if (event.defaultPrevented || event.repeat) return
+      const target = event.target
+      if (target instanceof HTMLElement && target.closest('input, select, textarea, [contenteditable]')) return
+      if (event.code === 'KeyE') open()
+      if (event.code !== 'Space' || !useBkActivity.getState().coin.active) return
+      if (target instanceof HTMLElement && target.closest('button:not([data-bk-coin-toss])')) return
+      event.preventDefault()
+      charge()
     }
     const up = (event) => {
-      const c = useBkActivity.getState().coin
-      if (event.code === 'Space' && c.active && c.charging) {
-        useBkActivity.getState().setCoin({ charging: false })
-        launch(c.power)
-      }
+      if (event.code === 'Space') release()
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', cancelCharge)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', cancelCharge)
     }
     // launch·faceFountain은 ref만 씀
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,7 +110,12 @@ export function FountainCoinToss({ item }) {
     () =>
       useGameStore.subscribe((state) => {
         const c = useBkActivity.getState().coin
-        if (c.active && state.openPanel?.placeId !== item.id) useBkActivity.getState().endCoin()
+        if (!c.active || state.openPanel?.placeId === item.id) return
+        toss.current = null
+        splash.current = null
+        hearts.current = -1
+        if (coinRef.current) coinRef.current.visible = false
+        useBkActivity.getState().endCoin()
       }),
     [item.id],
   )
@@ -260,7 +286,7 @@ export function FountainCoinToss({ item }) {
         </>,
         scene,
       )}
-      <CoinHud />
+      <CoinHud open={open} charge={charge} release={release} cancelCharge={cancelCharge} />
     </>
   )
 }
@@ -275,7 +301,7 @@ function heartGeometry() {
 }
 
 // 화면 안내: 가까이 오면 "E 동전 던지기", 던지기 모드면 힘 게이지 + 소원 횟수
-function CoinHud() {
+function CoinHud({ open, charge, release, cancelCharge }) {
   const c = useBkActivity((state) => state.coin)
   const done = useBkActivity((state) => Boolean(state.completed.bk_fountain_coin))
   const size = useThree((state) => state.size)
@@ -288,9 +314,9 @@ function CoinHud() {
     <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }} onOcclude={keepVisible}>
       <div style={{ ...hudWrap, width: size.width, height: size.height }}>
         {showHint && (
-          <div style={chip}>
+          <button type="button" style={chip} onClick={open}>
             <kbd style={kbd}>E</kbd> 분수에 동전 던지기 (소원 빌기) {done && '· 완료 ✓'}
-          </div>
+          </button>
         )}
         {c.active && (
           <div style={panel}>
@@ -304,7 +330,18 @@ function CoinHud() {
             </div>
             <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
               {message}
-              <kbd style={kbd}>Space</kbd> 꾹 눌러 힘 조절 → 떼면 던지기 · 분홍 칸 = 위쪽 물받이 · <kbd style={kbd}>ESC</kbd> 나가기
+              <kbd style={kbd}>Space</kbd> 또는 버튼을 꾹 눌렀다 떼세요. 분홍 칸을 맞히면 위쪽 물받이에 닿아요.
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              <button type="button" data-bk-coin-toss className="ui-btn ui-btn--primary" style={{ touchAction: 'none' }}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                  charge()
+                }} onPointerUp={release} onPointerCancel={cancelCharge} onLostPointerCapture={cancelCharge}
+                onKeyDown={(event) => { if (event.key === 'Enter' && !event.repeat) charge() }}
+                onKeyUp={(event) => { if (event.key === 'Enter') release() }}>눌렀다 떼기</button>
+              <button type="button" className="ui-btn" onClick={() => useGameStore.getState().close()}>나가기</button>
             </div>
           </div>
         )}
@@ -314,8 +351,8 @@ function CoinHud() {
 }
 
 const hudWrap = { position: 'absolute', left: 0, top: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 72, boxSizing: 'border-box' }
-const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
-const panel = { width: 330, padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 14 }
+const chip = { padding: '6px 12px', border: 0, borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13, pointerEvents: 'auto', cursor: 'pointer' }
+const panel = { width: 'min(330px, calc(100vw - 28px))', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 14, pointerEvents: 'auto' }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }
 const gauge = { position: 'relative', height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }
 // 위쪽 물받이에 들어가는 힘 구간 (약 0.40 ~ 0.60)

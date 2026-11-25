@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { episodeSteps } from '../../shared/bk_episodeSteps.js'
 import { LETTER_EPISODE_ID } from '../../shared/bk_letterPuzzle.js'
 import { applyLetterAction, letterSnapshot, startLetterRound } from './bk_letterPuzzle.js'
+import { createPavilion } from './bk_pavilion.js'
 
 const CAFE_TOPPINGS = new Map([
   ['바닐라 라테', ['cinnamon', 'sugar']],
@@ -18,6 +19,7 @@ function validCup(cup) {
 export function createEpisodeRooms({ send, findPeer, inviteMs = 30_000 }) {
   const invites = new Map()
   const rooms = new Map()
+  const pavilion = createPavilion({ send })
   const busy = (ws) => invites.has(ws) || rooms.has(ws)
 
   function clearInvite(invite) {
@@ -52,7 +54,7 @@ export function createEpisodeRooms({ send, findPeer, inviteMs = 30_000 }) {
     }
   }
 
-  function disconnect(ws) {
+  function closeEpisode(ws) {
     const invite = invites.get(ws)
     if (invite) cancelInvite(invite, 'left', ws)
     const room = rooms.get(ws)
@@ -63,7 +65,9 @@ export function createEpisodeRooms({ send, findPeer, inviteMs = 30_000 }) {
 
   function handle(ws, peer, msg) {
     if (typeof msg.t !== 'string' || !msg.t.startsWith('episode.')) return false
-    if (msg.t === 'episode.invite') {
+    if (msg.t.startsWith('episode.pavilion.')) {
+      pavilion.handle(ws, peer, msg)
+    } else if (msg.t === 'episode.invite') {
       const to = typeof msg.to === 'string' ? findPeer(msg.to) : null
       const letter = msg.episodeId === LETTER_EPISODE_ID
       const steps = letter ? [] : typeof msg.episodeId === 'string' ? episodeSteps(msg.episodeId) : null
@@ -110,10 +114,15 @@ export function createEpisodeRooms({ send, findPeer, inviteMs = 30_000 }) {
       if (outcome.replay) room.letter = startLetterRound(room.letter)
       if (outcome.changed) snapshot(room)
     } else if (msg.t === 'episode.leave') {
-      disconnect(ws)
+      closeEpisode(ws)
       send(ws, { t: 'episode.closed', reason: 'cancelled' })
     }
     return true
+  }
+
+  function disconnect(ws) {
+    pavilion.disconnect(ws)
+    closeEpisode(ws)
   }
 
   return { handle, disconnect }

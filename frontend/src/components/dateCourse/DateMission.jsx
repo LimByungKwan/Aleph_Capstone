@@ -53,6 +53,7 @@ const closeMuralFrame = () => closeActivity(MURAL_FRAME_PANEL)
 function warpTo(m) {
   useWarps.getState().goto({
     ...(m.anchor ? { anchor: m.anchor } : { center: m.center }),
+    clearance: m.landingClearance,
     label: m.short,
     onArrive: () => useDateMission.getState().openCard(m.id),
   })
@@ -173,6 +174,9 @@ export default function DateMission({ enabled = true }) {
               </section>
               <div className="date-tracker__foot">
                 <button type="button" className="ui-btn" onClick={openMap}>🗺️ 데이트 코스 지도</button>
+                <button type="button" className="ui-btn" onClick={() => useWarps.getState().goto({
+                  center: [61, -37.8], label: '정자 가는 산책로 입구',
+                })}>🏮 정자 가는 산책로 입구</button>
                 <button type="button" className="ui-btn" onClick={() => openCard('episodes')}>{episodeLabel}</button>
                 {stampCount === DATE_STAMP_COUNT && <button type="button" className="ui-btn" onClick={() => openCard('reward')}>완주 보상 보기</button>}
               </div>

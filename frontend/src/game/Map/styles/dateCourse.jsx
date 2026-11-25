@@ -13,6 +13,7 @@ import { FountainCoinToss } from './bk_coinToss.jsx'
 import { CafeOrderCounter } from './bk_cafeOrder.jsx'
 import { EpisodeScenery } from './bk_episodeScenery.jsx'
 import { MuralFrameScene } from './bk_muralFrame.jsx'
+import { FOUNTAIN_BASIN_TOP, lockFenceArcs, terraceTableOffsets } from './bk_dateColliders.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
 // 최적화: 공용 도형·재질(kit.jsx), 반복 물체는 <Instances>, 작은 물체·빛나는 재질은 그림자 끔.
@@ -200,7 +201,7 @@ export function Fountain({ item }) {
           const r = radius + 0.35 + random() * 0.55
           return [Math.cos(a) * r, Math.sin(a) * r]
         },
-        0.24,
+        0.30,
       ),
     [item.id, radius],
   )
@@ -208,7 +209,10 @@ export function Fountain({ item }) {
     <group>
       <BkNightAmbient />
       <Cyl p={[0, 0.12, 0]} rad={radius + 1} h={0.24} c="#7fb069" geo={GEO.cyl48} />
+      <LowStoneRim x={0} y={0.20} z={0} radius={radius + 1} height={0.16} />
       <Cyl p={[0, 0.35, 0]} rad={radius} h={0.7} c="#ece6dd" geo={GEO.cyl48} />
+      <Cyl p={[0, 0.49, 0]} rad={radius + 0.018} h={0.09} c="#c9b5a3" geo={GEO.cyl48} />
+      <LowStoneRim x={0} y={0.59} z={0} radius={radius} height={FOUNTAIN_BASIN_TOP - 0.59} />
       <Cyl p={[0, 0.68, 0]} rad={radius - 0.25} h={0.06} m={WATER} geo={GEO.cyl48} userData={NO_SHADOW} />
       <Cyl p={[0, 1.1, 0]} rad={0.35} h={1} c="#ece6dd" />
       <Cyl p={[0, 1.65, 0]} rad={1} h={0.25} c="#ece6dd" />
@@ -218,6 +222,19 @@ export function Fountain({ item }) {
       <FountainWater radius={radius} />
       {/* 분수 동전 던지기 체험 (bk_coinToss.jsx) */}
       <FountainCoinToss item={item} />
+    </group>
+  )
+}
+
+const RIM_TOP = new THREE.RingGeometry(0.94, 1, 48).rotateX(-Math.PI / 2)
+const RIM_SIDE = new THREE.CylinderGeometry(1, 1, 1, 48, 1, true)
+const RIM_STONE = mat('#ccb49e', { double: true })
+
+function LowStoneRim({ x, y, z, radius, height }) {
+  return (
+    <group position={[x, y, z]} userData={NO_SHADOW}>
+      <mesh geometry={RIM_SIDE} material={RIM_STONE} position={[0, height / 2, 0]} scale={[radius, height, radius]} />
+      <mesh geometry={RIM_TOP} material={RIM_STONE} position={[0, height, 0]} scale={[radius, 1, radius]} />
     </group>
   )
 }
@@ -422,23 +439,8 @@ export function LockFence({ item }) {
     const posts = []
     const rails = []
     const locks = []
-    // 입구들: 기본 입구(로컬 +z, gapDeg) + extraGaps [{ deg: 로컬 각도, width: 폭(도) }] (예: 흔들다리 쪽 입구)
-    const TAU = Math.PI * 2
-    const norm = (a) => ((a % TAU) + TAU) % TAU
-    const gaps = [{ c: 0, half: THREE.MathUtils.degToRad(item.gapDeg ?? 0) / 2 }, ...(item.extraGaps ?? []).map((g) => ({ c: norm(THREE.MathUtils.degToRad(g.deg)), half: THREE.MathUtils.degToRad(g.width ?? 20) / 2 }))]
-      .filter((g) => g.half > 0)
-      .sort((x, y) => x.c - y.c)
-    // 입구 사이사이 호(arc)마다 기둥·난간·자물쇠
-    const arcs = gaps.length
-      ? gaps.map((g, i) => {
-          const next = gaps[(i + 1) % gaps.length]
-          const start = g.c + g.half
-          let end = next.c - next.half
-          if (i === gaps.length - 1 || end <= start) end += TAU
-          return [start, end]
-        })
-      : [[0, TAU]]
-    for (const [from, to] of arcs) {
+    // 충돌도 같은 호를 써서 전망대와 흔들다리 입구가 정확히 열려요.
+    for (const [from, to] of lockFenceArcs(item)) {
       const arc = to - from
       if (arc <= 0.01) continue
       const n = Math.max(1, Math.round((arc * radius) / 1.0))
@@ -539,16 +541,14 @@ export function Rock({ item }) {
 export function Terrace({ item }) {
   const [w, h, d] = item.size
   const umbrella = item.umbrella ?? '#fffaf0'
-  const count = Math.max(2, Math.floor(w / 3.6))
-  const xs = range(count).map((i) => -w / 2 + (w * (i + 0.5)) / count)
+  const xs = useMemo(() => terraceTableOffsets(w), [w])
   const { tables, chairs, posts } = useMemo(
     () => ({
       tables: xs.map((x) => ({ p: [x, h + 0.72, 0], s: [0.45, 0.05, 0.45] })),
       chairs: xs.flatMap((x) => [-0.75, 0.75].map((o) => ({ p: [x + o, h + 0.45, 0], s: [0.4, 0.06, 0.4] }))),
       posts: range(Math.round(w) + 1).map((i) => ({ p: [-w / 2 + (w * i) / Math.round(w), h + 0.25, d / 2 - 0.05], s: [0.05, 0.5, 0.05] })),
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [w, h, d],
+    [w, h, d, xs],
   )
   return (
     <group>
@@ -1287,7 +1287,10 @@ export function Landscape({ item }) {
     <group>
       <mesh geometry={geometry} material={LANDSCAPE_MAT} castShadow receiveShadow />
       {ponds.map((f, i) => (
-        <Cyl key={i} p={[f.p[0], (f.y ?? 0) + 0.05, f.p[1]]} rad={f.r ?? 4} h={0.06} m={WATER} geo={GEO.cyl48} userData={NO_SHADOW} />
+        <group key={i}>
+          <Cyl p={[f.p[0], (f.y ?? 0) + 0.05, f.p[1]]} rad={f.r ?? 4} h={0.06} m={WATER} geo={GEO.cyl48} userData={NO_SHADOW} />
+          <LowStoneRim x={f.p[0]} y={f.y ?? 0} z={f.p[1]} radius={(f.r ?? 4) + 0.16} height={0.33} />
+        </group>
       ))}
     </group>
   )
@@ -1328,6 +1331,23 @@ export function HanokShop({ item }) {
     const bulbs = item.stringLights ? bulbLine([-w / 2, wallTop - 0.15, front + 0.55], [w / 2, wallTop - 0.15, front + 0.55], 14) : []
     return { posts, bulbs }
   }, [item.stringLights, w, inW, front, wallTop])
+  const trim = useMemo(() => {
+    const pieces = []
+    const add = (p, s, c) => pieces.push({ p, s, c })
+    const xDoor = inW / 2 - 0.85
+    add([0, 0.22, front + 0.31], [w, 0.15, 0.10], '#786a5a')
+    add([0, base + 0.19, front + 0.07], [inW, 0.09, 0.17], '#6e4834')
+    add([0, base + 2.16, front + 0.10], [inW, 0.06, 0.14], '#a07b58')
+    for (const x of [xDoor - 0.53, xDoor + 0.53]) add([x, base + 1.1, front + 0.14], [0.09, 2.23, 0.14], '#714931')
+    add([xDoor - 0.26, base + 1.03, front + 0.18], [0.045, 0.14, 0.04], '#d9ab64')
+    const count = Math.max(3, Math.round(inW / 0.72))
+    for (let i = 0; i <= count; i++) {
+      const x = inW * (i / count - 0.5)
+      for (const side of [-1, 1]) add([x, wallTop - 0.19, side * (front + 0.11)], [0.10, 0.12, 0.44], '#6b4636')
+      if (x < xDoor - 0.62) add([x, base + 2.43, front + 0.12], [0.042, 0.45, 0.085], '#876344')
+    }
+    return pieces
+  }, [w, inW, front, wallTop, base])
 
   return (
     <group>
@@ -1344,6 +1364,9 @@ export function HanokShop({ item }) {
         kind={kind}
       />
       <Instances geometry={GEO.box} material={mat(WOOD)} items={posts} castShadow />
+      <group userData={NO_SHADOW}>
+        <Instances geometry={GEO.box} material={TINTABLE} items={trim} />
+      </group>
       <Box p={[0, wallTop - 0.15, front]} s={[inW + 0.3, 0.3, 0.3]} c={WOOD} />
       <Box p={[0, base + groundH + 0.08, front + 0.02]} s={[inW, 0.16, 0.12]} c={WOOD} />
       {/* 문 (유리 앞) */}
