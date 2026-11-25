@@ -606,7 +606,24 @@ function cageTexture() {
 //   칸 안 레버 앞에서 E → 레버 잡기(캐릭터 멈춤) → W/S(↑/↓)로 레버를 밀고 당겨 층 고르기(레버가 눈금마다 기울고 위 다이얼 바늘도 따라감)
 //   → E로 출발(화면 어두워짐 → 그 층 칸으로 순간 이동) / Esc로 놓기
 // item.elevator.kind: 'staff'(구석, 보일러실·1~5층) | 'guest'(가운데 누각, 1~4층)
-const LEVER_SPAN = (110 * Math.PI) / 180
+const LEVER_Y0 = 0.7 // 레버 홈 아래 끝 높이
+const LEVER_LEN = 1.0 // 레버 홈 길이
+// 층 글자 판 (B1·1F~5F). on = 빨갛게 빛남
+function floorTexture(key, on) {
+  const label = key === 'B' ? 'B1' : `${key}F`
+  return canvasTexture(`jmspirit:floor:${label}:${on ? 1 : 0}`, 160, 110, (ctx, w, h) => {
+    ctx.fillStyle = on ? '#7a1408' : '#1a120c'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#c9a24a'
+    ctx.lineWidth = 6
+    ctx.strokeRect(3, 3, w - 6, h - 6)
+    ctx.fillStyle = on ? '#ffd9c8' : '#f2c94c'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = `900 ${Math.round(h * 0.66)}px "Malgun Gothic", sans-serif`
+    ctx.fillText(label, w / 2, h / 2 + 3)
+  })
+}
 export function JmElevator({ item }) {
   const [w, h, d] = item.size
   const E = item.elevator
@@ -622,12 +639,12 @@ export function JmElevator({ item }) {
   const cage = useMemo(() => cageTexture(), [])
   const here = E.stops[meIndex]
   const n = E.stops.length
-  const angleOf = (i) => -LEVER_SPAN / 2 + (n > 1 ? (i * LEVER_SPAN) / (n - 1) : 0)
+  const slotY = (i) => LEVER_Y0 + (n > 1 ? (i * LEVER_LEN) / (n - 1) : LEVER_LEN / 2)
   const lever = useRef(null)
 
   useFrame(({ clock }, dt) => {
     // 레버는 고른 눈금 각도로 부드럽게
-    if (lever.current) lever.current.rotation.z += (-angleOf(grab ? sel : meIndex) - lever.current.rotation.z) * Math.min(1, dt * 10)
+    if (lever.current) lever.current.position.y += (slotY(grab ? sel : meIndex) - lever.current.position.y) * Math.min(1, dt * 10)
     const t = clock.elapsedTime
     if (t < next.current) return
     next.current = t + 0.15
@@ -722,50 +739,66 @@ export function JmElevator({ item }) {
         </group>
       ))}
       <Box p={[0, h + 0.05, d / 2]} s={[w + 0.2, 0.15, 0.15]} m={BRASS} />
-      {/* 위 층 표시 반원 다이얼 (바늘 = 고른 층) */}
-      <group position={[0, h + 0.55, d / 2 + 0.05]}>
-        <mesh>
-          <circleGeometry args={[0.45, 24, 0, Math.PI]} />
-          <meshStandardMaterial color="#e8d9a8" emissive="#ffcf7a" emissiveIntensity={0.4} side={THREE.DoubleSide} />
-        </mesh>
-        <group rotation={[0, 0, -angleOf(grab ? sel : meIndex)]}>
-          <Box p={[0, 0.2, 0.02]} s={[0.03, 0.4, 0.02]} m={IRON} />
+      {/* (11/25) 층 표시를 크게: 문 위 이 칸의 층 + 칸 안 뒷벽 큰 숫자판(고른 층, 레버를 잡으면 빨갛게) */}
+      <mesh position={[0, h + 0.6, d / 2 + 0.06]}>
+        <planeGeometry args={[1.3, 0.8]} />
+        <GlowMaterial glow={0.9} map={floorTexture(here?.key ?? '1', false)} side={THREE.DoubleSide} />
+      </mesh>
+      <Box p={[0, h + 0.6, d / 2 + 0.02]} s={[1.45, 0.95, 0.04]} m={BRASS} />
+      <mesh position={[0, h - 0.75, -d / 2 + 0.08]}>
+        <planeGeometry args={[1.1, 0.75]} />
+        <GlowMaterial glow={1.0} map={floorTexture(target?.key ?? '1', grab && sel !== meIndex)} />
+      </mesh>
+      <Box p={[0, h - 0.75, -d / 2 + 0.05]} s={[1.25, 0.9, 0.04]} m={BRASS} />
+      {/* 레버: 오른쪽 안 벽, 세로 홈 눈금판 — 손잡이가 위아래로 미끄러짐 (아래 = 낮은 층, 위 = 높은 층) */}
+      <group position={[w / 2 - 0.12, 0, 0.15]} rotation={[0, -Math.PI / 2, 0]}>
+        <Box p={[0, LEVER_Y0 + LEVER_LEN / 2, -0.02]} s={[0.7, LEVER_LEN + 0.35, 0.04]} c="#3a2a1c" />
+        <Box p={[0, LEVER_Y0 + LEVER_LEN / 2, 0.005]} s={[0.07, LEVER_LEN, 0.02]} c="#0d0a08" />
+        {E.stops.map((s, i) => (
+          <group key={s.key} position={[0, slotY(i), 0.01]}>
+            <Box p={[0.12, 0, 0]} s={[0.1, 0.025, 0.02]} m={i === (grab ? sel : meIndex) ? LANTERN_RED : BRASS} />
+            <mesh position={[-0.22, 0, 0.005]}>
+              <planeGeometry args={[0.24, 0.17]} />
+              <GlowMaterial glow={0.8} map={floorTexture(s.key, i === (grab ? sel : meIndex))} />
+            </mesh>
+          </group>
+        ))}
+        <group ref={lever} position={[0, slotY(meIndex), 0]}>
+          <Box p={[0, 0, 0.08]} s={[0.05, 0.05, 0.16]} m={BRASS} />
+          <Ball p={[0, 0, 0.18]} rad={0.07} c={grab ? '#c0392b' : '#1a1210'} />
         </group>
       </group>
-      {/* 레버: 오른쪽 안 벽, 반원 눈금판 + 놋쇠 손잡이 막대 (눈금 = 정류장) */}
-      <group position={[w / 2 - 0.12, 1.15, 0.2]} rotation={[0, -Math.PI / 2, 0]}>
-        <mesh position={[0, 0, -0.01]}>
-          <circleGeometry args={[0.42, 24, 0, Math.PI]} />
-          <meshStandardMaterial color="#3a2a1c" side={THREE.DoubleSide} />
-        </mesh>
-        {E.stops.map((s, i) => {
-          const a = Math.PI / 2 - angleOf(i)
-          return <Ball key={s.key} p={[Math.cos(a) * 0.36, Math.sin(a) * 0.36, 0]} rad={0.035} m={i === (grab ? sel : meIndex) ? LANTERN_RED : BRASS} />
-        })}
-        <Cyl p={[0, 0, 0.03]} rad={0.07} h={0.08} m={BRASS} r={[Math.PI / 2, 0, 0]} />
-        <group ref={lever}>
-          <Box p={[0, 0.25, 0.06]} s={[0.05, 0.5, 0.05]} m={BRASS} />
-          <Ball p={[0, 0.52, 0.06]} rad={0.07} c="#1a1210" />
-        </group>
-      </group>
-      {here && (
-        <mesh position={[0, h + 1.2, d / 2 + 0.06]}>
-          <planeGeometry args={[1.4, 0.45]} />
-          <GlowMaterial glow={0.5} map={getJpSignTexture(here.sign ?? '昇降機', '#2a1a12', '#e8c35a', 1.4 / 0.45)} side={THREE.DoubleSide} />
-        </mesh>
-      )}
       {near && (
         <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, width: size.width, height: size.height, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 72, boxSizing: 'border-box' }}>
-            <div style={{ padding: '8px 14px', borderRadius: 12, background: 'rgba(20,12,8,0.78)', color: '#fff', fontSize: 13, lineHeight: 1.7, textAlign: 'center' }}>
-              <div style={{ fontWeight: 700 }}>{E.kind === 'guest' ? '손님용 엘리베이터' : '직원용 엘리베이터'} — 지금 {here?.label}</div>
+          <div style={{ position: 'absolute', left: 0, top: 0, width: size.width, height: size.height, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 24, boxSizing: 'border-box' }}>
+            <div style={{ width: 230, padding: '12px 14px', borderRadius: 14, background: 'rgba(24,14,8,0.86)', border: '2px solid #b8913c', color: '#fff', fontSize: 14, lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 800, fontSize: 15, color: '#f2c94c', marginBottom: 6 }}>{E.kind === 'guest' ? '손님용 엘리베이터' : '직원용 엘리베이터'}</div>
+              {/* 층 목록: 위층이 위 */}
+              <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: 3, marginBottom: 8 }}>
+                {E.stops.map((s, i) => {
+                  const isSel = i === (grab ? sel : meIndex)
+                  const isHere = i === meIndex
+                  return (
+                    <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 8px', borderRadius: 8, background: isSel ? (grab && !isHere ? '#c0392b' : '#b8913c') : 'rgba(255,255,255,0.06)', fontWeight: isSel ? 800 : 500 }}>
+                      <span style={{ width: 30, fontSize: 17, fontWeight: 900 }}>{s.key === 'B' ? 'B1' : `${s.key}F`}</span>
+                      <span style={{ fontSize: 12, flex: 1 }}>{s.label}</span>
+                      {isHere && <span style={{ fontSize: 11, opacity: 0.85 }}>지금</span>}
+                    </div>
+                  )
+                })}
+              </div>
               {grab ? (
-                <>
-                  <div>레버: <b>{target?.label}</b>{sel === meIndex ? ' (지금 층)' : ''}</div>
-                  <div>{kbd('W')}/{kbd('S')} 레버 밀기·당기기 · {kbd('E')} {sel === meIndex ? '놓기' : '출발'} · {kbd('Esc')} 놓기</div>
-                </>
+                <div style={{ fontSize: 13 }}>
+                  <div>{kbd('W')} {kbd('↑')} 레버 올리기 (위층)</div>
+                  <div>{kbd('S')} {kbd('↓')} 레버 내리기 (아래층)</div>
+                  <div>{kbd('E')} {sel === meIndex ? '레버 놓기' : <b style={{ color: '#ffb3a7' }}>출발!</b>} · {kbd('Esc')} 놓기</div>
+                </div>
               ) : (
-                <div>{kbd('E')} 레버 잡기</div>
+                <div style={{ fontSize: 13 }}>
+                  <div>① {kbd('E')} 오른쪽 벽 레버 잡기</div>
+                  <div>② {kbd('W')}/{kbd('S')} 레버를 위아래로 층 고르기</div>
+                  <div>③ {kbd('E')} 출발</div>
+                </div>
               )}
             </div>
           </div>
