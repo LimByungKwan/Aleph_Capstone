@@ -8,6 +8,7 @@ import { currentEpisodeStep, getDateEpisode } from '../../game/Map/styles/bk_dat
 import { EpisodePanel } from '../../game/Map/styles/bk_episodePanel.jsx'
 import { useEpisodeRoom } from '../../game/Map/styles/bk_episodeRoom.js'
 import { useWarps } from '../../game/Map/styles/bk_warpStore.js'
+import { goToWineBar, WineTastingHud } from '../../game/Map/styles/bk_wineTasting.jsx'
 import { DATE_BADGE_COUNT, DATE_MISSIONS, DATE_STAMP_COUNT, getMission, inDateZone, mapPoint, openNearby, useDateMission } from '../../game/Map/styles/bk_dateMission.js'
 import './dateMission.css'
 
@@ -58,6 +59,15 @@ function warpTo(m) {
 }
 
 export default function DateMission({ enabled = true }) {
+  return (
+    <>
+      <DateMissionContent enabled={enabled} />
+      <WineTastingHud enabled={enabled} />
+    </>
+  )
+}
+
+function DateMissionContent({ enabled }) {
   const userId = useUiStore((s) => s.userId)
   const toast = useUiStore((s) => s.toast)
   const saved = useDateMission((s) => s.saved)
@@ -172,6 +182,7 @@ export default function DateMission({ enabled = true }) {
                 <button type="button" className="ui-btn" onClick={() => useWarps.getState().goto({
                   center: [61, -37.8], label: '정자 가는 산책로 입구',
                 })}>정자 가는 길</button>
+                <button type="button" className="ui-btn" onClick={goToWineBar}>달빛 와인바 가는 길</button>
                 <button type="button" className="ui-btn" onClick={() => openCard('episodes')}>{episodeLabel}</button>
                 {stampCount === DATE_STAMP_COUNT && <button type="button" className="ui-btn" onClick={() => openCard('reward')}>완주 보상 보기</button>}
               </div>

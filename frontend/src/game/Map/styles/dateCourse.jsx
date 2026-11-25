@@ -13,6 +13,7 @@ import { FountainCoinToss } from './bk_coinToss.jsx'
 import { CafeOrderCounter } from './bk_cafeOrder.jsx'
 import { EpisodeScenery } from './bk_episodeScenery.jsx'
 import { MuralFrameScene } from './bk_muralFrame.jsx'
+import { WINE_BAR_ID, WineTastingSpot } from './bk_wineTasting.jsx'
 import { FOUNTAIN_BASIN_TOP, lockFenceArcs, terraceTableOffsets } from './bk_dateColliders.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
@@ -1618,6 +1619,7 @@ export function GlassCafe({ item }) {
       <Instances geometry={GEO.box} material={mat(wood)} items={louvers} />
       <Box p={[0, floorH * 2 + 0.6, d / 2 - 0.6]} s={[w * 0.35, 0.5, 0.6]} c="#5f9e4f" />
       <SignPlate sign={item.signs?.[0]} width={Math.min(w * 0.5, 4.2)} p={[w * 0.18, floorH + 0.15, front + 0.01]} />
+      {item.id === WINE_BAR_ID && <WineTastingSpot item={item} />}
     </group>
   )
 }
