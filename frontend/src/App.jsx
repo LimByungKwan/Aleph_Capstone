@@ -7,6 +7,7 @@ import AdminPage from './components/admin/AdminPage.jsx'
 import AdminLauncher from './components/admin/AdminLauncher.jsx'
 import CheerGame from './components/sg/CheerGame.jsx'
 import AuditionPanel from './components/sg/AuditionPanel.jsx'
+import KpopGuide from './components/sg/KpopGuide.jsx'
 import { LoginModal } from './components/auth/LoginPage.jsx'
 import { USE_SERVER, openLogin, useSessionStore } from './api/session.js'
 
@@ -52,6 +53,7 @@ export default function App() {
       <AdminLauncher />
       <CheerGame />
       <AuditionPanel />
+      <KpopGuide />
       <LoginModal />
     </div>
   )
