@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { Ball, Box, Cyl, GEO, Instances, mat, texMat } from './kit.jsx'
@@ -374,6 +375,22 @@ function Pine({ p, s = 1, flip = 1 }) {
 }
 
 // ── 본체 ───────────────────────────────────
+// 카메라가 가까울 때만 보이는 묶음 (0.25초마다 거리 확인). 큰 건물 안쪽처럼 늘 그려지는 큰 소품의 렉 줄이기용
+export function NearOnly({ radius, children }) {
+  const ref = useRef(null)
+  const tmp = useMemo(() => ({ p: null, next: 0 }), [])
+  useFrame(({ camera, clock }) => {
+    const g = ref.current
+    if (!g || clock.elapsedTime < tmp.next) return
+    tmp.next = clock.elapsedTime + 0.25
+    tmp.p = tmp.p ?? g.position.clone()
+    g.getWorldPosition(tmp.p)
+    g.visible = camera.position.distanceTo(tmp.p) < radius
+  })
+  // noMerge: 맵의 메시 합치기(jm_perf)가 이 묶음 안을 합치지 않게 → 거리별로 숨기기가 동작
+  return <group ref={ref} userData={{ noMerge: true }}>{children}</group>
+}
+
 export function JmYutoya({ item }) {
   const [W, , D] = item.size
   const Y = item.yutoya
@@ -382,14 +399,17 @@ export function JmYutoya({ item }) {
     <group>
       <YuExterior W={W} D={D} Y={Y} sign={sign} />
       <YuFacadeExtras W={W} D={D} Y={Y} sign={sign} />
-      <YuGroundHall W={W} D={D} Y={Y} />
-      <YuFloors W={W} D={D} Y={Y} />
-      <YuPavilion Y={Y} />
-      <YuInnerBridge Y={Y} />
-      <YuBathWing Y={Y} />
-      <YuBanquetRooms W={W} D={D} Y={Y} />
-      <YuOffice W={W} D={D} Y={Y} />
-      <YuStaffShaft Y={Y} />
+      {/* (렉 줄이기) 안쪽(로비·층·연회장·목욕탕·집무실·승강로)은 카메라가 75m 안일 때만 그림 */}
+      <NearOnly radius={75}>
+        <YuGroundHall W={W} D={D} Y={Y} />
+        <YuFloors W={W} D={D} Y={Y} />
+        <YuPavilion Y={Y} />
+        <YuInnerBridge Y={Y} />
+        <YuBathWing Y={Y} />
+        <YuBanquetRooms W={W} D={D} Y={Y} />
+        <YuOffice W={W} D={D} Y={Y} />
+        <YuStaffShaft Y={Y} />
+      </NearOnly>
     </group>
   )
 }

@@ -141,7 +141,6 @@ export function ShintaiShrine({ w, d, stair }) {
         {[-1, 1].map((s) => (
           <StoneLantern key={s} p={[s * 2.6, 0, 1.6]} />
         ))}
-        <pointLight position={[0, 4, 2]} intensity={5} distance={16} color="#ffb27a" />
       </group>
     </group>
   )
@@ -208,7 +207,6 @@ export function WisteriaPath({ w, d }) {
       <group position={[0, 0, -10.5]}>
         <Box p={[0, 0.9, 0]} s={[0.7, 1.8, 0.35]} m={ROCK} />
       </group>
-      <pointLight position={[0, 3, 0]} intensity={4} distance={14} color="#c9a0ff" />
     </group>
   )
 }
@@ -276,7 +274,6 @@ export function MossForest({ w, d, pond }) {
           <cylinderGeometry args={[0.6, 2.2, 12, 10, 1, true]} />
         </mesh>
       ))}
-      <pointLight position={[pond.x, 5, pond.z]} intensity={3} distance={14} color="#d8ffd0" />
     </group>
   )
 }
@@ -347,7 +344,6 @@ export function NatsumeShrine({ w, d, stair }) {
             </mesh>
           ))}
         </group>
-        <pointLight position={[0, 4, -7]} intensity={3} distance={14} color="#fff2c8" />
       </group>
     </group>
   )
@@ -380,4 +376,40 @@ export function JmSlopeRoad({ item }) {
   )
 }
 
-export const JM_SCENE_STYLES = { jmSlopeRoad: JmSlopeRoad }
+
+// ── 바닥 풀 (11/25 밤 지민 요청: 풀이 많은 장면은 바닥에 풀이 좀 있게) ──
+// item.size [w, _, d] = 이 조각 크기(14m 이하로 잘라 거리 숨기기가 되게), item.grass = { origin: [조각 가운데 x, z](장면 로컬), avoid: [...], density }
+//   avoid: { strip: 반폭 } (가운데 길·계단 비움) | { ellipse: [x, z, rx, rz] } (연못 비움) — 장면 로컬 좌표
+const GRASS_COLORS = ['#5f8f3e', '#6f9e48', '#4f7a34']
+export function JmGrassTufts({ item }) {
+  const [w, , d] = item.size
+  const g = item.grass ?? {}
+  const [ox, oz] = g.origin ?? [0, 0]
+  const groups = useMemo(() => {
+    const count = Math.min(220, Math.round(w * d * (g.density ?? 1.2)))
+    const out = GRASS_COLORS.map(() => [])
+    let seed = Math.round((ox * 31 + oz * 17 + w * 7) * 10)
+    const r = () => srand(seed++ * 0.37)
+    for (let i = 0; i < count; i++) {
+      const x = (r() - 0.5) * w
+      const z = (r() - 0.5) * d
+      const sx = x + ox
+      const sz = z + oz
+      if ((g.avoid ?? []).some((a) => (a.strip ? Math.abs(sx) < a.strip : Math.hypot((sx - a.ellipse[0]) / a.ellipse[2], (sz - a.ellipse[1]) / a.ellipse[3]) < 1.05))) continue
+      const h = 0.25 + r() * 0.35
+      for (let k = 0; k < 3; k++) {
+        out[Math.floor(r() * GRASS_COLORS.length)].push({ p: [x + (r() - 0.5) * 0.2, h / 2, z + (r() - 0.5) * 0.2], s: [0.045, h, 0.045], r: [(r() - 0.5) * 0.7, 0, (r() - 0.5) * 0.7] })
+      }
+    }
+    return out
+  }, [w, d, ox, oz, g.density, g.avoid])
+  return (
+    <group>
+      {groups.map((items, i) => (
+        <Instances key={i} geometry={GEO.cone} material={mat(GRASS_COLORS[i], { flat: true, roughness: 1 })} items={items} />
+      ))}
+    </group>
+  )
+}
+
+export const JM_SCENE_STYLES = { jmSlopeRoad: JmSlopeRoad, jmGrassTufts: JmGrassTufts }

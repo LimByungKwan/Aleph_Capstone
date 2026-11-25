@@ -48,6 +48,7 @@ const NO_MERGE = new Set([
   'jmCollider', // 그리는 것 없음 (높은 벽은 카메라 막이만)
   'jmElevator', // 레버·다이얼 움직임, HUD
   'jmSeaTrain', // 큰 메시 여러 개
+  'jmGrassTufts', // 이미 인스턴스 한 번에 그림
   'jmZoneLight', // 조명
   'jmGroundCover', // 이미 인스턴스 한 번에 그림
   'jmPathRibbon', // 이미 메시 하나

@@ -20,7 +20,7 @@ const tmp = new THREE.Vector3()
 
 // hjSea와 같은 물결. geometry는 위를 보는 면(꼭짓점 x·z가 물 위치), base는 처음 꼭짓점 복사본
 // far: 카메라와 물 가운데 거리가 이보다 멀면 갱신을 쉼
-export function useSeaWave(ref, geometry, far = 80) {
+export function useSeaWave(ref, geometry, far = 80, still = false) {
   const base = useMemo(() => Float32Array.from(geometry.attributes.position.array), [geometry])
   const center = useMemo(() => {
     geometry.computeBoundingSphere()
@@ -29,7 +29,7 @@ export function useSeaWave(ref, geometry, far = 80) {
   const lastTick = useRef(-1)
   useFrame(({ clock, camera }) => {
     const mesh = ref.current
-    if (!mesh) return
+    if (!mesh || still) return
     tmp.copy(center.center)
     mesh.localToWorld(tmp)
     if (tmp.distanceToSquared(camera.position) > (far + center.radius) ** 2) return
@@ -162,8 +162,9 @@ const RIVER_WATER = new THREE.MeshStandardMaterial({ vertexColors: true, roughne
 const SEA_WATER = new THREE.MeshStandardMaterial({ color: SEA_ONE, roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide })
 // 강 띠 (로컬 x = 폭, z = 길이). sea: 한 색(이음새 무늬 없음)
 export function riverGeometry(w, len, sea = false) {
-  const across = Math.max(8, Math.ceil(w / 0.6))
-  const along = Math.max(2, Math.ceil(len / 1.5))
+  // (렉 줄이기) 바다 조각은 물결을 움직이지 않으니 칸을 거의 안 나눔
+  const across = sea ? 2 : Math.max(8, Math.ceil(w / 0.6))
+  const along = sea ? 2 : Math.max(2, Math.ceil(len / 1.5))
   const g = new THREE.PlaneGeometry(w, len, across, along)
   g.rotateX(-Math.PI / 2)
   if (!sea) {
@@ -178,7 +179,7 @@ export function riverGeometry(w, len, sea = false) {
 export function RiverWater({ w, len, y = 0.05, sea = false, far }) {
   const ref = useRef(null)
   const geo = useMemo(() => riverGeometry(w, len, sea), [w, len, sea])
-  useSeaWave(ref, geo, far)
+  useSeaWave(ref, geo, far, sea)
   return <mesh ref={ref} geometry={geo} material={sea ? SEA_WATER : RIVER_WATER} position={[0, y, 0]} userData={{ noMerge: true }} />
 }
 

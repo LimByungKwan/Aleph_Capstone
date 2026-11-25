@@ -8,6 +8,7 @@ import { canvasTexture, getJpSignTexture, GlowMaterial, JP_FONT } from './jm_lan
 import { getTiledTexture, TILE_METERS } from './textures.js'
 import { VerticalSign } from './jm_ginzan.jsx'
 import { useGameStore } from '../../../store/gameStore.js'
+import { NearOnly } from './jm_yutoya.jsx'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useWarps } from './bk_warpStore.js'
 
@@ -43,6 +44,7 @@ const LANTERN_RED = mat('#d23a28', { emissive: '#ff4a22', emissiveIntensity: 1.1
 const LANTERN_WHITE = mat('#fff1d6', { emissive: '#ffcf7a', emissiveIntensity: 1.0, roughness: 0.6 })
 const LANTERN_CAP = mat('#1b1210')
 const BOWL = mat('#f1e8d6', { roughness: 0.5 })
+const STEAM = mat('#ffffff', { transparent: true, opacity: 0.22, roughness: 1 })
 const WALL_LAMP = mat('#ff9ab8', { emissive: '#ff5a8a', emissiveIntensity: 1.4 })
 const FIRE = mat('#ff8a2a', { emissive: '#ff5a10', emissiveIntensity: 2.0 })
 
@@ -184,6 +186,31 @@ export function JmEatery({ item }) {
       <Box p={[0, base + 0.5, front - 1.3]} s={[w - 1.2, 1.0, 0.6]} c="#4a2f1f" />
       <Box p={[0, base + 1.02, front - 1.3]} s={[w - 1.1, 0.05, 0.75]} c="#2b1d14" />
       <Instances geometry={GEO.cyl} material={BOWL} items={bowls} />
+      {/* (11/25 밤) 가게 안 디테일: 벽에 걸린 나무 메뉴 패, 카운터 위 김 나는 큰 솥, 카운터 앞 나무 의자, 문 옆 화분 */}
+      {range(Math.max(3, Math.floor((w - 2) / 0.7))).map((i, _, arr) => (
+        <Box key={`mn${i}`} p={[-(arr.length - 1) * 0.35 + i * 0.7, g1 - 0.9, front - 1.95]} s={[0.5, 0.75, 0.03]} c={i % 3 === 0 ? '#e9d8b0' : '#d9c08a'} />
+      ))}
+      <group position={[(seed % 2 ? -1 : 1) * (w / 2 - 1.3), base + 1.05, front - 1.35]}>
+        <Cyl p={[0, 0.22, 0]} rad={0.32} h={0.44} m={IRON} />
+        <Cyl p={[0, 0.46, 0]} rad={0.34} h={0.05} c="#3a3430" />
+        {[0, 1, 2].map((k) => (
+          <mesh key={k} position={[0.05 * k, 0.75 + k * 0.32, 0]} scale={[0.22 + k * 0.1, 0.16 + k * 0.05, 0.22 + k * 0.1]} material={STEAM}>
+            <sphereGeometry args={[1, 8, 6]} />
+          </mesh>
+        ))}
+      </group>
+      {range(Math.max(2, Math.floor((w - 2) / 1.6))).map((i, _, arr) => (
+        <group key={`st${i}`} position={[-(arr.length - 1) * 0.8 + i * 1.6, base, front - 0.65]}>
+          <Cyl p={[0, 0.32, 0]} rad={0.2} h={0.06} c="#7a5634" />
+          <Cyl p={[0, 0.15, 0]} rad={0.05} h={0.3} c="#3a2a1c" />
+        </group>
+      ))}
+      <group position={[(seed % 2 ? 1 : -1) * (w / 2 - 0.35), base, front + 0.6]}>
+        <Cyl p={[0, 0.22, 0]} rad={0.22} h={0.44} c="#8a5a3a" />
+        <mesh geometry={GEO.ico} position={[0, 0.7, 0]} scale={0.36}>
+          <meshStandardMaterial color="#4f7a34" flatShading />
+        </mesh>
+      </group>
       {pastel && (
         <group>
           {range(Math.floor(w / 2.4) + 1).map((i, _, arr) => (
@@ -506,7 +533,6 @@ export function JmBoilerRoom({ item }) {
         {[-1.6, 0, 1.6].map((x) => (
           <Cyl key={x} p={[x, (4 + h) / 2, -0.4]} rad={0.32} h={h - 4} m={IRON} />
         ))}
-        <pointLight position={[0, 1.4, 2.4]} intensity={6} distance={9} color="#ff7a2a" />
       </group>
       <Instances geometry={GEO.rock} material={mat('#1c1a18', { flat: true })} items={coal} />
       {/* 약초 서랍장 (천장까지) + 사다리 */}
@@ -529,7 +555,6 @@ export function JmBoilerRoom({ item }) {
         <Box p={[0, 0.85, 0]} s={[1.6, 0.5, 0.8]} c="#3b2a1c" />
         <Box p={[-0.4, 1.12, 0]} s={[0.4, 0.06, 0.3]} c="#e9e1cf" />
       </group>
-      <pointLight position={[dx, h - 1.6, dz + 2.5]} intensity={5} distance={14} color="#ffcf8a" />
       {/* 천장 관 + 매달린 등 */}
       {[-d / 4, d / 4].map((z) => (
         <Cyl key={z} p={[0, h - 0.5, z]} rad={0.18} h={w - 1} m={IRON} r={[0, 0, Math.PI / 2]} />
@@ -613,6 +638,8 @@ function cageTexture() {
 //   칸 안 레버 앞에서 E → 레버 잡기(캐릭터 멈춤) → W/S(↑/↓)로 레버를 밀고 당겨 층 고르기(레버가 눈금마다 기울고 위 다이얼 바늘도 따라감)
 //   → E로 출발(화면 어두워짐 → 그 층 칸으로 순간 이동) / Esc로 놓기
 // item.elevator.kind: 'staff'(구석, 보일러실·1~5층) | 'guest'(가운데 누각, 1~4층)
+// 워프는 바닥 + 1.6m에 캐릭터 중심을 두는데 서 있을 때 중심은 약 1m → 붙잡는 동안 뜨지 않게 0.6m 내림
+const STAND_FIX = 0.6
 const LEVER_Y0 = 0.7 // 레버 홈 아래 끝 높이
 const LEVER_LEN = 1.0 // 레버 홈 길이
 // 층 글자 판 (B1·1F~5F). on = 빨갛게 빛남
@@ -655,12 +682,19 @@ export function JmElevator({ item }) {
   const gateL = useRef(null)
   const gateR = useRef(null)
   const [riding, setRiding] = useState(false)
+  const grabRef = useRef(false)
+  const ridingRef = useRef(false)
   const [rideIdx, setRideIdx] = useState(null)
   const ride = useRef(null)
   const rideFloor = useRef(null)
   const body = useRef(null)
 
   useFrame(({ clock }, dt) => {
+    // 레버를 잡은 동안·문이 닫히는 동안: 캐릭터를 이 칸 가운데에 붙잡아 둠 (W/S가 걷기 키이기도 해서 칸 밖으로 나가지 않게)
+    if ((grabRef.current || ridingRef.current) && !ride.current) {
+      const here = E.stops[meIndex].pos
+      useWarps.getState().goto({ exact: [here[0], here[1] - STAND_FIX, here[2]] })
+    }
     // 타고 가는 중: 칸이 위·아래로 움직이고 캐릭터를 칸 바닥에 맞춰 같이 옮김
     const r = ride.current
     if (r) {
@@ -669,7 +703,7 @@ export function JmElevator({ item }) {
       const y = r.y0 + (r.y1 - r.y0) * e
       if (body.current) body.current.position.y = y - r.y0 + Math.sin(t * 40) * 0.01
       useGameStore.setState({ inputLocked: true })
-      useWarps.getState().goto({ exact: [r.x, y, r.z] })
+      useWarps.getState().goto({ exact: [r.x, y - STAND_FIX, r.z] })
       let nearest = 0
       E.stops.forEach((st, i) => {
         if (Math.abs(st.pos[1] - y) < Math.abs(E.stops[nearest].pos[1] - y)) nearest = i
@@ -682,7 +716,7 @@ export function JmElevator({ item }) {
         lastArrive.kind = E.kind ?? 'staff'
         lastArrive.key = r.stop.key
         lastArrive.t = performance.now()
-        useWarps.getState().goto({ exact: r.stop.pos })
+        useWarps.getState().goto({ exact: [r.stop.pos[0], r.stop.pos[1] - STAND_FIX, r.stop.pos[2]] })
         ride.current = null
         if (body.current) body.current.position.y = 0
         setRiding(false)
@@ -727,6 +761,13 @@ export function JmElevator({ item }) {
     const t = setTimeout(() => (doorTarget.current = 0), 700)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    grabRef.current = grab
+  }, [grab])
+  useEffect(() => {
+    ridingRef.current = riding
+  }, [riding])
 
   // 레버를 잡는 동안 캐릭터 멈춤 (공용 inputLocked). 놓으면 되돌림
   useEffect(() => {
@@ -1306,6 +1347,7 @@ export function JmBoilerBasement({ item }) {
   const [fx, fz] = B.furnace
   const [px, pz] = B.platform
   return (
+    <NearOnly radius={42}>
     <group>
       {/* 바닥 (판자) */}
       <Box p={[0, 0.03, 0]} s={[w, 0.06, d]} c="#6b4a30" />
@@ -1393,7 +1435,6 @@ export function JmBoilerBasement({ item }) {
           <planeGeometry args={[1.0, 0.6]} />
           <primitive object={FIRE} attach="material" />
         </mesh>
-        <pointLight position={[2.6, 1, 0.3]} intensity={6} distance={9} color="#ff7a2a" />
         {[-1.2, 0, 1.2].map((z) => (
           <Cyl key={z} p={[-0.6, (5.5 + h) / 2, z]} rad={0.3} h={h - 5.5} m={IRON} />
         ))}
@@ -1466,8 +1507,8 @@ export function JmBoilerBasement({ item }) {
           <Ball p={[0, 0, 0]} rad={0.2} m={LANTERN_WHITE} />
         </group>
       ))}
-      <pointLight position={[px, h - 1.8, pz + 2.5]} intensity={5} distance={14} color="#ffcf8a" />
     </group>
+    </NearOnly>
   )
 }
 

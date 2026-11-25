@@ -50,6 +50,19 @@ const gasLamp = (id, position, extra = {}) => prop(id, 'jmGasLamp', position, [0
 const stoneLantern = (id, position, extra = {}) => prop(id, 'jmLantern', position, [0.8, 2.2, 0.8], extra)
 const light = (id, position, extra = {}) => prop(id, 'jmZoneLight', position, [0.1, 14, 0.1], { collider: false, ...extra })
 const toWorld = ([x, y, z]) => [r2(x), r2(y), r2(z + ZONE_ORIGIN_Z)]
+// (11/25 밤) 바닥 풀: 장면 로컬 사각형을 14m 이하 조각으로 잘라 jmGrassTufts 소품으로 (조각마다 거리 숨기기)
+function grassPatch(id, c, rot, w, d, elevation, avoid = [], density = 1.2) {
+  const nx = Math.ceil(w / 14)
+  const nz = Math.ceil(d / 14)
+  const tw = r2(w / nx)
+  const td = r2(d / nz)
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const lx = r2(-w / 2 + tw * (i + 0.5))
+    const lz = r2(-d / 2 + td * (j + 0.5))
+    prop(`${id}_${i}_${j}`, 'jmGrassTufts', rotate(c, rot, lx, lz), [tw, 0.6, td], { rotationDeg: rot, elevation, collider: false, grass: { origin: [lx, lz], avoid, density } })
+  }
+}
+
 
 // ─────────────────────────────────────────────
 // 1. 붉은 탑 터널 (구역 입구 z 40 바로 앞에서 시작 → z 4.2)
@@ -104,6 +117,7 @@ for (const [i, x, z, s] of [[1, -14, -5, 'jmMaple'], [2, 12, -26.5, 'jmSakura'],
 for (const [i, x, z, r] of [[1, 16, -7, -10], [2, -36, -6, 15], [3, 21, 2, 25]]) prop(`jm_field_hut_${i}`, 'jmFieldHut', [x, z], [4.2, 3, 3.6], { rotationDeg: r })
 prop('jm_field_sign', 'jmArrowSign', [3.4, -10.5], [1.6, 2.1, 0.2], { rotationDeg: -20, signs: [{ text: '음식점 거리', dir: 'left' }, { text: '전망 무대', dir: 'right' }] })
 light('jm_light_field', [0, -18])
+grassPatch('jm_grass_field', [0, -12], 0, 112, 30, 0.02, [{ strip: 2.2 }], 0.5)
 
 // 전망 무대 (BK 전망대 흔들다리와 이어짐 — 자리·높이 그대로)
 road('jm_field_east', 'stone', [16.3, -10], [24.6, 0.06, 3], { color: '#a8946e' })
@@ -244,6 +258,7 @@ for (const [i, x, z, r] of [[1, 86, -116.5, 0], [2, 74, -117, 0]]) prop(`jm_gard
 tree('jm_garden_sakura', 'jmSakura', [62, -143], { elevation: TOWN })
 tree('jm_garden_maple', 'jmMaple', [90, -142], { elevation: TOWN })
 light('jm_light_garden', [76, -130], { elevation: TOWN })
+grassPatch('jm_grass_garden', [76, -129], 0, 35, 38, r2(TOWN + 0.06), [], 0.8)
 
 // ─────────────────────────────────────────────
 // 6. 다른 작품 명장면 ①~④ — 담 없이 거리 사이사이 빈터에 (11/25 지민 요청: 담이 세트장 같다 → 뺌, 자리를 섞고 높이도 다르게)
@@ -313,6 +328,11 @@ for (const sc of SCENES) {
     wall(`jm_scene${sc.n}_pond`, L(pd.x, pd.z), [r2(pd.rx * 1.7), 1, r2(pd.rz * 1.7)], { rotationDeg: sc.rot, ...E })
     for (const [k, x, z] of [[0, -9, -6], [1, 10.5, 5], [2, -11, 6]]) wall(`jm_scene${sc.n}_giant_${k}`, L(x, z), [2.4, 12, 2.4], { rotationDeg: sc.rot, ...E })
   }
+  // 풀이 많은 장면은 바닥 풀 (길·계단·연못 자리는 비움)
+  if (sc.kind === 'totoro') grassPatch(`jm_grass_s${sc.n}`, sc.c, sc.rot, sc.w - 2, sc.d - 2, r2(sc.e + 0.02), [{ strip: 2.2 }], 1.0)
+  if (sc.kind === 'shintai' || sc.kind === 'natsume') grassPatch(`jm_grass_s${sc.n}`, sc.c, sc.rot, sc.w - 2, sc.d - 2, r2(sc.e + 0.02), [{ strip: sc.stair.w / 2 + 0.6 }], 1.1)
+  if (sc.kind === 'wisteria') grassPatch(`jm_grass_s${sc.n}`, sc.c, sc.rot, sc.w - 2, sc.d - 2, r2(sc.e + 0.02), [{ strip: 2 }], 0.9)
+  if (sc.kind === 'forest') grassPatch(`jm_grass_s${sc.n}`, sc.c, sc.rot, sc.w - 2, sc.d - 2, r2(sc.e + 0.02), [{ ellipse: [sc.pond.x, sc.pond.z, sc.pond.rx + 0.8, sc.pond.rz + 0.8] }], 1.4)
   const [sx, sz] = L(sc.spot[0], sc.spot[1])
   placePositions[sc.stamp] = toWorld([sx, sc.e + sc.spot[2], sz])
   if (sc.shop) {
