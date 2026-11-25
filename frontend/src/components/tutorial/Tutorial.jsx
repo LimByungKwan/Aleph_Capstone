@@ -12,19 +12,23 @@ import './tutorial.css'
 const STEPS = {
   go: {
     num: 1,
-    text: (touch) => `광장 가운데 분홍 빛기둥 아래 **루미**에게 가서 ${touch ? '**E 버튼**을' : '**E 키**를'} 눌러 보세요`,
+    title: '루미 만나기',
+    text: (touch) => `광장 분홍빛 아래에서 ${touch ? '**E 버튼**을' : '**E**를'} 눌러 대화해요.`,
   },
   talk: {
     num: 2,
-    text: () => '루미에게 다시 말을 걸어 **예시 버튼**을 하나 눌러 보세요. 코스를 골라 줘요',
+    title: '추천 코스 고르기',
+    text: () => '루미에게 말을 걸어 **예시 버튼**을 골라요.',
   },
   walk: {
     num: 3,
-    text: (touch) => `분홍 빛기둥을 따라가서 촬영지 바닥 원 안에서 ${touch ? '**E 버튼**' : '**E**'} → **스탬프 찍기**!`,
+    title: '첫 스탬프 찍기',
+    text: (touch) => `촬영지 바닥 원 안에서 ${touch ? '**E 버튼**' : '**E**'}를 눌러 **스탬프**를 찍어요.`,
   },
   done: {
     num: 3,
-    text: () => '완료! 🎉 첫 스탬프를 찍었어요. 이제 자유롭게 골목을 걸어 보세요',
+    title: '첫 스탬프 획득',
+    text: () => '이제 자유롭게 골목을 걸어 보세요.',
   },
 }
 
@@ -46,21 +50,19 @@ export default function Tutorial() {
   if (!info || (panelOpen && step !== 'done')) return null
 
   return (
-    <div className={`tut ui-interactive${hasCourse ? ' tut--below-hud' : ''}${touch ? ' tut--touch' : ''}${step === 'done' ? ' tut--done' : ''}`} role="status" aria-live="polite">
-      <span className="tut__lumi" aria-hidden="true">
-        🧚
-      </span>
+    <div className={`tut${hasCourse ? ' tut--below-hud' : ''}${step === 'done' ? ' tut--done' : ''}`}>
       <div className="tut__body">
-        <span className="tut__step">
-          처음 오셨군요! 루미의 안내 {info.num}/3
-        </span>
-        <p className="tut__text">
-          {rich(info.text(touch))}
-          {dist && <span className="tut__dist">루미까지 {dist}</span>}
-        </p>
+        <div role="status">
+          <div className="tut__heading">
+            <span className="tut__step" aria-label={`루미 안내 ${info.num}단계 / 3단계`}>{info.num}/3</span>
+            <strong>{info.title}</strong>
+          </div>
+          <p className="tut__text">{rich(info.text(touch))}</p>
+        </div>
+        {dist && <span className="tut__dist" aria-label={`루미까지 ${dist}`}>{dist}</span>}
       </div>
       {step !== 'done' && (
-        <button type="button" className="tut__skip" onClick={(e) => (e.currentTarget.blur(), skip())}>
+        <button type="button" className="tut__skip ui-interactive" onClick={(e) => (e.currentTarget.blur(), skip())}>
           건너뛰기
         </button>
       )}

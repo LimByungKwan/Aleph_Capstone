@@ -13,8 +13,8 @@ import { getSignTexture } from './textures.js'
 const TITLE = '노을등 정자'
 const wood = mat('#ffffff', { flat: true })
 const tile = mat('#304b4c', { flat: true, double: true })
-const amber = mat('#ffedb6', { emissive: '#ff963d', emissiveIntensity: 1.45 })
-const paper = mat('#f0c388', { emissive: '#d99143', emissiveIntensity: 0.28 })
+const amber = mat('#ffe4a8', { emissive: '#ff963d', emissiveIntensity: 0.95 })
+const paper = mat('#efc998', { emissive: '#dc9450', emissiveIntensity: 0.16 })
 const pink = mat('#f1a7a5', { emissive: '#f27772', emissiveIntensity: 0.32 })
 const blue = mat('#b4cfd1', { emissive: '#7ac5cf', emissiveIntensity: 0.24 })
 const noShadow = { noShadow: true }
@@ -22,6 +22,15 @@ const box = (p, s, c) => ({ p, s, c })
 const oak = '#825239'
 const dark = '#563a30'
 const gold = '#b9835b'
+const lanternCap = mat('#795036')
+const lanternGold = mat('#c69257')
+const tassel = mat('#a94736')
+const lanternPaper = new THREE.LatheGeometry(Array.from({ length: 29 }, (_, i) => {
+  const t = i / 28
+  const shoulder = 0.12 + 0.15 * Math.sin(Math.PI * t) ** 0.75
+  const rib = i % 4 === 2 ? -0.007 : 0
+  return new THREE.Vector2(shoulder + rib, 0.48 * (t - 0.5))
+}), 24)
 
 const floors = [box([0, -0.10, -3.79], [3.54, 0.20, 2.38], '#bf8b60'), box([0, -0.12, 0], [6.7, 0.24, 5.27], '#bf8b60')]
 const railEdges = [
@@ -52,9 +61,6 @@ const trim = [
     box([side * 2.35, 0.55, 2.05], [0.99, 0.09, 0.51], gold),
     box([side * 2.72, 2.78, 0], [0.26, 0.20, 4], oak),
     box([0, 2.78, side * 1.92], [5.65, 0.20, 0.25], oak),
-    box([side * 1.1, 2.68, -2.1], [0.04, 0.43, 0.04], dark),
-    box([side * 1.1, 2.29, -2.1], [0.38, 0.06, 0.38], dark),
-    box([side * 1.1, 2.03, -2.1], [0.38, 0.06, 0.38], dark),
     box([side * 1.77, 1.12, -4.57], [0.18, 0.27, 0.18], dark),
   ]),
 ]
@@ -63,9 +69,29 @@ const flowers = [-1, 1].flatMap((side) => Array.from({ length: 11 }, (_, i) =>
     [0.20, 0.19, 0.20], ['#d98ca1', '#f1b498', '#f2ddc4', '#687d57'][i % 4]),
 ))
 const lanterns = [-1, 1].flatMap((side) => [
-  box([side * 1.1, 2.16, -2.1], [0.32, 0.26, 0.32]),
-  box([side * 1.77, 1.38, -4.57], [0.19, 0.23, 0.19]),
+  { position: [side * 1.1, 2.19, -1.92], hanging: true, scale: 1 },
+  { position: [side * 1.77, 1.42, -4.57], hanging: false, scale: 0.57 },
 ])
+
+function PavilionLantern({ position, scale, hanging, lit }) {
+  return (
+    <group position={position} scale={scale} name="bk-sunset-lantern" userData={noShadow}>
+      <mesh geometry={lanternPaper} material={lit ? amber : paper} userData={noShadow} />
+      {[-1, 1].map((side) => (
+        <group key={side} position={[0, side * 0.25, 0]}>
+          <mesh geometry={GEO.cyl} material={lanternCap} scale={[0.143, 0.04, 0.143]} userData={noShadow} />
+          <mesh geometry={GEO.cyl} material={lanternGold} position={[0, -side * 0.021, 0]} scale={[0.127, 0.012, 0.127]} userData={noShadow} />
+        </group>
+      ))}
+      {hanging && (
+        <>
+          <mesh geometry={GEO.cyl8} material={lanternCap} position={[0, 0.37, 0]} scale={[0.014, 0.22, 0.014]} userData={noShadow} />
+          <mesh geometry={GEO.cyl8} material={tassel} position={[0, -0.33, 0]} scale={[0.027, 0.12, 0.027]} userData={noShadow} />
+        </>
+      )}
+    </group>
+  )
+}
 
 export function SunsetPavilion({ item }) {
   const roof = useMemo(() => hipRoofGeometry(6.45, 4.9, 1.28, 0.57), [])
@@ -83,7 +109,7 @@ export function SunsetPavilion({ item }) {
     <group userData={noShadow}>
       <Instances geometry={GEO.box} material={wood} items={trim} />
       <Instances geometry={GEO.ico} material={wood} items={flowers} />
-      <Instances geometry={GEO.box} material={glow ? amber : paper} items={lanterns} />
+      {lanterns.map((lantern) => <PavilionLantern key={lantern.position.join('/')} {...lantern} lit={Boolean(glow)} />)}
       <mesh geometry={roof} material={tile} position={[0, 2.86, 0]} />
       <mesh geometry={GEO.box} material={mat(dark)} position={[0, 2.61, -2.13]} scale={[1.86, 0.49, 0.11]} />
       <mesh geometry={GEO.plane} material={sign} position={[0, 2.61, -2.2]} rotation={[0, Math.PI, 0]} scale={[1.74, 0.435, 1]} />
