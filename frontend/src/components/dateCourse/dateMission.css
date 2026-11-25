@@ -91,6 +91,41 @@
 .date-activity-prompt { position: fixed; z-index: 12; left: 50%; bottom: max(104px, calc(env(safe-area-inset-bottom) + 80px)); transform: translateX(-50%); white-space: nowrap; }
 .date-activity-prompt kbd { margin-right: 4px; padding: 1px 5px; border: 1px solid currentColor; border-radius: 4px; }
 .date-activity-start { margin-top: 8px; }
+
+/* 달빛 와인바의 1인 테이스팅 */
+.wine-tasting-prompt { background: #4b314a; border-color: #af857b; color: #fff3df; }
+.wine-tasting-prompt:hover { background: #5f3b5c; }
+.special-dialog.wine-tasting {
+  width: min(520px, calc(100vw - 24px));
+  border-color: #c4a8b4;
+  background: #fffaf3;
+  color: #3d2d3d;
+}
+.wine-tasting::backdrop { background: #24182899; }
+.wine-tasting .special-dialog__head { background: #f1e4e9; border-color: #dac4cc; }
+.wine-tasting .special-tag { background: #e8d4de; border-color: #d4b3c2; color: #60354d; }
+.wine-tasting__round { display: flex; justify-content: space-between; color: #623e58; font-size: 12px; font-weight: 750; }
+.wine-tasting__notes {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 7px 12px;
+  margin: 0;
+  padding: 12px;
+  border-left: 3px solid #8f5573;
+  border-radius: 8px;
+  background: #f7edf0;
+  font-size: 14px;
+}
+.wine-tasting__notes dt { color: #744561; font-weight: 750; }
+.wine-tasting__notes dd { margin: 0; }
+.wine-tasting__choices { display: grid; gap: 6px; }
+.wine-tasting__choices .ui-btn { justify-content: flex-start; text-align: left; }
+.wine-tasting__choices .ui-btn:hover { background: #f3e4e9; }
+.wine-tasting__feedback { color: #623e58; }
+.wine-tasting__primary { justify-self: start; background: #64425f; border-color: #64425f; color: #fff9f4; }
+.wine-tasting__primary:hover { background: #53354e; }
+.wine-tasting__result { display: grid; gap: 8px; }
+
 .date-cafe-menu { min-width: 0; margin: 0; padding: 8px 12px 12px; border: 1px solid #e3cfb1; border-radius: 10px; }
 .date-cafe-menu legend { padding: 0 4px; color: #7f3e2f; font-weight: 700; }
 .date-cafe-menu label { display: inline-flex; align-items: center; gap: 5px; padding: 8px; border: 1px solid #e3cfb1; border-radius: 8px; cursor: pointer; }
@@ -226,19 +261,23 @@
 .date-mural-preview img { display: block; max-width: 100%; max-height: 68dvh; object-fit: contain; }
 .date-mural-preview a { text-decoration: none; }
 
-.date-map { grid-template-columns: minmax(150px, 220px) 1fr; align-items: start; }
-@media (max-width: 640px) { .date-map { grid-template-columns: 1fr; } .date-map svg { max-height: 300px; } }
-.date-map svg { width: 100%; height: auto; }
-.date-map__zone { fill: #e8f2dc; stroke: #b9cfa3; stroke-width: 2; }
-.date-map__hill { fill: #cfe3b8; }
-.date-map__road { fill: #e7d9c4; }
-.date-map__label { font-size: 9px; fill: #6b5a45; text-anchor: middle; }
+.date-map { grid-template-columns: minmax(170px, 240px) minmax(0, 1fr); align-items: start; gap: 20px; }
+.date-map__plan { position: relative; overflow: hidden; border-radius: 14px; border: 1px solid #a7b39b; background: #dce5cd; }
+.date-map__plan canvas { display: block; width: 100%; height: auto; }
+.date-map__plan svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.date-map__north { position: absolute; top: 8px; left: 8px; padding: 3px 6px; border-radius: 8px; background: #fffaf0; color: #344d3b; font-size: 11px; font-weight: 700; }
 .date-map__pin { cursor: pointer; }
-.date-map__pin circle { fill: #fff; stroke: #f472b6; stroke-width: 2.5; }
-.date-map__pin[data-state="done"] circle { fill: #fde7f3; }
-.date-map__pin[data-state="stamp"] circle { fill: #f9a8d4; stroke: #be185d; }
-.date-map__pin text { font-size: 12px; text-anchor: middle; }
-.date-map__pin:hover circle, .date-map__pin:focus circle { stroke-width: 4; }
+.date-map__pin circle { fill: #fffaf0; stroke: #9c4968; stroke-width: .75; }
+.date-map__pin[data-state="done"] circle { fill: #f9dce8; }
+.date-map__pin[data-state="stamp"] circle { fill: #8d385b; stroke: #fffaf0; }
+.date-map__pin text { fill: #692640; font-size: 4.7px; font-weight: 750; text-anchor: middle; }
+.date-map__pin[data-state="stamp"] text { fill: #fff; }
+.date-map__pin:hover circle, .date-map__pin:focus-visible circle { stroke-width: 1.35; }
 .date-map__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-.date-map__list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
+.date-map__list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 13px; }
+.date-map__number { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #f8e3eb; color: #692640; font-size: 11px; font-weight: 750; }
 .date-map__list small { color: #8b6f57; margin-left: 4px; }
+@media (max-width: 640px) {
+  .date-map { grid-template-columns: 1fr; gap: 14px; }
+  .date-map__plan { width: min(100%, 220px); justify-self: center; }
+}

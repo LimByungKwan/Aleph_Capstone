@@ -91,6 +91,12 @@ export function unlockWarp({ warpId }) {
   return authRequest('/me/warps', { method: 'POST', body: { warpId } })
 }
 
+// ── 접속 기록 (일일 접속자) ── 손님(비로그인)은 세지 않음 (11/17 팀 결정)
+export async function logVisit() {
+  if (!loggedIn()) return { counted: false }
+  return authRequest('/me/visit', { method: 'POST' })
+}
+
 // ── 스탬프 ──
 // 손님(비로그인)은 맵·체험은 그대로 즐기고, 스탬프를 받으려는 순간에만 로그인 창을 띄운다
 // (스탬프 버튼이 있는 화면들을 하나하나 고치지 않고 여기 한 곳에서 막음)

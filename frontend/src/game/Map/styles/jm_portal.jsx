@@ -11,6 +11,7 @@ import { getJpSignTexture, GlowMaterial, JmSakuraBloom } from './jm_landmarks.js
 import { JmCanal, JmCrossing } from './jm_kyoto.jsx'
 import { hipRoofGeometry } from './geometry.js'
 import { JmBusStop } from './jm_shops.jsx'
+import { MossForest, NatsumeShrine, ScenePad, ShintaiShrine, WisteriaPath } from './jm_scenes.jsx'
 
 // 애니메이션 구역(JM) 「명장면 공간」 — 담당: 지민 (11/24)
 // 계단 거리 가게 문(jmPortalDoor) 앞에서 E → 화면이 잠깐 어두워지고 맵 밖(남쪽 바다 위 멀리)의 장면 공간(jmSceneRoom)으로 이동
@@ -237,6 +238,7 @@ export function JmSceneRoom({ item }) {
     const c = check.current
     if (clock.elapsedTime < c.next) return
     c.next = clock.elapsedTime + 0.5
+    if (room.inMap) return
     if (!c.player?.parent) c.player = scene.getObjectByName('player') ?? null
     if (!c.player) return
     c.player.getWorldPosition(me)
@@ -245,12 +247,17 @@ export function JmSceneRoom({ item }) {
   const sky = ROOM_SKY[room.kind] ?? { top: '#7fb6e8', horizon: '#dcefff' }
   return (
     <group>
-      <SkyDome radius={Math.max(w, d) * 0.8} top={sky.top} horizon={sky.horizon} />
+      {/* (11/25) 맵 안 마당(inMap)은 하늘 돔 없이 마을 하늘을 그대로 씀 */}
+      {!room.inMap && <SkyDome radius={Math.max(w, d) * 0.8} top={sky.top} horizon={sky.horizon} />}
       {room.kind === 'totoro' && <TotoroRainStop w={w} d={d} />}
-      {room.kind === 'stairs' && <ShrineStairs d={d} stair={room.stair} />}
-      {room.kind === 'rock' && <SplitRock d={d} />}
-      {room.kind === 'crossing' && <SakuraCrossing d={d} />}
-      {room.kind === 'onsen' && <OnsenMotif d={d} bridge={room.bridge} />}
+      {room.kind === 'stairs' && <ShrineStairs w={w} d={d} stair={room.stair} />}
+      {room.kind === 'rock' && <SplitRock w={w} d={d} />}
+      {room.kind === 'shintai' && <ShintaiShrine w={w} d={d} stair={room.stair} />}
+      {room.kind === 'wisteria' && <WisteriaPath w={w} d={d} />}
+      {room.kind === 'forest' && <MossForest w={w} d={d} pond={room.pond} />}
+      {room.kind === 'natsume' && <NatsumeShrine w={w} d={d} stair={room.stair} />}
+      {room.kind === 'crossing' && <SakuraCrossing w={w} d={d} />}
+      {room.kind === 'onsen' && <OnsenMotif w={w} d={d} bridge={room.bridge} />}
       {/* 입구 쪽 장면 안내판 */}
       <group position={[-3.2, 0, d / 2 - 4.5]} rotation={[0, 0.35, 0]}>
         <Box p={[0, 0.9, 0]} s={[0.12, 1.8, 0.12]} c="#3a281c" />
@@ -309,7 +316,7 @@ function TotoroRainStop({ w, d }) {
   return (
     <group>
       {/* 바닥: 어두운 풀밭 + 흙길(동서) + 논 4칸 */}
-      <Box p={[0, -0.5, 0]} s={[w, 1, d]} m={DARK_GRASS} />
+      <ScenePad w={w} d={d} color={DARK_GRASS.color ? '#' + DARK_GRASS.color.getHexString() : undefined} />
       <Box p={[0, 0.02, 1.5]} s={[w - 2, 0.04, 4]} m={ROAD} />
       {[[-8, -6], [8, -6], [-8, 9], [8, 9]].map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
@@ -386,14 +393,14 @@ function RedRail({ x, z0, z1, h0, h1 }) {
   )
 }
 
-function ShrineStairs({ d, stair }) {
+function ShrineStairs({ w = 36, d, stair }) {
   const { z0, z1, h, w: sw } = stair
   const houses = [-1, 1].flatMap((side) =>
     [0, 1, 2].map((k) => ({ side, k, z: z0 - 2.5 - k * 5.2, base: Math.max(0, (h * (z0 - (z0 - 2.5 - k * 5.2))) / (z0 - z1)) })),
   )
   return (
     <group>
-      <Box p={[0, -0.5, 0]} s={[36, 1, d]} m={STREET} />
+      <ScenePad w={w} d={d} color={STREET.color ? '#' + STREET.color.getHexString() : undefined} />
       {/* 붉은 난간: 가운데 1줄 + 양옆 */}
       {[0, -sw / 2 + 0.15, sw / 2 - 0.15].map((x) => (
         <RedRail key={x} x={x} z0={z0} z1={z1} h0={0} h1={h} />
@@ -450,7 +457,7 @@ const MIST = mat('#e8eeea', { transparent: true, opacity: 0.18, roughness: 1, do
 const ROPE = mat('#d8c79a', { roughness: 1 })
 const PAPER = mat('#f7f4ea', { roughness: 1 })
 
-function SplitRock({ d }) {
+function SplitRock({ w = 36, d }) {
   const trees = useMemo(() => {
     const out = []
     for (let i = 0; i < 46; i++) {
@@ -460,13 +467,14 @@ function SplitRock({ d }) {
       const z = Math.sin(a) * r
       if (z > -2 && Math.abs(x) < 6) continue // 들어오는 길은 넓게 비움
       if (Math.hypot(x, z + 4.5) < 6) continue // 바위 둘레도 비움
+      if (Math.abs(x) > w / 2 - 1.2 || Math.abs(z) > d / 2 - 1.2) continue // (11/25) 마당 담 안쪽만
       out.push({ x, z, h: 12 + rnd(i * 5) * 8, r: 0.35 + rnd(i * 3) * 0.3 })
     }
     return out
-  }, [])
+  }, [w, d])
   return (
     <group>
-      <Box p={[0, -0.5, 0]} s={[36, 1, d]} m={MOSS_FLOOR} />
+      <ScenePad w={w} d={d} color={MOSS_FLOOR.color ? '#' + MOSS_FLOOR.color.getHexString() : undefined} />
       <Box p={[0, 0.02, 4]} s={[2.4, 0.04, 16]} m={PATH_DIRT} />
       {/* 갈라진 바위: 두 쪽이 비스듬히 벌어짐 + 금줄(시메나와)과 종이 장식 */}
       <group position={[0, 0, -4.5]} rotation={[0, 0.5, 0]}>
@@ -497,7 +505,7 @@ function SplitRock({ d }) {
       {/* 안개: 낮게 깔린 반투명 판 여러 장 */}
       {[0.4, 0.9, 1.6, 2.6].map((y, i) => (
         <mesh key={y} position={[0, y, -2 + i]} rotation={[-Math.PI / 2, 0, i * 0.4]} material={MIST}>
-          <planeGeometry args={[30, 30]} />
+          <planeGeometry args={[w - 2, d - 2]} />
         </mesh>
       ))}
       <group position={[2.6, 0, 3]}>
@@ -545,31 +553,32 @@ function FallingPetals({ area = 28, top = 9 }) {
   )
 }
 
-function SakuraCrossing({ d }) {
+function SakuraCrossing({ w = 36, d }) {
+  const trees = [[-4.5, 6], [4.5, 7.5], [-5, 0.5], [5.2, 1], [-7, -8], [6.5, -9], [-11, 3], [11, 4], [-12, -10], [12, -11]].filter(([x, z]) => Math.abs(x) < w / 2 - 2 && Math.abs(z) < d / 2 - 2)
   return (
     <group>
-      <Box p={[0, -0.5, 0]} s={[36, 1, d]} m={SPRING_GRASS} />
-      <Box p={[0, 0.02, 3]} s={[3.6, 0.04, 26]} c="#7c7a76" />
+      <ScenePad w={w} d={d} color={SPRING_GRASS.color ? '#' + SPRING_GRASS.color.getHexString() : undefined} />
+      <Box p={[0, 0.02, 1]} s={[3.6, 0.04, d - 1]} c="#7c7a76" />
       {/* 선로 (동서) */}
       <group position={[0, 0, -3]}>
-        <Box p={[0, 0.08, 0]} s={[36, 0.16, 3.4]} m={BALLAST} />
-        {Array.from({ length: 48 }, (_, i) => (
-          <Box key={i} p={[-17.6 + i * 0.75, 0.2, 0]} s={[0.22, 0.1, 2.5]} m={SLEEPER} />
+        <Box p={[0, 0.08, 0]} s={[w, 0.16, 3.4]} m={BALLAST} />
+        {Array.from({ length: Math.floor(w / 0.75) }, (_, i) => (
+          <Box key={i} p={[-w / 2 + 0.4 + i * 0.75, 0.2, 0]} s={[0.22, 0.1, 2.5]} m={SLEEPER} />
         ))}
         {[-0.72, 0.72].map((z) => (
-          <Box key={z} p={[0, 0.3, z]} s={[36, 0.1, 0.08]} m={RAIL_STEEL} />
+          <Box key={z} p={[0, 0.3, z]} s={[w, 0.1, 0.08]} m={RAIL_STEEL} />
         ))}
         {/* 건널목 판 + 경보기 (옛 건널목 코드) */}
         <Box p={[0, 0.27, 0]} s={[3.6, 0.06, 2.4]} c="#3a3a3a" />
         <JmCrossing item={{ size: [4.4, 3.2, 1] }} />
       </group>
       {/* 벚나무 줄 */}
-      {[[-4.5, 6], [4.5, 7.5], [-5, 0.5], [5.2, 1], [-7, -8], [6.5, -9], [-11, 3], [11, 4], [-12, -10], [12, -11]].map(([x, z], i) => (
+      {trees.map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
           <JmSakuraBloom item={{ id: `jm_room_sakura_${i}`, size: [4, 6.5, 4], rotationDeg: i * 47 }} />
         </group>
       ))}
-      <FallingPetals />
+      <FallingPetals area={Math.min(w, d) - 2} />
     </group>
   )
 }
@@ -598,11 +607,11 @@ function LanternString({ x0, x1, y, z }) {
   )
 }
 
-function OnsenMotif({ d, bridge }) {
+function OnsenMotif({ w = 36, d, bridge }) {
   const roofs = useMemo(() => [hipRoofGeometry(15, 7, 2.2, 0.3), hipRoofGeometry(11, 5.4, 1.8, 0.3), hipRoofGeometry(5, 4, 2.4, 0.2)], [])
   return (
     <group>
-      <Box p={[0, -0.5, 0]} s={[36, 1, d]} m={NIGHT_STONE} />
+      <ScenePad w={w} d={d} color={NIGHT_STONE.color ? '#' + NIGHT_STONE.color.getHexString() : undefined} />
       {/* 제등 거리: 양옆 2층 찻집 + 머리 위 제등 줄 */}
       {[-1, 1].map((side) =>
         [0, 1, 2].map((k) => {
@@ -623,7 +632,7 @@ function OnsenMotif({ d, bridge }) {
       ))}
       {/* 물길 (동서, 바다 같은 물) + 붉은 다리 */}
       <group position={[0, 0, bridge.z]} rotation={[0, Math.PI / 2, 0]}>
-        <JmCanal item={{ size: [bridge.water, 0.1, 36], natural: true }} />
+        <JmCanal item={{ size: [bridge.water, 0.1, w - 1], natural: true }} />
       </group>
       <group position={[0, 0, bridge.z]}>
         {/* 다리 바닥: 가운데가 살짝 높은 아치 */}

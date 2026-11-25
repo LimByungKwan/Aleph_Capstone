@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSeason } from '../../seasons.js'
+import { ICE, SeaWater, lakeGeometry, ribbonGrid } from './jm_water.jsx'
 
 // 애니메이션 구역(JM) 전용: 영역마다 "무엇을 묘사했는지" 알아볼 수 있게 하는 세부 소품. 담당: 지민
 // 대부분 충돌 없이 써도 되는 작은 소품이에요 (필요한 것만 JSON에서 collider 지정).
@@ -345,23 +345,28 @@ export function JmLake({ item }) {
       }
       return shape
     }
-    return { shore: make(0.98, 0.98), water: make(0.88, 0.84) }
+    // 11/25: 물은 hjSea와 똑같이 (jm_water.jsx) — 가장자리 식이 같은 고리 모양 물결 면
+    const wobble = (a) => 1 + 0.07 * Math.sin(a * 3) + 0.05 * Math.cos(a * 5)
+    const rings = Math.max(4, Math.ceil(Math.max(w, d) / 3))
+    return { shore: make(0.98, 0.98), water: make(0.88, 0.84), surface: lakeGeometry(w, d, 0.88, 0.84, wobble, rings), deep: lakeGeometry(w, d, 0.88, 0.84, wobble, 1) }
   }, [w, d])
   const rocks = useMemo(() => range(14).map((i) => {
     const a = (i / 14) * Math.PI * 2 + 0.2
     return [Math.cos(a) * (w / 2) * 0.9, Math.sin(a) * (d / 2) * 0.87, 0.18 + (i % 3) * 0.08]
   }), [w, d])
-  const waterColor = season === 'winter' ? '#bcd6ea' : '#3f7fb5'
   return (
     <group>
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <shapeGeometry args={[shapes.shore]} />
         <meshStandardMaterial color={season === 'winter' ? SNOW : '#cdbb8e'} />
       </mesh>
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <shapeGeometry args={[shapes.water]} />
-        <meshStandardMaterial color={waterColor} metalness={0.3} roughness={0.15} />
-      </mesh>
+      {season === 'winter' ? (
+        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} material={ICE}>
+          <shapeGeometry args={[shapes.water]} />
+        </mesh>
+      ) : (
+        <SeaWater deep={shapes.deep} surface={shapes.surface} y={0.045} gap={0.04} />
+      )}
       {rocks.map(([x, z, s], i) => (
         <mesh key={i} position={[x, s * 0.5, -z]}>
           <dodecahedronGeometry args={[s, 0]} />
@@ -515,28 +520,20 @@ export function JmRiver({ item }) {
     const from = bankFromX === undefined ? 0 : Math.max(0, points.findIndex((q) => q[0] <= bankFromX))
     const bankPts = points.slice(from)
     return {
-      water: ribbonGeometry(points, width, 0.04),
-      flow: ribbonGeometry(points, width * 0.9, 0.05),
+      // 11/25: 물은 hjSea와 똑같이 (jm_water.jsx) — 깊은 물 띠 + 잘게 나눈 반투명 물결 띠. 흐름 줄무늬는 뺌
+      water: ribbonGeometry(points, width, 0),
+      surface: ribbonGrid(points, width),
       bankL: ribbonGeometry(bankPts, width, 0.06, -1),
       bankR: ribbonGeometry(bankPts, width, 0.06, 1),
     }
   }, [points, width, bankFromX])
-  const flow = useMemo(() => getFlowTexture()?.clone(), [])
-  useFrame((_, delta) => {
-    if (flow) {
-      flow.offset.y -= delta * 0.35 // 호수(시작점) → 하류 쪽으로 흐름
-    }
-  })
   const winter = season === 'winter'
   return (
     <group>
-      <mesh geometry={geo.water}>
-        <meshStandardMaterial color={winter ? '#bcd6ea' : '#3f7fb5'} metalness={0.3} roughness={0.15} side={THREE.DoubleSide} />
-      </mesh>
-      {flow && !winter && (
-        <mesh geometry={geo.flow}>
-          <meshBasicMaterial map={flow} transparent opacity={0.45} depthWrite={false} side={THREE.DoubleSide} />
-        </mesh>
+      {winter ? (
+        <mesh geometry={geo.water} position={[0, 0.04, 0]} material={ICE} />
+      ) : (
+        <SeaWater deep={geo.water} surface={geo.surface} y={0.035} gap={0.03} far={120} />
       )}
       {[geo.bankL, geo.bankR].map((g, i) => (
         <mesh key={i} geometry={g}>

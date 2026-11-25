@@ -1,9 +1,21 @@
 /* 미니맵 (담당: 병관) — 색은 공통 UI 토큰(ui.css의 --ui-*) */
 
+.ui-root:has(.mm) {
+  --mm-size: 180px;
+  --mm-ratio: 1;
+  --mm-bottom: 12px;
+  --mm-height-limit: calc(100dvh - 208px);
+  --mm-width-limit: calc(100vw - 44px);
+  --mm-diameter: min(calc(var(--mm-size) * var(--mm-ratio)), var(--mm-width-limit), max(132px, var(--mm-height-limit)));
+}
+.ui-root:has(.mm[data-size="0"]) { --mm-size: 150px; }
+.ui-root:has(.mm[data-size="2"]) { --mm-size: 242px; }
+.ui-root:has(.mm[data-size="3"]) { --mm-size: 310px; }
+
 .mm {
   position: absolute;
   right: 12px;
-  bottom: 12px;
+  bottom: var(--mm-bottom);
   display: grid;
   gap: 7px;
   padding: 7px;
@@ -68,10 +80,60 @@
 }
 .mm__canvas {
   display: block;
-  width: 180px;
-  height: 180px;
+  justify-self: center;
+  width: var(--mm-diameter);
+  height: var(--mm-diameter);
   border-radius: 50%;
 }
+.mm__canvas--overview {
+  cursor: grab;
+  touch-action: none;
+}
+.mm__canvas--overview[data-dragging] { cursor: grabbing; }
+.mm__place {
+  display: grid;
+  place-items: center;
+  contain: inline-size;
+  min-height: 30px;
+  max-height: 30px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-align: center;
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 14px;
+}
+.mm__place[data-picked="true"] {
+  border-radius: 8px;
+  background: var(--ui-sage-soft);
+  color: #304b3f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.mm__size {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+.mm__size span { margin-right: 3px; }
+.mm__size button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: var(--ui-surface-2);
+  color: #304b3f;
+  font: 700 15px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.mm__size button:hover:not(:disabled) { background: #e3ebe2; }
+.mm__size button:disabled { opacity: 0.4; cursor: default; }
 .mm-toggle {
   position: absolute;
   right: 16px;
@@ -92,27 +154,30 @@
   background: var(--ui-surface-2);
 }
 @media (max-width: 600px) {
-  .mm {
-    transform: scale(0.8);
-    transform-origin: bottom right;
-  }
+  .ui-root:has(.mm) { --mm-ratio: 0.88; }
 }
 @media (max-width: 600px) and (pointer: fine) {
-  .mm, .mm-toggle { bottom: 56px; }
+  .ui-root:has(.mm) { --mm-bottom: 56px; --mm-height-limit: calc(100dvh - 300px); }
+  .mm-toggle { bottom: 56px; }
+}
+@media (max-width: 700px) and (pointer: fine) {
+  .ui-root:has(.mm) .tut { bottom: calc(var(--mm-bottom) + var(--mm-diameter) + 120px); }
 }
 
 /* 모바일(터치): 오른쪽 아래는 조작 버튼 자리라 미니맵은 오른쪽 위로, 조금 작게 */
 @media (pointer: coarse) {
+  .ui-root:has(.mm) {
+    --mm-ratio: 0.86;
+    --mm-height-limit: calc(100dvh - 345px);
+    --mm-width-limit: max(132px, calc(100vw - 150px));
+  }
   .mm,
   .mm-toggle {
     top: calc(112px + env(safe-area-inset-top));
     bottom: auto;
     right: max(12px, env(safe-area-inset-right));
   }
-  .mm {
-    transform: scale(0.72);
-    transform-origin: top right;
-  }
+  .ui-root:has(.mm) .date-tracker { width: min(218px, calc(100vw - var(--mm-diameter) - 44px)); }
 }
 
 /* 워프존 이동 확인 창 (미니맵 위) */
@@ -159,4 +224,109 @@
 }
 @media (pointer: coarse) {
   .mm-warp { top: calc(100% + 8px); bottom: auto; }
+}
+
+/* 더보기에서 여는 큰 지도 */
+.world-map {
+  --world-map-height: clamp(190px, calc(100dvh - 165px), 650px);
+  width: min(1100px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-surface);
+  color: #30483e;
+  box-shadow: 0 24px 70px #182b2559;
+}
+.world-map::backdrop { background: #192b24a6; }
+.world-map__head,
+.world-map__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.world-map__head { margin-bottom: 10px; }
+.world-map__head h2 { margin: 0; font: 700 22px/1.2 var(--ui-serif); }
+.world-map__head button { min-width: 36px; min-height: 36px; padding: 4px; font-size: 20px; }
+.world-map__toolbar { flex-wrap: wrap; margin-bottom: 8px; }
+.world-map__zones,
+.world-map__zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.world-map__zones { flex-wrap: wrap; }
+.world-map__toolbar .ui-btn {
+  min-height: 34px;
+  padding: 4px 10px;
+  background: var(--ui-surface-2);
+  color: #30483e;
+  font-size: 12px;
+}
+.world-map__zones .ui-btn[aria-pressed="true"] { border-color: #a5baa6; background: #e0eade; }
+.world-map__zoom span { width: 45px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.world-map__zoom button { min-width: 35px; }
+.world-map__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(165px, 23%);
+  gap: 10px;
+}
+.world-map__viewport { min-width: 0; }
+.mm__canvas--wide {
+  width: 100%;
+  height: var(--world-map-height);
+  border: 1px solid #9aaf96;
+  border-radius: 12px;
+}
+.world-map__viewport .mm__place { margin-top: 5px; text-align: left; }
+.world-map__places {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--world-map-height) + 35px);
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface-2);
+}
+.world-map__places h3 { margin: 0 0 7px; font-size: 14px; }
+.world-map__places p { margin: 0; color: var(--ui-muted); font-size: 12px; }
+.world-map__places ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+.world-map__places button {
+  min-height: 33px;
+  width: 100%;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #30483e;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.world-map__places button:is(:hover, [aria-pressed="true"]) { background: #dfe9dc; }
+.world-map .mm-warp {
+  position: fixed;
+  inset: auto 50% max(28px, env(safe-area-inset-bottom)) auto;
+  translate: 50%;
+}
+@media (max-width: 650px) {
+  .world-map {
+    --world-map-height: clamp(180px, 43dvh, 440px);
+    padding: 10px;
+  }
+  .world-map__body { grid-template-columns: minmax(0, 1fr); }
+  .world-map__places { max-height: 190px; }
 }

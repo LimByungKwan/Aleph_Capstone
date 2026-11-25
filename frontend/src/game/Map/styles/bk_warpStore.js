@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { USE_SERVER } from '../../../api/session.js'
 import { listWarps, unlockWarp } from '../../../api/client.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
+import { layout } from '../../data/mapData.js'
+import { GWANGHWAMUN, PALACE_ORIGIN_Z } from './hj/gyeongbokLayout.js'
 
 // 구역 워프존 (담당: 병관) — K-POP · 데이트 코스 · 영화·드라마 · 애니메이션 구역 입구 안쪽에 하나씩
 // - 처음엔 꺼져 있고, 로그인한 상태로 한 번이라도 근처(4m)에 가면 켜짐
@@ -10,11 +12,15 @@ import { useUiStore } from '../../../components/movieZone/uiStore.js'
 // - 미니맵의 워프 아이콘을 누르면 "이 지역으로 이동하겠습니까?" → 이동 (bk_warpZones.jsx가 캐릭터를 옮김)
 // 위치는 구역 입구 바로 안쪽의 평평한 빈 땅 (미리보기에서 바닥 높이를 재서 고름). 숫자만 바꾸면 옮길 수 있어요
 
+// 광화문 안쪽 동쪽 마당. 흥례문 담장 끝 너머라 도착 후 카메라 뒤에도 공간이 있습니다.
+const [palaceX, palaceZ] = layout.props.find(({ id }) => id === 'HJ/haewol_palace')?.position ?? [0, 71]
+const hjWarpPosition = [palaceX + 18, 0.17, palaceZ + GWANGHWAMUN.az - PALACE_ORIGIN_Z + 5.2]
+
 export const WARPS = [
   { id: 'warp_bk', zone: 'BK', name: '데이트 코스', icon: '💕', color: '#f472b6', position: [51, 0.02, 0] },
   { id: 'warp_jm', zone: 'JM', name: '애니메이션', icon: '🌸', color: '#a78bfa', position: [-10, 0, -49] },
   { id: 'warp_sg', zone: 'SG', name: 'K-POP', icon: '🎤', color: '#60a5fa', position: [-63, 0.02, -2] },
-  { id: 'warp_hj', zone: 'HJ', name: '영화·드라마', icon: '🎬', color: '#fbbf24', position: [12, 0.15, 53] },
+  { id: 'warp_hj', zone: 'HJ', name: '영화·드라마', icon: '🎬', color: '#fbbf24', position: hjWarpPosition },
 ]
 export const UNLOCK_RANGE = 4
 
@@ -38,6 +44,7 @@ function readOldLocal(userId) {
 export const useWarps = create((set, get) => ({
   unlocked: [], // 켜진 워프존 id (계정에서 불러옴)
   request: null, // 이동할 워프존 id (bk_warpZones.jsx가 처리하고 비움)
+  exact: true, // (11/25 지민) goto 요청의 exact: [x, 바닥 y, z]를 지원함 — 애니 구역 온천장 엘리베이터가 이 값을 보고 켜짐
   /** 켜기: 화면에는 바로 켜고, 계정에 저장. 저장이 실패하면 다시 끔 */
   unlock(id) {
     if (!isLoggedIn() || get().unlocked.includes(id)) return false
