@@ -55,6 +55,15 @@
       ],
       "port": 8000,
       "autoPort": false
+    },
+    {
+      "name": "frontend-server-mode",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set VITE_API_URL=https://scenewalk-api.onrender.com&& npm --prefix frontend run dev -- --port 5180 --strictPort"
+      ],
+      "port": 5180
     }
   ]
 }
