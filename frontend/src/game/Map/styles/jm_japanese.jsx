@@ -14,6 +14,7 @@ import { JM_KYOTO_STYLES } from './jm_kyoto.jsx'
 import { JM_STAIR_STYLES } from './jm_stairs.jsx'
 import { JM_PORTAL_STYLES } from './jm_portal.jsx'
 import { JM_YUTOYA_STYLES } from './jm_yutoya.jsx'
+import { JM_GINZAN_STYLES } from './jm_ginzan.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -86,6 +87,8 @@ const JM_STYLES_RAW = {
   ...JM_PORTAL_STYLES,
   // 큰 여관 「湯灯屋」 외관·안 (jm_yutoya.jsx)
   ...JM_YUTOYA_STYLES,
+  // 서쪽 운하 거리 여관·쌍둥이 가스등·작은 다리·회벽 담 (jm_ginzan.jsx, 11/25)
+  ...JM_GINZAN_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)

@@ -259,7 +259,7 @@ function karahafuShape(w, h, thick) {
   }
   return { shape: s, top }
 }
-function Karahafu({ w, h, depth, color = GREEN, p = [0, 0, 0], board = true, sign }) {
+export function Karahafu({ w, h, depth, color = GREEN, p = [0, 0, 0], board = true, sign }) {
   const { roof, face, top } = useMemo(() => {
     const { shape, top } = karahafuShape(w, h, 0.35)
     const roof = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false })

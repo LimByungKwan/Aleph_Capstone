@@ -6,8 +6,9 @@
 //   → 맵 뒷부분 산넨자카식 계단 거리(옛 데이터, 단 3개 1.5 → 4.5m) → 고개(6m)
 //   → (11/25) 고개에서 골짜기 위를 가로지르는 큰 붉은 다리(높이 6m)로 곧장 → 여관 앞마당(6m) 큰 여관 「湯灯屋」
 //     골짜기(0m, 개울과 작은 붉은 다리)는 고개 동쪽 계단으로 내려감
-//   장면 자리(스탬프) 4곳: ① 계단 거리 첫 단 서쪽 골목 끝 ② 셋째 단 동쪽 골목 끝 ③ 골짜기 개울가 ④ 중턱 쉼터
-//   작품은 아직 미정 → 지금은 빈 마당 + 간판(jmSceneSpot)만. 작품이 정해지면 여기에 장면 소품을 채움
+//   (11/25) 서쪽 강가 북쪽 빈 땅에 운하 거리 「川端通り」: 물길 양쪽 3~4층 목조 여관 + 쌍둥이 가스등 + 작은 다리 (9번)
+//     물길 서쪽 골목 5개 끝 흰 회벽 마당에 명장면 ①~⑤(스탬프), 골목 바로 남쪽 여관 1층이 같은 작품 가게(쿠폰)
+//     스탬프·가게 자리는 이 스크립트가 shared/places.json "position"에 맞춰 씀
 //   수로 거리의 갈래 4개는 풍경만 남김(옛 애니 장면·스탬프는 11/23에 뺌): 서1 마치야 골목 / 동1 잡화점 + 전망 무대(BK 흔들다리)
 //   / 서2 호수 → 벚꽃 강변 / 동2 대나무 숲 산책길
 // 북쪽 끝은 hub.json 바닥을 늘려서 구역 좌표 z -185(11/23) → -225(11/25, 큰 여관 다시 지음)까지 써요.
@@ -501,76 +502,190 @@ terrain.push(...keep.terrain)
 props.push(...keep.props.filter((item) => item.id !== 'jm_skip_spot' && item.id !== 'jm_poster_byousoku_river'))
 
 // ─────────────────────────────────────────────
-// 9. 명장면 공간 (11/24, jm_portal.jsx): 계단 거리 가게 문 → 맵 밖 장면 공간으로 순간 이동
-//    공간은 맵 남쪽 바다 위 멀리(월드 z 약 850, 안개에 가려 맵에서는 안 보임)에 하나씩 나란히 둠
-//    순간 이동은 병관님 워프 goto(도착점 근처 평평한 바닥을 위에서 재서 찾음) → 바닥은 높이 1m 판
-//    작품명은 근접형 가상 이름 (팀 규칙) — 지민과 확정 전 임시
+// 9. (11/25) 서쪽 운하 거리 「湯灯 川端通り」 + 명장면 마당 5곳 + 같은 작품 가게 5곳
+//    예전: 계단 거리 가게 문 → 맵 밖(월드 z 850) 장면 공간으로 순간 이동 → 지민 요청으로 공간을 없애고 장면을 맵 안으로
+//    자리: 강가 북쪽 빈 땅(구역 x -130 ~ -61, z -28 ~ -224). 참고: 지민이 보낸 온천 마을 사진들
+//      (좁은 물길 양쪽 3~4층 목조 여관, 층마다 처마·발코니, 세로 간판, 쌍둥이 가스등, 작은 다리, 끝에 망루 있는 큰 여관)
+//    남쪽 끝은 벚꽃 강변과 광장으로 이어지고, 동쪽은 계단 거리 서쪽 문(z -52)과 골목으로 이어짐
+//    물길 서쪽 줄 여관 사이 골목 5개 → 골목 끝 흰 회벽 마당 안에 명장면 ①~⑤ (장면 그림은 jm_portal.jsx JmSceneRoom inMap)
+//    골목 바로 남쪽 여관 1층은 그 장면과 같은 작품 가게(쿠폰) — shared/places.json 의 cafe
+//    좌표: 구역 좌표. 장면 그림은 로컬 +z(입구)가 동쪽(물길 쪽)을 보게 rotationDeg 90
 // ─────────────────────────────────────────────
 const ZONE_ORIGIN_Z = -85
-const ROOM = { w: 36, d: 36, z: 935, floor: 1, wall: 10 } // z는 구역 좌표 (월드 z = 935 - 85 = 850)
-const SCENE_ROOMS = [
-  { n: 1, kind: 'totoro', shop: 'jm_zaka_shop_3', x: -240, title: '명장면 ① 「이웃집 토토로」', sub: '비 오는 숲속 정류장', color: '#9fd3ff' },
-  { n: 2, kind: 'stairs', shop: 'jm_zaka_shop_6', x: -120, title: '명장면 ② 「너의 이름은.」', sub: '노을 지는 붉은 난간 계단', color: '#ffb08a' },
-  { n: 3, kind: 'rock', shop: 'jm_zaka_shop_7', x: 0, title: '명장면 ③ 「귀멸의 칼날」', sub: '안개 숲의 갈라진 바위', color: '#cfe8d8' },
-  { n: 4, kind: 'crossing', shop: 'jm_zaka_shop_10', x: 120, title: '명장면 ④ 「초속 5센티미터」', sub: '벚꽃 날리는 철길 건널목', color: '#ffc4d6' },
-  { n: 5, kind: 'onsen', shop: 'jm_zaka_shop_12', x: 240, title: '명장면 ⑤ 「센과 치히로의 행방불명」', sub: '붉은 다리 건너 옛 온천 본관', color: '#ff9a6b' },
+const VC = { x: -76.5, canal: 5, walk: 4, rowD: 9, south: -36, north: -213 } // 물길 가운데 x, 폭, 산책길 폭, 여관 깊이, 거리 남·북 끝
+const V_WALK_W = r2(VC.x - VC.canal / 2 - VC.walk / 2) // 서쪽 산책길 가운데 (-81)
+const V_WALK_E = r2(VC.x + VC.canal / 2 + VC.walk / 2) // 동쪽 산책길 가운데 (-72)
+const V_ROW_W = r2(VC.x - VC.canal / 2 - VC.walk - VC.rowD / 2) // 서쪽 여관 줄 가운데 (-87.5)
+const V_ROW_E = r2(VC.x + VC.canal / 2 + VC.walk + VC.rowD / 2) // 동쪽 여관 줄 가운데 (-65.5)
+const COURT = { x: -112, size: 36, wallH: 3.4, gate: 5 } // 마당 가운데 x (x -130 ~ -94), 한 변 36m (장면 그림이 36m 기준)
+const ALLEY = 4
+const SCENES = [
+  { n: 1, kind: 'totoro', z: -52, title: '명장면 ① 「이웃집 토토로」', sub: '비 오는 숲속 정류장', stamp: 'spot_jm_crossing', spot: [4, 2, 0],
+    shop: { id: 'shop_jm_donguri', text: 'どんぐり茶屋', bg: '#2f4a2a', name: '도토리 찻집', menu: '도토리 쿠키와 보리차' } },
+  { n: 2, kind: 'stairs', z: -89, title: '명장면 ② 「너의 이름은.」', sub: '노을 지는 붉은 난간 계단', stamp: 'spot_jm_stairs', spot: [0, -13, 4],
+    shop: { id: 'shop_jm_kumihimo', text: '組紐 結び屋', bg: '#7a1d3a', name: '매듭끈 가게', menu: '손목 매듭끈 만들기' } },
+  { n: 3, kind: 'rock', z: -126, title: '명장면 ③ 「귀멸의 칼날」', sub: '안개 숲의 갈라진 바위', stamp: 'spot_jm_shrine', spot: [2.5, -1, 0],
+    shop: { id: 'shop_jm_fuji', text: '藤の花茶屋', bg: '#4b2e6b', name: '등꽃 찻집', menu: '등꽃 경단과 말차' } },
+  { n: 4, kind: 'crossing', z: -163, title: '명장면 ④ 「초속 5센티미터」', sub: '벚꽃 날리는 철길 건널목', stamp: 'spot_jm_sakura_river', spot: [2.6, 1, 0],
+    shop: { id: 'shop_jm_sakura', text: '桜餅 花便り', bg: '#b8476a', name: '벚꽃떡 가게', menu: '벚꽃 찹쌀떡' } },
+  { n: 5, kind: 'onsen', z: -200, title: '명장면 ⑤ 「센과 치히로의 행방불명」', sub: '붉은 다리 건너 옛 온천 본관', stamp: 'spot_jm_onsen', spot: [0, -8.5, 0],
+    shop: { id: 'shop_jm_manju', text: '湯けむり饅頭', bg: '#7c2d12', name: '온천 찐빵 가게', menu: '온천 김에 찐 팥 찐빵' } },
 ]
-// 공간별 걷는 판정·추가 정보 (로컬 좌표: 공간 가운데 기준, +z가 입구 쪽)
-const ROOM_STAIR = { z0: 5, z1: -9, h: 4, w: 4 } // ② 계단 (바닥 1m 위에서 4m 오름)
+const ROOM_STAIR = { z0: 5, z1: -9, h: 4, w: 4 } // ② 계단 (마당 바닥에서 4m 오름)
 const ROOM_BRIDGE = { z: -4, len: 6, w: 3, water: 5 } // ⑤ 물길 위 붉은 다리
-const ROOM_STAMP = { 1: 'spot_jm_crossing', 2: 'spot_jm_stairs', 3: 'spot_jm_shrine', 4: 'spot_jm_sakura_river' }
-const keepShop = (id) => keep.zaka.buildings.find((b) => b.id === id)
-for (const sr of SCENE_ROOMS) {
-  const cz = ROOM.z
-  // 공간 바닥(충돌) + 둘레 벽(충돌, 보이지 않음) + 공간 그림
-  wall(`jm_scene_room_${sr.n}_floor`, [sr.x, cz], [ROOM.w, ROOM.floor, ROOM.d])
-  wall(`jm_scene_room_${sr.n}_wall_n`, [sr.x, r2(cz - ROOM.d / 2)], [ROOM.w, ROOM.wall, 0.5], { elevation: ROOM.floor })
-  wall(`jm_scene_room_${sr.n}_wall_s`, [sr.x, r2(cz + ROOM.d / 2)], [ROOM.w, ROOM.wall, 0.5], { elevation: ROOM.floor })
-  wall(`jm_scene_room_${sr.n}_wall_w`, [r2(sr.x - ROOM.w / 2), cz], [0.5, ROOM.wall, ROOM.d], { elevation: ROOM.floor })
-  wall(`jm_scene_room_${sr.n}_wall_e`, [r2(sr.x + ROOM.w / 2), cz], [0.5, ROOM.wall, ROOM.d], { elevation: ROOM.floor })
-  // 소품 size는 16m 이하 (16m보다 크면 맵 어디서나 늘 그려짐 → 공간 근처에서만 그리게), 실제 크기는 room.w/d
-  prop(`jm_scene_room_${sr.n}`, 'jmSceneRoom', [sr.x, cz], [16, 12, 16], {
-    collider: false, elevation: ROOM.floor,
-    room: { kind: sr.kind, title: sr.title, sub: sr.sub, w: ROOM.w, d: ROOM.d, ...(sr.kind === 'stairs' && { stair: ROOM_STAIR }), ...(sr.kind === 'onsen' && { bridge: ROOM_BRIDGE }) },
-  })
-  const L = (lx, lz) => [r2(sr.x + lx), r2(cz + lz)]
-  const F = ROOM.floor
-  if (sr.kind === 'stairs') {
-    const st = ROOM_STAIR
-    terrain.push({ type: 'stairs', id: `jm_scene${sr.n}_stairs`, from: [...L(0, st.z0), F], to: [...L(0, st.z1), F + st.h], width: st.w })
-    const [x0, z0] = L(-6, st.z1 - 8)
-    const [x1, z1] = L(6, st.z1)
-    terrain.push({ type: 'platform', id: `jm_scene${sr.n}_top`, rect: [x0, z0, x1, z1], height: F + st.h, surface: 'stone', rails: [{ edge: 'north' }, { edge: 'west' }, { edge: 'east' }] })
-    for (const side of [-1, 1]) for (const k of [0, 1, 2]) wall(`jm_scene${sr.n}_house_${side < 0 ? 'w' : 'e'}${k}`, L(side * (st.w / 2 + 3.6), st.z0 - 2.5 - k * 5.2), [5.6, 9, 4.6], { elevation: F })
+// 장면 로컬(lx, lz) → 구역 좌표 (rotationDeg 90: 로컬 +z → 동쪽 +x, 로컬 +x → 북쪽 -z)
+const sceneAt = (sc) => (lx, lz) => [r2(COURT.x + lz), r2(sc.z - lx)]
+// places.json 에 쓸 월드 좌표 (스탬프·가게) — 아래에서 모아 파일 끝에서 검사·출력
+const placePositions = {}
+
+// 바닥: 남쪽 광장(벚꽃 강변과 이어짐) + 양쪽 산책길 + 계단 거리 서쪽 문으로 가는 골목
+road('jm_v_plaza', 'stone', [VC.x, -32], [31, 0.06, 8])
+road('jm_v_walk_w', 'stone', [V_WALK_W, r2((VC.south + VC.north) / 2)], [VC.walk, 0.06, r2(VC.south - VC.north)])
+road('jm_v_walk_e', 'stone', [V_WALK_E, r2((VC.south + VC.north) / 2)], [VC.walk, 0.06, r2(VC.south - VC.north)])
+road('jm_v_alley_zaka', 'stone', [-61.5, -52], [17, 0.06, ALLEY])
+prop('jm_v_sign_plaza', 'jmArrowSign', [-63, -30.5], [1.6, 2.1, 0.2], { rotationDeg: -40, signs: [{ text: '운하 거리', dir: 'left' }, { text: '명장면 마당', dir: 'left' }] })
+prop('jm_v_sign_zaka', 'jmArrowSign', [-56, -49.6], [1.6, 2.1, 0.2], { rotationDeg: 90, signs: [{ text: '운하 거리', dir: 'left' }, { text: '명장면 마당', dir: 'left' }] })
+prop('jm_v_stone', 'jmStoneMonument', [-86, -30], [2, 2.4, 0.5], { rotationDeg: 30, signs: [{ text: '川端通り' }] })
+
+// 물길: 다리 자리(장면 골목 앞)만 충돌 없이 물만
+{
+  const cuts = [VC.south]
+  for (const sc of SCENES) cuts.push(r2(sc.z + 1.5), r2(sc.z - 1.5))
+  cuts.push(VC.north + 2)
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const [a, b] = [cuts[i], cuts[i + 1]]
+    const len = r2(a - b)
+    const isBridge = i % 2 === 1
+    prop(`jm_v_canal_${i}`, 'jmCanal', [VC.x, r2((a + b) / 2)], [VC.canal, 0.1, len], { natural: true, ...(isBridge ? { collider: false, curb: false } : { collider: [VC.canal - 0.4, 1, len] }) })
   }
-  if (sr.kind === 'rock') wall(`jm_scene${sr.n}_rock`, L(0, -4.5), [3.6, 2.8, 3.6], { elevation: F })
-  if (sr.kind === 'onsen') {
+  prop('jm_v_canal_wall_s', null, [VC.x, VC.south + 0.2], [VC.canal, 0.46, 0.4], { color: '#9d978c' })
+  prop('jm_v_canal_wall_n', null, [VC.x, VC.north + 1.8], [VC.canal, 0.46, 0.4], { color: '#9d978c' })
+}
+// 작은 다리 (장면 골목 앞마다) — 바닥은 땅 높이 그대로, 난간 충돌만
+SCENES.forEach((sc, i) => {
+  prop(`jm_v_bridge_${sc.n}`, 'jmGinzanBridge', [VC.x, sc.z], [3, 0.2, VC.canal + 1], { rotationDeg: 90, collider: false, red: i % 2 === 0 })
+  for (const side of [-1, 1]) wall(`jm_v_bridge_${sc.n}_rail_${side < 0 ? 's' : 'n'}`, [VC.x, r2(sc.z - side * 1.42)], [VC.canal, 1.1, 0.2])
+})
+// 쌍둥이 가스등: 물길 양쪽 가장자리, 다리 앞은 비움
+for (let z = VC.south - 4; z > VC.north + 3; z -= 11) {
+  if (SCENES.some((sc) => Math.abs(sc.z - z) < 3.5)) continue
+  for (const [side, x] of [['w', r2(VC.x - VC.canal / 2 - 0.45)], ['e', r2(VC.x + VC.canal / 2 + 0.45)]]) {
+    prop(`jm_v_lamp_${side}${-Math.round(z)}`, 'jmTwinLamp', [x, r2(z)], [1.1, 3.4, 0.4], { rotationDeg: 90, collider: [0.3, 3.4, 0.3] })
+  }
+}
+for (const z of [-50, -95, -140, -185]) light(`jm_light_village_${-z}`, [VC.x, z])
+
+// 여관 줄 (서쪽 줄은 골목마다 끊김, 동쪽 줄은 계단 거리 골목에서만 끊김)
+const INN_NAMES = ['雪灯館', '川音荘', '月見楼', '銀の湯', '藤乃屋', '灯籠亭', '霧乃宿', '白雲閣', '山水館', '古湯屋', '花灯籠', '鈴の宿', '星見館', '柳屋', '千歳館', '松風荘', '小雪屋', '湯守館', '朝霧荘', '玉の湯', '水車屋', '紅葉館', '若竹', '常盤屋']
+const INN_LOOK = ['wood', 'plaster', 'wood', 'plaster', 'wood']
+const INN_WIDTHS = [10.5, 8.5, 11.5, 9, 12, 8, 10]
+let innNo = 0
+function innRow(side, z0, z1, shopFor) {
+  // z0(남) → z1(북)으로 채움. 폭은 정해진 순서로 돌리고 마지막 채는 남은 길이에 맞춤
+  const x = side === 'w' ? V_ROW_W : V_ROW_E
+  const rot = side === 'w' ? 90 : -90
+  const list = []
+  let z = z0
+  while (z0 - z1 - (z0 - z) > 0.5) {
+    const left = r2(z - z1)
+    let w = INN_WIDTHS[innNo % INN_WIDTHS.length]
+    if (left - w < 6) w = left
+    list.push([r2(z - w / 2), r2(w - 0.3)])
+    z = r2(z - w)
+  }
+  list.forEach(([cz, w], k) => {
+    const i = innNo++
+    const floors = 3 + ((i * 7) % 3 === 0 ? 1 : 0)
+    const tower = i % 6 === 2
+    const h = r2(0.45 + floors * 3.05 + Math.min(2.6, w * 0.22) + (tower ? 3.2 : 0))
+    const id = `jm_v_inn_${side}${i + 1}`
+    const shop = shopFor && k === 0 ? shopFor : null
+    buildings.push({
+      id, style: 'jmGinzanInn', position: [x, cz], size: [w, h, VC.rowD], rotationDeg: rot, model: null,
+      floors, look: INN_LOOK[i % INN_LOOK.length], seed: i, tower, arch: i % 5 === 1, karahafu: i % 7 === 3 && !shop,
+      vsign: { text: INN_NAMES[i % INN_NAMES.length], side: i % 2 ? 1 : -1 },
+      ...(shop && { noren: { text: shop.text, bg: shop.bg, fg: '#fdf6e3' } }),
+    })
+    if (shop) placePositions[shop.id] = [r2(side === 'w' ? V_WALK_W : V_WALK_E), 0, r2(cz + ZONE_ORIGIN_Z)]
+  })
+}
+// 서쪽 줄: 골목(장면 z ± 2) 사이 구간. 각 구간의 북쪽 끝 첫 채(골목 바로 남쪽)가 그 골목 장면의 가게 → 북쪽부터 채우려고 구간을 뒤집어 씀
+{
+  const edges = [VC.south, ...SCENES.flatMap((sc) => [r2(sc.z + ALLEY / 2), r2(sc.z - ALLEY / 2)]), VC.north]
+  for (let i = 0; i < edges.length; i += 2) {
+    const [south, north] = [edges[i], edges[i + 1]]
+    const sc = SCENES[i / 2]
+    // 북쪽 끝부터 남쪽으로 채우기: innRow는 z0 → z1 순서라 (north → south)를 넘김
+    innRowReverse('w', south, north, sc?.shop)
+  }
+}
+function innRowReverse(side, south, north, shopFor) {
+  // 남→북 대신 북→남으로 채워서 첫 채가 골목(북쪽 끝) 바로 옆에 오게
+  const x = side === 'w' ? V_ROW_W : V_ROW_E
+  const before = buildings.length
+  innRow(side, south, north, null)
+  const made = buildings.slice(before)
+  // 만든 줄을 남북으로 뒤집음 (위치만): z' = south + north - z
+  for (const b of made) b.position = [x, r2(south + north - b.position[1])]
+  // 골목 바로 남쪽 = 뒤집은 뒤 가장 북쪽(z가 가장 작은) 채
+  if (shopFor) {
+    const first = made.reduce((m, b) => (b.position[1] < m.position[1] ? b : m))
+    first.noren = { text: shopFor.text, bg: shopFor.bg, fg: '#fdf6e3' }
+    first.karahafu = false
+    // 이 가게는 골목 바로 남쪽 → 골목 장면 z + 2 쪽. 노렌은 앞면 가운데
+    placePositions[shopFor.id] = [V_WALK_W, 0, r2(first.position[1] + ZONE_ORIGIN_Z)]
+  }
+}
+innRow('e', VC.south, -50, null)
+innRow('e', -54, VC.north, null)
+// 거리 북쪽 끝: 망루·둥근 박공·둥근 창이 있는 큰 여관 (물길 끝에서 정면으로 보임)
+buildings.push({
+  id: 'jm_v_inn_head', style: 'jmGinzanInn', position: [VC.x, -219], size: [25, 19.5, 10], rotationDeg: 0, model: null,
+  floors: 4, look: 'plaster', seed: 99, tower: true, arch: true, karahafu: true, vsign: { text: '銀灯館', side: 1 },
+})
+
+// 명장면 마당: 흰 회벽 담(앞 가운데만 문) + 장면 그림(맵 하늘 그대로) + 걷는 판정 + 문 현판
+for (const sc of SCENES) {
+  const L = sceneAt(sc)
+  const half = COURT.size / 2
+  const wallT = 0.5
+  // 뒤(서)·양옆(남북) 담 + 앞(동) 담 두 토막
+  prop(`jm_court_${sc.n}_wall_w`, 'jmPlasterWall', [r2(COURT.x - half + wallT / 2), sc.z], [COURT.size, COURT.wallH, wallT], { rotationDeg: 90 })
+  prop(`jm_court_${sc.n}_wall_s`, 'jmPlasterWall', [COURT.x, r2(sc.z + half - wallT / 2)], [COURT.size, COURT.wallH, wallT])
+  prop(`jm_court_${sc.n}_wall_n`, 'jmPlasterWall', [COURT.x, r2(sc.z - half + wallT / 2)], [COURT.size, COURT.wallH, wallT])
+  const piece = r2((COURT.size - COURT.gate) / 2)
+  for (const side of [-1, 1]) {
+    prop(`jm_court_${sc.n}_wall_e${side < 0 ? 's' : 'n'}`, 'jmPlasterWall', [r2(COURT.x + half - wallT / 2), r2(sc.z - side * (COURT.gate / 2 + piece / 2))], [piece, COURT.wallH, wallT], { rotationDeg: 90 })
+  }
+  prop(`jm_court_${sc.n}_gate`, 'jmCourtGate', [r2(COURT.x + half), sc.z], [COURT.gate - 0.6, 4.2, 0.6], { rotationDeg: 90, collider: false, signs: [{ text: sc.title.split(' 「')[0] + ' ' + sc.sub }] })
+  for (const side of [-1, 1]) wall(`jm_court_${sc.n}_gate_post_${side < 0 ? 's' : 'n'}`, [r2(COURT.x + half), r2(sc.z - side * (COURT.gate / 2 - 0.3))], [0.4, 4.2, 0.4])
+  // 골목 (마당 문 → 서쪽 산책길)
+  road(`jm_court_${sc.n}_alley`, 'stone', [r2((COURT.x + half + V_WALK_W - VC.walk / 2) / 2), sc.z], [r2(V_WALK_W - VC.walk / 2 - COURT.x - half), 0.06, ALLEY])
+  // 장면 그림 (소품 size는 거리 컬링용 16m 이하, 실제 크기는 room.w/d)
+  prop(`jm_scene_${sc.n}`, 'jmSceneRoom', [COURT.x, sc.z], [16, 12, 16], {
+    rotationDeg: 90, collider: false, elevation: 0.02,
+    room: { kind: sc.kind, title: sc.title, sub: sc.sub, w: COURT.size, d: COURT.size, inMap: true, ...(sc.kind === 'stairs' && { stair: ROOM_STAIR }), ...(sc.kind === 'onsen' && { bridge: ROOM_BRIDGE }) },
+  })
+  // 걷는 판정 (예전 공간과 같은 자리, 로컬 → 구역 좌표로 돌려서)
+  if (sc.kind === 'stairs') {
+    const st = ROOM_STAIR
+    terrain.push({ type: 'stairs', id: `jm_scene${sc.n}_stairs`, from: [...L(0, st.z0), 0], to: [...L(0, st.z1), st.h], width: st.w })
+    // 위 마당: 로컬 x -6~6, z (z1-8)~z1 → 구역 x (COURT.x + z1 - 8)~(COURT.x + z1), z (sc.z - 6)~(sc.z + 6)
+    terrain.push({ type: 'platform', id: `jm_scene${sc.n}_top`, rect: [r2(COURT.x + st.z1 - 8), r2(sc.z - 6), r2(COURT.x + st.z1), r2(sc.z + 6)], height: st.h, surface: 'stone', rails: [{ edge: 'west' }, { edge: 'north' }, { edge: 'south' }] })
+    for (const side of [-1, 1]) for (const k of [0, 1, 2]) wall(`jm_scene${sc.n}_house_${side < 0 ? 'w' : 'e'}${k}`, L(side * (st.w / 2 + 3.6), st.z0 - 2.5 - k * 5.2), [5.6, 9, 4.6], { rotationDeg: 90 })
+  }
+  if (sc.kind === 'rock') wall(`jm_scene${sc.n}_rock`, L(0, -4.5), [3.6, 2.8, 3.6], { rotationDeg: 90 })
+  if (sc.kind === 'onsen') {
     const b = ROOM_BRIDGE
     for (const side of [-1, 1]) {
-      const len = ROOM.w / 2 - b.w / 2
-      wall(`jm_scene${sr.n}_water_${side < 0 ? 'w' : 'e'}`, L(side * (b.w / 2 + len / 2), b.z), [len, 1, b.water], { elevation: F })
-      for (const k of [0, 1, 2]) wall(`jm_scene${sr.n}_shop_${side < 0 ? 'w' : 'e'}${k}`, L(side * 5.4, 13 - k * 4.4), [4.6, 6, 4], { elevation: F })
+      const len = COURT.size / 2 - b.w / 2
+      wall(`jm_scene${sc.n}_water_${side < 0 ? 'w' : 'e'}`, L(side * (b.w / 2 + len / 2), b.z), [len, 1, b.water], { rotationDeg: 90 })
+      for (const k of [0, 1, 2]) wall(`jm_scene${sc.n}_shop_${side < 0 ? 'w' : 'e'}${k}`, L(side * 5.4, 13 - k * 4.4), [4.6, 6, 4], { rotationDeg: 90 })
     }
-    wall(`jm_scene${sr.n}_bathhouse`, L(0, b.z - b.len / 2 - 6), [13, 12, 6], { elevation: F })
+    wall(`jm_scene${sc.n}_bathhouse`, L(0, b.z - b.len / 2 - 6), [13, 12, 6], { rotationDeg: 90 })
   }
-  // 가게 문 (가게 앞면 = 로컬 +z, 거리 쪽)
-  const shopItem = shiftZaka(keepShop(sr.shop))
-  const a = (shopItem.rotationDeg * Math.PI) / 180
-  const [fx, fz] = [Math.sin(a), Math.cos(a)]
-  const half = shopItem.size[2] / 2
-  const facade = [r2(shopItem.position[0] + fx * half), r2(shopItem.position[1] + fz * half)]
-  const street = [r2(facade[0] + fx * 2.2), r2(facade[1] + fz * 2.2)]
-  const spawn = [sr.x, r2(cz + ROOM.d / 2 - 7)]
-  const toWorld = ([x, z]) => [x, r2(z + ZONE_ORIGIN_Z)]
-  prop(`jm_scene_door_${sr.n}`, 'jmPortalDoor', facade, [1.6, 2.4, 0.2], {
-    rotationDeg: shopItem.rotationDeg, elevation: shopItem.elevation ?? 0, collider: false,
-    portal: { kind: 'shop', to: toWorld(spawn), face: 180, label: sr.title, title: sr.title.split(' ')[0] + ' ' + sr.title.split(' ')[1], sub: sr.sub, color: sr.color },
-  })
-  // 나가는 문 (공간 남쪽, 앞이 공간 안쪽(-z)을 보게 180도)
-  prop(`jm_scene_exit_${sr.n}`, 'jmPortalDoor', [sr.x, r2(cz + ROOM.d / 2 - 3)], [2.7, 3.6, 0.3], {
-    rotationDeg: 180, elevation: ROOM.floor, collider: false,
-    portal: { kind: 'gate', to: toWorld(street), face: (shopItem.rotationDeg + 180) % 360, label: '계단 거리', title: '계단 거리로 돌아가기', color: sr.color },
-  })
+  const [sx, sz] = L(sc.spot[0], sc.spot[1])
+  placePositions[sc.stamp] = [sx, sc.spot[2], r2(sz + ZONE_ORIGIN_Z)]
 }
 
 // 11/24: 애니 구역 계단은 모두 옆 돌 난간 벽 없이 (지민 요청, 스크린샷의 갈색 옆벽)
@@ -622,3 +737,22 @@ const zone = {
 }
 writeFileSync(OUT, JSON.stringify(zone, null, 0).replace(/\},\{"/g, '},\n{"') + '\n')
 console.log(`jm_anime.json: roads ${roads.length}, terrain ${terrain.length}, buildings ${buildings.length}, props ${props.length}`)
+
+// (11/25) 운하 거리 명장면 스탬프·가게 자리를 shared/places.json 에 맞춰 씀 (좌표만, 이름·설명은 그 파일에서)
+{
+  const PLACES = join(here, '../../shared/places.json')
+  const raw = readFileSync(PLACES, 'utf8')
+  // 공용 파일이라 모양(줄바꿈·배열 한 줄)은 그대로 두고 해당 항목의 "position" 줄만 바꿈
+  let next = raw
+  for (const [id, pos] of Object.entries(placePositions)) {
+    const at = next.indexOf(`"id": "${id}"`)
+    if (at < 0) throw new Error(`shared/places.json 에 ${id} 가 없어요`)
+    const end = next.indexOf('}', at)
+    const block = next.slice(at, end)
+    const fixed = block.replace(/"position": \[[^\]]*\]/, `"position": [${pos.join(', ')}]`)
+    next = next.slice(0, at) + fixed + next.slice(end)
+  }
+  JSON.parse(next)
+  if (next !== raw) writeFileSync(PLACES, next)
+  console.log(`places.json: 운하 거리 자리 ${Object.keys(placePositions).length}곳 맞춤`)
+}

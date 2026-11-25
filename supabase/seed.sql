@@ -17,13 +17,24 @@ insert into public.places (id, type, zone, name, work) values
   ('spot_jm_stairs', 'spot', 'JM', '명장면 ② 노을 지는 붉은 난간 계단', '애니메이션 「너의 이름은.」'),
   ('spot_jm_shrine', 'spot', 'JM', '명장면 ③ 안개 숲의 갈라진 바위', '애니메이션 「귀멸의 칼날」'),
   ('spot_jm_sakura_river', 'spot', 'JM', '명장면 ④ 벚꽃 날리는 철길 건널목', '애니메이션 「초속 5센티미터」'),
+  ('spot_jm_onsen', 'spot', 'JM', '명장면 ⑤ 붉은 다리 건너 옛 온천 본관', '애니메이션 「센과 치히로의 행방불명」'),
+  ('shop_jm_donguri', 'cafe', 'JM', '도토리 찻집 「どんぐり茶屋」', '애니메이션 「이웃집 토토로」'),
+  ('shop_jm_kumihimo', 'cafe', 'JM', '매듭끈 가게 「組紐 結び屋」', '애니메이션 「너의 이름은.」'),
+  ('shop_jm_fuji', 'cafe', 'JM', '등꽃 찻집 「藤の花茶屋」', '애니메이션 「귀멸의 칼날」'),
+  ('shop_jm_sakura', 'cafe', 'JM', '벚꽃떡 가게 「桜餅 花便り」', '애니메이션 「초속 5센티미터」'),
+  ('shop_jm_manju', 'cafe', 'JM', '온천 찐빵 가게 「湯けむり饅頭」', '애니메이션 「센과 치히로의 행방불명」'),
   ('spot_sg_stage', 'spot', 'SG', 'SUNSET WAVE 야외무대', 'K-POP 「SUNGRAY: SUNSET WAVE」'),
   ('shop_sg_bdaycafe', 'cafe', 'SG', 'happy birthday yunseul~!!', 'K-POP 「SUNGRAY: SUNSET WAVE」'),
   ('shop_sg_goods', 'cafe', 'SG', 'SUNGRAY 공식 팝업스토어', 'K-POP 「SUNGRAY: SUNSET WAVE」')
 on conflict (id) do update set type = excluded.type, zone = excluded.zone, name = excluded.name, work = excluded.work;
 
 insert into public.shop_offers (shop_id, title, discount, perk, menu, valid_days) values
-  ('shop_hj_snack', '정류장 분식 떡볶이 사이즈 업 쿠폰', 'SIZE UP', '떡볶이 사이즈 업', '비 오는 날 떡볶이', 30)
+  ('shop_hj_snack', '정류장 분식 떡볶이 사이즈 업 쿠폰', 'SIZE UP', '떡볶이 사이즈 업', '비 오는 날 떡볶이', 30),
+  ('shop_jm_donguri', '도토리 찻집 보리차 한 잔 무료 쿠폰', 'FREE TEA', '보리차 한 잔 무료', '도토리 쿠키와 보리차', 30),
+  ('shop_jm_kumihimo', '매듭끈 가게 만들기 체험 20% 할인권', '20% OFF', '매듭끈 만들기 20% 할인', '손목 매듭끈 만들기', 30),
+  ('shop_jm_fuji', '등꽃 찻집 경단 1+1 쿠폰', '1+1', '등꽃 경단 하나 더', '등꽃 경단과 말차', 30),
+  ('shop_jm_sakura', '벚꽃떡 가게 벚꽃 찹쌀떡 1+1 쿠폰', '1+1', '벚꽃 찹쌀떡 하나 더', '벚꽃 찹쌀떡', 30),
+  ('shop_jm_manju', '온천 찐빵 가게 찐빵 하나 무료 쿠폰', 'FREE', '팥 찐빵 하나 무료', '온천 김에 찐 팥 찐빵', 30)
 on conflict (shop_id) do update set title = excluded.title, discount = excluded.discount, perk = excluded.perk, menu = excluded.menu, valid_days = excluded.valid_days;
 
 insert into public.activities (id, name, min_seconds) values

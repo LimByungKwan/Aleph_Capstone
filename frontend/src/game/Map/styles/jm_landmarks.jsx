@@ -15,7 +15,7 @@ import { HoopShoot } from './jm_activities.jsx'
 // ⚠ 용량을 줄이려고 지금 간판·안내판에 쓰는 글자만 들어 있어요. 새 글자를 쓰면 그 글자만 기본 글꼴로 보여요.
 //   글자를 추가하면 frontend/public/fonts/JM_FONTS.md 의 방법으로 다시 받아 주세요.
 const KO_FONT = '"Pretendard", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif'
-const JP_FONT = '"JmJp", "Yu Gothic", "Meiryo", "Hiragino Sans", sans-serif' // Zen Maru Gothic Bold
+export const JP_FONT = '"JmJp", "Yu Gothic", "Meiryo", "Hiragino Sans", sans-serif' // Zen Maru Gothic Bold
 export const KR_FONT = '"JmKr", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif' // Gowun Dodum
 const range = (n) => Array.from({ length: n }, (_, i) => i)
 
@@ -119,6 +119,38 @@ export const JP_SIGN_KO = {
   ひみつきち: '비밀 기지',
   駅: '역',
   高校: '고등학교',
+  // 11/25 운하 거리 여관 세로 간판·가게 노렌
+  雪灯館: '눈등불 여관',
+  川音荘: '물소리 여관',
+  月見楼: '달맞이 누각',
+  銀の湯: '은빛 온천',
+  藤乃屋: '등나무 여관',
+  灯籠亭: '등롱 여관',
+  霧乃宿: '안개 여관',
+  白雲閣: '흰 구름 여관',
+  山水館: '산수 여관',
+  古湯屋: '옛 온천 여관',
+  花灯籠: '꽃등롱 여관',
+  鈴の宿: '방울 여관',
+  星見館: '별맞이 여관',
+  柳屋: '버드나무 여관',
+  千歳館: '천년 여관',
+  松風荘: '솔바람 여관',
+  小雪屋: '잔눈 여관',
+  湯守館: '온천지기 여관',
+  朝霧荘: '아침 안개 여관',
+  玉の湯: '구슬 온천',
+  水車屋: '물레방아 여관',
+  紅葉館: '단풍 여관',
+  若竹: '어린 대나무 여관',
+  常盤屋: '늘푸른 여관',
+  銀灯館: '은등불 큰 여관',
+  川端通り: '운하 거리',
+  どんぐり茶屋: '도토리 찻집',
+  '組紐 結び屋': '매듭끈 가게',
+  藤の花茶屋: '등꽃 찻집',
+  '桜餅 花便り': '벚꽃떡 가게',
+  湯けむり饅頭: '온천 찐빵 가게',
 }
 
 export function getJpSignTexture(text, bg = '#ffffff', fg = '#222222', aspect = 4) {

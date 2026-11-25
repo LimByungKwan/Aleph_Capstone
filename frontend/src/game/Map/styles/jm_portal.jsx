@@ -237,6 +237,7 @@ export function JmSceneRoom({ item }) {
     const c = check.current
     if (clock.elapsedTime < c.next) return
     c.next = clock.elapsedTime + 0.5
+    if (room.inMap) return
     if (!c.player?.parent) c.player = scene.getObjectByName('player') ?? null
     if (!c.player) return
     c.player.getWorldPosition(me)
@@ -245,7 +246,8 @@ export function JmSceneRoom({ item }) {
   const sky = ROOM_SKY[room.kind] ?? { top: '#7fb6e8', horizon: '#dcefff' }
   return (
     <group>
-      <SkyDome radius={Math.max(w, d) * 0.8} top={sky.top} horizon={sky.horizon} />
+      {/* (11/25) 맵 안 마당(inMap)은 하늘 돔 없이 마을 하늘을 그대로 씀 */}
+      {!room.inMap && <SkyDome radius={Math.max(w, d) * 0.8} top={sky.top} horizon={sky.horizon} />}
       {room.kind === 'totoro' && <TotoroRainStop w={w} d={d} />}
       {room.kind === 'stairs' && <ShrineStairs d={d} stair={room.stair} />}
       {room.kind === 'rock' && <SplitRock d={d} />}
