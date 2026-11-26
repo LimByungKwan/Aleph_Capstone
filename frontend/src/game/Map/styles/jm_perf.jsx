@@ -66,7 +66,8 @@ function shouldMerge(o, root) {
   return true
 }
 
-function rebuild(root, holder) {
+// NearOnly(jm_yutoya.jsx)도 묶음 안에서 같은 방식으로 합칠 수 있게 내보냄
+export function rebuild(root, holder) {
   for (const c of [...holder.children]) {
     c.geometry.dispose()
     holder.remove(c)

@@ -362,7 +362,7 @@ function person(ctx, x, footY, scale = 1, color = 'rgba(25,25,35,0.85)', pose = 
     ctx.restore()
     ctx.fillStyle = '#3a2a20' // 우산대 (손에서 위로)
     ctx.fillRect(handX - 2 * s, footY - 150 * s, 4 * s, 150 * s - 78 * s + 6 * s)
-    ctx.fillStyle = '#c8452f' // 빨간 우산 (머리를 덮게)
+    ctx.fillStyle = '#a9543a' // 빨간 우산 (머리를 덮게)
     ctx.beginPath()
     ctx.arc(handX - 6 * s, footY - 140 * s, 52 * s, Math.PI, 0)
     ctx.fill()
@@ -385,7 +385,7 @@ const rect = (ctx, color, x, y, w, h) => {
   ctx.fillStyle = color
   ctx.fillRect(x, y, w, h)
 }
-function torii(ctx, cx, baseY, width, height, color = '#c8452f') {
+function torii(ctx, cx, baseY, width, height, color = '#a9543a') {
   const pw = width * 0.08
   rect(ctx, color, cx - width * 0.36, baseY - height, pw, height)
   rect(ctx, color, cx + width * 0.36 - pw, baseY - height, pw, height)
@@ -398,7 +398,7 @@ function crossingGate(ctx, x, baseY, h) {
   ctx.translate(x, baseY - h * 0.55)
   for (let i = 0; i < 8; i++) rect(ctx, i % 2 ? '#f5f5f5' : '#e7c22a', i * 28, -5, 28, 10)
   ctx.restore()
-  ctx.fillStyle = '#d63a3a'
+  ctx.fillStyle = '#ad4e38'
   ctx.beginPath()
   ctx.arc(x - 14, baseY - h + 10, 10, 0, Math.PI * 2)
   ctx.arc(x + 14, baseY - h + 10, 10, 0, Math.PI * 2)
@@ -467,7 +467,7 @@ const POSTER_ART = {
     ctx.lineTo(w * 0.58, h * 0.5)
     ctx.closePath()
     ctx.fill()
-    ctx.fillStyle = '#c8452f'
+    ctx.fillStyle = '#a9543a'
     ctx.fillRect(w * 0.455, h * 0.52, 12, 4)
     ctx.fillRect(w * 0.525, h * 0.52, 12, 4)
   },
@@ -870,7 +870,7 @@ export function JmHoop({ item }) {
       </mesh>
       <mesh position={[0, rimY + 0.25, -0.22]}>
         <boxGeometry args={[0.6, 0.45, 0.02]} />
-        <meshStandardMaterial color="#d63a3a" />
+        <meshStandardMaterial color="#ad4e38" />
       </mesh>
       <mesh position={[0, rimY, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.23, 0.02, 6, 20]} />
@@ -885,7 +885,7 @@ export function JmHoop({ item }) {
 // ── 계단 가운데 빨간 난간 (「그대의 이름을」 재회의 계단) ─────────
 // size = [두께, 높이, 길이]. 길이 방향은 z: +z 끝이 계단 아래(높이 rail.bottom), -z 끝이 위(rail.top)
 // 계단 면에서 0.9m 위로 손잡이, 1.6m마다 기둥. 충돌은 JSON "collider"가 세로 벽으로 막음(계단을 두 줄로 나눔)
-const RAIL_RED = '#c8452f'
+const RAIL_RED = '#a9543a'
 export function JmStairRail({ item }) {
   const [, , len] = item.size
   const { bottom = 0, top = 5 } = item.rail ?? {}
@@ -1116,7 +1116,7 @@ export function JmFloat({ item }) {
       {/* 몸통 1단 (붉은 칠) + 2단 (금색 장식) */}
       <mesh position={[0, 1.4, 0]}>
         <boxGeometry args={[w - 0.2, 1.4, d - 0.4]} />
-        <meshStandardMaterial color="#9b2226" />
+        <meshStandardMaterial color="#8a3a2e" />
       </mesh>
       <mesh position={[0, 2.5, 0]}>
         <boxGeometry args={[w - 0.6, 0.8, d - 1]} />
@@ -1179,7 +1179,7 @@ export function JmFox({ item }) {
       {/* 붉은 턱받이 */}
       <mesh position={[0, h - 0.6 * s, 0.12 * s]} rotation={[0.3, 0, 0]}>
         <coneGeometry args={[0.2 * s, 0.2 * s, 3]} />
-        <meshStandardMaterial color="#c8452f" />
+        <meshStandardMaterial color="#a9543a" />
       </mesh>
       {/* 꼬리 */}
       <mesh position={[0.18 * s, 0.7 * s + 0.5 * s, -0.18 * s]} rotation={[0.4, 0, -0.5]}>
@@ -1243,11 +1243,11 @@ export function JmAkachochin({ item }) {
       </mesh>
       <mesh position={[0, h - 0.7, 0.3]}>
         <cylinderGeometry args={[0.32, 0.32, 0.8, 16]} />
-        <meshStandardMaterial color="#d93a2b" emissive="#ff5a33" emissiveIntensity={0.6} />
+        <meshStandardMaterial color="#b0503a" emissive="#ff5a33" emissiveIntensity={0.6} />
       </mesh>
       <mesh position={[0, h - 0.7, 0.63]}>
         <planeGeometry args={[0.3, 0.62]} />
-        <GlowMaterial map={getJpVerticalTexture(text, '#d93a2b', '#111111', 0.3 / 0.62, null)} />
+        <GlowMaterial map={getJpVerticalTexture(text, '#b0503a', '#111111', 0.3 / 0.62, null)} />
       </mesh>
     </group>
   )

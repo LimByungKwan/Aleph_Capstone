@@ -54,7 +54,8 @@ function borders(zone) {
   return edges
 }
 
-const themeBorders = zones.filter((zone) => !zone.customGrounds).map((zone) => ({ zone, items: borders(zone) }))
+// [지민 11/26] 구역 JSON에 "hideBorder": true면 바닥 테두리(구역 색 선)만 빼고 입구 문은 그대로 — 애니 구역은 지형이 80×80 밖까지 이어져서 선이 지형을 가로지름
+const themeBorders = zones.filter((zone) => !zone.customGrounds).map((zone) => ({ zone, items: zone.hideBorder ? [] : borders(zone) }))
 
 export default function Zones() {
   const showZones = useSettings((state) => state.showZones)
@@ -64,7 +65,7 @@ export default function Zones() {
     const [ox, oz] = zone.origin
     return (
       <group key={zone.zoneId} position={[ox, 0, oz]}>
-        {showZones && <Instances geometry={GEO.box} material={curbMaterial} items={items} />}
+        {showZones && items.length > 0 && <Instances geometry={GEO.box} material={curbMaterial} items={items} />}
         {zone.entrance && gate && (
           <group name={gate.title} position={[x, 0, z]} rotation={[0, gate.face * Math.PI / 180, 0]}>
             <ThemeGate id={zone.zoneId} gate={gate} width={width} />

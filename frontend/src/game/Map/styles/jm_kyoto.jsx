@@ -11,7 +11,7 @@ import { RiverBanks, RiverWater, SeaWater, seaPlane, WadeSplash } from './jm_wat
 // 특정 작품의 건물·캐릭터를 그대로 옮기지 않고, 일본 목조 건축의 공통 요소(붉은 기둥·기와·장지문 불빛·제등)로만 만들어요.
 // 약속은 다른 JM 스타일과 같음: size [가로, 높이, 깊이] 상자 안, 앞면 +z, rotationDeg로 방향.
 
-const VERMILION = '#c8452f'
+const VERMILION = '#a9543a'
 const DARK_WOOD = '#3d2a1e'
 const WOOD = '#6b4630'
 const ROOF = '#2f3338'
@@ -22,7 +22,7 @@ const range = (n) => Array.from({ length: n }, (_, i) => i)
 
 // 밤에 따뜻하게 빛나는 장지문·창 (재질은 캐시돼서 모든 여관이 같이 씀 → 합쳐 그리기에 유리)
 const SHOJI = mat('#ffe7b8', { emissive: '#ffb45e', emissiveIntensity: 0.75, roughness: 0.6 })
-const LANTERN = mat('#e0412c', { emissive: '#ff6a35', emissiveIntensity: 0.9 })
+const LANTERN = mat('#a26a5b', { emissive: '#ff6a35', emissiveIntensity: 0.9 })
 const LAMP_GLOW = mat('#fff1cf', { emissive: '#ffcf7a', emissiveIntensity: 1.3 })
 
 // 처마 밑에 매다는 붉은 제등 하나
@@ -129,7 +129,7 @@ const LOBBY_WALL = '#e9dcc0'
 const BASE_H = 0.6
 const FLOOR_WOOD = ['#8a6243', '#7a5a3e', '#6f4a33', '#8d6a4a', '#5e4330']
 // 11/25 겉모습: 참고 사진(붉은 벽 + 초록 기와 + 금색 장식의 높은 온천 건물)처럼 — 벽은 붉게, 지붕·처마는 초록, 가운데 박공과 꼭대기 누각
-const GR_RED = '#b9483a'
+const GR_RED = '#a3523f'
 const GR_ROOF = '#3f6f5a'
 const GR_GOLD = '#c9a245'
 
@@ -327,7 +327,7 @@ const VIEW_GLASS = mat('#cfe6f5', { transparent: true, opacity: 0.35, emissive: 
 const STEAM = mat('#ffffff', { transparent: true, opacity: 0.35, roughness: 1 })
 const BATH_WATER = mat('#7fc4c8', { transparent: true, opacity: 0.8, emissive: '#1d5a5e', emissiveIntensity: 0.3, roughness: 0.05, metalness: 0.2 })
 const GOLD_SCREEN = mat('#d4b15a', { emissive: '#6b5214', emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.3 })
-const LANTERN_RED = mat('#c2410c', { emissive: '#ff9a4d', emissiveIntensity: 0.8 })
+const LANTERN_RED = mat('#a8532e', { emissive: '#ff9a4d', emissiveIntensity: 0.8 })
 
 // 층 이름 간판 (계단 올라오는 쪽 천장에 매달림)
 function FloorSign({ text, y, h, x = -2.6, z = -1.2 }) {
@@ -365,7 +365,7 @@ function FloorRooms({ y, h, w, d }) {
       <Box p={[right - 1.6, y + 0.115, -1.6]} s={[0.03, 0.01, 3.7]} c={TATAMI_EDGE} />
       <Box p={[right - 2.2, y + 0.2, -2.4]} s={[1.1, 0.16, 2]} c="#f5f0e6" />
       <Box p={[right - 2.2, y + 0.3, -1.65]} s={[1.1, 0.1, 0.5]} c="#9fb7d8" />
-      <Box p={[right - 2.2, y + 0.29, -2.75]} s={[1.0, 0.12, 1.1]} c="#c2410c" />
+      <Box p={[right - 2.2, y + 0.29, -2.75]} s={[1.0, 0.12, 1.1]} c="#a8532e" />
       <group position={[right - 0.9, y + 0.1, -0.6]}>
         <Box p={[0, 0.25, 0]} s={[0.8, 0.05, 0.6]} c="#4a2f1f" />
         <Box p={[0, 0.12, 0]} s={[0.1, 0.24, 0.1]} c="#4a2f1f" />
@@ -434,7 +434,7 @@ function FloorBanquet({ y, h, w }) {
               {[-1, 1].map((s) => (
                 <Box key={s} p={[-3.6 + i * 1.2, 0.05, s * 0.75]} s={[0.55, 0.08, 0.55]} c="#7f1d1d" />
               ))}
-              <Cyl p={[-3.6 + i * 1.2, 0.36, -0.2]} rad={0.12} h={0.04} c="#b91c1c" />
+              <Cyl p={[-3.6 + i * 1.2, 0.36, -0.2]} rad={0.12} h={0.04} c="#9a3a30" />
               <Cyl p={[-3.6 + i * 1.2, 0.36, 0.2]} rad={0.12} h={0.04} c="#1f2937" />
             </group>
           ))}
@@ -531,7 +531,7 @@ function GrandRyokanLobby({ w, d, floor: F, ceil }) {
         {/* 뒤쪽 열쇠판 (방 열쇠 나무패) */}
         <Box p={[0, 1.9, -0.9]} s={[2.2, 1, 0.08]} c="#5a3d2a" />
         {range(3).map((r) =>
-          range(8).map((c) => <Box key={`k${r}${c}`} p={[-0.9 + c * 0.26, 2.2 - r * 0.3, -0.84]} s={[0.08, 0.2, 0.03]} c={(r + c) % 3 ? '#d8b98a' : '#b45309'} />),
+          range(8).map((c) => <Box key={`k${r}${c}`} p={[-0.9 + c * 0.26, 2.2 - r * 0.3, -0.84]} s={[0.08, 0.2, 0.03]} c={(r + c) % 3 ? '#d8b98a' : '#9e673d'} />),
         )}
       </group>
       {/* 접수대 위 걸린 간판 */}
@@ -609,7 +609,7 @@ function GrandRyokanLobby({ w, d, floor: F, ceil }) {
         {/* 족자 */}
         <Box p={[0, 1.7, -0.42]} s={[0.7, 1.5, 0.02]} c="#efe6cf" />
         <Box p={[0, 1.75, -0.4]} s={[0.05, 0.8, 0.01]} c="#2b1d14" />
-        <Box p={[0.12, 1.45, -0.4]} s={[0.2, 0.2, 0.01]} c="#b91c1c" />
+        <Box p={[0.12, 1.45, -0.4]} s={[0.2, 0.2, 0.01]} c="#9a3a30" />
         {/* 꽃꽂이: 화병 + 가지 + 붉은 꽃 */}
         <Cyl p={[0.6, 0.42, 0]} rad={0.12} h={0.36} c="#2f4a5c" />
         <Box p={[0.6, 0.85, 0]} s={[0.03, 0.6, 0.03]} c="#4a3324" />
@@ -617,7 +617,7 @@ function GrandRyokanLobby({ w, d, floor: F, ceil }) {
         {[[0.6, 1.15], [0.82, 1.08], [0.52, 0.95]].map(([x, y]) => (
           <mesh key={`fl${x}`} position={[x, y, 0]}>
             <sphereGeometry args={[0.06, 8, 6]} />
-            <meshStandardMaterial color="#e11d48" />
+            <meshStandardMaterial color="#c6566e" />
           </mesh>
         ))}
       </group>
@@ -917,7 +917,7 @@ export function JmBridgeRail({ item }) {
 // 걷는 판정은 생성 스크립트가 아치를 따라 깐 경사로(지형 stairs smooth)와 jmCollider 난간이 맡고, 여기서는 그림만
 //   (경사로의 돌 단은 이 다리 바닥판·옆 들보 안에 가려짐)
 const BRIDGE_DECK = mat('#cfcac0', { roughness: 0.9 })
-const BRIDGE_RED = mat('#d2412a', { roughness: 0.6 })
+const BRIDGE_RED = mat('#a9543a', { roughness: 0.6 })
 const BRIDGE_PIER = mat('#8f897f', { flat: true, roughness: 1 })
 const BRIDGE_UNDER = mat('#5b4a3e', { flat: true, roughness: 1 })
 const GLOBE = mat('#fffaf0', { emissive: '#ffe9b8', emissiveIntensity: 1.2, roughness: 0.4 })

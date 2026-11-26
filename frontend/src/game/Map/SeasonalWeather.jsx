@@ -36,15 +36,21 @@ export default function SeasonalWeather({ playerRef }) {
   const weather = WEATHER[season]
   return (
     <>
-      <CoverMap playerRef={playerRef} />
+      <CoverMap playerRef={playerRef} active={Boolean(weather) || season === 'winter'} />
       <SnowLayer winter={season === 'winter'} />
       {weather && <FallingParticles key={season} weather={weather} playerRef={playerRef} />}
     </>
   )
 }
 
+// 작은 메시인지 (모양 크기 × 실제 배율). 여러 개를 한 번에 그리는 InstancedMesh(나무 등)는 그대로 둠
+function isSmall(o) {
+  if (!o.isMesh || o.isInstancedMesh || !o.geometry) return false
+  if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere()
+  return o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() < 0.8
+}
 // 위에서 내려다본 높이 지도 찍기 (깊이를 RGBA에 담아요)
-function CoverMap({ playerRef }) {
+function CoverMap({ playerRef, active }) {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
   const { target, camera, depthMat } = useMemo(() => {
@@ -69,9 +75,12 @@ function CoverMap({ playerRef }) {
   useFrame(({ clock }) => {
     const p = playerRef.current?.currPos
     if (!p) return
+    // (11/26 지민, 렉 줄이기) 날리는 입자도 쌓인 눈도 없으면(여름) 찍지 않음. 찍는 간격 1초 → 3초(또는 6m 이동)
+    //   여관 같은 큰 건물 근처에선 한 번 찍을 때 그리기 호출이 약 3,000번이라 1초마다 화면이 끊겼음
+    if (!active && snowAmount <= 0) return
     const L = last.current
     const moved = Math.hypot(p.x - L.x, p.z - L.z)
-    if (clock.elapsedTime - L.t < 1 && moved < 8) return
+    if (clock.elapsedTime - L.t < 3 && moved < 6) return
     L.t = clock.elapsedTime
     // 높이 지도 칸에 맞춰 중심을 끊어서(떨림 방지) 옮겨요
     const cell = COVER.size / COVER.res
@@ -91,7 +100,8 @@ function CoverMap({ playerRef }) {
         o.isPoints ||
         o.isSprite ||
         o.isLine ||
-        (m && !Array.isArray(m) && (m.isShaderMaterial || m.fog === false || (m.transparent && m.opacity < 0.95) || m.colorWrite === false))
+        (m && !Array.isArray(m) && (m.isShaderMaterial || m.fog === false || (m.transparent && m.opacity < 0.95) || m.colorWrite === false)) ||
+        isSmall(o) // (11/26 지민) 지붕 노릇을 못 하는 작은 소품(반지름 0.8m 미만)은 빼서 그리기 호출을 줄임
       if (skip) {
         o.visible = false
         hidden.push(o)

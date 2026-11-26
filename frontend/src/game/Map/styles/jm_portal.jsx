@@ -370,7 +370,7 @@ function TotoroRainStop({ w, d }) {
 // ── ② 노을 지는 붉은 난간 신사 계단 (모티브: 「너의 이름은.」) ─────────
 // 걷는 계단·위 마당은 생성 스크립트의 지형 계단·단(platform). 여기서는 붉은 난간(가운데 + 양옆)·양옆 집·전봇대·위 작은 도리이
 // 장면의 상징이라 이 공간 계단만 붉은 난간을 둠 (맵 계단 가드 제거와는 별개)
-const RED = mat('#c8452f', { roughness: 0.6 })
+const RED = mat('#a9543a', { roughness: 0.6 })
 const HOUSE_WALLS = ['#e8e1d3', '#d9cfbf', '#cfd6d8', '#e3d6c4']
 const HOUSE_ROOF = mat('#3f4448', { flat: true })
 const WINDOW_WARM = mat('#ffe2b0', { emissive: '#ffb45e', emissiveIntensity: 0.8 })
@@ -587,7 +587,7 @@ function SakuraCrossing({ w = 36, d }) {
 // 영화 속 건물을 옮기지 않고, 일본 옛 온천 본관·제등 찻집 거리의 공통 요소로만 만든 독자 디자인
 const NIGHT_STONE = mat('#5a5550', { roughness: 1 })
 const SHOP_WOOD = ['#5a2d22', '#4a3326', '#6b3a2a']
-const LANTERN_RED = mat('#d23a24', { emissive: '#ff5a2e', emissiveIntensity: 1.2 })
+const LANTERN_RED = mat('#ad4e38', { emissive: '#ff5a2e', emissiveIntensity: 1.2 })
 const BATH_WOOD = mat('#4a3022', { roughness: 0.9 })
 const BATH_PLASTER = mat('#e9dcc0', { roughness: 0.9 })
 const NOREN_BLUE = mat('#1e3a8a', { roughness: 1 })
