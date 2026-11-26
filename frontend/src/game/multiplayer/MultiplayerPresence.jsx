@@ -6,9 +6,7 @@ import { usePlayerCharacter } from '../Player/characterStore.js'
 import { connectRealtime, disconnectRealtime, sendCharacter, sendMove, useRealtimeStore } from './realtimeStore.js'
 import RemotePlayer from './RemotePlayer.jsx'
 
-// [지민] 멀티 접속: 내 위치를 서버로 보내고, 같은 맵의 다른 사람들을 그림
-// Scene.jsx의 <Physics> 안(플레이 중일 때)에 한 줄로 붙음. 다른 사람 캐릭터는 물리 충돌 없이 그림만 그림
-//   (서로 밀치기·끼임 문제를 피하려고 v1은 통과 가능)
+// [지민] 멀티 접속: 내 위치를 서버로 보내고, 같은 맵의 다른 사람들을 <Physics> 안에 배치
 
 const SEND_EVERY = 0.1 // 초 (서버도 10Hz로 모아서 보냄)
 const IDLE_RESEND = 2 // 가만히 있어도 2초마다 한 번 → 나중에 들어온 사람에게도 위치가 보임
@@ -63,6 +61,6 @@ export default function MultiplayerPresence({ playerRef }) {
   return visible.map((key) => {
     const [id, characterId, ...rest] = key.split('|')
     const name = rest.join('|')
-    return <RemotePlayer key={id} id={id} name={name} characterId={characterId} />
+    return <RemotePlayer key={id} id={id} name={name} characterId={characterId} playerRef={playerRef} />
   })
 }

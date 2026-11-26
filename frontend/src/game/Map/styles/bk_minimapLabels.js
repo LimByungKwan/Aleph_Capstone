@@ -3,12 +3,13 @@ import { layout, mapPlaces, southGroundExtension, zones } from '../../data/mapDa
 import { HALLS, MAIN_GATE } from './hj/gyeongbokgungLayout.js'
 import { STREET_BUILDINGS } from './hj/gyeongseongLayout.js'
 import { DATE_MISSIONS, mapPoint } from './bk_dateMission.js'
+import { WINE_BAR_ID, WINE_MISSION_ID } from './bk_wineTastingData.js'
 import { minimapZoneBounds } from './bk_minimapMap.js'
 
 const items = new Map([...layout.buildings, ...layout.props, ...layout.terrain].map((item) => [item.id, item]))
 const missionItems = {
-  fountain: 'fountain_plaza', claw: 'claw_booth', tarot: 'tarot_booth', photo: 'couple_photo',
-  telescope: 'tower', cafe: 'b_cafe', mural: 'b_wings',
+  fountain: 'BK/fountain_plaza', claw: 'BK/claw_booth', tarot: 'BK/tarot_booth', photo: 'BK/couple_photo',
+  telescope: 'BK/tower', cafe: 'BK/b_cafe', mural: 'BK/b_wings', [WINE_MISSION_ID]: WINE_BAR_ID,
 }
 const placeAliases = new Set(['spot_bk_claw', 'spot_bk_fountain', 'spot_bk_tower', 'cafe_soran', 'spot_mural'])
 function placeLabel(name, item, type, zone = item.zone) {
@@ -16,7 +17,7 @@ function placeLabel(name, item, type, zone = item.zone) {
 }
 
 export const minimapLandmarks = DATE_MISSIONS.map((mission) => {
-  const item = items.get(`BK/${missionItems[mission.id]}`) ?? { position: mapPoint(mission) }
+  const item = items.get(missionItems[mission.id]) ?? { position: mapPoint(mission) }
   return placeLabel(mission.short, item, mission.id === 'cafe' ? 'cafe' : 'spot', 'BK')
 })
 const pavilion = items.get('BK/sunset_pavilion')
@@ -27,7 +28,7 @@ minimapLandmarks.push(...mapPlaces.filter((place) => !placeAliases.has(place.id)
   name: place.name, point: [place.position[0], place.position[2]], type: place.type, zone: place.zone,
 })))
 
-const missionBuildingIds = new Set(Object.values(missionItems).map((id) => `BK/${id}`))
+const missionBuildingIds = new Set(Object.values(missionItems))
 const shopLabels = layout.buildings.flatMap((item) => {
   if (missionBuildingIds.has(item.id)) return []
   const name = item.mapName ?? item.name ?? item.signs?.find((sign) => sign.text)?.text

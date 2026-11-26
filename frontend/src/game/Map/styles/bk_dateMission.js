@@ -2,15 +2,18 @@ import { create } from 'zustand'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useBadges } from '../../../store/badges.js'
 import { useBkActivity } from './bk_activityStore.js'
+import { layout } from '../../data/mapData.js'
+import { restoreWineCompletions, WINE_BAR_ID, WINE_MISSION_ID, wineTastingPosition } from './bk_wineTastingData.js'
 import { EMPTY_EPISODE_BOOK, collectEpisodePostcard, getDateEpisode, recordEpisodeActivity } from './bk_dateEpisodes.js'
 import { episodeRoom, useEpisodeRoom } from './bk_episodeRoom.js'
 import { LETTER_ENDINGS, LETTER_STATIONS } from '@shared/bk_letterPuzzle.js'
 
 // 데이트 코스 미션 (담당: 병관) — 영화·드라마 구역 "시간 탐정 역사 복원"과 같은 모양·흐름
-//   데이트 코스 구역 안 7곳: 체험을 끝내면 ◐ → 장소 카드에서 [🔖 데이트 스탬프] → ✓
-//   절반(4곳)이면 💗 배지, 7곳 다 모으면 💕 배지 + 완주 보상 창
-// 완료 신호: 동전 던지기·인형뽑기 / 타로 결과 / 인생네컷 완성 / 망원경으로 명소 찾기 / 카페 주문 / 벽화 구도 맞추기
+//   체험을 끝내면 ◐ → 장소 카드에서 [🔖 데이트 스탬프] → ✓
+//   절반(4곳)이면 💗 배지, 모든 스탬프를 모으면 💕 배지 + 완주 보상 창
 // 기록은 계정별로 이 브라우저에 저장 (영화·드라마 구역 시간 탐정과 같은 방식)
+
+const wineBar = layout.buildings.find(({ id }) => id === WINE_BAR_ID)
 
 export const DATE_MISSIONS = [
   {
@@ -91,6 +94,18 @@ export const DATE_MISSIONS = [
     how: '분홍 발자국에 서서 E 또는 [구도 맞추기]를 누르세요. 양쪽 날개 끝과 발자국을 프레임 안에 넣으면 사진을 찍거나 장면을 완성할 수 있어요.',
     nearby: ['벽화 거리', '사진 명소'],
   },
+  {
+    id: WINE_MISSION_ID,
+    short: '달빛 와인바',
+    icon: '🍷',
+    kind: '달빛 테이스팅 · 1인',
+    anchor: { name: WINE_BAR_ID, local: wineTastingPosition(wineBar) },
+    landingClearance: 0.28,
+    mapAt: wineBar.position,
+    intro: '달빛 와인바 테라스에서 혼자 무알코올 음료 세 잔의 향과 끝맛을 맞혀 보는 체험이에요.',
+    how: '테라스의 보라색 발판에서 E 또는 [테이스팅 시작]을 누르세요. 시음 메모를 읽고 음료를 세 번 고르면 점수와 관계없이 스탬프를 받을 수 있어요.',
+    nearby: ['무알코올 바', '테라스 카페'],
+  },
 ]
 export const DATE_STAMP_COUNT = DATE_MISSIONS.length
 export const DATE_BADGE_COUNT = 4
@@ -105,13 +120,16 @@ const KEY = 'scenewalk.date-mission'
 function readSaved() {
   try {
     const data = JSON.parse(localStorage.getItem(KEY))
-    if (!data || typeof data.accounts !== 'object' || !data.accounts) return { accounts: {} }
+    const stored = data?.accounts
+    const accounts = Object.assign(Object.create(null), stored && !Array.isArray(stored) && typeof stored === 'object' ? stored : null)
     // 예전 방문으로 받은 스탬프는 인정해요. 아직 받지 않았다면 새 체험부터 진행해요.
-    for (const pass of Object.values(data.accounts)) {
+    for (const pass of Object.values(accounts)) {
       if (pass?.done?.cafe && !pass.stamps?.cafe && !pass.cafeOrder) delete pass.done.cafe
       if (pass?.done?.mural && !pass.stamps?.mural && !pass.muralFramed) delete pass.done.mural
     }
-    return data
+    // 기존 최고 기록도 세 잔을 마친 기록이므로 체험 완료로 이어 줘요.
+    restoreWineCompletions(accounts)
+    return { ...data, accounts }
   } catch {
     return { accounts: {} }
   }
