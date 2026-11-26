@@ -91,3 +91,18 @@ def test_missing_audio_is_400():
 def test_rate_limit_is_429():
     codes = [post().status_code for _ in range(6)]
     assert codes[:5] == [200] * 5 and codes[5] == 429
+
+
+def test_load_melody_reads_repo_file_without_network(monkeypatch):
+    """배포 서버가 Vercel에 묻지 않고 저장소의 원본 파일을 읽는지 (11/26 503 재발 방지)"""
+    from app import audition_pitch
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("네트워크로 받으면 안 됨")
+
+    monkeypatch.setattr(audition_pitch.urllib.request, "urlopen", no_network)
+    audition_pitch.load_melody.cache_clear()
+    try:
+        assert list(audition_pitch.load_melody("sungray-01")) == MELODY
+    finally:
+        audition_pitch.load_melody.cache_clear()
