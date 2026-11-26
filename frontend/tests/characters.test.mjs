@@ -29,7 +29,7 @@ test('character selection is per user and preserves coupons and stamps', async (
   assert.equal((await api.getPlayerCharacter({ userId: 'u_pilgrim' })).character.id, 'male')
 })
 
-for (const gender of ['male', 'female']) {
+for (const gender of ['male', 'female', 'male2', 'female2']) {
   test(`${gender} GLB has embedded textures, a skin, and three locomotion clips and a jump`, () => {
     const buffer = readFileSync(new URL(`../public/models/characters/${gender}.glb`, import.meta.url))
     assert.equal(buffer.readUInt32LE(0), 0x46546c67)

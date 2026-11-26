@@ -78,7 +78,7 @@ export default function SettingsPanel() {
           {isAdmin && <SeasonPicker />}
 
           <div style={styles.label}>캐릭터</div>
-          <div style={styles.segment}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {characters.map(item => (
               <button key={item.id} type="button" disabled={busy} aria-pressed={character.id === item.id}
                 onClick={press(() => choose(item.id))} style={choice(character.id === item.id)}>
