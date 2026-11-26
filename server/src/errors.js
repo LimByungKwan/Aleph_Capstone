@@ -16,6 +16,7 @@ export class HttpError extends Error {
 const DB_CODE_STATUS = {
   UNAUTHORIZED: 401,
   SESSION_REPLACED: 401, // 같은 계정으로 다른 기기에서 로그인함 (20261130120000_jm_single_session.sql)
+  MFA_REQUIRED: 403, // 2단계 인증을 등록한 관리자가 코드 없이(aal1) 관리자 기능을 부름 (20261201120000_jm_admin_mfa.sql)
   NOT_OWNER: 403,
   NOT_ADMIN: 403,
   FORBIDDEN: 403,
