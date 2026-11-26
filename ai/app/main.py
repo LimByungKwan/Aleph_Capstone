@@ -19,6 +19,7 @@ from .daily import daily_course
 from .docent import load_docent_spots, narrate
 from .external import key_status
 from .limits import allow_request, llm_calls_today
+from .palace_rag import episode, retrieve
 from .places import course_candidates
 from .promo import TARGETS, TONES, generate_promo
 from .tarot import TarotInputError, read_tarot
@@ -27,7 +28,7 @@ app = FastAPI(title="SceneWalk AI", version="0.1.0")
 app.include_router(audition_router)  # SG 오디션 업로드 (audition.py)
 
 # 프론트(Vercel·로컬 개발 서버)에서 부를 수 있게. 배포 때 ALLOWED_ORIGINS로 주소를 바꿀 수 있음
-origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,https://aleph-capstone.vercel.app").split(",") if o.strip()]
+origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5180,http://localhost:5180,https://aleph-capstone.vercel.app").split(",") if o.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"], allow_headers=["*"])
 
 
@@ -118,6 +119,20 @@ def docent(location_id: str, request: Request) -> dict:
     if not allow_request(f"docent:{client_ip(request)}"):
         raise HTTPException(status_code=429, detail="잠시 후 다시 시도해 주세요.")
     return {"narration": narrate(spot)}
+
+
+class PalaceTopic(BaseModel):
+    topic: str = Field(min_length=1, max_length=100)
+
+
+@app.post("/palace/{spot}/episode")
+def palace_episode(spot: str, req: PalaceTopic, request: Request) -> dict:
+    if not allow_request(f"palace:{client_ip(request)}"):
+        raise HTTPException(status_code=429, detail="잠시 후 다시 시도해 주세요.")
+    doc = retrieve(spot, req.topic)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="등록된 경복궁 장소가 아니에요.")
+    return episode(doc)
 
 
 @app.post("/promo", response_model=PromoResponse)

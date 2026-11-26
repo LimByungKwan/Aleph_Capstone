@@ -9,16 +9,67 @@ import { CuboidCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
 // 촬영지 '방파제 & 등대' (가상 영화 「등대가 켜지면」)
 
 // ── 바다 (style: "hjSea") — size [가로, -, 세로]. 잔잔한 물결이 움직여요. 충돌 없음.
+// 바깥 바다(Landscape.jsx)와 같은 물빛: 먼 바다 #286f91, 물가(item.shoreEdge 쪽)로 갈수록 맑은 청록 (coastColors.js 물가 색과 같은 단계)
+// + 물결 위 반짝이는 햇빛 점. 바깥 바다처럼 불투명·거친 재질이라 같은 조명에서 같은 색으로 보여요.
+const SEA_STOPS = [
+  [0, '#94ddd0'],
+  [3, '#53b8b9'],
+  [9, '#369aa9'],
+  [22, '#286f91'],
+]
+function seaColorAt(dist, deep) {
+  const stops = [...SEA_STOPS.slice(0, -1), [SEA_STOPS.at(-1)[0], deep]]
+  for (let i = 1; i < stops.length; i += 1) {
+    if (dist <= stops[i][0]) {
+      const k = (dist - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0])
+      return new THREE.Color(stops[i - 1][1]).lerp(new THREE.Color(stops[i][1]), THREE.MathUtils.clamp(k, 0, 1))
+    }
+  }
+  return new THREE.Color(deep)
+}
+const SEA_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 })
+
+// 햇빛 반짝임: 물 위 작은 흰 점들이 천천히 깜빡여요
+function SeaGlints({ w, d }) {
+  const ref = useRef(null)
+  const geometry = useMemo(() => {
+    const count = Math.round((w * d) / 22)
+    const pos = new Float32Array(count * 3)
+    let seed = 11
+    const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    for (let i = 0; i < count; i += 1) pos.set([(r() - 0.5) * w, 0.16, (r() - 0.5) * d], i * 3)
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    return g
+  }, [w, d])
+  const material = useMemo(() => new THREE.PointsMaterial({ color: '#f4fbff', size: 0.16, sizeAttenuation: true, transparent: true, opacity: 0.6, depthWrite: false }), [])
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.material.opacity = 0.38 + Math.sin(clock.elapsedTime * 1.7) * 0.22
+  })
+  return <points ref={ref} geometry={geometry} material={material} />
+}
+
 export function HjSea({ item }) {
   const [w, , d] = item.size
   const ref = useRef(null)
   const lastWaveTick = useRef(-1)
+  const deep = item.deepColor ?? '#286f91'
   const geometry = useMemo(() => {
     const g = new THREE.PlaneGeometry(w, d, Math.ceil(w / 1.5), Math.ceil(d / 1.5))
     g.rotateX(-Math.PI / 2)
     g.attributes.position.setUsage(THREE.DynamicDrawUsage)
+    // 물가 쪽(shoreEdge)으로 갈수록 밝은 청록
+    const p = g.attributes.position
+    const colors = new Float32Array(p.count * 3)
+    for (let i = 0; i < p.count; i += 1) {
+      const x = p.getX(i)
+      const z = p.getZ(i)
+      const dist = { east: w / 2 - x, west: x + w / 2, north: d / 2 - z, south: z + d / 2 }[item.shoreEdge] ?? Infinity
+      seaColorAt(dist, deep).toArray(colors, i * 3)
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     return g
-  }, [w, d])
+  }, [w, d, deep, item.shoreEdge])
   const base = useMemo(() => Float32Array.from(geometry.attributes.position.array), [geometry])
 
   useFrame(({ clock }) => {
@@ -42,11 +93,10 @@ export function HjSea({ item }) {
       {/* 바닥이 비치지 않게 깊은 물색 판 */}
       <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color={item.deepColor ?? "#1f4f7a"} />
+        <meshStandardMaterial color={deep} roughness={0.85} />
       </mesh>
-      <mesh ref={ref} geometry={geometry} position={[0, 0.11, 0]}>
-        <meshStandardMaterial color={item.surfaceColor ?? "#3d84b8"} transparent opacity={0.88} roughness={0.25} metalness={0.15} />
-      </mesh>
+      <mesh ref={ref} geometry={geometry} position={[0, 0.11, 0]} material={SEA_MAT} />
+      <SeaGlints w={w} d={d} />
       {item.wall !== false && <HarborRails boxes={seaRails(item)} />}
     </group>
   )

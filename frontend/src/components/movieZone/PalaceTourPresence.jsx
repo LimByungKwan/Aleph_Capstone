@@ -5,6 +5,7 @@ import { labelLayer } from '../../game/labelLayer.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { usePalaceSeatStore } from './palaceSeating.js'
 import HallDoorColliders from './HallDoorColliders.jsx'
+import HjModernSeoul from '../../game/Map/styles/hj/HjModernSeoul.jsx' // 시간 열차 도착지 (2026 현대 서울)
 import IndoorView from './IndoorView.jsx'
 import PresenceKeepAlive from './PresenceKeepAlive.jsx'
 import './hjSync.js' // 경복궁·경성 멀티 동기화 (문·앉기·탈것·시계)
@@ -110,6 +111,7 @@ export default function PalaceTourPresence({ playerRef }) {
   return (
     <>
       <HallDoorColliders />
+      <HjModernSeoul />
       <IndoorView playerRef={playerRef} />
       <PresenceKeepAlive playerRef={playerRef} />
     </>

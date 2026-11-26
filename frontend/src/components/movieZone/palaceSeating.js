@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { layout } from '../../game/data/mapData.js'
 import { PALACE_SEATS, THRONE_ROOM_POSITION } from './palaceInteriorLayout.js'
 import { findBoardable } from './rideSeats.js'
+import { trackHjArea } from './hjAreas.js'
+import { beginTimeTravel, trackSeoul } from './timeTravel.js'
 
 const palace = layout.props.find(item => item.id === 'HJ/haewol_palace')
 const SIT_RADIUS = 1.12
@@ -73,13 +75,16 @@ export function updatePalaceSeating(player, locked) {
     pendingWarp = null
   }
   const position = player.body.translation()
+  trackHjArea(position) // 경복궁·경성거리·현대 서울에 들어오면 입장 카드
+  trackSeoul(position) // 현대 서울 가까이에 있을 때만 그 세상을 그려요
 
   // ── 전차·기차에 타고 있을 때: 좌석을 따라 같이 움직이고, 정차했을 때만 내릴 수 있어요 ──
   if (state.seated?.vehicle) {
     const seat = state.seated
     const vehicle = seat.vehicle
-    // 종점(터널)에 들어가면 자동으로 역 승강장에 내려 줘요
-    if (vehicle.forceExit) {
+    // 종점(터널)에 들어가면 자동으로 역 승강장에 내려 줘요.
+    // 시간 열차(exitTransition)는 시간 터널 화면이 다 덮인 뒤에 다른 세상 승강장으로 옮겨요 (그동안은 자리에 앉은 채)
+    if (vehicle.forceExit && (!vehicle.exitTransition || beginTimeTravel(vehicle.exitTransition))) {
       const [fx, fy, fz] = vehicle.forceExit
       seat.taken = false
       lockRide(player, false)

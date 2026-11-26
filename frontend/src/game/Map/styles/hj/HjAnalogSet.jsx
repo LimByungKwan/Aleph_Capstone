@@ -4,6 +4,8 @@ import { Shape, Object3D } from 'three'
 import { labelLayer } from '../../../labelLayer.js'
 import { usePortalStore } from '../../../../components/movieZone/portalStore.js'
 import { ANALOG_SCENES } from '../../../../components/movieZone/sceneData.js'
+import { areaForScene, lastPlayerPosition } from '../../../../components/movieZone/hjAreas.js'
+import { requestPalaceWarp } from '../../../../components/movieZone/palaceSeating.js'
 import { Box, Cyl, GEO, Instances, mat, seeded } from '../kit.jsx'
 import HjWalkInRoom from './HjWalkInRoom.jsx'
 
@@ -103,15 +105,25 @@ export function HjAnalogHanok({ item }) {
   )
 }
 
+// 구역 이름표(📍): 멀리서 누르면 그 구역 입구로 바로 이동(도착하면 입장 카드), 가까이에서 누르면 장면 이야기 열기
+const WARP_FROM_M = 22
 export function HjAnalogLabel({ item }) {
   const scene = ANALOG_SCENES[item.sceneId]
   if (!scene) return null
+  const area = areaForScene(item.sceneId)
+  const onPick = (event) => {
+    event.stopPropagation()
+    event.currentTarget.blur()
+    const me = lastPlayerPosition()
+    const [lx, lz] = item.position
+    const far = me && Math.hypot(me.x - lx, me.z - lz) > WARP_FROM_M
+    const arrive = far && area?.arrive()
+    if (arrive) requestPalaceWarp(arrive)
+    else usePortalStore.setState({ active: scene, dismissedId: null })
+  }
   return (
     <Html portal={labelLayer} position={[0, item.size[1], 0]} center zIndexRange={[50, 30]}>
-      <button type="button" className="hj-story-cue" onClick={(event) => {
-        event.stopPropagation()
-        usePortalStore.setState({ active: scene, dismissedId: null })
-      }}>📍 {scene.title}</button>
+      <button type="button" className="hj-story-cue" onClick={onPick} title={area ? `누르면 ${area.name} 입구로 이동해요` : undefined}>📍 {scene.title}</button>
     </Html>
   )
 }

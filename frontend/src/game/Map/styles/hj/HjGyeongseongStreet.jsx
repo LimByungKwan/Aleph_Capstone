@@ -1,3 +1,4 @@
+import { HjTimeRouteSign } from './HjTimeRouteSign.jsx'
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -73,10 +74,16 @@ export function HjPlatform({ item }) {
       <Box p={[-w * 0.15, 3.65, 0]} s={[0.2, 0.25, length]} c="#3f5a4a" />
       {[-length / 4, length / 4].map((z) => (
         <group key={z} position={[-w * 0.15, 3.0, z]}>
-          <mesh rotation={[0, Math.PI / 2, 0]}>
-            <planeGeometry args={[2.6, 0.55]} />
-            <meshStandardMaterial map={name} side={THREE.DoubleSide} />
-          </mesh>
+          {item.id === 'gs_platform' ? (
+            <group rotation-y={Math.PI / 2}>
+              <HjTimeRouteSign fromGyeongseong width={3.6} />
+            </group>
+          ) : (
+            <mesh rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[2.6, 0.55]} />
+              <meshStandardMaterial map={name} side={THREE.DoubleSide} />
+            </mesh>
+          )}
         </group>
       ))}
       {/* 기둥 위 장식 까치발 (쇠) */}

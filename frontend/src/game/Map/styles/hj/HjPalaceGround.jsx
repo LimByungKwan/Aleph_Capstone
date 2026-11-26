@@ -209,7 +209,53 @@ function rectsGeometry(rects, y, tile) {
   return g
 }
 
+// ── 잔디: 후원 (짧은 풀잎 결 + 군데군데 짙은 포기 + 마른 풀·흙 자국, 1장 = 4m) ──
+function lawn() {
+  return makeTextures('lawn-v1', 512, (color, height, size) => {
+    const r = rand(13)
+    // 큰 얼룩(포기마다 색이 다른 느낌): 낮은 해상도 무작위 값을 부드럽게 보간
+    const G = 16
+    const blob = Array.from({ length: G * G }, () => r())
+    const smooth = (x, y) => {
+      const fx = (x / size) * G
+      const fy = (y / size) * G
+      const x0 = Math.floor(fx) % G
+      const y0 = Math.floor(fy) % G
+      const x1 = (x0 + 1) % G
+      const y1 = (y0 + 1) % G
+      const tx = fx - Math.floor(fx)
+      const ty = fy - Math.floor(fy)
+      const a = blob[y0 * G + x0] * (1 - tx) + blob[y0 * G + x1] * tx
+      const b = blob[y1 * G + x0] * (1 - tx) + blob[y1 * G + x1] * tx
+      return a * (1 - ty) + b * ty
+    }
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const i = (y * size + x) * 4
+        const b = smooth(x, y)
+        const n = r()
+        // 풀잎: 밝고 어두운 가는 결 + 큰 얼룩, 가끔 마른 풀(노르스름)
+        let g = 104 + b * 40 + (n - 0.5) * 40
+        let rr = 70 + b * 24 + (n - 0.5) * 22
+        let bb = 42 + b * 12 + (n - 0.5) * 14
+        if (b < 0.18 && n > 0.6) {
+          rr += 40
+          g += 12
+          bb += 6
+        }
+        color.set([rr, g, bb, 255], i)
+        height[y * size + x] = 0.4 + n * 0.5
+      }
+    }
+  })
+}
+
 function stoneMaterial(kind) {
+  if (kind === 'lawn') {
+    const t = lawn()
+    if (!t?.map) return new THREE.MeshStandardMaterial({ color: '#7f9a5a', roughness: 1 })
+    return new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 1 })
+  }
   const tex = kind === 'bakseok' ? bakseok() : paver()
   if (!tex?.map) return new THREE.MeshStandardMaterial({ color: kind === 'bakseok' ? '#b9b4a6' : '#c9bfa8', roughness: 0.95 })
   return new THREE.MeshStandardMaterial({ map: tex.map, normalMap: tex.normalMap, normalScale: new THREE.Vector2(0.9, 0.9), roughness: 0.93 })
@@ -217,11 +263,11 @@ function stoneMaterial(kind) {
 
 /**
  * 돌 바닥 깔기
- * @param kind 'bakseok'(불규칙 판석) | 'paver'(네모 포석)
+ * @param kind 'bakseok'(불규칙 판석) | 'paver'(네모 포석) | 'lawn'(잔디)
  * @param rects [[x0, x1, z0, z1], …] (이 컴포넌트를 넣은 그룹 좌표)
  * @param y 높이, tile 무늬 한 장 크기(m)
  */
-export function StoneFloor({ kind, rects, y, tile = kind === 'bakseok' ? 5 : 3 }) {
+export function StoneFloor({ kind, rects, y, tile = kind === 'bakseok' ? 5 : kind === 'lawn' ? 4 : 3 }) {
   const geometry = useMemo(() => rectsGeometry(rects, y, tile), [rects, y, tile])
   const material = useMemo(() => stoneMaterial(kind), [kind])
   useEffect(() => () => geometry.dispose(), [geometry])

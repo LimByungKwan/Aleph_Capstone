@@ -261,6 +261,7 @@ function cutRects([x0, x1, z0, z1], holes) {
 
 // 바닥: 장대석 받침 + 마당은 네모 화강석 포석, 근정전 마당은 불규칙 박석, 가운데 삼도, 후원은 잔디 (HjPalaceGround.jsx)
 const LAWN_Z = 46.3 // 침전 뒤 담장 너머 후원 (잔디)
+const GARDEN_PATH_W = 1.2 // 후원 가운데 돌길 반폭
 function Grounds() {
   const { minX, maxX, minZ, maxZ } = BOUNDS
   const ponds = useMemo(() => PONDS.map((p) => [p.ax - p.w / 2, p.ax + p.w / 2, p.az - p.d / 2, p.az + p.d / 2]), [])
@@ -278,15 +279,18 @@ function Grounds() {
     () => cutRects([minX - 0.6, maxX + 0.6, minZ - 0.6, maxZ + 0.6], [...ponds, COURT, [minX - 1, maxX + 1, LAWN_Z, maxZ + 1]]),
     [minX, maxX, minZ, maxZ, ponds],
   )
+  // 후원 잔디 (연못 둘레·가운데 길은 빼요) + 협문→신무문 가운데 돌길
+  const gardenPath = useMemo(() => [[-GARDEN_PATH_W, GARDEN_PATH_W, LAWN_Z, maxZ + 0.6]], [maxZ])
   const backLawn = useMemo(() => {
     const holes = PONDS.map((p) => [p.ax - p.w / 2 - 0.4, p.ax + p.w / 2 + 0.4, p.az - p.d / 2 - 0.4, p.az + p.d / 2 + 0.4])
-    return cutRects([minX - 0.6, maxX + 0.6, LAWN_Z, maxZ + 0.6], holes).map(([a, b, c, e]) => ({ p: [(a + b) / 2, 0.15, (c + e) / 2], s: [b - a, 0.04, e - c], c: '#9fb07c' }))
-  }, [minX, maxX, maxZ])
+    return cutRects([minX - 0.6, maxX + 0.6, LAWN_Z, maxZ + 0.6], [...holes, ...gardenPath])
+  }, [minX, maxX, maxZ, gardenPath])
   return (
     <>
       <Instances geometry={GEO.box} material={PARTS} items={base} />
       <StoneFloor kind="paver" rects={paved} y={0.1675} />
-      <Instances geometry={GEO.box} material={PARTS} items={backLawn} />
+      <StoneFloor kind="lawn" rects={backLawn} y={0.1675} />
+      <StoneFloor kind="paver" rects={gardenPath} y={0.1675} />
       {/* 삼도: 광화문 → 근정전 계단 (가운데 어도가 높고, 긴 장대석 테두리로 나뉜 세 길) */}
       <Samdo z0={GWANGHWAMUN.az} z1={COURT[3]} y={0.17} />
     </>
@@ -300,7 +304,7 @@ function Court() {
 }
 
 // 광화문: 무지개문 3개가 뚫린 장대석 석축 + 여장(작은 담) + 2층 문루(우진각)
-function Gwanghwamun() {
+export function Gwanghwamun() {
   const { az, depth, title } = GWANGHWAMUN
   const crenels = useMemo(() => {
     const list = []
@@ -330,10 +334,11 @@ function Gwanghwamun() {
 }
 
 // 담장: 사괘석 벽 + 장대석 아랫단 + 기와 지붕
-function Wall({ from, to }) {
+export function Wall({ from, to }) {
   const [x0, z0] = from
   const [x1, z1] = to
-  const length = Math.hypot(x1 - x0, z1 - z0)
+  // 양 끝을 담장 두께만큼 늘려, 모서리·이음매에서 담장끼리 맞물려 빈틈이 안 보이게
+  const length = Math.hypot(x1 - x0, z1 - z0) + WALL_T
   const angle = Math.atan2(-(z1 - z0), x1 - x0) // 담장 길이 방향 = 로컬 x
   return (
     <group position={[(x0 + x1) / 2, 0, (z0 + z1) / 2]} rotation-y={angle}>

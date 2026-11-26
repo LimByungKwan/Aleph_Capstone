@@ -3,14 +3,14 @@ import * as THREE from 'three'
 import { GEO, Instances, mat, texMat } from '../kit.jsx'
 import { getCloudDragonTexture, getDancheongTexture } from './hjTextures.js'
 import { pyeonjeonSpots } from './gyeongbokLayout.js'
+import Kitchen from './HjKitchen.jsx'
 
 // [3. 개발 > 프론트엔드] 경복궁 전각 실내 살림 (혜진 영화·드라마 구역)
 // 들어갈 수 있는 전각(HanokHall enterable)의 안쪽을 채워요. 전각 기준 좌표(앞 -z, 바닥 y0).
 // kind: 'throne' 편전(사정전: 어좌 + 일월오봉도) · 'room' 침전·생활 공간(보료·안석·병풍·문갑·경상·등잔)
-//       · 'kitchen' 소주방(아궁이·가마솥·찬장·옹기)
+//       · 'kitchen' 소주방(수라간: 부뚜막·아궁이·가마솥·찬장·선반·소반·옹기 — HjKitchen.jsx)
 
 const PARTS = mat('#ffffff', { roughness: 0.85 })
-const FIRE = mat('#ff8a3a', { emissive: '#ff6a1a', emissiveIntensity: 1.4 })
 const cache = new Map()
 function paint(key, w, h, draw) {
   if (cache.has(key)) return cache.get(key)
@@ -99,6 +99,7 @@ function flowerScreen() {
 
 export default function HallFurniture({ kind = 'room', W2, D2, y0, height = 3 }) {
   if (kind === 'throne') return <Pyeonjeon W2={W2} D2={D2} y0={y0} height={height} />
+  if (kind === 'kitchen') return <Kitchen W2={W2} D2={D2} y0={y0} />
   return <Furniture kind={kind} W2={W2} D2={D2} y0={y0} />
 }
 
@@ -107,30 +108,6 @@ function Furniture({ kind, W2, D2, y0 }) {
     const list = []
     const b = (p, s, c, r) => list.push({ p: [p[0], y0 + p[1], p[2]], s, c, r })
     const back = D2 - 0.35
-    if (kind === 'kitchen') {
-      // 아궁이(벽돌) + 가마솥 둘 + 나무 뚜껑
-      b([-W2 * 0.45, 0.35, back - 0.4], [2.6, 0.7, 0.9], '#8f5a44')
-      b([-W2 * 0.45, 0.72, back - 0.4], [2.7, 0.06, 1.0], '#6c665c')
-      for (const x of [-W2 * 0.45 - 0.65, -W2 * 0.45 + 0.65]) {
-        b([x, 0.86, back - 0.4], [0.55, 0.2, 0.55], '#26282a')
-        b([x, 0.98, back - 0.4], [0.5, 0.04, 0.5], '#7a5a3c')
-        b([x, 0.3, back - 0.86], [0.36, 0.3, 0.04], '#1a1412') // 불 아가리
-      }
-      // 찬장 + 그릇
-      b([W2 * 0.5, 0.9, back], [1.8, 1.8, 0.45], '#7a573c')
-      for (let r = 0; r < 3; r += 1) {
-        b([W2 * 0.5, 0.45 + r * 0.55, back - 0.24], [1.7, 0.04, 0.05], '#5e4030')
-        for (let k = 0; k < 5; k += 1) b([W2 * 0.5 - 0.68 + k * 0.34, 0.55 + r * 0.55, back - 0.12], [0.18, 0.1, 0.18], '#f1ede2')
-      }
-      // 옹기 항아리
-      for (const [x, z, s] of [[W2 * 0.75, -D2 * 0.2, 0.5], [W2 * 0.55, -D2 * 0.35, 0.4], [-W2 * 0.8, -D2 * 0.3, 0.45]]) {
-        b([x, s / 2, z], [s, s, s], '#6b3f28')
-      }
-      // 도마 + 밥상
-      b([0, 0.4, -D2 * 0.1], [1.2, 0.06, 0.6], '#a8825a')
-      for (const sx of [-0.5, 0.5]) for (const sz of [-0.22, 0.22]) b([sx, 0.2, -D2 * 0.1 + sz], [0.06, 0.4, 0.06], '#7a573c')
-      return list
-    }
     if (kind === 'throne') {
       // 어좌 단 + 의자 (뒤에 일월오봉도)
       b([0, 0.15, back - 0.7], [2.6, 0.3, 1.4], '#8f3a2c')
@@ -175,10 +152,6 @@ function Furniture({ kind, W2, D2, y0 }) {
           <mesh position={[0, 0, 0.03]} material={mat('#3c2a20')} scale={kind === 'throne' ? [3.35, 2.05, 0.05] : [2.9, 1.2, 0.05]} geometry={GEO.box} />
         </group>
       )}
-      {/* 아궁이 불빛 (점광원 대신 빛나는 재질) */}
-      {kind === 'kitchen' && [-0.65, 0.65].map((dx) => (
-        <mesh key={dx} geometry={GEO.box} material={FIRE} position={[-W2 * 0.45 + dx, y0 + 0.3, D2 - 0.35 - 0.4 - 0.47]} scale={[0.3, 0.24, 0.02]} />
-      ))}
     </>
   )
 }

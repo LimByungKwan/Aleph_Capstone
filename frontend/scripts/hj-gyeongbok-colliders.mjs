@@ -74,7 +74,7 @@ generated.push(collider('court_floor', (minX + maxX) / 2, (minZ + maxZ) / 2, [ma
 L.WALLS.forEach(([x0, z0, x1, z1], i) => {
   const len = Math.hypot(x1 - x0, z1 - z0)
   const rotationDeg = round((Math.atan2(-(z1 - z0), x1 - x0) * 180) / Math.PI)
-  generated.push(collider(`wall_${i}`, (x0 + x1) / 2, (z0 + z1) / 2, [len, L.WALL_H + 0.5, L.WALL_T], { rotationDeg }))
+  generated.push(collider(`wall_${i}`, (x0 + x1) / 2, (z0 + z1) / 2, [len + L.WALL_T, L.WALL_H + 0.5, L.WALL_T], { rotationDeg })) // 끝을 두께만큼 늘려 모서리 틈 막기
 })
 L.GWANGHWAMUN_PIERS.forEach(([a, b], i) => {
   generated.push(collider(`gwanghwamun_pier_${i}`, (a + b) / 2, L.GWANGHWAMUN.az, [b - a, 3.05, L.GWANGHWAMUN.depth]))
@@ -123,6 +123,19 @@ for (const hall of L.HALLS) {
       generated.push(collider(`${hall.id}_eotap`, ...at(0, back - 1.0), [2.9, 0.49, 1.5], { elevation: top })) // 단 높이만 (용상에 앉으면 단 위에 놓여요)
       for (const x of [-W2 * 0.45, W2 * 0.45]) for (const z of [-D2 * 0.45, D2 * 0.25]) generated.push(collider(`${hall.id}_incol_${x > 0 ? 'e' : 'w'}${z > 0 ? 'n' : 's'}`, ...at(x, z), [0.4, hall.h, 0.4], { elevation: top }))
       for (const s of [-1, 1]) generated.push(collider(`${hall.id}_frame_${s}`, ...at(s * 2.0, back - 0.25), [0.35, hall.h, 0.35], { elevation: top }))
+    }
+    if (hall.furnish === 'kitchen') {
+      // 소주방(수라간) 실내: 부뚜막·찬장·선반·손질 상·소반 받침·옹기·물통·뒤주 (HjKitchen.jsx와 같은 자리)
+      const K = L.kitchenSpots(W2, D2)
+      const box = (id, x, z, sx, sz, h) => generated.push(collider(`${hall.id}_${id}`, ...at(x, z), [sx, h, sz], { elevation: top }))
+      box('hearth', (K.hearth.x0 + K.hearth.x1) / 2, K.hearth.z, K.hearth.x1 - K.hearth.x0, K.hearth.d, K.hearth.h + 0.35)
+      box('cupboard', K.cupboard.x, K.cupboard.z, K.cupboard.w, K.cupboard.l, K.cupboard.h)
+      box('shelf', K.shelf.x, K.shelf.z, K.shelf.w, K.shelf.d, K.shelf.h)
+      box('table', K.table.x, K.table.z, K.table.w, K.table.d, K.table.h)
+      box('trays', K.trays.x, K.trays.z, K.trays.w, K.trays.d, K.trays.h + 0.2)
+      box('chest', K.chest.x, K.chest.z, K.chest.w, K.chest.d, K.chest.h)
+      K.jars.forEach(([x, z, r], i) => box(`jar_${i}`, x, z, r * 2, r * 2, r * 2.2))
+      K.buckets.forEach(([x, z], i) => box(`bucket_${i}`, x, z, 0.4, 0.4, 0.45))
     }
     wall('wall_back', -W2, D2, W2, D2)
     wall('wall_left', -W2, -D2, -W2, D2)

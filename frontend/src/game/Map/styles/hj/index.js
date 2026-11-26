@@ -31,6 +31,7 @@ import HjDrivableCar from './HjDrivableCar.jsx'
 import { HjAdColumn, HjClockTower, HjCultureHouse, HjGasLamp, HjGovernmentHall, HjModernBuilding, HjRickshaw, HjStation, HjTram, HjTramLine } from './HjGyeongseong.jsx'
 import { HjAnalogHanok, HjAnalogLabel, HjGoldenSet } from './HjAnalogSet.jsx'
 import { HjBoat, HjBreakwater, HjLighthouse, HjSea } from './HjHarbor.jsx'
+import { HjBugaksan } from './HjBugaksan.jsx'
 import { HjCrosswalk, HjCurvedRoad } from './HjStreet.jsx'
 import {
   HjAFrameSign,
@@ -115,6 +116,7 @@ export const HJ_STYLES = {
   hjCrosswalk: HjCrosswalk,
   hjBrickBuilding: HjBrickBuilding, // 빈티지 벽돌 건물 (줄무늬 차양, SEOUL 1988 벽화)
   hjSea: HjSea, // 출렁이는 바다
+  hjBugaksan: HjBugaksan, // 경복궁 뒤 북악산·인왕산·북한산 (경성거리 북쪽 맵 바깥)
   hjBreakwater: HjBreakwater, // 방파제 + 테트라포드
   hjLighthouse: HjLighthouse, // 빨강·흰 등대 (도는 불빛)
   hjBoat: HjBoat, // 고깃배

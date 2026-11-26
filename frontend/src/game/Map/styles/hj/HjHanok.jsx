@@ -587,15 +587,23 @@ export function HanokHall({
     return { cols, box, lattice, transom, stone, band, pinkPanels, windowPanels, octPanels }
   }, [nb, ns, colR, W2, D2, y0, height, mode, ornate, upper, base, woldae, doorWidth, facade, roofY, Wu, Du, hu, yU0, xsF, zsS, pal, nakyang, enterable, doorClosed, allWindows, merumColor])
 
-  // 현판
+  // 현판: 공포(내민 받침)·서까래에 가리지 않게 공포 끝보다 앞, 처마 밑선(roofY)보다 아래에 걸어요.
+  // 실제 궁궐 현판처럼 윗부분이 앞으로 살짝 숙여져 아래에서 올려다봐도 글씨가 잘 보여요.
+  const plaqueW = Math.min(3.2, Math.max(1.3, width * 0.2))
+  const plaqueH = plaqueW / 3.4
+  const plaqueOut = (ornate ? 0.95 : 0.62) + 0.04 // 공포가 벽선에서 내민 길이 + 여유
   const plaque = title ? (
-    <mesh
-      position={[0, upper ? yU0 + hu * 0.66 : y0 + height + 0.32, upper ? -Du / 2 - 0.12 : -D2 - 0.42]}
-      rotation-y={Math.PI}
+    <group
+      position={upper ? [0, yU0 + hu * 0.66, -Du / 2 - 0.12] : [0, roofY - 0.04 - plaqueH / 2, -D2 - plaqueOut]}
+      rotation={[upper ? 0 : -0.16, Math.PI, 0]}
     >
-      <planeGeometry args={[Math.min(3.2, Math.max(1.3, width * 0.2)), Math.min(3.2, Math.max(1.3, width * 0.2)) / 3.4]} />
-      <meshBasicMaterial map={getSignTexture(title, '#262520', '#e7c97a')} />
-    </mesh>
+      <mesh>
+        <planeGeometry args={[plaqueW, plaqueH]} />
+        <meshBasicMaterial map={getSignTexture(title, '#262520', '#e7c97a')} />
+      </mesh>
+      {/* 테두리 나무판 (뒤에서 보면 판이 보이게) */}
+      <mesh geometry={GEO.box} position={[0, 0, -0.035]} scale={[plaqueW + 0.1, plaqueH + 0.1, 0.06]} material={mat(pal.b1)} />
+    </group>
   ) : null
 
   return (
