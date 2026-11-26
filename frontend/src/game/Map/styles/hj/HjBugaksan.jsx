@@ -137,15 +137,13 @@ const ROCK = mat('#ffffff', { roughness: 0.9, flat: true })
 export const PASS = { x0: -2.5, x1: 11.5 } // 고갯길 (신무문 x 0, 인력거 길 x 8.6)
 export const BUGAK_DEPTH = 59
 const GATE_Z = 29 // 숙정문 (고갯길 위 성곽 줄)
-const SUMMIT = { x: 30, z: 31 } // 북악산 꼭대기 (팔각정)
+const SUMMIT = { x: 23, z: 31 } // 북악산 꼭대기 (팔각정)
 const TUNNEL = { x0: -53.5, x1: -39.7, z0: 45.6 } // 기찻길 터널 입구 (gs_tunnel_s) — 이 북쪽은 평지
 
 // 봉우리: [cx, cz, rx, rz, 높이, 뾰족함, 바위(0~1)]
 const PASS_PEAKS = [
-  [SUMMIT.x, SUMMIT.z, 36, 27, 44, 1.05, 0.32], // 북악산 (대부분 숲, 군데군데 흰 바위)
-  [60, 30, 26, 24, 22, 1.2, 0.3], // 동쪽 어깨
+  [SUMMIT.x, SUMMIT.z, 28, 27, 42, 1.05, 0.32], // 북악산 (대부분 숲, 군데군데 흰 바위)
   [-22, 29, 22, 23, 33, 1.3, 0.7], // 서쪽 바위 봉우리
-  [-60, 28, 28, 24, 19, 1.2, 0.5], // 바다 쪽 곶
 ]
 const noise = (x, z) =>
   Math.sin(x * 0.21 + z * 0.13) * 1.1 + Math.cos(x * 0.11 - z * 0.27) * 1.3 + Math.sin(x * 0.53 + z * 0.41) * 0.45 + Math.cos(x * 0.07 + z * 0.05) * 1.6
@@ -160,7 +158,8 @@ function passHeight(x, z) {
   h = Math.min(h, 2.6 + z * 2.4) * smooth(0, 0.8, z)
   h *= 1 - smooth(BUGAK_DEPTH - 9, BUGAK_DEPTH, z)
   // 양 끝 (서쪽 바다 곶 끝, 동쪽 구역 밖)
-  h *= smooth(-100, -82, x) * (1 - smooth(64, 82, x))
+  // 서쪽은 기찻길 터널을 감쌀 만큼만 (바다 위로는 안 나가요), 동쪽은 구역 밖에서 낮아져요
+  h *= smooth(-60, -50, x) * (1 - smooth(33, 44, x)) // 동쪽은 구역 끝(x 40)에서 멈춰요 — 그 너머는 해월 드림파크
   // 고갯길: 길 바닥은 0, 양쪽은 석축(3.5m)에서 다시 비탈
   const dPass = Math.max(PASS.x0 - x, x - PASS.x1)
   if (dPass < 0) return 0
@@ -197,8 +196,8 @@ function crestAt(x) {
 
 const PASS_STEP = 1.5
 function makePassMesh() {
-  const X0 = -100
-  const X1 = 82
+  const X0 = -61
+  const X1 = 45
   const nx = Math.round((X1 - X0) / PASS_STEP)
   const nz = Math.round(BUGAK_DEPTH / PASS_STEP)
   const positions = []
@@ -260,6 +259,10 @@ export function HjBugaksanCollider({ item }) {
   )
 }
 
+// 숲 나무 (성능): 잎은 20면체, 줄기는 뚜껑 없는 6각 기둥 — 낮은 다각형 모양은 같고 삼각형은 1/4
+const LOW_LEAF = new THREE.IcosahedronGeometry(1, 0)
+const LOW_TRUNK = new THREE.CylinderGeometry(1, 1, 1, 6, 1, true)
+const LOW_CONE = new THREE.ConeGeometry(1, 1, 6, 1, true)
 const BARK = mat('#5b4334', { roughness: 0.95 })
 const NEEDLE = mat('#ffffff', { roughness: 0.95, flat: true })
 const STONE_P = mat('#ffffff', { roughness: 0.9 })
@@ -284,7 +287,7 @@ export function HjBugaksan() {
     const lanterns = []
     // 숲: 소나무(층층 원뿔) 6 : 활엽수(둥근 잎) 4, 바위·고갯길·성곽 줄은 비움
     for (let k = 0; k < 5200 && pines.length + leafy.length < 1500; k += 1) {
-      const x = -96 + r() * 176
+      const x = -57 + r() * 96
       const z = 2 + r() * (BUGAK_DEPTH - 4)
       const h = passHeight(x, z)
       if (h < 2.8) continue
@@ -305,7 +308,7 @@ export function HjBugaksan() {
     }
     // 너럭바위: 바위 많은 비탈에 비스듬히 누운 흰 화강암 판 (사진의 흰 바위 자국)
     for (let k = 0; k < 2600 && slabs.length < 120; k += 1) {
-      const x = -80 + r() * 150
+      const x = -52 + r() * 88
       const z = 4 + r() * (BUGAK_DEPTH - 8)
       const h = passHeight(x, z)
       if (h < 8 || passRock(x, z, h) < 0.45) continue
@@ -317,7 +320,7 @@ export function HjBugaksan() {
     }
     // 한양도성 성곽: 산등성이를 따라 (고갯길 양쪽은 숙정문까지 내려와 이어져요)
     const wallPts = []
-    for (let x = -64; x <= 70; x += 2) {
+    for (let x = -50; x <= 38; x += 2) {
       if (x > PASS.x0 - 8 && x < PASS.x1 + 8) continue // 숙정문 석축(가로 22m)이 이어 줘요
       const c = crestAt(x)
       // 숙정문 가까이에서는 문 높이·자리로 내려와 붙어요
@@ -359,9 +362,9 @@ export function HjBugaksan() {
       <mesh geometry={model.geometry}>
         <meshStandardMaterial vertexColors roughness={1} flatShading />
       </mesh>
-      <Instances geometry={GEO.cyl8} material={BARK} items={model.trunks} />
-      <Instances geometry={GEO.cone} material={NEEDLE} items={model.pines} />
-      <Instances geometry={GEO.ico} material={LEAVES} items={model.leafy} />
+      <Instances geometry={LOW_TRUNK} material={BARK} items={model.trunks} />
+      <Instances geometry={LOW_CONE} material={NEEDLE} items={model.pines} />
+      <Instances geometry={LOW_LEAF} material={LEAVES} items={model.leafy} />
       <Instances geometry={GEO.rock} material={ROCK} items={model.slabs} />
       <Instances geometry={GEO.box} material={STONE_P} items={model.stones} />
       <Instances geometry={GEO.box} material={STONE_P} items={model.crenels} />

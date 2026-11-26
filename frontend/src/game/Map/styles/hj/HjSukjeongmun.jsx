@@ -346,8 +346,6 @@ export function Sukjeongmun({ position = [0, 0, 0] }) {
       {[-9, -3, 3, 9].map((x) => (
         <mesh key={x} geometry={GEO.box} material={UPLIGHT} position={[x, 0.12, -d / 2 - 1.1]} scale={[0.5, 0.18, 0.3]} />
       ))}
-      <pointLight position={[0, 2.2, -d / 2 - 2]} color="#ffcf8a" intensity={6} distance={14} decay={2} />
-      <pointLight position={[0, 2.4, 0]} color="#ffdca0" intensity={3} distance={8} decay={2} />
     </group>
   )
 }

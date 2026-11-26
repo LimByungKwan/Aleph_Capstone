@@ -303,8 +303,6 @@ export default function Kitchen({ W2, D2, y0 }) {
       <Instances geometry={GEO.box} material={EMBER} items={embers} />
       <Instances geometry={GEO.cyl} material={LANTERN} items={lampCyl} />
       <Instances geometry={GEO.box} material={LANTERN} items={lampBox} />
-      {/* 아궁이 불빛이 부뚜막 앞 바닥을 비춰요 */}
-      <pointLight position={[(H.x0 + H.x1) / 2 - 0.6, y0 + 0.35, H.z - H.d / 2 - 0.5]} color="#ff9a4a" intensity={2.2} distance={4.5} decay={2} />
     </>
   )
 }

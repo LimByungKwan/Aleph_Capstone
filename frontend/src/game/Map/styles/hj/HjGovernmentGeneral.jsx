@@ -1,3 +1,4 @@
+import NearOnly from './HjNearOnly.jsx'
 import { useMemo } from 'react'
 import { Ball, Box, Cone, Cyl, GEO, Instances, mat } from '../kit.jsx'
 import { getSignTexture } from '../textures.js'
@@ -57,9 +58,12 @@ export default function HjGovernmentGeneral({ item }) {
     <group scale={[sw / w, sh / h, sd / d]}>
       <Shell title={item.title} />
       <Portico />
-      <Hall />
-      <Lobby />
-      <Office />
+      {/* 실내는 가까이 있을 때만 그려요 (성능) */}
+      <NearOnly radius={50}>
+        <Hall />
+        <Lobby />
+        <Office />
+      </NearOnly>
     </group>
   )
 }
