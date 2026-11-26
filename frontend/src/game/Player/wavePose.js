@@ -5,7 +5,7 @@ const PALM = new Vector3(0, 0, 1) // RightHand 뼈에서 손바닥이 향하는 
 
 // 애니메이션 믹서가 기본 자세를 갱신한 뒤 오른팔 자세를 덧씌웁니다.
 export function createWavePose(model, characterId) {
-  const male = characterId === 'male'
+  const male = characterId === 'male' || characterId === 'male2'
   const shoulder = model.getObjectByName('RightShoulder')
   const arm = model.getObjectByName('RightArm')
   const forearm = model.getObjectByName('RightForeArm')

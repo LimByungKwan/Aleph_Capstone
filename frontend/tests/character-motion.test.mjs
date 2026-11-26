@@ -3,10 +3,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { AnimationMixer, Box3, Vector3 } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 
 globalThis.ProgressEvent ??= class ProgressEvent { constructor(type, init) { Object.assign(this, { type }, init) } }
 
-for (const gender of ['male', 'female', 'lumi']) {
+for (const gender of ['male', 'female', 'male2', 'female2', 'lumi']) {
   test(`${gender}: all animated skin weights are normalized and sampled poses stay grounded and finite`, async () => {
     const buffer = readFileSync(new URL(`../public/models/characters/${gender}.glb`, import.meta.url))
     const jsonSize = buffer.readUInt32LE(12)
@@ -18,7 +19,8 @@ for (const gender of ['male', 'female', 'lumi']) {
     delete gltf.textures
     delete gltf.materials
     for (const mesh of gltf.meshes) for (const primitive of mesh.primitives) delete primitive.material
-    const { scene, animations } = await new GLTFLoader().parseAsync(JSON.stringify(gltf), '')
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
+    const { scene, animations } = await loader.parseAsync(JSON.stringify(gltf), '')
     const meshes = []
     scene.traverse(object => { if (object.isSkinnedMesh) meshes.push(object) })
     assert.ok(meshes.length > 0)

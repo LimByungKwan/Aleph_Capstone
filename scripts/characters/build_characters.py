@@ -121,7 +121,8 @@ def prepare_mesh(gender, height):
     for polygon in mesh.data.polygons: polygon.use_smooth = True
     for img in bpy.data.images:
         if img.size[0] > 2048: img.scale(2048,2048)
-        img.pack()
+        if img.is_dirty or not img.packed_file:
+            img.pack()
     # FBX material conversion sometimes leaves a metallic link at full strength.
     for mat in mesh.data.materials:
         if mat and mat.use_nodes:
