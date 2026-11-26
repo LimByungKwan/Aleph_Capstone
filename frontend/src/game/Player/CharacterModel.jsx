@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei'
 import { AnimationMixer, LoopOnce, LoopRepeat, MathUtils, Quaternion, Vector3 } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { useGameStore } from '../../store/gameStore.js'
-import { PLAYER_RUN_SPEED, PLAYER_WALK_SPEED } from '../config.js'
+import { PLAYER_RUN_SPEED, PLAYER_SPEED_BOOST, PLAYER_WALK_SPEED } from '../config.js'
 import { usePlayerCharacter } from './characterStore.js'
 
 function Placeholder() {
@@ -122,8 +122,9 @@ function AnimatedCharacter({ character, playerRef, palaceSeat }) {
     // Keep the same leading foot when blending between clips with different lengths.
     const walkDuration = current.Walk.getClip().duration
     const runDuration = current.Run.getClip().duration
-    const walkRate = velocity / character.gaitSpeed.Walk / walkDuration
-    const runRate = velocity / character.gaitSpeed.Run / runDuration
+    // 이동은 PLAYER_SPEED_BOOST배 빠르지만 다리는 원래 속도의 박자로 (발이 미끄러져 보이는 대신 동작이 차분)
+    const walkRate = velocity / PLAYER_SPEED_BOOST / character.gaitSpeed.Walk / walkDuration
+    const runRate = velocity / PLAYER_SPEED_BOOST / character.gaitSpeed.Run / runDuration
     phase.current = (phase.current + dt * MathUtils.lerp(walkRate, runRate, run)) % 1
     current.Walk.setEffectiveTimeScale(0)
     current.Run.setEffectiveTimeScale(0)
