@@ -4,7 +4,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { AnimationMixer, LoopOnce, LoopRepeat, MathUtils } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import characters from '@shared/characters.json'
-import { PLAYER_RUN_SPEED, PLAYER_WALK_SPEED } from '../config.js'
+import { PLAYER_RUN_SPEED, PLAYER_SPEED_BOOST, PLAYER_WALK_SPEED } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
 import { useRealtimeStore } from './realtimeStore.js'
 import { useRemoteSeats } from '../../components/movieZone/hjSync.js' // [혜진] 다른 사람이 앉아 있으면 앉은 자세로
@@ -110,9 +110,9 @@ function RemoteModel({ id, character }) {
       weight.current[name] = MathUtils.damp(weight.current[name], target[name], 10, dt)
       current[name].setEffectiveWeight(weight.current[name])
     }
-    // 걸음 속도에 맞춰 발 움직임 빠르기 조절 (미끄러지듯 걷지 않게)
-    current.Walk?.setEffectiveTimeScale(Math.max(speed, 0.3) / character.gaitSpeed.Walk)
-    current.Run?.setEffectiveTimeScale(Math.max(speed, 0.3) / character.gaitSpeed.Run)
+    // 내 캐릭터(CharacterModel)와 같게: 이동은 빠르지만 다리는 원래 속도의 박자로 (11/26 SG, 혜진님 확인)
+    current.Walk?.setEffectiveTimeScale(Math.max(speed / PLAYER_SPEED_BOOST, 0.3) / character.gaitSpeed.Walk)
+    current.Run?.setEffectiveTimeScale(Math.max(speed / PLAYER_SPEED_BOOST, 0.3) / character.gaitSpeed.Run)
     mixer.update(dt)
   })
 
