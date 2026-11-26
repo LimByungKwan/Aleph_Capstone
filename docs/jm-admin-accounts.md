@@ -131,7 +131,7 @@ where id in (select id from auth.users where email in (
 ));
 ```
 
-- 테스트 계정 `jm-test-pilgrim`, `jm-test-ui` 는 리허설 뒤, 캡스톤 마감(11/30) 전에 삭제 예정. 시연용 사장님 계정(`jm-demo-owner`)은 지우지 않는다.
+- 테스트 계정 `jm-test-pilgrim`, `jm-test-ui` 는 리허설 뒤, 시연(12/01) 전에 삭제 예정. 시연용 사장님 계정(`jm-demo-owner`)은 지우지 않는다.
 
 ## 이메일 인증 (지금은 꺼 둠, 11/23 결정)
 
