@@ -2204,6 +2204,36 @@ const ARCH_ROOF = mat('#d9cfb4', { roughness: 0.6, emissive: '#3a3020', emissive
 const ARCH_RIB = mat('#8a7a5e', { roughness: 0.8 })
 const ARCH_TRIM = mat('#f0d9b0', { roughness: 0.8 })
 const BULB_PINK = mat('#ffd0d8', { emissive: '#ff7a9a', emissiveIntensity: 1.3 })
+// 아치 모양으로 뚫린 벽 판 (폭 fw, 높이 fh, 뚫린 곳: 다리 ±R 높이 spring까지 + 위 반원 R). 판이 아치보다 좁으면 아치 곡선 위만 남김
+const ARCH_WALL_CACHE = new Map()
+function archWallGeometry(fw, fh, R, spring, depth) {
+  const key = [fw, fh, R, spring, depth].map((v) => v.toFixed(3)).join(':')
+  if (ARCH_WALL_CACHE.has(key)) return ARCH_WALL_CACHE.get(key)
+  const hw = fw / 2
+  const sh = new THREE.Shape()
+  if (R < hw - 0.01) {
+    sh.moveTo(-hw, 0)
+    sh.lineTo(-hw, fh)
+    sh.lineTo(hw, fh)
+    sh.lineTo(hw, 0)
+    sh.lineTo(R, 0)
+    sh.lineTo(R, spring)
+    sh.absarc(0, spring, R, 0, Math.PI, false)
+    sh.lineTo(-R, 0)
+    sh.lineTo(-hw, 0)
+  } else {
+    const a0 = Math.acos(Math.min(1, hw / R))
+    const yEdge = spring + R * Math.sin(a0)
+    sh.moveTo(-hw, yEdge)
+    sh.lineTo(-hw, fh)
+    sh.lineTo(hw, fh)
+    sh.lineTo(hw, yEdge)
+    sh.absarc(0, spring, R, a0, Math.PI - a0, false)
+  }
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 28 })
+  ARCH_WALL_CACHE.set(key, g)
+  return g
+}
 export function JmAlleyArch({ item }) {
   const [span, , depth = 5] = item.size
   const spring = 3.0 // 아치가 휘기 시작하는 높이
@@ -2290,21 +2320,16 @@ export function JmAlleyArch({ item }) {
            문틀 옆 남는 틈·문틀 위를 건물 몸통으로 꽉 채움 → 건물을 뚫고 들어가는 골목 터널처럼. 위에는 색유리 아치 창 + 작은 발코니 */}
       {item.fill && (() => {
         const R = r + band
-        const side = Math.max(0, item.fill.w / 2 - (r + 0.3))
         const crown = spring + R
         const fh = Math.max(crown + 1.6, item.fill.h)
         const wallC = item.fill.color ?? '#d9b45e'
         return (
           <group>
-            {side > 0.05 &&
-              [-1, 1].map((sd) => (
-                <Box key={`fs${sd}`} p={[sd * (r + 0.3 + side / 2), fh / 2, -0.45 - depth / 2 + 0.2]} s={[side, fh, depth + 0.4]} c={wallC} />
-              ))}
-            <Box p={[0, (crown + 0.1 + fh) / 2, -0.45 - depth / 2 + 0.2]} s={[item.fill.w, fh - crown - 0.1, depth + 0.4]} c={wallC} />
-            {/* 문틀 어깨를 채우는 판 (아치 바깥과 네모 사이) */}
-            {[-1, 1].map((sd) => (
-              <Box key={`sh${sd}`} p={[sd * (R * 0.72), spring + R * 0.55, -0.47]} s={[R * 0.56, R * 0.9, 0.04]} c={wallC} />
-            ))}
+            {/* (11/26 지민 요청: 아치가 네모난 홈 안에 들어간 것처럼 보임) 건물 벽을 아치 모양으로 뚫린 판 한 장으로
+                 → 붉은 문틀 바로 뒤에서 벽이 아치 테두리를 따라 둥글게 맞닿음 (전엔 벽 앞면 0.4m 뒤에 네모 어깨판이 있어 네모 홈이 생겼음) */}
+            <mesh geometry={archWallGeometry(item.fill.w, fh, R - 0.06, spring, depth + 0.4)} position={[0, 0, -0.45 - depth]}>
+              <meshStandardMaterial color={wallC} roughness={0.9} />
+            </mesh>
             <Box p={[0, fh - 0.1, -0.45 - depth / 2 + 0.2]} s={[item.fill.w + 0.4, 0.2, depth + 0.8]} c="#3a2416" />
             <group position={[0, crown + (fh - crown) / 2 + 0.1, 0.24]}>
               <mesh>
