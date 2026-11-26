@@ -17,5 +17,20 @@ export function createSupabaseFactory({ url, key }) {
     /** 로그인한 사람 권한으로 DB를 부르는 클라이언트 */
     asUser: (accessToken) =>
       createClient(url, key, { ...options, global: { headers: { Authorization: `Bearer ${accessToken}` } } }),
+    /**
+     * Supabase Auth REST를 그 사람 토큰으로 직접 부름 (2단계 인증 등록·확인: /factors …)
+     * supabase-js의 auth.mfa.*는 클라이언트 안에 저장된 세션이 있어야 해서, 세션을 저장하지 않는 서버에서는 REST로 부름
+     * @returns {Promise<{ status: number, data: any }>}
+     */
+    authRest: async (accessToken, method, path, body) => {
+      const res = await fetch(`${url}/auth/v1${path}`, {
+        method,
+        headers: { apikey: key, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
+      })
+      const data = await res.json().catch(() => null)
+      return { status: res.status, data }
+    },
   }
 }

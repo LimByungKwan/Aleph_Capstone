@@ -71,6 +71,28 @@ async function loadProfile(db, userId) {
   return data
 }
 
+/** JWT 가운데 부분(내용)만 읽음. 서명 검사는 requireAuth의 getUser가 이미 했으므로 여기서는 값만 꺼냄 */
+function tokenClaims(token) {
+  try {
+    return JSON.parse(Buffer.from(String(token).split('.')[1] ?? '', 'base64url').toString('utf8'))
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * 2단계 인증 상태 (관리자만 쓰는 TOTP, 20261201120000_jm_admin_mfa.sql과 같은 규칙)
+ *   enrolled: 검증까지 끝낸 TOTP가 있음 / ok: 이번 로그인에서 코드를 넣었음(aal2) / required: 등록했는데 아직 코드를 안 넣음
+ */
+function mfaInfo(user, token) {
+  const factor = (user?.factors ?? []).find((f) => f.factor_type === 'totp' && f.status === 'verified')
+  const ok = tokenClaims(token).aal === 'aal2'
+  return { enrolled: Boolean(factor), factorId: factor?.id ?? null, ok, required: Boolean(factor) && !ok }
+}
+const mfaJson = ({ enrolled, ok, required }) => ({ enrolled, ok, required })
+
+const CODE_RE = /^\d{6}$/
+
 async function rpc(db, name, args) {
   const { data, error } = await db.rpc(name, args)
   if (error) throw fromDbError(error)
@@ -91,6 +113,8 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
   //   IP: 로그인+가입 시도 15분에 30번 / 이메일: 로그인 실패 15분에 5번 (성공하면 초기화)
   const authPerIp = createLimiter(limits.authPerIp ?? { windowMs: 15 * 60_000, max: 30 })
   const loginFailPerEmail = createLimiter(limits.loginFailPerEmail ?? { windowMs: 15 * 60_000, max: 5 })
+  // 2단계 인증 코드: 계정마다 15분에 5번 틀리면 잠깐 막음 (6자리 숫자는 100만 가지라 무작정 대입을 막아야 함)
+  const mfaFailPerUser = createLimiter(limits.mfaFailPerUser ?? { windowMs: 15 * 60_000, max: 5 })
   function blockIfLimited(limiter, key) {
     const r = limiter.check(key)
     if (r.limited) {
@@ -135,6 +159,7 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
     const { data, error } = await supabase.anon().auth.getUser(token)
     if (error || !data?.user) throw new HttpError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
     req.user = data.user
+    req.token = token
     req.db = supabase.asUser(token)
     // 계정당 로그인 1곳: 같은 계정이 다른 기기에서 로그인했으면 이 토큰은 거절 (첫 번째 겹. 두 번째 겹은 DB require_user)
     //   토큰 자체는 아직 유효해서(refresh도 됨) getUser만으로는 못 거름 → DB에 기록된 "지금 유효한 session_id"와 비교
@@ -162,6 +187,10 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
       if (profile?.role !== role) {
         const [code, message] = ROLE_ERROR[role] ?? ['FORBIDDEN', '권한이 없어요.']
         throw new HttpError(403, code, message)
+      }
+      // 2단계 인증을 등록한 관리자는 이번 로그인에서 코드를 넣어야 함 (등록 안 했으면 예전처럼 통과). DB my_role()도 같은 규칙
+      if (role === 'admin' && mfaInfo(req.user, req.token).required) {
+        throw new HttpError(403, 'MFA_REQUIRED', '2단계 인증 코드를 넣어야 관리자 기능을 쓸 수 있어요.')
       }
       req.profile = profile
       next()
@@ -218,7 +247,8 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
     // 일일 접속자 집계용 기록 (로그인한 사람만 셈 — 11/17 팀 결정)
     await rpc(db, 'log_access')
     const profile = await loadProfile(db, data.user.id)
-    res.json({ session: sessionJson(data.session), user: profileJson(data.user, profile) })
+    // mfa.required면 화면이 6자리 코드 창을 띄움 (그 전까지는 순례객 기능만 됨)
+    res.json({ session: sessionJson(data.session), user: profileJson(data.user, profile), mfa: mfaJson(mfaInfo(data.user, data.session.access_token)) })
   })
 
   app.post('/auth/refresh', async (req, res) => {
@@ -249,7 +279,69 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
 
   app.get('/me', requireAuth, async (req, res) => {
     const profile = await loadProfile(req.db, req.user.id)
-    res.json({ user: profileJson(req.user, profile) })
+    res.json({ user: profileJson(req.user, profile), mfa: mfaJson(mfaInfo(req.user, req.token)) })
+  })
+
+  // ── 관리자 2단계 인증 (TOTP: Google Authenticator 같은 앱의 30초마다 바뀌는 6자리) ──
+  // Supabase Auth의 factors API를 그 사람 토큰으로 부름 (서버는 비밀 키를 갖지 않음 — supabase.js authRest)
+  // 흐름: 등록 = enroll(QR 받기) → 앱으로 찍기 → enroll/verify(코드 확인) / 로그인 = 비밀번호 → mfa/verify(코드)
+
+  /** 코드 확인: challenge → verify. 맞으면 aal2 세션(새 토큰)을 돌려줌. 틀리면 계정별로 횟수를 셈 */
+  async function verifyCode(req, factorId, code) {
+    if (typeof code !== 'string' || !CODE_RE.test(code)) throw new HttpError(400, 'INVALID_INPUT', '인증 앱의 6자리 숫자를 넣어 주세요.')
+    blockIfLimited(mfaFailPerUser, req.user.id)
+    const challenge = await supabase.authRest(req.token, 'POST', `/factors/${factorId}/challenge`, {})
+    if (challenge.status >= 300 || !challenge.data?.id) throw authRestError('[mfa challenge]', challenge)
+    const verify = await supabase.authRest(req.token, 'POST', `/factors/${factorId}/verify`, { challenge_id: challenge.data.id, code })
+    if (verify.status === 400 || verify.status === 422) {
+      mfaFailPerUser.hit(req.user.id)
+      throw new HttpError(401, 'MFA_INVALID_CODE', '코드가 맞지 않아요. 앱에 지금 보이는 6자리를 넣어 주세요.')
+    }
+    if (verify.status >= 300 || !verify.data?.access_token) throw authRestError('[mfa verify]', verify)
+    mfaFailPerUser.reset(req.user.id)
+    const session = verify.data
+    // 새 토큰도 "지금 유효한 로그인"으로 기록 (같은 기기라 다른 연결은 끊지 않음 — onSessionReplaced 안 부름)
+    await rpc(supabase.asUser(session.access_token), 'claim_session')
+    return sessionJson({ ...session, expires_at: session.expires_at ?? Math.round(Date.now() / 1000) + (session.expires_in ?? 3600) })
+  }
+  function authRestError(tag, result) {
+    console.error(tag, result.status, result.data?.error_code ?? result.data?.code ?? '') // 내용(비밀·QR)은 남기지 않음
+    return new HttpError(500, 'SERVER_ERROR', '잠시 뒤에 다시 시도해 주세요.')
+  }
+
+  // 로그인 2단계: 비밀번호로 로그인한 뒤 코드 넣기 (등록한 factor는 서버가 찾음 — 화면이 보낸 id는 쓰지 않음)
+  app.post('/auth/mfa/verify', requireAuth, async (req, res) => {
+    const { enrolled, factorId } = mfaInfo(req.user, req.token)
+    if (!enrolled) throw new HttpError(400, 'MFA_NOT_ENROLLED', '2단계 인증을 등록하지 않은 계정이에요.')
+    res.json({ session: await verifyCode(req, factorId, req.body?.code), mfa: { enrolled: true, ok: true, required: false } })
+  })
+
+  // 등록 시작: QR 코드 받기 (관리자만). 이미 등록했으면 409, 하다 만 등록은 지우고 새로
+  app.post('/auth/mfa/enroll', requireAuth, requireRole('admin'), async (req, res) => {
+    if (mfaInfo(req.user, req.token).enrolled) throw new HttpError(409, 'MFA_ALREADY_ENROLLED', '이미 2단계 인증을 등록했어요.')
+    for (const f of req.user.factors ?? []) {
+      if (f.status !== 'verified') await supabase.authRest(req.token, 'DELETE', `/factors/${f.id}`)
+    }
+    const r = await supabase.authRest(req.token, 'POST', '/factors', {
+      factor_type: 'totp',
+      friendly_name: `SceneWalk 관리자 ${new Date().toISOString().slice(0, 10)}`,
+      issuer: 'SceneWalk AI',
+    })
+    if (r.status >= 300 || !r.data?.id || !r.data?.totp?.qr_code) throw authRestError('[mfa enroll]', r)
+    res.status(201).json({
+      factorId: r.data.id,
+      // Supabase는 SVG 원문을 줌 → <img src>에 바로 넣을 수 있게 data URI로
+      qrCode: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(r.data.totp.qr_code)}`,
+      secret: r.data.totp.secret, // QR을 못 찍을 때 앱에 직접 입력하는 값 (화면에만 보여 주고 저장·기록하지 않음)
+    })
+  })
+
+  // 등록 마무리: 앱에 뜬 코드로 확인 → 등록 완료 + 이번 로그인은 바로 aal2
+  app.post('/auth/mfa/enroll/verify', requireAuth, requireRole('admin'), async (req, res) => {
+    const factorId = typeof req.body?.factorId === 'string' ? req.body.factorId : ''
+    const mine = (req.user.factors ?? []).some((f) => f.id === factorId && f.status !== 'verified')
+    if (!UUID_RE.test(factorId) || !mine) throw new HttpError(400, 'INVALID_INPUT', '등록을 처음부터 다시 시작해 주세요.')
+    res.json({ session: await verifyCode(req, factorId, req.body?.code), mfa: { enrolled: true, ok: true, required: false } })
   })
 
   // 닉네임 바꾸기 — 이름만 받는다. 역할·가게는 보내도 무시 (DB 트리거 guard_profile_update도 한 번 더 막음)

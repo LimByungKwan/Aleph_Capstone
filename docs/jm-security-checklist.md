@@ -31,6 +31,8 @@
 
 | 8 | 계정당 로그인 1곳 (11/26 추가) | ✅ 로컬 검증 (배포 전) | **새 로그인 우선**: 같은 계정으로 다른 기기에서 로그인하면 이전 기기는 다음 요청부터 401 `SESSION_REPLACED` → 화면이 로그아웃하고 "다른 기기에서 로그인했어요" 안내. 토큰 안의 `session_id`(로그인 1번마다 새로 생김, refresh해도 그대로)를 계정마다 하나만 DB에 기록해 비교. **두 겹**: ① 서버 `requireAuth` ② DB `require_user`(스탬프·쿠폰·꾸미기 등 쓰기 함수 첫 줄) → 끊긴 기기가 서버를 건너뛰고 Supabase를 직접 불러도 쓰기는 막힘. 멀티 접속도 계정당 1개(새 접속 우선) | SQL 15개(끊긴 기기 쓰기 거절, 로그아웃 뒤 옛 세션 부활 안 함, 감사 로그 `session_replaced`, 표 직접 읽기·쓰기 0건) + 서버 10개(401 순서·확인 실패 시 500·로그아웃 항상 204·소켓 4001/4002) + 화면 3개 | `supabase/migrations/20261130120000_jm_single_session.sql`, `supabase/tests/jm_single_session_test.sql`, `server/src/app.js` `requireAuth`·`/auth/logout`, `server/src/realtime.js` `closeUser`, `frontend/src/api/session.js` `handleSessionReplaced` |
 
+| 9 | 관리자 2단계 인증 TOTP (11/26 추가) | ✅ 로컬 검증 (등록·로그인 실측은 배포 뒤) | **등록한 관리자만**: 인증 앱 6자리를 등록한 관리자는 이번 로그인에서 코드를 넣어야(aal2) 관리자 권한. 등록 안 한 관리자·사장님·순례객은 그대로 → 시연 직전 갑자기 막히지 않음. **두 겹**: ① 서버 `requireRole('admin')` → 403 `MFA_REQUIRED` ② DB `my_role()`이 aal1이면 관리자를 순례객으로 봄 → 관리자 통계·감사 로그·남의 프로필·역할 변경이 서버 우회로도 막힘. 코드 15분 5번 실패 제한. 서버는 비밀 키 없이 사용자 토큰으로 Supabase Auth `/factors` API를 부름 | SQL 8개(aal1 등록 관리자 4가지 막힘, aal2 통과, 미등록 관리자 그대로, 남의 factor와 무관) + 서버 11개(형식 오류 시 인증 서버 안 부름, 서버가 factor를 찾음, 6번째 429, 오류 내용 숨김) + 화면 4개 | `supabase/migrations/20261201120000_jm_admin_mfa.sql`, `supabase/tests/jm_admin_mfa_test.sql`, `server/src/app.js` `mfaInfo`·`/auth/mfa/*`, `frontend/src/components/auth/LoginPage.jsx` `MfaCodeModal`·`MfaEnrollModal` |
+
 ### 추가로 확인한 것
 
 | 확인 | 결과 |
