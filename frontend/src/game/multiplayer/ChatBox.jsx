@@ -12,6 +12,7 @@ const LOG_SHOW_MS = 12_000 // 최근 글 목록은 12초 지나면 흐려져 사
 
 export default function ChatBox() {
   const status = useRealtimeStore((s) => s.status)
+  const maxPeers = useRealtimeStore((s) => s.maxPeers)
   const chats = useRealtimeStore((s) => s.chats)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
@@ -65,7 +66,12 @@ export default function ChatBox() {
         </div>
       )}
       <div style={styles.bar}>
-        {open ? (
+        {status === 'full' ? (
+          // 정원이 차서 멀티 접속을 못 함 → 혼자 둘러보기로 계속 (30초마다 자동으로 다시 시도)
+          <div style={styles.full} role="status">
+            지금 접속자가 많아요{maxPeers ? ` (정원 ${maxPeers}명)` : ''} · 혼자 둘러보는 중이고, 자리가 나면 자동으로 들어가요
+          </div>
+        ) : open ? (
           <form
             style={styles.form}
             onSubmit={(event) => {
@@ -129,6 +135,7 @@ const styles = {
   input: { flex: 1, minWidth: 0, padding: '9px 12px', border: 'none', borderRadius: 999, background: 'rgba(255,255,255,0.95)', boxShadow: '0 2px 10px rgba(0,0,0,0.18)', fontSize: 14, color: '#1f2937', outline: 'none' },
   send: { padding: '0 14px', border: 'none', borderRadius: 999, background: '#f472b6', color: '#fff', fontWeight: 700, cursor: 'pointer' },
   open: { pointerEvents: 'auto', padding: '7px 14px', border: 'none', borderRadius: 999, background: 'rgba(255,255,255,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', fontSize: 13, fontWeight: 700, color: '#374151', cursor: 'pointer' },
+  full: { pointerEvents: 'auto', padding: '7px 14px', borderRadius: 999, background: 'rgba(255,255,255,0.92)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', fontSize: 12, fontWeight: 600, color: '#6b4a1f', textAlign: 'center' },
   key: { marginLeft: 4, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#6b7280' },
   log: { position: 'absolute', left: 12, bottom: 100, zIndex: 19, maxWidth: 'min(360px, calc(100vw - 24px))', display: 'flex', flexDirection: 'column', gap: 4, pointerEvents: 'none' },
   line: { padding: '4px 10px', borderRadius: 10, background: 'rgba(17,24,39,0.55)', color: '#fff', fontSize: 13, lineHeight: 1.35, wordBreak: 'break-all' },

@@ -190,13 +190,21 @@ describe('멀티 접속', () => {
     await guest.closed
   })
 
-  test('정원(테스트에서는 3명)이 차면 503으로 거절', async () => {
+  test('정원(테스트에서는 3명)이 차면 full 안내 후 4003, 자리가 나면 다시 들어옴', async () => {
     const people = [await join(), await join(), await join()]
     assert.equal(realtime.count(), 3)
     const extra = connect()
-    await assert.rejects(extra.opened, (error) => error.status === 503)
-    for (const p of people) p.ws.close()
-    await Promise.all(people.map((p) => p.closed))
+    await extra.opened
+    extra.send({ t: 'hello' })
+    assert.deepEqual(await extra.next('full'), { t: 'full', max: 3 })
+    assert.equal(await extra.closed, 4003)
+    // 한 명이 나가면 자리가 나서 새 사람이 들어옴
+    people[0].ws.close()
+    await people[0].closed
+    const again = await join()
+    assert.equal(realtime.count(), 3)
+    for (const p of [people[1], people[2], again]) p.ws.close()
+    await Promise.all([people[1].closed, people[2].closed, again.closed])
   })
 
   test('bye를 보내면 바로 나감 처리 (연결이 늦게 끊겨도 캐릭터가 남지 않게)', async () => {

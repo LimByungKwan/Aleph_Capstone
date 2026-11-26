@@ -10,7 +10,8 @@ import { useSeasonStore } from '../seasons.js'
 
 /** peers[id] = { id, name, characterId, state: [x, y, z, 방향, 속도, 땅위(0/1)] | null, seen: 마지막으로 위치를 받은 시각(ms) } */
 export const useRealtimeStore = create(() => ({
-  status: 'off', // 'off' | 'connecting' | 'online'
+  status: 'off', // 'off' | 'connecting' | 'online' | 'full'(정원이 차서 혼자 플레이 중)
+  maxPeers: null, // 정원이 찼을 때 서버가 알려 준 정원
   selfId: null,
   peers: {},
   chats: [], // 말풍선 채팅 최근 것: { key, id, name, text, at }
@@ -36,6 +37,8 @@ let wanted = false
 let retryMs = 1000
 let retryTimer = null
 let characterId = 'male'
+let fullNow = false // 서버가 정원 참(4003)으로 끊었는지
+const FULL_RETRY_MS = 30_000
 
 // [병관] 'tarot.'·'photo.'·'lift.'·'episode.' 메시지는 데이트 코스 멀티 기능으로 넘김
 const tarotListeners = new Set()
@@ -61,6 +64,7 @@ function handle(msg) {
     retryMs = 1000
     useRealtimeStore.setState({
       status: 'online',
+      maxPeers: null,
       selfId: msg.id,
       peers: Object.fromEntries(msg.peers.map((p) => [p.id, { ...p, seen: Date.now() }])),
     })
@@ -72,6 +76,9 @@ function handle(msg) {
       delete next[msg.id]
       return next
     })
+  } else if (msg.t === 'full') {
+    fullNow = true
+    useRealtimeStore.setState({ maxPeers: Number(msg.max) || null })
   } else if (msg.t === 'world' && msg.world) {
     applyWorld({ timeOfDay: msg.world.timeOfDay ?? null, season: msg.world.season ?? null })
   } else if (msg.t === 'chat' && typeof msg.text === 'string') {
@@ -94,7 +101,7 @@ function handle(msg) {
 
 function open() {
   if (!WS_URL || ws) return
-  useRealtimeStore.setState({ status: 'connecting' })
+  if (useRealtimeStore.getState().status !== 'full') useRealtimeStore.setState({ status: 'connecting' }) // 정원 안내는 다시 시도하는 동안 유지
   const socket = new WebSocket(WS_URL)
   ws = socket
   socket.onopen = () => {
@@ -111,7 +118,15 @@ function open() {
   }
   socket.onclose = (event) => {
     if (ws === socket) ws = null
-    useRealtimeStore.setState({ status: 'off', selfId: null, peers: {}, chats: [] })
+    const full = event?.code === 4003 || fullNow
+    fullNow = false
+    useRealtimeStore.setState({ status: full ? 'full' : 'off', selfId: null, peers: {}, chats: [] })
+    // 4003: 정원이 참 → 혼자 플레이로 계속하고 30초마다 자리가 났는지 다시 시도
+    if (full && wanted) {
+      clearTimeout(retryTimer)
+      retryTimer = setTimeout(open, FULL_RETRY_MS)
+      return
+    }
     // 계정당 멀티 접속 1개 (server/src/realtime.js)
     //   4001: 다른 기기에서 같은 계정으로 로그인 → 이 기기는 로그아웃 + 안내, 아래에서 손님으로 다시 연결
     //   4002: 같은 로그인으로 다른 탭·창이 접속 → 다시 붙지 않음 (다시 붙으면 두 탭이 서로 끊는 반복)

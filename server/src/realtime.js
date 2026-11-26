@@ -27,6 +27,7 @@ import { createHjWorld } from './hj_world.js'
 //               { t:'world.set', timeOfDay?, season? }  관리자만: 모든 사람의 시간대·계절을 바꿈 (null = 각자 기본값)
 //   서버 → 화면  { t:'chat', id, name, text }            모두에게 (보낸 사람 포함)
 //               { t:'world', world:{ timeOfDay, season } }  접속 직후 + 관리자가 바꿀 때마다 모두에게
+//               { t:'full', max }                         정원이 참 → 바로 4003으로 끊김
 //   'tarot.'으로 시작하는 메시지는 커플 타로 멀티, 'photo.'는 커플 포토존 인생네컷, 'lift.'는 전망대 엘리베이터 (병관, bk_tarotRooms.js · bk_photoRooms.js · bk_lifts.js)
 
 export const REALTIME_PATH = '/realtime'
@@ -102,7 +103,8 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     // 등록된 화면 주소에서 온 접속만 받음 (다른 사이트가 사용자 브라우저로 몰래 붙는 것 차단)
     verifyClient: ({ origin }, done) => {
       if (!allowedOrigins.includes(origin)) return done(false, 403, 'Forbidden origin')
-      if (peers.size >= cfg.maxPeers) return done(false, 503, 'Too many players')
+      // 접속 시도 자체는 정원 + 10까지만 받음 (hello 전 연결이 쌓여 메모리를 쓰는 것 차단). 정원 안내는 hello 때 4003으로
+      if (peers.size >= cfg.maxPeers + 10) return done(false, 503, 'Too many players')
       done(true)
     },
   })
@@ -151,6 +153,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   //   4002 = 같은 로그인으로 다른 탭·창이 접속함 (화면: 다시 연결하지 않음 — 다시 붙으면 서로 끊는 반복이 생김)
   const CLOSE_REPLACED = 4001
   const CLOSE_ELSEWHERE = 4002
+  const CLOSE_FULL = 4003 // 정원(maxPeers)이 참
   function closeUser(userId, code, reason, except = null) {
     if (!userId) return 0 // 손님은 계정이 없어서 제한하지 않음
     let n = 0
@@ -215,6 +218,14 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         }
         if (typeof msg.characterId === 'string' && CHARACTER_RE.test(msg.characterId)) peer.characterId = msg.characterId
         if (ws.readyState !== ws.OPEN) return
+        // 정원: 이미 들어와 있는 사람 수 (같은 계정의 이전 연결은 곧 끊기므로 빼고 셈) → 차면 안내 후 4003으로 끊음
+        //   화면은 4003을 보고 "정원이 차서 혼자 둘러보는 중" 안내 + 30초마다 다시 시도
+        let inside = 0
+        for (const p of peers.values()) if (p !== peer && p.ready && !(peer.userId && p.userId === peer.userId)) inside++
+        if (inside >= cfg.maxPeers) {
+          send(ws, { t: 'full', max: cfg.maxPeers })
+          return ws.close(CLOSE_FULL, 'full')
+        }
         closeUser(peer.userId, CLOSE_ELSEWHERE, 'opened elsewhere', ws) // 새 연결 우선 (로그인 정책과 같은 방향)
         clearTimeout(helloTimer)
         peer.ready = true
