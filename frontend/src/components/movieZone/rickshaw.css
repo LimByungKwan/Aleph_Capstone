@@ -160,3 +160,6 @@
   border-color: #f6efdc;
   color: #2a241d;
 }
+
+.rk-quiz-choices { display: grid; gap: 8px; }
+.rk-quiz-choices [aria-pressed="true"] { border-color: #e2c27d; }

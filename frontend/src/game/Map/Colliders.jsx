@@ -5,6 +5,7 @@ import { layout, southGroundExtension } from '../data/mapData.js'
 import { TerrainColliders } from './Terrain.jsx'
 import { GEO } from './styles/kit.jsx'
 import { BkDateColliders } from './styles/bk_dateColliders.jsx'
+import { HjBugaksanCollider } from './styles/hj/HjBugaksan.jsx'
 import { HjHarborCollider } from './styles/hj/HjHarbor.jsx'
 import { palaceGroundsColliders } from './styles/hj/gyeongbokgungLayout.js'
 import { specialAccessColliders } from './styles/hj/specialAccessLayout.js'
@@ -21,6 +22,7 @@ const MIN_FLOOR_THICKNESS = 0.05
 const FLOOR_PROP_STYLES = ['roundPlaza', 'terrace']
 const floorRoads = layout.roads.filter((item) => item.size?.[1] >= MIN_FLOOR_THICKNESS)
 const floorProps = layout.props.filter((item) => FLOOR_PROP_STYLES.includes(item.style) && item.size?.[1] <= 0.4)
+const bugaksan = layout.props.find(item => item.style === "hjBugaksan")
 const harborProps = layout.props.filter((item) => item.zone === 'HJ' && (
   item.style === 'hjSea' || item.style === 'hjBreakwater' || (item.style === 'hjBoat' && item.moored)
 ))
@@ -28,14 +30,19 @@ const palaceBoxes = layout.props.filter((item) => item.style === 'hjGyeongbokgun
   .flatMap((item) => [...palaceGroundsColliders(item), ...specialAccessColliders(item)])
 const cameraBlockers = [...layout.buildings, ...palaceBoxes.filter((item) => item.blocksCamera)]
 
+// [3. 개발 > 프론트엔드] +z 가장자리 벽에 구멍을 내는 땅: southGroundExtension + opensBoundary가 붙은 바닥(혜진 구역 경성거리 북쪽 땅)
+const boundaryOpenings = [southGroundExtension, ...layout.roads.filter((item) => item.opensBoundary)].filter(Boolean)
 function southWallSegments(left, right, southEdge) {
-  if (!southGroundExtension) return [[left, right]]
-  const [x, z] = southGroundExtension.position
-  const [w, , d] = southGroundExtension.size
-  if (z - d / 2 >= southEdge || z + d / 2 <= southEdge) return [[left, right]]
-  const west = Math.max(left, x - w / 2 + 0.5)
-  const east = Math.min(right, x + w / 2 - 0.5)
-  return west < east ? [[left, west], [east, right]].filter(([a, b]) => a < b) : [[left, right]]
+  let segments = [[left, right]]
+  for (const item of boundaryOpenings) {
+    const [x, z] = item.position
+    const [w, , d] = item.size
+    if (z - d / 2 >= southEdge || z + d / 2 <= southEdge) continue
+    const west = x - w / 2 + 0.5
+    const east = x + w / 2 - 0.5
+    segments = segments.flatMap(([a, b]) => [[a, Math.min(b, west)], [Math.max(a, east), b]]).filter(([a, b]) => a < b)
+  }
+  return segments
 }
 
 export default function Colliders() {
@@ -86,6 +93,7 @@ export default function Colliders() {
         ))}
       </RigidBody>
 
+      {bugaksan && <HjBugaksanCollider item={bugaksan} />}
       {harborProps.map((item) => <HjHarborCollider key={item.id} item={item} />)}
 
       {/* 건물: 카메라가 벽을 뚫지 않게 막아 주는 투명 박스 (소품은 제외 — 가로등 기둥에 카메라가 걸리지 않게) */}

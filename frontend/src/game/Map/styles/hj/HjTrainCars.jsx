@@ -7,6 +7,7 @@ import { getLandscapePaintingTexture, getStainedGlassTexture } from './hjTexture
 import { registerVehicle, updateVehicleWorld } from '../../../../components/movieZone/rideSeats.js'
 import { SeatedPerson } from './HjPeople.jsx'
 import { sharedSeconds } from '../../../../components/movieZone/hjSync.js'
+import { SEOUL_ARRIVE } from '../../../../components/movieZone/timeTravel.js'
 
 // [3. 개발 > 프론트엔드] 증기기관차 + 객차 2량 (style: "hjSteamTrain") — 혜진 영화·드라마 구역
 // 1호 객차: 가운데 통로 + 등받이 높은 마주 보는 나무 의자, 흰 둥근 천장과 갈빗대, 매달린 등
@@ -122,7 +123,10 @@ export function HjSteamTrain({ item }) {
     if (stopped && vehicle.exit) vehicle.stationExit = [...vehicle.exit]
     // 객차가 터널로 들어가면 타고 있던 사람은 역 승강장에 내려 줘요 (palaceSeating.js가 처리)
     const coachIn = shown && pos + COACH_Z >= lo && pos + COACH_Z <= hi
-    vehicle.forceExit = coachIn ? null : vehicle.stationExit ?? null
+    // 시간 열차(item.destination: "seoul"): 역을 떠나 북악산 터널(gs_tunnel_s)로 들어가면 시간 터널을 지나 2026 현대 서울 승강장에 내려요
+    const toSeoul = item.destination === "seoul" && pos > route.station
+    vehicle.forceExit = coachIn ? null : toSeoul ? SEOUL_ARRIVE : vehicle.stationExit ?? null
+    vehicle.exitTransition = !coachIn && toSeoul ? "toSeoul" : null
     puffs.current.forEach((p, i) => {
       if (!p) return
       const u = (clock.elapsedTime * 0.8 + i / 4) % 1

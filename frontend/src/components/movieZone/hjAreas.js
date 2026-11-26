@@ -16,6 +16,9 @@ export function zoneToWorld(lx, lz, y = 1.4) {
   return [palace.position[0] - PALACE_LOCAL[0] + lx, y, palace.position[1] - PALACE_LOCAL[1] + lz]
 }
 
+/** 북악산 자리를 내려고 1930 경성거리(hj_drama.json의 gs_*)를 통째로 북쪽으로 옮긴 거리 (m) */
+export const GS_SHIFT = 60
+
 // 경복궁 배치(A 좌표) → 구역 기준 z: 궁 위치 - 기준점 + az
 const palaceAz = (az) => PALACE_LOCAL[1] - PALACE_ORIGIN_Z + az
 
@@ -36,8 +39,19 @@ export const HJ_AREAS = [
     name: '1930 경성거리',
     eyebrow: 'Retro Street · 1930 경성',
     tagline: '전차를 타고 경성역·종로·총독부 앞을 둘러보세요',
-    box: [-56, 46, palaceAz(76), 112],
-    arrive: () => zoneToWorld(0, 16.8),
+    box: [-56, 48, palaceAz(76) + GS_SHIFT, 112 + GS_SHIFT],
+    arrive: () => zoneToWorld(0, 16.8 + GS_SHIFT),
+  },
+  {
+    id: 'seoul',
+    emoji: '🏙️',
+    name: '2026 현대 서울',
+    eyebrow: 'Time Train · 2026 서울',
+    noGuide: true, // 안내판(경복궁·경성거리)은 여기엔 없어요
+    tagline: '광화문 광장을 걷고, 역에서 시간 열차를 타면 1930 경성으로 돌아가요',
+    // 현대 서울(timeTravel.SEOUL_CENTER, 월드 z 1400 = 구역 기준 z 1255) 둘레
+    box: [-150, 150, 1255 - 112, 1255 + 90],
+    arrive: () => zoneToWorld(6, 1255 - 96.5, 2.0),
   },
 ]
 

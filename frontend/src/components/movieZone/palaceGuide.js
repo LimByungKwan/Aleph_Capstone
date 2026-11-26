@@ -1,9 +1,11 @@
+import { palaceQuestions } from './palaceQuestions.js'
+import { SEOUL_GATE_Z, seoulToWorld } from './timeTravel.js'
 import { create } from 'zustand'
 import { layout } from '../../game/data/mapData.js'
-import { GYEONGHOERU, GYEONGHOERU_DECK_Y, HALLS, HYANGWON, HYANGWON_Y1, PALACE_ORIGIN_Z, PONDS, pyeonjeonSpots } from '../../game/Map/styles/hj/gyeongbokLayout.js'
+import { GWANGHWAMUN, GYEONGHOERU, GYEONGHOERU_DECK_Y, HALLS, HYANGWON, HYANGWON_Y1, PALACE_ORIGIN_Z, PONDS, pyeonjeonSpots } from '../../game/Map/styles/hj/gyeongbokLayout.js'
 import { registerPalaceSeat, registerWarpSpot } from './palaceSeating.js'
 import { useHallDoors } from './hjSync.js'
-import { zoneToWorld } from './hjAreas.js'
+import { GS_SHIFT, zoneToWorld } from './hjAreas.js'
 
 // [3. 개발 > 프론트엔드] 경복궁 관람 안내판 (혜진 영화·드라마 구역)
 // 광화문 앞 안내판을 누르면 목록이 뜨고, 고른 전각 앞으로 바로 옮겨 줘요 (PalaceGuideMenu.jsx).
@@ -13,9 +15,11 @@ import { zoneToWorld } from './hjAreas.js'
 export const usePalaceGuide = create((set) => ({
   open: false,
   tab: 'palace',
-  show: (tab) => set(typeof tab === 'string' ? { open: true, tab } : { open: true }),
+  quizId: null,
+  showQuiz: (quizId) => set({ open: true, tab: 'palace', quizId }),
+  show: (tab) => set(typeof tab === 'string' ? { open: true, tab, quizId: null } : { open: true, quizId: null }),
   setTab: (tab) => set({ tab }),
-  hide: () => set({ open: false }),
+  hide: () => set({ open: false, quizId: null }),
 }))
 
 const palace = layout.props.find((item) => item.id === 'HJ/haewol_palace')
@@ -35,6 +39,13 @@ function front(id, extra = 0) {
 
 // 향원정 안쪽 계단: 아래에서 E → 2층, 2층 계단 구멍 옆에서 E → 1층 (좁은 육각 방이라 직접 오르는 대신)
 if (palace) {
+  // 현대 광화문 앞에서 실내가 있는 궁궐로 연결하고 같은 문으로 돌아온다.
+  const plazaGate = seoulToWorld(0, 1, SEOUL_GATE_Z - 2.8)
+  const palaceGate = palaceToWorld(0, GWANGHWAMUN.az + 2.8)
+  registerWarpSpot({ id: 'seoul_palace_enter', position: plazaGate, radius: 2.2,
+    prompt: '광화문으로 경복궁 입장', warpTo: palaceGate })
+  registerWarpSpot({ id: 'seoul_palace_return', position: palaceGate, radius: 2.2,
+    prompt: '광화문광장으로 돌아가기', warpTo: plazaGate })
   const floor1 = 0.17 + HYANGWON.base + 1.0 // 캐릭터 몸통 높이
   const floor2 = 0.17 + HYANGWON_Y1 + 1.0
   const at = (lx, lz, y) => palaceToWorld(HYANGWON.ax + lx, HYANGWON.az + lz, y)
@@ -46,24 +57,33 @@ export const GUIDE_STOPS = palace
   ? [
       { id: 'court', name: '근정전 앞마당', note: '품계석·박석 마당', pos: palaceToWorld(0, -12.5) },
       { id: 'throne', name: '근정전 안 (어좌)', note: '일월오봉도·황룡 천장', pos: palaceToWorld(0, -2.6, 1.6) },
-      { id: 'gyeonghoeru', name: '경회루 (연못가)', note: '돌기둥 48개·돌다리', pos: palaceToWorld(PONDS[0].ax + PONDS[0].w / 2 + 1, GYEONGHOERU.az) },
+      { id: 'gyeonghoeru', name: '경회루 (연못가)', note: '1997년 연못에서 화재를 막아 달라며 넣어 둔 청동 용이 발견됐어요.', pos: palaceToWorld(PONDS[0].ax + PONDS[0].w / 2 + 1, GYEONGHOERU.az) },
       { id: 'gyeonghoeru_up', name: '경회루 2층 누각', note: '우물마루·번개살 칸막이', pos: palaceToWorld(GYEONGHOERU.ax + 3.3, GYEONGHOERU.az, GYEONGHOERU_DECK_Y + 1) },
       { id: 'hyangwon', name: '향원정 (연못가)', note: '육각 정자·취향교', pos: palaceToWorld(HYANGWON.ax, PONDS[1].az - PONDS[1].d / 2 - 1.2) },
       { id: 'sajeongjeon', name: '사정전', note: '임금이 일하던 편전', pos: front('sajeongjeon') },
       { id: 'gangnyeongjeon', name: '강녕전', note: '임금의 침전 (용마루 없음)', pos: front('gangnyeongjeon') },
       { id: 'gyotaejeon', name: '교태전 · 아미산', note: '왕비의 침전', pos: front('gyotaejeon') },
-      { id: 'sujeongjeon', name: '수정전', note: '경회루 남쪽 전각', pos: front('sujeongjeon') },
+      { id: 'sujeongjeon', name: '수정전', note: '세종 때 이 자리에는 학자들이 연구하던 집현전이 있었어요.', pos: front('sujeongjeon') },
       { id: 'donggung', name: '자선당 (동궁)', note: '세자가 살던 곳', pos: front('donggung') },
       { id: 'jagyeongjeon', name: '자경전', note: '대비의 침전', pos: front('jagyeongjeon') },
-      { id: 'geoncheonggung', name: '건청궁', note: '단청 없는 백골집', pos: front('geoncheonggung') },
-      { id: 'sojubang', name: '소주방 (수라간)', note: '아궁이·가마솥·찬장', pos: front('sojubang') },
+      { id: 'geoncheonggung', name: '건청궁', note: '고종 때 향원지의 물을 이용한 발전 설비로 궁궐에 전깃불을 밝혔어요.', pos: front('geoncheonggung') },
+      { id: 'sojubang', name: '소주방 (수라간)', note: '궁중 잔칫상을 준비하던 부엌이에요. 실록 속 장금은 중종을 치료한 의녀였어요.', pos: front('sojubang') },
     ]
   : []
+
+for (const stop of GUIDE_STOPS.filter(stop => palaceQuestions[stop.id])) {
+  registerWarpSpot({
+    id: 'quiz_' + stop.id, position: stop.pos, radius: 1.35,
+    prompt: stop.name + ' 역사 퀴즈',
+    action: () => usePalaceGuide.getState().showQuiz(stop.id),
+  })
+}
 
 // 1930 경성거리 (경복궁 신무문 북쪽). 좌표는 hj_drama.json 구역 기준 → zoneToWorld
 const gs = (lx, lz) => zoneToWorld(lx, lz)
 export const GYEONGSEONG_STOPS = palace
   ? [
+      { id: 'gs_pass', name: '북악산 고갯길 · 숙정문', note: '성곽과 바위산 사이 돌길', pos: zoneToWorld(4.5, 20) },
       { id: 'gs_clock', name: '시계탑 광장', note: '경성거리 입구 · 꽃밭과 벤치', pos: gs(0, 16.8) },
       { id: 'gs_station', name: '경성역 앞', note: '전차 정류장 · 돔 지붕 역사', pos: gs(-25.4, 35) },
       { id: 'gs_platform', name: '기차 승강장', note: '증기기관차 타는 곳', pos: gs(-40.1, 40) },

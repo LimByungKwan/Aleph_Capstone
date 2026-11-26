@@ -304,7 +304,7 @@ function Court() {
 }
 
 // 광화문: 무지개문 3개가 뚫린 장대석 석축 + 여장(작은 담) + 2층 문루(우진각)
-function Gwanghwamun() {
+export function Gwanghwamun() {
   const { az, depth, title } = GWANGHWAMUN
   const crenels = useMemo(() => {
     const list = []
@@ -334,7 +334,7 @@ function Gwanghwamun() {
 }
 
 // 담장: 사괘석 벽 + 장대석 아랫단 + 기와 지붕
-function Wall({ from, to }) {
+export function Wall({ from, to }) {
   const [x0, z0] = from
   const [x1, z1] = to
   // 양 끝을 담장 두께만큼 늘려, 모서리·이음매에서 담장끼리 맞물려 빈틈이 안 보이게

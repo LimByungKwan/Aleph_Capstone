@@ -6,6 +6,7 @@ import { useAsync } from './common.jsx'
 import { useZoneEntryStore } from './zoneEntryStore.js'
 import { areaById } from './hjAreas.js'
 import { usePalaceGuide } from './palaceGuide.js'
+import TimeTunnel from './TimeTunnel.jsx'
 
 // [3. 개발 > 프론트엔드] 영화·드라마 구역 입장 환영 (혜진 구역 전용)
 // 게이트 통과/클릭 → 따뜻한 종이색(#F9F6EE) 페이드 + "🎬 영화·드라마 세트장에 입장하셨습니다!" 배너
@@ -13,7 +14,17 @@ import { usePalaceGuide } from './palaceGuide.js'
 const SHOW_MS = 4500
 const HJ_SPOTS = mapPlaces.filter((p) => p.zone === 'HJ' && p.type === 'spot')
 
+// 시간 터널 화면(시간 열차)도 여기서 함께 그려요
 export default function EntranceWelcome() {
+  return (
+    <>
+      <TimeTunnel />
+      <WelcomeCards />
+    </>
+  )
+}
+
+function WelcomeCards() {
   const welcomeAt = useZoneEntryStore((s) => s.welcomeAt)
   const dismiss = useZoneEntryStore((s) => s.dismissWelcome)
   const areaWelcome = useZoneEntryStore((s) => s.areaWelcome)
@@ -53,7 +64,7 @@ function Welcome({ area = null, onClose }) {
           <button type="button" className="ui-btn" onClick={() => (openModal('stampbook'), onClose())}>
             📖 스탬프북
           </button>
-          {area && (
+          {area && !area.noGuide && (
             <button type="button" className="ui-btn" onClick={() => (showGuide(area.id), onClose())}>
               🪧 안내판
             </button>
