@@ -14,7 +14,7 @@ import { CafeOrderCounter } from './bk_cafeOrder.jsx'
 import { EpisodeScenery } from './bk_episodeScenery.jsx'
 import { MuralFrameScene } from './bk_muralFrame.jsx'
 import { WINE_BAR_ID, WineTastingSpot } from './bk_wineTasting.jsx'
-import { FOUNTAIN_BASIN_TOP, lockFenceArcs, terraceTableOffsets } from './bk_dateColliders.jsx'
+import { FOUNTAIN_BASIN_TOP, PHOTO_DECK, lockFenceArcs, terraceTableOffsets } from './bk_dateColliders.jsx'
 
 // BK "데이트 코스" 구역용 스타일 (전망 타워, 분수, 한옥 가게, 벚꽃 등).
 // 최적화: 공용 도형·재질(kit.jsx), 반복 물체는 <Instances>, 작은 물체·빛나는 재질은 그림자 끔.
@@ -775,6 +775,7 @@ function getBackWallTexture(kind) {
 const UNIT = {
   box: new THREE.BoxGeometry(1, 1, 1).toNonIndexed(),
   cyl: new THREE.CylinderGeometry(1, 1, 1, 10).toNonIndexed(),
+  disc: new THREE.CylinderGeometry(1, 1, 1, 48).toNonIndexed(),
   ico: new THREE.IcosahedronGeometry(1, 0),
   ico1: new THREE.IcosahedronGeometry(1, 1),
   cone: new THREE.ConeGeometry(1, 1, 7).toNonIndexed(),
@@ -1019,8 +1020,9 @@ function couplePhotoZoneGeometry() {
   const blossom = ['#f9a8d4', '#fbcfe8', '#ffffff', '#f472b6', '#e9d5ff']
 
   // 원형 나무 데크 + 분홍 테두리
-  P.push(piece('cyl', [0, 0.06, -0.6], [2.5, 0.12, 2.5], '#c08a5a'))
-  P.push(piece('cyl', [0, 0.05, -0.6], [2.7, 0.1, 2.7], '#f9a8d4'))
+  for (const { radius, height, z, color } of PHOTO_DECK) {
+    P.push(piece('disc', [0, height / 2, z], [radius, height, radius], color))
+  }
   // 하트 아치: 굵은 흰 테 + 안쪽 분홍 테
   const pts = heartPoints(48)
   const outer = new THREE.CatmullRomCurve3(pts.map((p) => p.clone().setZ(heartZ)), true)

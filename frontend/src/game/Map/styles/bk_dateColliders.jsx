@@ -3,6 +3,10 @@ import { CuboidCollider, CylinderCollider } from '@react-three/rapier'
 
 const TAU = Math.PI * 2
 export const FOUNTAIN_BASIN_TOP = 1.06
+export const PHOTO_DECK = [
+  { radius: 2.5, height: 0.12, z: -0.6, color: '#c08a5a' },
+  { radius: 2.7, height: 0.10, z: -0.6, color: '#f9a8d4' },
+]
 const radians = (degrees = 0) => degrees * Math.PI / 180
 const wrap = (angle) => ((angle % TAU) + TAU) % TAU
 
@@ -34,6 +38,9 @@ export function dateColliderShapes(item) {
   const box = (px, py, pz, w, h, d, turn = 0) => ({ kind: 'box', position: at(px, py, pz), args: [w / 2, h / 2, d / 2], yaw: yaw + turn })
   const cylinder = (px, py, pz, r, h) => ({ kind: 'cylinder', position: at(px, py, pz), args: [h / 2, r] })
 
+  if (item.style === 'couplePhotoZone') {
+    return PHOTO_DECK.map(({ radius, height, z }) => cylinder(0, height / 2, z, radius, height))
+  }
   if (item.style === 'fountain') {
     const radius = item.size[0] / 2
     const rim = Array.from({ length: 16 }, (_, i) => {
