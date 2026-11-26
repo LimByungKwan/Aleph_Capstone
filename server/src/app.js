@@ -82,8 +82,9 @@ async function rpc(db, name, args) {
  * @param {{ anon: () => any, asUser: (token: string) => any }} deps.supabase
  * @param {string[]} deps.allowedOrigins 화면 주소 (CORS)
  * @param {object} [deps.limits] 로그인 시도 제한 (테스트에서 작게 바꿔 씀)
+ * @param {(userId: string) => void} [deps.onSessionReplaced] 다른 기기의 로그인을 끊었을 때 (멀티 접속에서 그 계정 연결을 바로 끊음)
  */
-export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
+export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessionReplaced = () => {} }) {
   const app = express()
 
   // 로그인 시도 제한 (rateLimit.js 주석 참고)
@@ -135,7 +136,18 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     if (error || !data?.user) throw new HttpError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
     req.user = data.user
     req.db = supabase.asUser(token)
+    // 계정당 로그인 1곳: 같은 계정이 다른 기기에서 로그인했으면 이 토큰은 거절 (첫 번째 겹. 두 번째 겹은 DB require_user)
+    //   토큰 자체는 아직 유효해서(refresh도 됨) getUser만으로는 못 거름 → DB에 기록된 "지금 유효한 session_id"와 비교
+    if ((await rpc(req.db, 'session_ok')) === false) {
+      throw new HttpError(401, 'SESSION_REPLACED', '다른 기기에서 로그인해서 이 기기는 로그아웃됐어요.')
+    }
     next()
+  }
+
+  // 로그인·가입 직후: 이 토큰을 그 계정의 유일한 로그인으로 기록. 다른 기기를 끊었으면 멀티 접속에서도 바로 끊음
+  async function claimSession(db, userId) {
+    const result = await rpc(db, 'claim_session')
+    if (result?.replaced) onSessionReplaced(userId)
   }
 
   // 역할 검사 (RBAC 미들웨어): requireAuth 다음에 붙임. 예) app.get('/admin/stats', requireAuth, requireRole('admin'), …)
@@ -179,6 +191,7 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     if (!data.session) return res.status(201).json({ needsEmailConfirm: true })
 
     const db = supabase.asUser(data.session.access_token)
+    await claimSession(db, data.user.id)
     await rpc(db, 'log_access')
     const profile = await loadProfile(db, data.user.id)
     res.status(201).json({ needsEmailConfirm: false, session: sessionJson(data.session), user: profileJson(data.user, profile) })
@@ -200,6 +213,8 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     loginFailPerEmail.reset(emailKey)
 
     const db = supabase.asUser(data.session.access_token)
+    // 새 로그인 우선: 같은 계정으로 로그인해 있던 다른 기기는 다음 요청부터 SESSION_REPLACED
+    await claimSession(db, data.user.id)
     // 일일 접속자 집계용 기록 (로그인한 사람만 셈 — 11/17 팀 결정)
     await rpc(db, 'log_access')
     const profile = await loadProfile(db, data.user.id)
@@ -211,6 +226,18 @@ export function createApp({ supabase, allowedOrigins = [], limits = {} }) {
     const { data, error } = await supabase.anon().auth.refreshSession({ refresh_token: refreshToken })
     if (error || !data?.session) throw error ? fromAuthError(error) : new HttpError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
     res.json({ session: sessionJson(data.session) })
+  })
+
+  // 로그아웃: 이 기기의 로그인 기록을 비움 → 이후 이 토큰(과 앞서 끊긴 옛 토큰)은 SESSION_REPLACED
+  // requireAuth를 쓰지 않는 이유: 이미 끊긴 기기도 로그아웃 버튼은 눌러야 하므로 항상 204로 끝냄 (실패해도 화면은 로그아웃)
+  app.post('/auth/logout', async (req, res) => {
+    const header = req.get('authorization') ?? ''
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
+    if (token) {
+      const { error } = await supabase.asUser(token).rpc('release_session')
+      if (error && error.message !== 'UNAUTHORIZED') console.warn('[logout] release_session 실패', error.message)
+    }
+    res.status(204).end()
   })
 
   // 저장된 토큰으로 다시 들어온 사람도 일일 접속자에 잡히게 (11/25) — 로그인을 다시 하지 않으면 /auth/login의 기록이 안 남음

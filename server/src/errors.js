@@ -15,6 +15,7 @@ export class HttpError extends Error {
 // DB 함수가 던지는 코드 → HTTP 상태
 const DB_CODE_STATUS = {
   UNAUTHORIZED: 401,
+  SESSION_REPLACED: 401, // 같은 계정으로 다른 기기에서 로그인함 (20261130120000_jm_single_session.sql)
   NOT_OWNER: 403,
   NOT_ADMIN: 403,
   FORBIDDEN: 403,
