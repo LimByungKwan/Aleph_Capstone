@@ -11,18 +11,18 @@
   "roads": [
     {"id": "sg_market_tide", "style": "brick", "position": [-1, 16], "size": [27, 0.065, 3.8]},
     {"id": "sg_market_link_tide", "style": "tile", "position": [3, 12.6], "size": [3, 0.055, 3.3]},
-    {"id": "sg_fan_walk", "style": "stone", "position": [8, 26], "size": [3.4, 0.04, 34]},
-    {"id": "sg_alley_walk", "style": "brick", "position": [17, 7], "size": [18, 0.055, 2]},
+    {"id": "sg_fan_walk", "style": "stone", "position": [8, 27], "size": [3.4, 0.04, 32]},
+    {"id": "sg_alley_walk", "style": "brick", "position": [19.5, 7], "size": [13, 0.055, 2]},
     {"id": "sg_backstage_walk", "style": "stone", "position": [-16, 0], "size": [3, 0.04, 48]},
     {"id": "sg_studio_walk", "style": "stone", "position": [-21, 18.5], "size": [11, 0.055, 2.4]},
     {"id": "sg_residence_walk", "style": "stone", "position": [-21, -20.5], "size": [11, 0.055, 2.4]},
     {"id": "sg_seaside_link", "style": "stone", "position": [-16, 34], "size": [3, 0.04, 20]},
-    {"id": "sg_cafe_walk", "style": "brick", "position": [18, -5], "size": [19, 0.04, 2]},
-    { "id": "sg_entry", "style": "asphalt", "position": [30, 0], "size": [20, 0.02, 6], "rotationDeg": 0 },
+    {"id": "sg_cafe_walk", "style": "brick", "position": [20.25, -5], "size": [14.5, 0.04, 2]},
+    { "id": "sg_entry", "style": "asphalt", "position": [26.5, 0], "size": [27, 0.02, 6], "rotationDeg": 0 },
     { "id": "sg_audience", "style": "tile", "position": [5.5, 0], "size": [15, 0.02, 22], "rotationDeg": 0 },
     { "id": "sg_alley_floor", "style": "brick", "position": [26, 14], "size": [5, 0.02, 22], "rotationDeg": 0 },
     { "id": "sg_fan_street", "style": "brick", "position": [22, -30], "size": [34, 0.055, 8], "rotationDeg": 0 },
-    { "id": "sg_fan_street_link", "style": "stone", "position": [10, -17.5], "size": [3, 0.05, 19], "rotationDeg": 0 }
+    { "id": "sg_fan_street_link", "style": "stone", "position": [10, -19], "size": [3, 0.05, 16], "rotationDeg": 0 }
   ],
 
   "markings": [],
