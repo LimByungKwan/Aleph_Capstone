@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { Detailed } from '@react-three/drei'
 import { hipRoofGeometry } from './geometry.js'
 import { Box, Cyl, mat } from './kit.jsx'
 import { JmEntryTitle } from './jm_entryTitle.jsx'
@@ -786,7 +787,8 @@ export function JmTunnelGate({ item }) {
     }
     const slate = new THREE.LatheGeometry(pts, 4, Math.PI / 4)
     slate.computeVertexNormals()
-    const skirt = new THREE.CylinderGeometry(((T.roofW - 0.6) / 2) * Math.SQRT2, ((T.roofW + 1.4) / 2) * Math.SQRT2, 0.45, 4, 1, true, Math.PI / 4)
+    // (11/26 점검) 처마 윗변을 뾰족 지붕 밑변(roofW)과 같게 → 둘 사이로 하늘이 비치던 틈 없앰
+    const skirt = new THREE.CylinderGeometry((T.roofW / 2) * Math.SQRT2, ((T.roofW + 1.4) / 2) * Math.SQRT2, 0.45, 4, 1, false, Math.PI / 4) // 위·아래가 막힌 사각 뿔대
     return { front, back, hallBack, hallFront, vault, bayRoof, corRoof, spire, slate, skirt }
   }, [gate.w, gate.h, hall.w, hall.h, pass, passH, tube.z0, tube.z1])
   const gz = (gate.z0 + gate.z1) / 2
@@ -923,8 +925,10 @@ export function JmTunnelGate({ item }) {
           {/* 넓게 퍼진 처마 + 구리 뾰족 지붕 + 금 구슬 꼭지 */}
           <Box p={[0, 0.6 + T.clockH + 0.05, 0]} s={[T.clockW + 0.5, 0.1, T.clockW + 0.5]} m={GOLD} />
           <mesh geometry={geo.skirt} material={COPPER_D} position={[0, 0.6 + T.clockH + 0.25, 0]} />
-          <mesh geometry={geo.spire} material={COPPER} position={[0, 0.6 + T.clockH + 0.45, 0]} />
-          <group position={[0, 0.6 + T.clockH + 0.45 + T.roofH, 0]}>
+          {/* 처마·지붕 밑을 막는 판 (밑에서 올려다봐도 속이 비어 보이지 않게) */}
+          <Box p={[0, 0.6 + T.clockH + 0.46, 0]} s={[T.roofW, 0.04, T.roofW]} m={COPPER_D} />
+          <mesh geometry={geo.spire} material={COPPER} position={[0, 0.6 + T.clockH + 0.47, 0]} />
+          <group position={[0, 0.6 + T.clockH + 0.47 + T.roofH - 0.05, 0]}>
             <Cyl p={[0, 0.12, 0]} rad={0.08} h={0.25} m={GOLD} />
             <mesh position={[0, 0.42, 0]} material={GOLD}>
               <sphereGeometry args={[0.24, 12, 10]} />
@@ -1128,9 +1132,8 @@ function granitePattern() {
   return tex
 }
 
-function statueGeometry() {
-  const NT = 320 // 둘레
-  const NH = 260 // 높이
+function statueGeometry(NT = 320, NH = 260) {
+  // NT: 둘레 칸 수, NH: 높이 칸 수 (가까이용 320×260 ≈ 삼각형 16.6만 / 멀리용 120×96 ≈ 2.3만)
   const pos = []
   const uv = []
   const col = []
@@ -1176,12 +1179,17 @@ function statueGeometry() {
 
 let statueMat = null
 export function JmTwoFaceStatue() {
-  const geo = useMemo(statueGeometry, [])
+  // (11/26 최적화) 가까이 18m 안에서만 촘촘한 조각, 멀리서는 성긴 모양 (멀리서는 차이가 안 보임, 그림자 그리기도 같이 가벼워짐)
+  const geo = useMemo(() => statueGeometry(), [])
+  const far = useMemo(() => statueGeometry(120, 96), [])
   if (!statueMat) statueMat = new THREE.MeshStandardMaterial({ map: granitePattern(), vertexColors: true, roughness: 0.95 })
   return (
     <group>
       {/* noMerge: 구역 메시 합치기(jm_perf)는 꼭짓점 색을 버려서, 합치면 그늘이 사라짐 */}
-      <mesh geometry={geo} material={statueMat} castShadow receiveShadow userData={{ noMerge: true }} />
+      <Detailed distances={[0, 18]} userData={{ noMerge: true }}>
+        <mesh geometry={geo} material={statueMat} castShadow receiveShadow userData={{ noMerge: true }} />
+        <mesh geometry={far} material={statueMat} castShadow receiveShadow userData={{ noMerge: true }} />
+      </Detailed>
       {/* 발치 흙 (사진처럼 둘레가 살짝 드러난 흙) */}
       <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1, 0.85, 1]}>
         <circleGeometry args={[0.62, 24]} />

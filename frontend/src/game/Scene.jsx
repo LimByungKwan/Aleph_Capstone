@@ -37,6 +37,7 @@ import PointLightLock from './PointLightLock.jsx'
 import { layout, southGroundExtension } from './data/mapData.js'
 import PalaceTourPresence from '../components/movieZone/PalaceTourPresence.jsx'
 import MultiplayerPresence from './multiplayer/MultiplayerPresence.jsx' // [지민] 멀티 접속
+import ChatBox from './multiplayer/ChatBox.jsx' // [지민] 말풍선 채팅 입력창
 import { WarpZones } from './Map/styles/bk_warpZones.jsx' // [병관] 구역 워프존
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
@@ -109,6 +110,7 @@ export default function Scene() {
 
         <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
         <SettingsPanel />
+        {playing && <ChatBox />}
       </div>
     </KeyboardControls>
   )

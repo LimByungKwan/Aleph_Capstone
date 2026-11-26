@@ -23,7 +23,7 @@ import './auth.css'
 // 맵 위에 떠 있어도 입력칸에 친 W·A·S·D·E가 캐릭터 조작으로 새지 않게 키 이벤트를 창 안에서 멈춤
 export default function LoginPage({ title = '', reason = '', onClose = null }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
-  const [form, setForm] = useState({ email: '', password: '', name: '' })
+  const [form, setForm] = useState({ email: '', password: '', name: '', signupCode: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -38,6 +38,10 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
     setError('')
     if (mode === 'signup' && form.password.length < 6) {
       setError('비밀번호는 6자 이상이어야 해요.')
+      return
+    }
+    if (mode === 'signup' && !form.signupCode.trim()) {
+      setError('가입 코드를 넣어 주세요.')
       return
     }
     setBusy(true)
@@ -65,7 +69,7 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
         {/* 제목: 왜 창이 떴는지(스탬프 찍기 등)를 먼저 말함. 회원가입으로 바꾸면 가입용 문장 */}
         <h1 className="auth-title">{isSignup ? '회원가입하고 스탬프를 모아요' : title || '로그인하고 스탬프를 모아요'}</h1>
         <p className="ui-sub">
-          {isSignup ? '이메일과 비밀번호만 있으면 바로 시작할 수 있어요.' : reason || '로그인 없이도 골목은 둘러볼 수 있어요. 스탬프를 찍을 때만 로그인이 필요해요.'}
+          {isSignup ? '안내받은 가입 코드와 이메일·비밀번호로 시작할 수 있어요.' : reason || '로그인 없이도 골목은 둘러볼 수 있어요. 스탬프를 찍을 때만 로그인이 필요해요.'}
         </p>
 
         <form onSubmit={submit} noValidate>
@@ -91,6 +95,21 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
               <input id="auth-name" maxLength={20} value={form.name} onChange={update('name')} placeholder="순례객" />
             </div>
           )}
+          {/* [지민] 가입 코드: 아는 사람만 가입 (DB 트리거가 최종 검사 — supabase/migrations/20261202120000_jm_signup_code.sql) */}
+          {isSignup && (
+            <div className="ui-field">
+              <label htmlFor="auth-signup-code">가입 코드</label>
+              <input
+                id="auth-signup-code"
+                autoComplete="off"
+                maxLength={64}
+                value={form.signupCode}
+                onChange={update('signupCode')}
+                required
+              />
+              <span className="ui-field__hint">팀에게 안내받은 코드</span>
+            </div>
+          )}
 
           {error && (
             <p className="ui-field__error" role="alert">
@@ -98,7 +117,7 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
             </p>
           )}
 
-          <button type="submit" className="ui-btn ui-btn--primary auth-submit" disabled={busy || !form.email || !form.password}>
+          <button type="submit" className="ui-btn ui-btn--primary auth-submit" disabled={busy || !form.email || !form.password || (isSignup && !form.signupCode.trim())}>
             {busy ? '잠시만요… (서버가 깨어나는 중이면 1분쯤 걸려요)' : isSignup ? '가입하고 시작하기' : '로그인'}
           </button>
         </form>

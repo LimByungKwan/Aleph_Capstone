@@ -4,6 +4,7 @@ import { useSettings } from './settingsStore.js'
 import SeasonPicker from './SeasonPicker.jsx'
 import { characters, usePlayerCharacter } from './Player/characterStore.js'
 import { useIsAdmin } from '../api/useIsAdmin.js'
+import { sendWorld } from './multiplayer/realtimeStore.js'
 
 // 오른쪽 위 ⚙ 설정 버튼 + 설정창 (시간대 / 그래픽 품질 / 구역 표시)
 // 위치: 스탬프북·쿠폰함 버튼 묶음(.ui-hud, 혜진 님 UI) 바로 왼쪽.
@@ -50,7 +51,7 @@ export default function SettingsPanel() {
   const [open, setOpen] = useState(false)
   const hudWidth = useHudWidth()
   const right = 12 + (hudWidth ? hudWidth + GAP : 0)
-  const { timeOfDay, quality, showZones, setTimeOfDay, setQuality, setShowZones } = useSettings()
+  const { timeOfDay, quality, showZones, mouseSensitivity, setTimeOfDay, setQuality, setShowZones, setMouseSensitivity } = useSettings()
   const { character, choose, busy, error } = usePlayerCharacter()
   // [지민] 계절·시간대·구역 테두리는 시연·개발용이라 관리자만 보임. 캐릭터·그래픽 품질은 모두에게
   const isAdmin = useIsAdmin()
@@ -77,7 +78,7 @@ export default function SettingsPanel() {
           {isAdmin && <SeasonPicker />}
 
           <div style={styles.label}>캐릭터</div>
-          <div style={styles.segment}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {characters.map(item => (
               <button key={item.id} type="button" disabled={busy} aria-pressed={character.id === item.id}
                 onClick={press(() => choose(item.id))} style={choice(character.id === item.id)}>
@@ -89,10 +90,13 @@ export default function SettingsPanel() {
 
           {isAdmin && (
             <>
-              <div style={styles.label}>시간대</div>
+              <div style={styles.label}>시간대 (모든 접속자에게 적용)</div>
               <div style={styles.segment}>
                 {Object.entries(TIME_PRESETS).map(([key, preset]) => (
-                  <button key={key} type="button" onClick={press(() => setTimeOfDay(key))} style={choice(timeOfDay === key)}>
+                  <button key={key} type="button" onClick={press(() => {
+                    setTimeOfDay(key)
+                    sendWorld({ timeOfDay: key }) // 접속한 모든 사람에게 같은 시간대 (서버가 관리자인지 확인)
+                  })} style={choice(timeOfDay === key)}>
                     {TIME_ICONS[key]} {preset.label}
                   </button>
                 ))}
@@ -110,6 +114,11 @@ export default function SettingsPanel() {
             </button>
           </div>
           <div style={styles.hint}>낮음: 그림자 끄기 + 해상도 낮추기 (느린 컴퓨터용)</div>
+
+          <div style={styles.label}>마우스 감도 · {mouseSensitivity.toFixed(1)}배</div>
+          <input type="range" min={0.3} max={2} step={0.1} value={mouseSensitivity} aria-label="마우스 감도"
+            onChange={(e) => setMouseSensitivity(e.target.value)} onPointerUp={(e) => e.currentTarget.blur()}
+            style={{ width: '100%', accentColor: '#f472b6' }} />
 
           {isAdmin && (
             <label style={styles.toggleRow}>

@@ -383,18 +383,134 @@ export function Karahafu({ w, h, depth, color = GREEN, p = [0, 0, 0], board = tr
   )
 }
 
-// 처마 (벽 바깥으로 비스듬히 내민 판 4장)
-function Eave({ w, d, y, out = 1.1, color = GREEN }) {
-  const tilt = 0.42
-  const m = mat(color, { flat: true })
+// (11/26 점검: 여관 겉모습 퀄리티) 처마를 모서리까지 이어진 한 덩어리 고리로 — 전엔 판 4장을 따로 기울여 모서리가 벌어져 보였음
+//   윗면: 초록 기와(골 무늬) / 밑면: 짙은 서까래 색 / 바깥 끝: 처마 끝 판
+function tileTexture() {
+  return canvasTexture('yu:roofTile', 64, 64, (ctx, w, h) => {
+    ctx.fillStyle = '#3f7a5c'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = 'rgba(255,255,255,0.10)'
+    ctx.fillRect(0, 0, w * 0.32, h)
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'
+    ctx.fillRect(w * 0.78, 0, w * 0.22, h)
+  })
+}
+function eaveRingGeometry(w, d, out, drop, flip = false) {
+  const a = [w / 2, d / 2]
+  const b = [w / 2 + out, d / 2 + out]
+  // 네 변: [안쪽 두 점, 바깥 두 점] (위에서 보아 반시계)
+  const sides = [
+    [[-a[0], a[1]], [a[0], a[1]], [b[0], b[1]], [-b[0], b[1]]],
+    [[a[0], a[1]], [a[0], -a[1]], [b[0], -b[1]], [b[0], b[1]]],
+    [[a[0], -a[1]], [-a[0], -a[1]], [-b[0], -b[1]], [b[0], -b[1]]],
+    [[-a[0], -a[1]], [-a[0], a[1]], [-b[0], b[1]], [-b[0], -b[1]]],
+  ]
+  const pos = []
+  const uv = []
+  const idx = []
+  sides.forEach((q, si) => {
+    const base = pos.length / 3
+    q.forEach(([x, z], k) => {
+      pos.push(x, k < 2 ? 0 : -drop, z)
+      const along = si % 2 === 0 ? x : z
+      uv.push(along / 0.42, k < 2 ? 1 : 0)
+    })
+    if (flip) idx.push(base, base + 2, base + 1, base, base + 3, base + 2)
+    else idx.push(base, base + 1, base + 2, base, base + 2, base + 3)
+  })
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
+}
+function YuEave({ w, d, y, out = 1.1 }) {
+  const drop = out * 0.45
+  const top = useMemo(() => eaveRingGeometry(w, d, out, drop), [w, d, out, drop])
+  const under = useMemo(() => eaveRingGeometry(w, d, out, drop, true), [w, d, out, drop])
+  const tile = useMemo(() => {
+    const t = tileTexture().clone()
+    t.wrapS = THREE.RepeatWrapping
+    t.needsUpdate = true
+    return t
+  }, [])
+  const fascia = useMemo(() => {
+    const bw = w + out * 2
+    const bd = d + out * 2
+    return [
+      { p: [0, -drop - 0.06, bd / 2], s: [bw + 0.1, 0.16, 0.1] },
+      { p: [0, -drop - 0.06, -bd / 2], s: [bw + 0.1, 0.16, 0.1] },
+      { p: [bw / 2, -drop - 0.06, 0], s: [0.1, 0.16, bd + 0.1] },
+      { p: [-bw / 2, -drop - 0.06, 0], s: [0.1, 0.16, bd + 0.1] },
+    ]
+  }, [w, d, out, drop])
+  return (
+    <group position={[0, y, 0]}>
+      <mesh geometry={top}>
+        <meshStandardMaterial map={tile} roughness={0.7} />
+      </mesh>
+      <mesh geometry={under} position={[0, -0.08, 0]}>
+        <meshStandardMaterial color="#3a2418" roughness={1} />
+      </mesh>
+      <Instances geometry={GEO.box} material={mat(GREEN_DARK, { flat: true })} items={fascia} />
+    </group>
+  )
+}
+
+// (11/26 점검: 여관 겉모습 퀄리티) 밋밋한 붉은 벽 → 층마다 짙은 나무 띠 + 일정 간격 붉은 기둥, 1층 처마 밑 붉은 초롱 줄, 옆면 층 난간
+const LANTERN_M = mat('#e0442e', { emissive: '#ff6a3a', emissiveIntensity: 0.9 })
+function YuWallDetail({ W, D, Y }) {
+  const { lv, base } = Y
+  const R = lv[5]
+  const front = D / 2
+  const parts = useMemo(() => {
+    const posts = []
+    const beams = []
+    const lamps = []
+    const caps = []
+    const rails = []
+    const step = 4.2
+    // 기둥: 앞(가운데 내민 칸 |x| < 5.4 비움)·뒤·옆
+    for (let x = -W / 2 + step; x < W / 2 - 0.5; x += step) {
+      if (Math.abs(x) > 5.4) posts.push({ p: [x, (base + R) / 2, front + 0.09], s: [0.32, R - base, 0.14] })
+      posts.push({ p: [x, (base + R) / 2, -front - 0.09], s: [0.32, R - base, 0.14] })
+    }
+    for (let z = -D / 2 + step; z < D / 2 - 0.5; z += step) for (const sx of [-1, 1]) posts.push({ p: [sx * (W / 2 + 0.09), (base + R) / 2, z], s: [0.14, R - base, 0.32] })
+    // 층 띠: 처마 바로 위 짙은 나무
+    for (let k = 1; k <= 4; k++) {
+      const y = lv[k] + 0.2
+      for (const sz of [-1, 1]) beams.push({ p: [0, y, sz * (front + 0.11)], s: [W + 0.3, 0.26, 0.1] })
+      for (const sx of [-1, 1]) beams.push({ p: [sx * (W / 2 + 0.11), y, 0], s: [0.1, 0.26, D + 0.3] })
+    }
+    // 1층 처마 밑 초롱 (앞·옆)
+    const ly = lv[1] - 1.25
+    for (let x = -W / 2 + 2; x <= W / 2 - 2; x += 3) {
+      if (Math.abs(x) < 5.6) continue
+      lamps.push({ p: [x, ly, front + 1.05], s: [0.34, 0.44, 0.34] })
+      caps.push({ p: [x, ly + 0.3, front + 1.05], s: [0.26, 0.08, 0.26] }, { p: [x, ly - 0.3, front + 1.05], s: [0.26, 0.08, 0.26] }, { p: [x, ly + 0.62, front + 1.05], s: [0.02, 0.6, 0.02] })
+    }
+    for (let z = -D / 2 + 3; z <= D / 2 - 3; z += 3.4) for (const sx of [-1, 1]) {
+      lamps.push({ p: [sx * (W / 2 + 1.05), ly, z], s: [0.34, 0.44, 0.34] })
+      caps.push({ p: [sx * (W / 2 + 1.05), ly + 0.3, z], s: [0.26, 0.08, 0.26] }, { p: [sx * (W / 2 + 1.05), ly - 0.3, z], s: [0.26, 0.08, 0.26] }, { p: [sx * (W / 2 + 1.05), ly + 0.62, z], s: [0.02, 0.6, 0.02] })
+    }
+    // 옆면 2·4층 난간 (앞면은 원래 있음)
+    for (const k of [2, 4]) for (const sx of [-1, 1]) {
+      const x = sx * (W / 2 + 0.55)
+      rails.push({ p: [x, lv[k] + 1.0, 0], s: [0.1, 0.1, D - 1] }, { p: [x, lv[k] + 0.5, 0], s: [0.06, 0.06, D - 1] })
+      for (let z = -D / 2 + 0.6; z <= D / 2 - 0.6; z += 1.5) rails.push({ p: [x, lv[k] + 0.5, z], s: [0.1, 1.0, 0.1] })
+    }
+    return { posts, beams, lamps, caps, rails }
+  }, [W, D, lv, base, R, front])
+  const decks = useMemo(() => [2, 4].flatMap((k) => [-1, 1].map((sx) => ({ p: [sx * (W / 2 + 0.35), lv[k] + 0.05, 0], s: [0.8, 0.1, D - 1] }))), [W, D, lv])
   return (
     <group>
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <mesh geometry={GEO.box} material={m} position={[0, y - Math.sin(tilt) * out * 0.5, s * (d / 2 + Math.cos(tilt) * out * 0.5)]} rotation={[s * tilt, 0, 0]} scale={[w + out * 2, 0.14, out]} />
-          <mesh geometry={GEO.box} material={m} position={[s * (w / 2 + Math.cos(tilt) * out * 0.5), y - Math.sin(tilt) * out * 0.5, 0]} rotation={[0, 0, -s * tilt]} scale={[out, 0.14, d]} />
-        </group>
-      ))}
+      <Instances geometry={GEO.box} material={mat(RED_DARK, { roughness: 0.8 })} items={parts.posts} />
+      <Instances geometry={GEO.box} material={mat(DARK, { roughness: 0.9 })} items={parts.beams} />
+      <Instances geometry={GEO.sphere} material={LANTERN_M} items={parts.lamps} />
+      <Instances geometry={GEO.box} material={mat('#1c1410')} items={parts.caps} />
+      <Instances geometry={GEO.box} material={mat(VERM, { roughness: 0.6 })} items={parts.rails} />
+      <Instances geometry={GEO.box} material={mat(WOOD)} items={decks} />
     </group>
   )
 }
@@ -462,6 +578,7 @@ export function JmYutoya({ item }) {
     <group>
       <YuExterior W={W} D={D} Y={Y} sign={sign} />
       <YuFacadeExtras W={W} D={D} Y={Y} sign={sign} />
+      <YuWallDetail W={W} D={D} Y={Y} />
       {/* (렉 줄이기) 안쪽(로비·층·연회장·목욕탕·집무실·승강로)은 카메라가 75m 안일 때만 그림 */}
       <NearOnly radius={75}>
         <YuGroundHall W={W} D={D} Y={Y} />
@@ -610,7 +727,7 @@ function YuExterior({ W, D, Y, sign }) {
       ))}
       {/* 층마다 초록 처마 + 3층·5층 앞 붉은 발코니 난간 */}
       {[1, 2, 3, 4].map((k) => (
-        <Eave key={k} w={W} d={D} y={lv[k] - 0.05} out={k === 1 ? 1.5 : 1.1} />
+        <YuEave key={k} w={W} d={D} y={lv[k] - 0.05} out={k === 1 ? 1.5 : 1.1} />
       ))}
       {[2, 4].map((k) => (
         <group key={`bal${k}`} position={[0, lv[k], front + 0.55]}>
@@ -1194,12 +1311,19 @@ function YuBathWing({ Y }) {
       {/* 큰 탕: 나무 욕조들 + 가운데 둥근 큰 욕조 + 물 내리는 관과 줄 + 김 */}
       {tubs.map(([x, z, s], i) => (
         <group key={i} position={[x, base, z]}>
-          <Box p={[0, 0.45, 0]} s={[s, 0.9, s]} c="#a0703f" />
-          <Box p={[0, 0.88, 0]} s={[s - 0.3, 0.03, s - 0.3]} m={WATER} />
+          {/* (11/26 점검) 꽉 찬 나무 상자라 윗면이 물을 덮어 물이 안 보였음 → 속이 빈 욕조(네 벽 + 바닥) + 테 아래 물 */}
+          <Box p={[0, 0.1, 0]} s={[s, 0.2, s]} c="#8a5f36" />
+          {[-1, 1].map((sd) => (
+            <group key={`tw${sd}`}>
+              <Box p={[0, 0.45, sd * (s / 2 - 0.08)]} s={[s, 0.9, 0.16]} c="#a0703f" />
+              <Box p={[sd * (s / 2 - 0.08), 0.45, 0]} s={[0.16, 0.9, s - 0.32]} c="#a0703f" />
+            </group>
+          ))}
+          <Box p={[0, 0.77, 0]} s={[s - 0.3, 0.03, s - 0.3]} m={WATER} />
           {[0.2, 0.7].map((y) => (
             <Box key={y} p={[0, y, 0]} s={[s + 0.04, 0.06, s + 0.04]} c="#3a2a1c" />
           ))}
-          <WadeSplash w={s - 0.3} len={s - 0.3} y={0.9} />
+          <WadeSplash w={s - 0.3} len={s - 0.3} y={0.79} />
         </group>
       ))}
       <group position={[center.x, base, center.z]}>
@@ -1280,7 +1404,7 @@ function BathSteam({ base, tubs, center }) {
 const RIPPLE_GEO = new THREE.RingGeometry(0.9, 1, 32)
 function BathRipples({ base, tubs, center }) {
   const rings = useMemo(() => [
-    ...tubs.map(([x, z, s], i) => ({ x, z, y: 0.91, r: (s - 0.4) / 2, phase: i * 0.29 })),
+    ...tubs.map(([x, z, s], i) => ({ x, z, y: 0.8, r: (s - 0.4) / 2, phase: i * 0.29 })),
     { x: center.x, z: center.z, y: 1.05, r: center.r - 0.3, phase: 0.5 },
   ].map((r) => ({ ...r, m: new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }) })), [tubs, center])
   const refs = useRef([])
@@ -1463,6 +1587,7 @@ function FusumaRow({ band, y, h, doorW, face, k, solid }) {
     </group>
   )
 }
+const PAPER_LANTERN = mat('#f6e7c8', { emissive: '#ffcf8a', emissiveIntensity: 0.9 })
 function YuBanquetRooms({ W, D, Y }) {
   const { lv, wt, rooms } = Y
   const ix = W / 2 - wt
@@ -1490,7 +1615,18 @@ function YuBanquetRooms({ W, D, Y }) {
         }
       }
     }
-    return { trays, cushions, dishes, legs: trays.map((t) => ({ p: [t.p[0], t.p[1] - 0.1, t.p[2]], s: [1.3, 0.12, 0.5] })) }
+    // (11/26 점검: 연회장이 텅 비어 보임) 상 줄 위로 종이 초롱 (두 상에 하나) + 줄
+    const lanterns = []
+    const cords = []
+    trays.forEach((t, i) => {
+      if (i % 2) return
+      const k = lv.findIndex((v, j) => j > 0 && v > t.p[1]) // 이 상이 놓인 층의 천장
+      const top = lv[k] - 0.3
+      const ly = top - 1.0
+      lanterns.push({ p: [t.p[0], ly, t.p[2]], s: [0.32, 0.4, 0.32] })
+      cords.push({ p: [t.p[0], (ly + top) / 2 + 0.2, t.p[2]], s: [0.02, top - ly - 0.4, 0.02] })
+    })
+    return { trays, cushions, dishes, lanterns, cords, legs: trays.map((t) => ({ p: [t.p[0], t.p[1] - 0.1, t.p[2]], s: [1.3, 0.12, 0.5] })) }
   }, [lv, rooms, iz])
   const tatami = useMemo(() => tatamiTexture(), [])
   return (
@@ -1499,6 +1635,8 @@ function YuBanquetRooms({ W, D, Y }) {
       <Instances geometry={GEO.box} material={mat('#2b1a12')} items={rows.legs} />
       <Instances geometry={GEO.box} material={mat('#8f2a24')} items={rows.cushions} />
       <Instances geometry={GEO.cyl} material={mat('#f1e8d6')} items={rows.dishes} />
+      <Instances geometry={GEO.sphere} material={PAPER_LANTERN} items={rows.lanterns} />
+      <Instances geometry={GEO.box} material={mat('#2b1a12')} items={rows.cords} />
       {[1, 2, 3].map((k) => {
         const y = lv[k]
         const h = lv[k + 1] - lv[k] - 0.25
@@ -1518,7 +1656,16 @@ function YuBanquetRooms({ W, D, Y }) {
                   <FusumaRow band={band} y={y} h={h} doorW={rooms.doorW} face={-sign} k={k} solid />
                   <FusumaRow band={band} y={y} h={h} doorW={rooms.doorW} face={sign} k={k + 1} />
                   {band.splits.map((x) => (
-                    <Box key={x} p={[x, y + h / 2, zc]} s={[0.2, h, depth]} c="#6b4630" />
+                    <group key={x}>
+                      <Box p={[x, y + h / 2, zc]} s={[0.2, h, depth]} c="#6b4630" />
+                      {/* (11/26 점검) 밋밋한 갈색 칸막이 → 양면에 꽃 그림 판 */}
+                      {[-1, 1].map((sd) => (
+                        <mesh key={sd} position={[x + sd * 0.11, y + 1.3, zc]} rotation={[0, sd * Math.PI / 2, 0]}>
+                          <planeGeometry args={[Math.min(depth - 0.4, 4.2), 2.2]} />
+                          <primitive object={texMat(flowerPanelTexture(1), { emissive: '#ffffff', emissiveIntensity: 0.15 })} attach="material" />
+                        </mesh>
+                      ))}
+                    </group>
                   ))}
                   {range(Math.round((band.x1 - band.x0) / 2.6)).map((i) => (
                     <mesh key={`b${i}`} position={[band.x0 + 1.3 + i * 2.6, y + 1.3, outer - sign * (0.14 + (i % 2) * 0.1)]} rotation={[0, (sign > 0 ? Math.PI : 0) + (i % 2 ? -1 : 1) * 0.2, 0]}>
@@ -1643,6 +1790,27 @@ const CUSHION_COLORS = ['#e86a9a', '#f2c94c', '#7aa7e8', '#59b36b', '#b05fd0', '
 // 모티브(영화 설명): 엘리베이터가 꼭대기 모자이크 바닥 방으로 열림 → 큰 문 → 문이 몇 겹 더 → 집무실, 옆에 아기 방(쿠션 더미).
 //   호화로운 서양식 방: 붉은 무늬 벽지, 비싼 도자기 항아리가 줄지음, 금 장식, 큰 책상 위 금화, 벽난로, 책장, 샹들리에. 캐릭터는 넣지 않음
 // 배치(생성 스크립트 YU_OFFICE와 같은 숫자): 서쪽 칸막이 x -13 | 집무실 | 안쪽 문 x 7 | 문 사이 복도 | 큰 문 x 13 | 동쪽 모자이크 방
+// 아기 방 바깥 벽지: 연분홍 바탕 + 세로 줄 + 작은 꽃점 (벽 크기에 맞춰 반복)
+function babyWallTexture() {
+  return canvasTexture('yu:babyWall', 128, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#f2d6c8'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#e8bfb0'
+    ctx.fillRect(w * 0.45, 0, w * 0.1, h)
+    for (const [x, y, c] of [[0.2, 0.25, '#e07a8a'], [0.75, 0.7, '#7ab0d8'], [0.2, 0.75, '#f2c94c'], [0.75, 0.2, '#8ac07a']]) {
+      ctx.fillStyle = c
+      ctx.beginPath()
+      ctx.arc(x * w, y * h, w * 0.05, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  })
+}
+const BABY_WALL_CACHE = new Map()
+function babyWallMat(len, h) {
+  const key = `${len.toFixed(1)}:${h.toFixed(1)}`
+  if (!BABY_WALL_CACHE.has(key)) BABY_WALL_CACHE.set(key, texMat(tiled(babyWallTexture(), Math.max(1, Math.round(len / 0.9)), Math.max(1, Math.round(h / 0.9)))))
+  return BABY_WALL_CACHE.get(key)
+}
 function YuOffice({ W, D, Y }) {
   const { lv, wt, office: O } = Y
   const y = lv[4]
@@ -1759,11 +1927,28 @@ function YuOffice({ W, D, Y }) {
       </group>
       {/* 아기 방: 벽 2면(문 자리 비움) + 알록달록 쿠션 더미 + 공 */}
       <group>
-        <Box p={[B.x1, y + h / 2, (-iz + B.z1) / 2]} s={[0.2, h, B.z1 + iz]} c="#f2d6c8" />
+        {/* (11/26 점검) 아무 무늬 없는 분홍 판이라 집무실 안에 빈 상자처럼 보였음 → 줄무늬·꽃점 벽지 + 금 테 + 아래 짙은 징두리판 + 문틀 */}
+        <Box p={[B.x1, y + h / 2, (-iz + B.z1) / 2]} s={[0.2, h, B.z1 + iz]} m={babyWallMat(B.z1 + iz, h)} />
         {[[B.x0, B.doorX - B.doorW / 2], [B.doorX + B.doorW / 2, B.x1]].map(([a, b]) => (
-          <Box key={a} p={[(a + b) / 2, y + h / 2, B.z1]} s={[b - a, h, 0.2]} c="#f2d6c8" />
+          <Box key={a} p={[(a + b) / 2, y + h / 2, B.z1]} s={[b - a, h, 0.2]} m={babyWallMat(b - a, h)} />
         ))}
-        <Box p={[B.doorX, y + 3.2 + (h - 3.2) / 2, B.z1]} s={[B.doorW, h - 3.2, 0.2]} c="#f2d6c8" />
+        <Box p={[B.doorX, y + 3.2 + (h - 3.2) / 2, B.z1]} s={[B.doorW, h - 3.2, 0.2]} m={babyWallMat(B.doorW, h - 3.2)} />
+        {/* 징두리판 + 위 금 띠 (바깥 두 면) */}
+        <Box p={[B.x1 + 0.12, y + 0.6, (-iz + B.z1) / 2]} s={[0.04, 1.2, B.z1 + iz]} c="#5a1018" />
+        <Box p={[B.x1 + 0.14, y + 1.22, (-iz + B.z1) / 2]} s={[0.05, 0.08, B.z1 + iz]} m={GOLD_M} />
+        <Box p={[B.x1 + 0.14, y + h - 0.3, (-iz + B.z1) / 2]} s={[0.06, 0.24, B.z1 + iz]} m={GOLD_M} />
+        {[[B.x0, B.doorX - B.doorW / 2], [B.doorX + B.doorW / 2, B.x1]].map(([a, b]) => (
+          <group key={`wd${a}`}>
+            <Box p={[(a + b) / 2, y + 0.6, B.z1 + 0.12]} s={[b - a, 1.2, 0.04]} c="#5a1018" />
+            <Box p={[(a + b) / 2, y + 1.22, B.z1 + 0.14]} s={[b - a, 0.08, 0.05]} m={GOLD_M} />
+            <Box p={[(a + b) / 2, y + h - 0.3, B.z1 + 0.14]} s={[b - a, 0.24, 0.06]} m={GOLD_M} />
+          </group>
+        ))}
+        {/* 문틀 (금) */}
+        {[-1, 1].map((sd) => (
+          <Box key={`df${sd}`} p={[B.doorX + sd * (B.doorW / 2 + 0.08), y + 1.6, B.z1 + 0.12]} s={[0.16, 3.2, 0.1]} m={GOLD_M} />
+        ))}
+        <Box p={[B.doorX, y + 3.25, B.z1 + 0.12]} s={[B.doorW + 0.5, 0.18, 0.12]} m={GOLD_M} />
         {cushions.map((c, i) => (
           <mesh key={i} geometry={GEO.sphere} position={c.p} scale={c.s}>
             <meshStandardMaterial color={c.c} roughness={0.9} />

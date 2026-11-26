@@ -24,4 +24,6 @@ const server = createApp({ supabase, allowedOrigins, onSessionReplaced }).listen
 })
 
 // 멀티 접속: 같은 포트에서 WebSocket(/realtime)도 받음 (Render 무료 서비스는 포트 1개)
-realtime = attachRealtime(server, { supabase, allowedOrigins })
+// 동시 접속 상한: 기본 30명 (realtime.js DEFAULTS 주석 참고), Render 환경변수 REALTIME_MAX_PEERS로 조절
+const maxPeers = Number(process.env.REALTIME_MAX_PEERS) || undefined
+realtime = attachRealtime(server, { supabase, allowedOrigins, options: maxPeers ? { maxPeers } : {} })

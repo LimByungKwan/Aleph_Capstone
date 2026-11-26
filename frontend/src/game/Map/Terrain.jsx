@@ -41,6 +41,8 @@ export default function Terrain() {
 // ── 테라스 단: 돌 옹벽 몸통 + 위 포장 바닥 + 난간 + 줄 전구 ──
 const RAIL_MAT = mat('#3b3633')
 const BULB = mat('#fff6d8', { emissive: '#ffd27a', emissiveIntensity: 1.6 })
+// [지민 11/26 최적화] 줄 전구는 지름 14cm라 공을 덜 쪼개도 똑같이 보임 (삼각형 140 → 36개, 전구 1천여 개라 약 10만 개 줄어듦)
+const BULB_GEO = new THREE.SphereGeometry(1, 6, 4)
 
 function PlatformMesh({ platform }) {
   const { body, rails, railPosts, bulbs, lightPosts } = buildPlatform(platform)
@@ -59,7 +61,7 @@ function PlatformMesh({ platform }) {
       <Instances geometry={GEO.box} material={RAIL_MAT} items={rails} />
       <Instances geometry={GEO.box} material={RAIL_MAT} items={railPosts} />
       <Instances geometry={GEO.box} material={RAIL_MAT} items={lightPosts} />
-      <Instances geometry={GEO.sphere} material={BULB} items={bulbs} />
+      <Instances geometry={BULB_GEO} material={BULB} items={bulbs} />
     </group>
   )
 }

@@ -55,8 +55,14 @@ function fakeClient(token) {
         if (password !== 'right-pass') return { data: {}, error: { code: 'invalid_credentials' } }
         return { data: { user: { ...USER, email }, session: { access_token: GOOD_TOKEN, refresh_token: 'r1', expires_at: 123 } }, error: null }
       },
-      async signUp({ options }) {
+      async signUp({ email, options }) {
         calls.push({ signUpData: options.data })
+        // 가입 코드가 틀리면 DB 트리거가 거절 → Supabase Auth는 이유 없이 이 에러만 돌려줌
+        if (options.data.signup_code === 'wrong-code-00') {
+          return { data: { user: null, session: null }, error: { code: 'unexpected_failure', status: 500, message: 'Database error saving new user' } }
+        }
+        // 이미 있는 이메일: Supabase는 에러 대신 identities가 빈 사용자를 돌려줄 때가 있음
+        if (email === 'taken@example.com') return { data: { user: { ...USER, identities: [] }, session: null }, error: null }
         return { data: { user: USER, session: null }, error: null }
       },
       async refreshSession() {
@@ -125,9 +131,10 @@ beforeEach(() => {
   tokenUsers = {}
 })
 
-async function api(method, path, { token, body, origin } = {}) {
+async function api(method, path, { token, body, origin, ip } = {}) {
   const headers = { 'content-type': 'application/json' }
   if (token) headers.authorization = `Bearer ${token}`
+  if (ip) headers['x-forwarded-for'] = ip // 시도 제한 테스트가 다른 테스트의 IP 한도를 쓰지 않게 (trust proxy 1)
   if (origin) headers.origin = origin
   const res = await fetch(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
   const text = await res.text()
@@ -221,6 +228,30 @@ describe('회원가입 · 로그인', () => {
     assert.equal(res.status, 201)
     assert.deepEqual(res.body, { needsEmailConfirm: true })
     assert.deepEqual(calls[0].signUpData, { display_name: '하늘' })
+  })
+
+  test('가입 코드는 앞뒤 공백을 빼고 메타데이터로 넘김 (맞는지는 DB 트리거가 판단)', async () => {
+    const res = await api('POST', '/auth/signup', { body: { email: 'new@example.com', password: 'secret12', name: '하늘', signupCode: '  team-code-1126 ' } })
+    assert.equal(res.status, 201)
+    assert.deepEqual(calls[0].signUpData, { display_name: '하늘', signup_code: 'team-code-1126' })
+  })
+
+  test('가입 코드가 틀리면 400 INVALID_SIGNUP_CODE, 5번 틀리면 429 (코드 맞히기 대입 차단)', async () => {
+    const body = { email: 'guess@example.com', password: 'secret12', signupCode: 'wrong-code-00' }
+    for (let i = 0; i < 5; i += 1) {
+      const res = await api('POST', '/auth/signup', { body, ip: '203.0.113.7' })
+      assert.equal(res.status, 400)
+      assert.equal(res.body.error.code, 'INVALID_SIGNUP_CODE')
+    }
+    const blocked = await api('POST', '/auth/signup', { body: { ...body, signupCode: 'team-code-1126' }, ip: '203.0.113.7' })
+    assert.equal(blocked.status, 429)
+    assert.equal(calls.length, 5) // 막힌 6번째는 Supabase까지 가지 않음
+  })
+
+  test('이미 가입한 이메일로 다시 가입하면 409 EMAIL_TAKEN (덮어쓴 것처럼 보이지 않게)', async () => {
+    const res = await api('POST', '/auth/signup', { body: { email: 'taken@example.com', password: 'secret12', name: '또' } })
+    assert.equal(res.status, 409)
+    assert.equal(res.body.error.code, 'EMAIL_TAKEN')
   })
 
   test('비밀번호가 틀리면 401 INVALID_LOGIN', async () => {

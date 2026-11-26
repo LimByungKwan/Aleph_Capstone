@@ -22,12 +22,23 @@ import { createHjWorld } from './hj_world.js'
 //   서버 → 화면  { t:'welcome', id, peers:[…] }          내 번호 + 이미 있는 사람들
 //               { t:'join', peer } / { t:'leave', id } / { t:'peer', peer }(캐릭터 변경)
 //               { t:'state', s:[[id,x,y,z,r,s,g], …] }  0.1초마다 움직인 사람만
+//   화면 → 서버  { t:'bye' }                              창을 닫거나 다른 페이지로 갈 때 → 바로 나감 처리 (프록시가 연결을 늦게 끊어도 캐릭터가 남지 않게)
+//               { t:'chat', text }                      말풍선 채팅 (1~80자, 1초에 1번)
+//               { t:'world.set', timeOfDay?, season? }  관리자만: 모든 사람의 시간대·계절을 바꿈 (null = 각자 기본값)
+//   서버 → 화면  { t:'chat', id, name, text }            모두에게 (보낸 사람 포함)
+//               { t:'world', world:{ timeOfDay, season } }  접속 직후 + 관리자가 바꿀 때마다 모두에게
+//               { t:'full', max }                         정원이 참 → 바로 4003으로 끊김
 //   'tarot.'으로 시작하는 메시지는 커플 타로 멀티, 'photo.'는 커플 포토존 인생네컷, 'lift.'는 전망대 엘리베이터 (병관, bk_tarotRooms.js · bk_photoRooms.js · bk_lifts.js)
 
 export const REALTIME_PATH = '/realtime'
 
 const DEFAULTS = {
-  maxPeers: 50, // Render 무료 서버(512MB)에서 넉넉한 상한. 넘으면 접속 거절
+  // 동시 접속 상한 (11/26 지민: 50 → 30). 넘으면 접속 거절 → 그 화면은 혼자 플레이로 계속됨
+  //   서버: 0.1초마다 움직인 사람 위치를 모든 사람에게 보냄 → 보내는 양이 사람 수의 제곱으로 늘어남
+  //         30명이 다 움직이면 약 0.4MB/초, 50명이면 약 1.1MB/초 (Render 무료 CPU 0.1개로는 50명이 빠듯)
+  //   화면: 다른 사람 캐릭터마다 움직이는 3D 모델 + 물리 몸체 → 느린 노트북은 20~30명부터 끊김
+  //   Render 환경변수 REALTIME_MAX_PEERS로 바꿀 수 있음
+  maxPeers: 30,
   tickMs: 100, // 10Hz
   helloTimeoutMs: 10_000,
   heartbeatMs: 30_000, // 응답 없는 연결(와이파이 끊김 등) 정리 + Render가 연결을 끊지 않게 유지
@@ -36,6 +47,27 @@ const DEFAULTS = {
 }
 
 const CHARACTER_RE = /^[a-z0-9_-]{1,32}$/
+const TIMES = ['morning', 'noon', 'night'] // frontend/src/game/config.js TIME_PRESETS
+const SEASONS = ['spring', 'summer', 'autumn', 'winter'] // frontend/src/game/seasons.js
+const CHAT_MAX = 80
+const CHAT_GAP_MS = 1000
+
+/** 채팅 글: 줄바꿈·제어 문자를 빼고 앞뒤 공백 정리. 비거나 너무 길면 null */
+function cleanChat(text) {
+  if (typeof text !== 'string') return null
+  // eslint-disable-next-line no-control-regex
+  const t = text.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
+  return t && t.length <= CHAT_MAX ? t : null
+}
+
+/** JWT 내용(aal)만 읽음 — 서명은 getUser가 이미 확인함 */
+function tokenAal(token) {
+  try {
+    return JSON.parse(Buffer.from(String(token).split('.')[1] ?? '', 'base64url').toString('utf8')).aal
+  } catch {
+    return null
+  }
+}
 const MAP_LIMIT = 1000 // 맵은 수백 m 크기. 이보다 먼 좌표는 잘못된 값
 const round = (n, digits = 2) => Math.round(n * 10 ** digits) / 10 ** digits
 
@@ -71,7 +103,8 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     // 등록된 화면 주소에서 온 접속만 받음 (다른 사이트가 사용자 브라우저로 몰래 붙는 것 차단)
     verifyClient: ({ origin }, done) => {
       if (!allowedOrigins.includes(origin)) return done(false, 403, 'Forbidden origin')
-      if (peers.size >= cfg.maxPeers) return done(false, 503, 'Too many players')
+      // 접속 시도 자체는 정원 + 10까지만 받음 (hello 전 연결이 쌓여 메모리를 쓰는 것 차단). 정원 안내는 hello 때 4003으로
+      if (peers.size >= cfg.maxPeers + 10) return done(false, 503, 'Too many players')
       done(true)
     },
   })
@@ -95,18 +128,24 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   const episodes = createEpisodeRooms({ send, findPeer, inviteMs: options.episode?.inviteMs })
   const hj = createHjWorld({ broadcast, send }) // [혜진] 경복궁·경성 문·앉기·탈것·시계 동기화 (hj_world.js)
 
+  // [지민] 관리자가 정한 시간대·계절 → 접속한 모든 사람에게 같은 값 (메모리에만 둠: 서버가 다시 켜지면 각자 기본값)
+  const world = { timeOfDay: null, season: null }
+
   async function identify(token) {
-    if (typeof token !== 'string' || !token) return { name: '손님', userId: null }
+    if (typeof token !== 'string' || !token) return { name: '손님', userId: null, admin: false }
     const { data, error } = await supabase.anon().auth.getUser(token)
-    if (error || !data?.user) return { name: '손님', userId: null } // 만료된 토큰이면 손님으로 (접속 자체는 허용)
+    if (error || !data?.user) return { name: '손님', userId: null, admin: false } // 만료된 토큰이면 손님으로 (접속 자체는 허용)
     const db = supabase.asUser(token)
     const [{ data: profile }, session] = await Promise.all([
-      db.from('profiles').select('display_name').eq('id', data.user.id).maybeSingle(),
+      db.from('profiles').select('display_name, role').eq('id', data.user.id).maybeSingle(),
       Promise.resolve().then(() => db.rpc('session_ok')).catch(() => null),
     ])
     // 다른 기기에서 로그인해서 끊긴 토큰 → 접속 거절 (화면은 이 코드를 보고 로그아웃 안내). 확인 자체가 실패하면 막지 않음(API가 막음)
     if (!session?.error && session?.data === false) return { name: '손님', userId: null, replaced: true }
-    return { name: profile?.display_name || '순례객', userId: data.user.id }
+    // 관리자: 역할이 admin이고, 2단계 인증을 등록했다면 이번 로그인에서 코드까지 넣었어야 함 (app.js requireRole과 같은 규칙)
+    const mfaEnrolled = (data.user.factors ?? []).some((f) => f.factor_type === 'totp' && f.status === 'verified')
+    const admin = profile?.role === 'admin' && (!mfaEnrolled || tokenAal(token) === 'aal2')
+    return { name: profile?.display_name || '순례객', userId: data.user.id, admin }
   }
 
   // 계정당 멀티 접속 1개: 같은 계정의 다른 연결을 끊음
@@ -114,6 +153,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   //   4002 = 같은 로그인으로 다른 탭·창이 접속함 (화면: 다시 연결하지 않음 — 다시 붙으면 서로 끊는 반복이 생김)
   const CLOSE_REPLACED = 4001
   const CLOSE_ELSEWHERE = 4002
+  const CLOSE_FULL = 4003 // 정원(maxPeers)이 참
   function closeUser(userId, code, reason, except = null) {
     if (!userId) return 0 // 손님은 계정이 없어서 제한하지 않음
     let n = 0
@@ -131,6 +171,8 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       id: randomUUID().slice(0, 8), // 화면끼리 구분하는 번호 (DB id와 무관)
       name: '손님',
       userId: null,
+      admin: false,
+      lastChat: 0,
       characterId: 'male',
       state: null,
       ready: false,
@@ -176,6 +218,14 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         }
         if (typeof msg.characterId === 'string' && CHARACTER_RE.test(msg.characterId)) peer.characterId = msg.characterId
         if (ws.readyState !== ws.OPEN) return
+        // 정원: 이미 들어와 있는 사람 수 (같은 계정의 이전 연결은 곧 끊기므로 빼고 셈) → 차면 안내 후 4003으로 끊음
+        //   화면은 4003을 보고 "정원이 차서 혼자 둘러보는 중" 안내 + 30초마다 다시 시도
+        let inside = 0
+        for (const p of peers.values()) if (p !== peer && p.ready && !(peer.userId && p.userId === peer.userId)) inside++
+        if (inside >= cfg.maxPeers) {
+          send(ws, { t: 'full', max: cfg.maxPeers })
+          return ws.close(CLOSE_FULL, 'full')
+        }
         closeUser(peer.userId, CLOSE_ELSEWHERE, 'opened elsewhere', ws) // 새 연결 우선 (로그인 정책과 같은 방향)
         clearTimeout(helloTimer)
         peer.ready = true
@@ -184,10 +234,25 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         broadcast({ t: 'join', peer: publicPeer(peer) }, ws)
         lifts.welcome(ws) // [병관] 지금 엘리베이터 상태
         hj.welcome(ws) // [혜진] 지금 문·앉은 자리 상태 + 서버 시각
+        send(ws, { t: 'world', world }) // [지민] 관리자가 정한 시간대·계절
         return
       }
       if (!peer.ready) return
       if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg) || hj.handle(ws, peer, msg)) return
+
+      if (msg.t === 'bye') return ws.close(1000, 'bye')
+      if (msg.t === 'chat') {
+        const text = cleanChat(msg.text)
+        if (!text || now - peer.lastChat < CHAT_GAP_MS) return
+        peer.lastChat = now
+        return broadcast({ t: 'chat', id: peer.id, name: peer.name, text })
+      }
+      if (msg.t === 'world.set') {
+        if (!peer.admin) return
+        if ('timeOfDay' in msg && (msg.timeOfDay === null || TIMES.includes(msg.timeOfDay))) world.timeOfDay = msg.timeOfDay
+        if ('season' in msg && (msg.season === null || SEASONS.includes(msg.season))) world.season = msg.season
+        return broadcast({ t: 'world', world })
+      }
 
       if (msg.t === 'move') {
         const state = validMove(msg)

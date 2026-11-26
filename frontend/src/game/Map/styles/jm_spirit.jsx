@@ -1708,6 +1708,155 @@ function ValveWheel({ p, r = 0.5, rot = [0, 0, 0] }) {
     </group>
   )
 }
+// ── 계단 난간 (11/26 지민 요청) — 계단 옆 나무 기둥 + 경사 손잡이 + 가운데 가로대 ──
+// 소품 기준: 로컬 +z가 올라가는 쪽, z -L/2(높이 0) → +L/2(높이 rise). 충돌 벽은 생성기에서 collider로 따로
+const RAIL_WOOD = mat('#6b4428', { roughness: 0.8 })
+const RAIL_CAP = mat('#4a2e1c', { roughness: 0.7 })
+export function JmStairRail({ item }) {
+  const L = item.size[2]
+  const rise = item.rail?.rise ?? 0
+  const H = 0.95
+  const parts = useMemo(() => {
+    const n = Math.max(2, Math.round(L / 1.6) + 1)
+    const posts = range(n).map((i) => {
+      const t = i / (n - 1)
+      const z = -L / 2 + 0.08 + t * (L - 0.16)
+      const y0 = rise * t
+      return { p: [0, y0 + H / 2, z], s: [0.12, H, 0.12] }
+    })
+    const slope = Math.atan2(rise, L)
+    const len = Math.hypot(L, rise)
+    return { posts, slope, len }
+  }, [L, rise])
+  return (
+    <group>
+      <Instances geometry={GEO.box} material={RAIL_WOOD} items={parts.posts} />
+      {/* 손잡이 + 가운데 가로대 (경사 따라) */}
+      <Box p={[0, rise / 2 + H, 0]} s={[0.16, 0.08, parts.len + 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_CAP} />
+      <Box p={[0, rise / 2 + H * 0.5, 0]} s={[0.06, 0.06, parts.len - 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_WOOD} />
+    </group>
+  )
+}
+
+// ── 까망이 (11/26 지민 요청: 석탄을 누르면 까망이들이 석탄을 하나씩 들고 화덕으로 나르고 돌아옴) ──
+// 평소: 석탄 더미 둘레에 옹기종기 앉아 살짝 들썩임 / 클릭: 하나씩 조금씩 늦게 출발 → 깡충깡충 화덕 불구멍까지 → 석탄 던져 넣고 돌아옴
+// 털 뭉치는 공 모양 점을 들쭉날쭉 밀어낸 덩어리(어두운 단색) + 흰 눈·검은 눈동자
+const SOOT = mat('#0e0c0b', { flat: true, roughness: 1 })
+const SOOT_EYE = mat('#ffffff', { roughness: 0.5 })
+const SOOT_PUPIL = mat('#050403')
+const SOOT_COAL = mat('#2a2522', { flat: true })
+let sootGeo = null
+function sootGeometry() {
+  if (sootGeo) return sootGeo
+  const g = new THREE.IcosahedronGeometry(1, 2)
+  const p = g.attributes.position
+  const v = new THREE.Vector3()
+  const seen = new Map() // 같은 자리 점은 같은 길이로 (틈 안 생기게)
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i)
+    const key = `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`
+    if (!seen.has(key)) seen.set(key, 0.78 + ((Math.sin(v.x * 91.7 + v.y * 47.3 + v.z * 13.1) * 43758.5) % 1 + 1) % 1 * 0.42)
+    v.multiplyScalar(seen.get(key))
+    p.setXYZ(i, v.x, v.y, v.z)
+  }
+  g.computeVertexNormals()
+  sootGeo = g
+  return g
+}
+const SOOT_N = 10
+const SOOT_GO = 1.7 // 화덕까지 가는 시간(초)
+const SOOT_TOSS = 0.45
+const SOOT_BACK = 1.6
+const SOOT_LAG = 0.14 // 하나씩 늦게 출발
+function JmSootSprites({ coal, mouth }) {
+  const clock = useThree((s) => s.clock)
+  const run = useRef(-1)
+  const bodies = useRef([])
+  const carried = useRef([])
+  const geo = useMemo(() => sootGeometry(), [])
+  const homes = useMemo(() => range(SOOT_N).map((i) => {
+    const a = (i / SOOT_N) * Math.PI * 2 + srand(i + 300) * 0.4
+    const r = 1.0 + srand(i + 310) * 0.5
+    return { x: coal[0] + Math.cos(a) * r, z: coal[1] + Math.sin(a) * r, s: 0.11 + srand(i + 320) * 0.04, ph: srand(i + 330) * 6 }
+  }), [coal])
+  const total = SOOT_GO + SOOT_TOSS + SOOT_BACK
+  useFrame(() => {
+    const t = clock.elapsedTime
+    const k = run.current < 0 ? -1 : t - run.current
+    if (k > total + SOOT_N * SOOT_LAG) run.current = -1
+    for (let i = 0; i < SOOT_N; i++) {
+      const g = bodies.current[i]
+      if (!g) continue
+      const h = homes[i]
+      const local = k - i * SOOT_LAG
+      let x = h.x, z = h.z, y = h.s, face = Math.atan2(h.x - coal[0], h.z - coal[1]) + Math.sin(t * 0.7 + h.ph) * 0.4, carry = false, sq = 1 + Math.sin(t * 4 + h.ph) * 0.06
+      if (k >= 0 && local > 0 && local < total) {
+        const tx = mouth[0] + (srand(i + 340) - 0.5) * 0.5
+        const tz = mouth[1] + (srand(i + 350) - 0.5) * 0.9
+        let f
+        if (local < SOOT_GO) {
+          f = local / SOOT_GO
+          carry = true
+          face = Math.atan2(tx - h.x, tz - h.z)
+        } else if (local < SOOT_GO + SOOT_TOSS) {
+          f = 1
+          carry = local < SOOT_GO + SOOT_TOSS * 0.4
+          face = Math.atan2(tx - h.x, tz - h.z)
+        } else {
+          f = 1 - (local - SOOT_GO - SOOT_TOSS) / SOOT_BACK
+          face = Math.atan2(h.x - tx, h.z - tz)
+        }
+        const e = f * f * (3 - 2 * f)
+        x = h.x + (tx - h.x) * e
+        z = h.z + (tz - h.z) * e
+        const hop = Math.abs(Math.sin(local * Math.PI * 3.2))
+        y = h.s + hop * 0.55 // 석탄 더미(높이 약 0.5m)를 넘어가게
+        sq = 1 + (1 - hop) * 0.18 // 땅에 닿을 때 납작
+      }
+      g.position.set(x, y, z)
+      g.rotation.y = face
+      g.scale.set(h.s * sq, (h.s / sq), h.s * sq)
+      const c = carried.current[i]
+      if (c) c.visible = carry
+    }
+  })
+  const poke = (e) => {
+    e.stopPropagation()
+    if (e.delta > 8) return // 화면을 돌리려고 끈 것은 클릭이 아님
+    if (run.current < 0) run.current = clock.elapsedTime
+  }
+  const hover = (on) => (e) => {
+    e.stopPropagation()
+    document.body.style.cursor = on ? 'pointer' : ''
+  }
+  useEffect(() => () => { document.body.style.cursor = '' }, [])
+  return (
+    <group>
+      {/* 석탄 더미 클릭 칸 (안 보임) */}
+      <mesh position={[coal[0], 0.35, coal[1]]} onClick={poke} onPointerOver={hover(true)} onPointerOut={hover(false)} userData={{ noMerge: true }}>
+        <boxGeometry args={[1.8, 0.7, 1.6]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {homes.map((h, i) => (
+        <group key={i} ref={(el) => (bodies.current[i] = el)} onClick={poke} onPointerOver={hover(true)} onPointerOut={hover(false)}>
+          <mesh geometry={geo} material={SOOT} userData={{ noMerge: true }} />
+          {[-1, 1].map((sx) => (
+            <group key={sx} position={[sx * 0.38, 0.22, 1.0]}>
+              <mesh scale={0.34} material={SOOT_EYE} userData={{ noMerge: true }}>
+                <sphereGeometry args={[1, 10, 8]} />
+              </mesh>
+              <mesh position={[0, 0, 0.24]} scale={0.15} material={SOOT_PUPIL} userData={{ noMerge: true }}>
+                <sphereGeometry args={[1, 8, 6]} />
+              </mesh>
+            </group>
+          ))}
+          {/* 머리 위로 든 석탄 */}
+          <mesh ref={(el) => (carried.current[i] = el)} position={[0, 1.35, 0]} scale={1.5} geometry={GEO.rock} material={SOOT_COAL} visible={false} userData={{ noMerge: true }} />
+        </group>
+      ))}
+    </group>
+  )
+}
 export function JmBoilerBasement({ item }) {
   const [w, h, d] = item.size
   const B = item.boiler
@@ -1819,6 +1968,7 @@ export function JmBoilerBasement({ item }) {
         ))}
       </group>
       <Instances geometry={GEO.rock} material={mat('#1c1a18', { flat: true })} items={coal} />
+      <JmSootSprites coal={B.coal} mouth={[fx + 1.95, fz + 0.3]} />
       {/* 들어오는 길: 남쪽 벽 굵은 관 + 밸브 바퀴, 작은 세면대 */}
       {[0.4, 1.4].map((y) => (
         <Cyl key={y} p={[(B.pipes.x0 + B.pipes.x1) / 2, y, B.pipes.z]} rad={0.35} h={B.pipes.x1 - B.pipes.x0} m={IRON} r={[0, 0, Math.PI / 2]} />
@@ -2511,6 +2661,7 @@ export const JM_SPIRIT_STYLES = {
   jmRedLanternTower: JmRedLanternTower,
   jmCollider: JmCollider,
   jmBoilerBasement: JmBoilerBasement,
+  jmStairRail: JmStairRail,
   jmBasementDoor: JmBasementDoor,
   jmChimney: JmChimney,
   jmFloor: JmFloor,

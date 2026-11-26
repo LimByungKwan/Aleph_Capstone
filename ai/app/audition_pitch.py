@@ -13,6 +13,7 @@ import json
 import math
 import os
 import urllib.request
+import wave
 from functools import lru_cache
 from pathlib import Path
 
@@ -113,6 +114,21 @@ def judge_notes(midi: np.ndarray, voiced: np.ndarray, notes: list[dict]) -> dict
     ok = sum(r["status"] == "ok" for r in results)
     return {"score": round(100 * ok / len(notes)), "offset": None if offset is None else round(offset, 2), "notes": results,
             "stats": {"voiced_ratio": round(100 * voiced_frames / expected_frames, 1) if expected_frames else 0}}
+
+
+def warm_up() -> None:
+    """서버가 켜질 때 한 번: 진짜 채점과 같은 경로(wav 읽기 → pyin)를 1초짜리 소리로 미리 돌림
+    pyin은 처음 부를 때 JIT 컴파일을 해서, 안 하면 첫 사용자가 그 시간을 기다림
+    (11/26 실측: 로컬 8.7초, Render 무료 서버 85초 — 프론트 대기 한도 90초에 거의 닿음)"""
+    t = np.arange(SR) / SR
+    pcm = (0.3 * np.sin(2 * np.pi * 220 * t) * 32767).astype("<i2").tobytes()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SR)
+        w.writeframes(pcm)
+    analyze(buf.getvalue(), [{"midi": 57, "start": 0.0, "duration": 0.8}])
 
 
 def analyze(wav: bytes, notes: list[dict]) -> dict:
