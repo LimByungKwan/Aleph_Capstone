@@ -15,7 +15,7 @@ import { useWarps } from './bk_warpStore.js'
 
 // 커플 포토존 "인생네컷" (담당: 병관) — CouplePhotoZone(dateCourse.jsx) 안에서 그려짐 → 좌표는 포토존 기준
 // 포토존 앞에서 E → [혼자 찍기] 또는 접속 중인 사람 [같이 찍자고 초대] (멀티: bk_photoRoom.js + 서버 bk_photoRooms.js)
-// → 하트 앞 분홍·하늘 발자국에 각자 서면 → 카메라가 삼각대 자리로 → 두 화면에서 동시에 3·2·1 × 4컷 → 네컷 사진
+// → 하트 앞 발자국에서 포즈를 고르고 준비 → 삼각대 카메라로 동시에 3·2·1 × 4컷
 // 초대 수락자는 포토존 앞에 도착한 뒤 자기 발자국까지 걸어감. 찍는 동안만 두 캐릭터가 카메라를 보게 돌림
 
 const SPOTS = { a: new THREE.Vector3(-0.45, 0, -0.9), b: new THREE.Vector3(0.45, 0, -0.9), solo: new THREE.Vector3(0, 0, -0.9) }
@@ -48,7 +48,6 @@ export function PhotoBooth() {
   const player = useRef(null)
   const lastLookup = useRef(-Infinity)
   const turned = useRef([]) // 카메라 쪽으로 돌려 둔 모델들 (끝나면 되돌림)
-  const lastSpot = useRef(null)
   const tmp = useMemo(() => ({ v: new THREE.Vector3(), me: new THREE.Vector3(), q: new THREE.Quaternion(), pq: new THREE.Quaternion(), m: new THREE.Matrix4() }), [])
   const phase = usePhotoRoom((s) => s.phase)
   const solo = usePhotoRoom((s) => s.solo)
@@ -119,7 +118,6 @@ export function PhotoBooth() {
       turned.current.forEach((m) => m.quaternion.identity())
       turned.current = []
     }
-    if (phase === 'gather') lastSpot.current = null
   }, [phase, scene])
 
   useFrame((state) => {
@@ -148,12 +146,12 @@ export function PhotoBooth() {
         const closest = ph.solo ? 'solo' : local.x < 0 ? 'a' : 'b'
         const spot = SPOTS[closest]
         const occupied = Math.hypot(local.x - spot.x, local.z - spot.z) < SPOT_R && Math.abs(local.y - 1) < 1.5 ? closest : null
-        if (occupied !== lastSpot.current) {
-          lastSpot.current = occupied
-          photoRoom.setReady(occupied)
-        }
+        if (occupied !== ph.spot) photoRoom.setSpot(occupied)
       }
-    } else if (p.near) store().setPhoto({ near: false })
+    } else {
+      if (p.near) store().setPhoto({ near: false })
+      if (ph.spot) photoRoom.setSpot(null)
+    }
 
     if (ph.phase === 'shooting') {
       // 카메라: 삼각대 자리에서 하트를 봄 (3인칭 카메라 조종이 끝난 뒤 덮어씀 — 인형뽑기 클로즈업과 같음)
@@ -165,13 +163,11 @@ export function PhotoBooth() {
     }
 
     // 카메라를 보게 돌릴 캐릭터: 찍는 중이거나, 모이기 단계에서 자기 발자국에 선 사람
-    // 내 캐릭터: Ecctrl이 매 프레임 돌리는 모델 칸(y=-1) 안쪽의 실제 모델 (혜진 님 궁궐 의자 앉기와 같은 자리)
-    // 상대 캐릭터: RemotePlayer는 바깥 그룹만 돌려서 안쪽 모델(y=-1)
     const active = []
     if (ph.room && (ph.phase === 'shooting' || ph.phase === 'gather')) {
       const myRole = ph.solo ? 'a' : ph.room.role
       const show = (role) => ph.phase === 'shooting' || ph.ready[role]
-      if (show(myRole)) active.push({ model: findModel(player.current)?.children[0] })
+      if (ph.phase === 'shooting' || ph.spot) active.push({ model: player.current?.getObjectByName('player-character-model') })
       if (ph.room.partner?.id && show(myRole === 'a' ? 'b' : 'a')) {
         active.push({ model: findModel(scene.getObjectByName(`remote-player-${ph.room.partner.id}`)) })
       }
@@ -279,7 +275,7 @@ function IntroPanel() {
     <div style={{ ...panel, alignSelf: 'center' }}>
       <div style={{ fontSize: 28, textAlign: 'center' }}>📸</div>
       <div style={title}>커플 포토존 인생네컷</div>
-      <p style={para}>하트 앞 발자국에 서면 삼각대 카메라가 3·2·1로 <b>4컷</b>을 찍어서 한 장의 네컷 사진으로 만들어 드려요.</p>
+      <p style={para}>하트 앞 발자국에 서서 포즈를 고르면 삼각대 카메라가 <b>4컷</b>을 찍어요.</p>
       {notice && <div style={{ fontSize: 12, margin: '4px 0 8px', color: '#fbcfe8' }}>{notice}</div>}
       <button type="button" style={{ ...btn, width: '100%' }} onClick={() => photoRoom.startSolo()}>혼자 찍기 🤳</button>
       <div style={togetherBox}>
@@ -299,7 +295,7 @@ function IntroPanel() {
         ) : (
           <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>지금 접속한 다른 사람이 없어요.</div>
         )}
-        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>친구가 수락하면 포토존 앞으로 바로 와요. 둘 다 발자국에 서면 촬영이 시작돼요.</div>
+        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>친구가 수락하면 포토존으로 와요. 서로 다른 발자국에서 준비를 마치면 촬영을 시작해요.</div>
       </div>
       <div style={row}>
         <button type="button" style={ghostBtn} onClick={() => useGameStore.getState().close()}>닫기 <kbd style={kbd}>ESC</kbd></button>
@@ -323,18 +319,31 @@ function InviteCard({ invite }) {
 }
 
 function GatherBanner() {
-  const { room, ready, solo, sameSpot } = usePhotoRoom()
+  const { room, ready, solo, sameSpot, spot, pose, confirmed } = usePhotoRoom()
   const mark = (ok) => (ok ? '✅' : '⏳')
   return (
     <div style={banner}>
-      <div style={{ fontWeight: 700 }}>📸 {solo ? '하트 앞 분홍 발자국에 서 주세요' : '하트 앞에 서로 다른 발자국에 서 주세요'}</div>
-      {!solo && (
+      <div style={{ fontWeight: 700 }}>촬영 포즈 선택</div>
+      <div role="group" aria-label="촬영 포즈" style={{ ...row, marginTop: 8 }}>
+        {[['idle', '기본 자세'], ['wave', '손 흔들기']].map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={pose === value} disabled={confirmed}
+            style={pose === value ? btn : ghostBtn} onClick={() => photoRoom.selectPose(value)}>{label}</button>
+        ))}
+      </div>
+      {!solo && room && (
         <div style={{ fontSize: 12, marginTop: 2 }}>
-          나 {mark(ready[room.role])} · {room.partner.name === room.me.name ? '상대' : room.partner.name} {mark(ready[room.role === 'a' ? 'b' : 'a'])}
+          나 {mark(confirmed)} · {room.partner.name === room.me.name ? '상대' : room.partner.name} {mark(ready[room.role === 'a' ? 'b' : 'a'])}
         </div>
       )}
-      <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{solo ? '서면 바로 찍기 시작해요' : sameSpot ? '한 사람이 옆 발자국으로 옮겨 주세요' : '두 자리가 채워지면 동시에 촬영해요'}</div>
-      <button type="button" style={{ ...linkBtn, marginTop: 4 }} onClick={() => photoRoom.leave()}>그만두기</button>
+      <div aria-live="polite" style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>
+        {sameSpot ? '한 사람이 옆 발자국으로 옮겨 주세요.' : !spot ? '하트 앞 발자국에 서 주세요.' : confirmed ? '상대가 준비하면 촬영을 시작해요.' : '포즈를 확인하고 준비해 주세요.'}
+      </div>
+      <div style={{ ...row, marginTop: 8 }}>
+        <button type="button" disabled={!spot || confirmed} style={{ ...btn, opacity: !spot || confirmed ? 0.55 : 1 }} onClick={() => photoRoom.confirm()}>
+          {solo ? '촬영 시작' : '촬영 준비'}
+        </button>
+        <button type="button" style={linkBtn} onClick={() => photoRoom.leave()}>그만두기</button>
+      </div>
     </div>
   )
 }

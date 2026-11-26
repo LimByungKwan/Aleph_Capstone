@@ -120,8 +120,8 @@ function sendRaw(msg) {
 }
 
 /** 내 위치 보내기 (MultiplayerPresence가 0.1초마다 부름) */
-export function sendMove(p, r, s, g) {
-  sendRaw({ t: 'move', p, r, s, g })
+export function sendMove(p, r, s, g, waving) {
+  sendRaw({ t: 'move', p, r, s, g, waving })
 }
 
 /** [병관] 데이트 코스 멀티 메시지 보내기 (tarot.* · photo.* · lift.* · episode.* 만) */

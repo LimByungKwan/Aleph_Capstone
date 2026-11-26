@@ -26,6 +26,7 @@ import { PhotoButton, PhotoPreview } from '../photo/PhotoButton.jsx'
 import SoundDirector, { SoundToggle } from '../sound/SoundDirector.jsx'
 import DateMission from '../dateCourse/DateMission.jsx' // [병관] 데이트 코스 미션 (시간 탐정과 같은 모양)
 import { HudMore } from '../../game/Map/styles/bk_hudMenu.jsx'
+import DateCourseIntro, { DateCourseReplay } from '../dateCourse/DateCourseIntro.jsx'
 import { sceneForPlace } from './sceneData.js'
 import { usePortalStore } from './portalStore.js'
 import { useGameStore } from '../../store/gameStore.js'
@@ -60,6 +61,7 @@ export default function UiRoot() {
       <PalaceTour enabled={!inCinema && !modal && !specialPanel} />
       <SpecialAccess enabled={!inCinema && !modal} />
       <DateMission enabled={!inCinema && !modal} />
+      <DateCourseIntro enabled={!inCinema && !modal && !specialPanel && !specialEra} />
       <DialogBox />
       <BreakwaterScene />
       <EntranceWelcome />
@@ -104,6 +106,7 @@ function Hud() {
       </button>
       <PhotoButton />
       <HudMore>
+        <DateCourseReplay />
         <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), openModal('coupons'))}>
           🎟 쿠폰함 {usable > 0 && <span className="ui-count">{usable}</span>}
         </button>

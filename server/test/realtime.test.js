@@ -104,6 +104,12 @@ describe('멀티 접속', () => {
     const state = await a.next('state')
     assert.deepEqual(state.s, [[b.welcome.id, 1.23, 1, -85.5, 1.5, 3.2, 1]])
 
+    // 촬영방 밖에서 지켜보는 사람에게도 제자리 포즈의 시작과 종료가 전달됩니다.
+    for (const waving of [true, false]) {
+      b.send({ t: 'move', p: [1.234, 1, -85.5], r: 1.5, s: 0, g: true, waving })
+      assert.deepEqual((await a.next('state')).s, [[b.welcome.id, 1.23, 1, -85.5, 1.5, 0, 1, Number(waving)]])
+    }
+
     b.send({ t: 'char', characterId: 'female' })
     const changed = await a.next('peer')
     assert.equal(changed.peer.characterId, 'female')

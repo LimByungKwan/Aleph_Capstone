@@ -13,6 +13,8 @@ import {
   PLAYER_WALK_SPEED,
 } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
+import { isWavingInPhoto } from '../Map/styles/bk_photoRoom.js'
+import { createWavePose } from '../Player/wavePose.js'
 import { useRealtimeStore } from './realtimeStore.js'
 import { useRemoteSeats } from '../../components/movieZone/hjSync.js' // [혜진] 다른 사람이 앉아 있으면 앉은 자세로
 
@@ -64,6 +66,7 @@ function RemoteModel({ id, character }) {
     return object
   }, [scene])
   const mixer = useMemo(() => new AnimationMixer(model), [model])
+  const wave = useMemo(() => createWavePose(model, character.id), [model, character.id])
   const actions = useRef(null)
   const weight = useRef({ Idle: 1, Walk: 0, Run: 0, Jump: 0 })
   const airborne = useRef(false)
@@ -94,7 +97,7 @@ function RemoteModel({ id, character }) {
     }
   }, [animations, mixer, model])
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const current = actions.current
     const state = useRealtimeStore.getState().peers[id]?.state
     if (!current || !state) return
@@ -123,7 +126,10 @@ function RemoteModel({ id, character }) {
     // 내 캐릭터(CharacterModel)와 같게: 이동은 빠르지만 다리는 원래 속도의 박자로 (11/26 SG, 혜진님 확인)
     current.Walk?.setEffectiveTimeScale(Math.max(speed / PLAYER_SPEED_BOOST, 0.3) / character.gaitSpeed.Walk)
     current.Run?.setEffectiveTimeScale(Math.max(speed / PLAYER_SPEED_BOOST, 0.3) / character.gaitSpeed.Run)
+    wave?.reset()
     mixer.update(dt)
+    const waving = state.length > 6 ? state[6] === 1 : isWavingInPhoto(id)
+    wave?.updatePhoto(waving, clock.elapsedTime, dt)
   })
 
   // 내 캐릭터와 같은 기준: 받은 위치는 캡슐 중심(땅에서 1m 위)

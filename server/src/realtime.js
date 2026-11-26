@@ -45,7 +45,9 @@ function validMove(msg) {
   const [x, y, z] = p
   if (Math.abs(x) > MAP_LIMIT || Math.abs(z) > MAP_LIMIT || y < -100 || y > 300) return null
   if (!Number.isFinite(r) || !Number.isFinite(s) || s < 0 || s > 30) return null
-  return [round(x), round(y), round(z), round(r, 3), round(s), msg.g ? 1 : 0]
+  const state = [round(x), round(y), round(z), round(r, 3), round(s), msg.g ? 1 : 0]
+  if (typeof msg.waving === 'boolean') state.push(msg.waving ? 1 : 0)
+  return state
 }
 
 /** 다른 사람에게 보여 줄 정보만 (이메일·역할·DB id는 보내지 않음) */
