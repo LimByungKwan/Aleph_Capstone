@@ -303,8 +303,9 @@ const TOWN = 6
 // (11/25 거리 장면 참고) 넓은 돌계단 + 계단 옆 큰 소나무
 terrain.push({ type: 'stairs', id: 'jm_town_stairs', from: [0, -50.2, 0], to: [0, -60, TOWN], width: 12 })
 prop('jm_town_pine', 'jmBigTree', [10.5, -55], [7, 14, 7], { collider: [1.2, 8, 1.2] })
-prop('jm_town_gate', 'jmTownGate', [0, -62.5], [13, 8, 1], { elevation: TOWN, collider: false, signs: [{ text: '灯籠横丁' }] })
-for (const s of [-1, 1]) wall(`jm_town_gate_pillar_${s < 0 ? 'w' : 'e'}`, [s * 6.1, -62.5], [0.8, 8, 0.8], { elevation: TOWN })
+// (11/26 점검) 문 폭 13 → 10.4: 기둥이 입구 분홍 집·베란다 가게 옆벽(큰길 쪽 면 x ±5.5)에 0.8m 파묻혀 있었음
+prop('jm_town_gate', 'jmTownGate', [0, -62.5], [10.4, 8, 1], { elevation: TOWN, collider: false, signs: [{ text: '灯籠横丁' }] })
+for (const s of [-1, 1]) wall(`jm_town_gate_pillar_${s < 0 ? 'w' : 'e'}`, [s * 4.8, -62.5], [0.8, 8, 0.8], { elevation: TOWN })
 // ─────────────────────────────────────────────
 // 5. 음식점 거리 (바닥 높이 6 + 계단식 단): 가운데 큰길(x -5 ~ 5, z -60 → -150) + 가로 거리(z -87 ~ -93)
 //    (11/25 지민 요청) 평평하지 않게 단을 나눔: 큰길 북쪽 7.4m / 가로 거리 서쪽 7.2m / 동쪽 8.4m, 단 사이는 계단
@@ -1281,6 +1282,31 @@ for (const p of props) if (p.style === 'jmCanal' && p.beach === 'sea') p.hideWat
       p.position = [r2((x0 + x1) / 2), r2((z0 + z1) / 2)]
       p.size = [r2(x1 - x0), p.size[1], r2(z1 - z0)]
     }
+  }
+}
+
+// (11/26 점검: 지민 요청 — 아치 터널과 계단이 엇나감) ④ 골목: 계단(z -79)이 가게 사이 골목·아치(z -77)보다 2m 옆으로 비껴 가게에 파고들고,
+//   아치 터널(깊이 3m)이 계단 내려가는 곳 위로 삐져나와 공중에 떠 있었음 → 계단을 골목 가운데(z -77)로, 아치는 터널 끝이 계단 꼭대기(x 46)에 닿게 3m 안쪽으로
+{
+  const st = terrain.find((t) => t.id === 'jm_crossing_slope')
+  const arch = props.find((q) => q.id === 'jm_scene_4_arch')
+  if (st && arch) {
+    const zc = arch.position[1]
+    st.from = [st.from[0], zc, ...st.from.slice(2)]
+    st.to = [st.to[0], zc, ...st.to.slice(2)]
+    const road = props.find((q) => q.id === 'jm_crossing_slope_road')
+    if (road) road.position = [road.position[0], zc]
+    const top = Math.min(st.from[0], st.to[0]) // 계단 꼭대기 x
+    const depth = arch.size[2]
+    const nx = r2(top - 0.45 - depth) // 터널 끝 = 계단 꼭대기
+    const dx = r2(nx - arch.position[0])
+    arch.position = [nx, zc]
+    for (const id of ['jm_scene_4_arch_wall_l', 'jm_scene_4_arch_wall_r']) {
+      const w = props.find((q) => q.id === id)
+      if (w) w.position = [r2(w.position[0] + dx), w.position[1]]
+    }
+    const lamp = props.find((q) => q.id === 'jm_alley4_lamp')
+    if (lamp) lamp.position = [r2(nx - 8.6), r2(zc + 3.2)] // 아치 앞길을 막지 않게 가로 거리 쪽 가게 모퉁이로
   }
 }
 

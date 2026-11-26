@@ -2099,10 +2099,26 @@ export function JmPinkHouse({ item }) {
           </mesh>
         </group>
       ))}
-      <mesh position={[w * 0.05, 0.3, f + 1.6]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.3, 0.28, 6, 14, Math.PI * 0.9]} />
-        <meshStandardMaterial color="#b9b2a2" roughness={1} />
-      </mesh>
+      {/* (11/26 점검) 빈 굽은 돌띠만 있어 이상한 돌판처럼 보였음 → 흙 + 풀·꽃을 심은 화단으로 */}
+      <group position={[w * 0.05, 0, f + 1.6]}>
+        <mesh position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[1.3, 0.28, 6, 14, Math.PI * 0.9]} />
+          <meshStandardMaterial color="#b9b2a2" roughness={1} />
+        </mesh>
+        {range(9).map((i) => {
+          const a = (Math.PI * 0.9 * (i + 0.5)) / 9
+          return (
+            <group key={`fb${i}`} position={[Math.cos(a) * 1.3, 0.5, -Math.sin(a) * 1.3]}>
+              <mesh geometry={GEO.ico} scale={[0.26, 0.2, 0.26]}>
+                <meshStandardMaterial color={i % 2 ? '#5f8a3a' : '#4f7a34'} flatShading />
+              </mesh>
+              <mesh geometry={GEO.sphere} position={[0.05, 0.16, 0]} scale={0.07}>
+                <meshStandardMaterial color={['#f2c94c', '#e86a8a', '#f5f0e6'][i % 3]} />
+              </mesh>
+            </group>
+          )
+        })}
+      </group>
       {/* 지붕 */}
       <Box p={[0, h + 0.05, 0]} s={[w, 0.1, d]} c="#6a5a4a" />
     </group>
