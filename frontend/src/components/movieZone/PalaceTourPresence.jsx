@@ -4,6 +4,10 @@ import { Vector3 } from 'three'
 import { labelLayer } from '../../game/labelLayer.js'
 import { useGameStore } from '../../store/gameStore.js'
 import { usePalaceSeatStore } from './palaceSeating.js'
+import HallDoorColliders from './HallDoorColliders.jsx'
+import IndoorView from './IndoorView.jsx'
+import PresenceKeepAlive from './PresenceKeepAlive.jsx'
+import './hjSync.js' // 경복궁·경성 멀티 동기화 (문·앉기·탈것·시계)
 import { activityAt, isAtPalaceEntrance, isInPalace, palaceGrounds, usePalaceTour } from './palaceTourStore.js'
 import { ERA_BOUNDARY, SPECIAL_MARKS, findSpecialMark, specialInteriorAt, specialInteriorPresence } from '../../game/Map/styles/hj/specialAccessLayout.js'
 import { getSpecialLocation } from './specialLocations.js'
@@ -103,5 +107,11 @@ export default function PalaceTourPresence({ playerRef }) {
       access.setViewYaw(Math.round(Math.atan2(cameraDirection.x,cameraDirection.z)*180/Math.PI))
     }
   })
-  return null
+  return (
+    <>
+      <HallDoorColliders />
+      <IndoorView playerRef={playerRef} />
+      <PresenceKeepAlive playerRef={playerRef} />
+    </>
+  )
 }

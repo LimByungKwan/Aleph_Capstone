@@ -27,6 +27,16 @@ export function onTarotMessage(fn) {
   return () => tarotListeners.delete(fn)
 }
 
+// [혜진] 'hj.' 메시지는 영화·드라마 구역(경복궁·경성) 동기화로 넘김 (components/movieZone/hjSync.js)
+const hjListeners = new Set()
+export function onHjMessage(fn) {
+  hjListeners.add(fn)
+  return () => hjListeners.delete(fn)
+}
+export function sendHj(msg) {
+  if (typeof msg?.t === 'string' && msg.t.startsWith('hj.')) sendRaw(msg)
+}
+
 const setPeers = (fn) => useRealtimeStore.setState((s) => ({ peers: fn(s.peers) }))
 
 function handle(msg) {
@@ -47,6 +57,8 @@ function handle(msg) {
     })
   } else if (typeof msg.t === 'string' && /^(tarot|photo|lift|episode)\./.test(msg.t)) {
     tarotListeners.forEach((fn) => fn(msg))
+  } else if (typeof msg.t === 'string' && msg.t.startsWith('hj.')) {
+    hjListeners.forEach((fn) => fn(msg))
   } else if (msg.t === 'state') {
     const selfId = useRealtimeStore.getState().selfId
     setPeers((peers) => {
