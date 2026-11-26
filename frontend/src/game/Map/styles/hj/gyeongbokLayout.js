@@ -39,12 +39,13 @@ export const WALLS = [
   // 뒤 담장 (신무문 자리 3.2m 비움)
   [-37, 72, -1.6, 72],
   [1.6, 72, 37, 72],
-  // 흥례문 줄 (가운데 흥례문 9m)
-  [-14, -25.8, -4.5, -25.8],
-  [4.5, -25.8, 14, -25.8],
-  // 침전(강녕전·교태전)과 후원 사이 담장 (가운데 4m 비움)
-  [-14, 45.6, -2, 45.6],
-  [2, 45.6, 14, 45.6],
+  // 흥례문 줄: 흥례문(가운데 9m) 양옆으로 옆 담장까지 이어져 광화문 앞마당을 둘러요
+  [-37, -25.8, -4.5, -25.8],
+  [4.5, -25.8, 37, -25.8],
+  // 침전(강녕전·교태전)과 후원 사이 담장: 옆 담장까지 이어지고, 양쪽 협문(x ±25, 3m)만 비워요 (아미산 굴뚝 뒤는 막힘)
+  [-37, 45.6, -26.5, 45.6],
+  [-23.5, 45.6, 23.5, 45.6],
+  [26.5, 45.6, 37, 45.6],
 ]
 
 // plain: 단청 없는 나무색 백골집(건청궁·소주방) · lattice: 창살(tti 띠살 / bit 빗살 / jeongja 정자살)
@@ -64,7 +65,7 @@ export const HALLS = [
   { id: 'jagyeongjeon', title: '자경전', ax: 27, az: 34, w: 12, d: 5, h: 2.8, bays: 7, base: 0.45, roof: 'hipgable', solid: true },
   // 넓힌 양옆: 동궁 비현각 · 소주방(궁중 부엌) · 흥복전
   { id: 'bihyeongak', title: '비현각', ax: 26, az: -5, w: 10, d: 4.5, h: 2.6, bays: 5, base: 0.4, roof: 'hipgable', solid: true },
-  { id: 'sojubang', title: '소주방', ax: 27, az: 18, w: 11, d: 4.5, h: 2.5, bays: 5, base: 0.3, roof: 'gable', ornate: false, plain: true, lattice: 'jeongja', furnish: 'kitchen', solid: true },
+  { id: 'sojubang', title: '소주방', ax: 27, az: 18, w: 11, d: 6, h: 2.7, bays: 5, base: 0.3, roof: 'gable', ornate: false, plain: true, lattice: 'jeongja', furnish: 'kitchen', solid: true },
   { id: 'heungbokjeon', title: '흥복전', ax: -26, az: 38, w: 13, d: 5, h: 2.9, bays: 7, base: 0.5, roof: 'hipgable', solid: true },
   // 후원: 건청궁(향원정 북쪽) · 태원전(서북쪽)
   { id: 'geoncheonggung', title: '건청궁', ax: 16, az: 66, w: 12, d: 4.4, h: 2.6, bays: 7, base: 0.35, roof: 'hipgable', ornate: false, plain: true, lattice: 'jeongja', solid: true },
@@ -72,6 +73,9 @@ export const HALLS = [
   // 옆·뒤 문 (열린 문)
   { id: 'yeongchumun', title: '영추문', ax: -37, az: -21, w: 3.6, d: 1.8, h: 2.3, mode: 'gate', bays: 1, sideBays: 1, base: 0, roof: 'hip', ornate: false, rotation: 90 },
   { id: 'geonchunmun', title: '건춘문', ax: 37, az: -21, w: 3.6, d: 1.8, h: 2.3, mode: 'gate', bays: 1, sideBays: 1, base: 0, roof: 'hip', ornate: false, rotation: 90 },
+  // 후원으로 드나드는 작은 협문 (침전 뒤 담장 양쪽)
+  { id: 'hyeopmun_w', title: '서협문', ax: -25, az: 45.6, w: 3.2, d: 1.6, h: 2.2, mode: 'gate', bays: 1, sideBays: 1, base: 0, roof: 'hip', ornate: false },
+  { id: 'hyeopmun_e', title: '동협문', ax: 25, az: 45.6, w: 3.2, d: 1.6, h: 2.2, mode: 'gate', bays: 1, sideBays: 1, base: 0, roof: 'hip', ornate: false },
   { id: 'sinmumun', title: '신무문', ax: 0, az: 72, w: 4.4, d: 1.8, h: 2.3, mode: 'gate', bays: 1, sideBays: 1, base: 0, roof: 'hip', ornate: false },
 ]
 
@@ -292,7 +296,7 @@ export const TREES = [
   [-31.2, 47, 1.1], [-26, 49.5, 0.9], [-31.8, 53, 1], [-11.7, 47.5, 0.85], [-7.1, 51, 1],
   [-10.4, 56, 0.9], [-31.2, 66, 1.05], [-25.3, 68.5, 0.9], [-9.1, 64, 1], [-5.9, 68.5, 0.85],
   [3.6, 47.2, 0.75], [2.6, 58, 1], [29.3, 47.5, 1], [31.2, 52, 0.9], [29.9, 58.5, 1.05],
-  [31.9, 44, 0.85], [29.3, 26, 0.9], [22.1, 22, 0.85], [-31.2, 34, 0.95],
+  [-17, 52.5, 0.85], [-3.5, 61, 0.9], [24.5, 56, 0.85], [34, 69, 0.95], // 돌바닥에 있던 4그루는 후원 잔디로 옮김
 ]
 
 // ── 사정전(편전) 실내 자리 (전각 기준 좌표, 앞 -z) ──
@@ -306,5 +310,24 @@ export function pyeonjeonSpots(W2, D2) {
     pz,
     platformTop: 0.485, // 어탑 윗면 (전각 마루 위)
     throne: { x: 0, z: pz, top: 0.935 }, // 용상 좌판 윗면
+  }
+}
+
+// ── 소주방(수라간) 실내 자리 (전각 기준 좌표, 앞 -z, 문은 앞 가운데) ──
+// 3D(HjKitchen.jsx)와 충돌 박스(scripts/hj-gyeongbok-colliders.mjs)가 같은 값을 써요.
+// 가운데 문에서 안쪽 뒤벽까지는 비워 둬서 걸어 들어가 둘러볼 수 있어요.
+export function kitchenSpots(W2, D2) {
+  const hearth = { x0: -W2 + 0.2, x1: 1.6, d: 0.95, h: 0.72 } // 뒤벽 따라 긴 부뚜막
+  hearth.z = D2 - 0.12 - hearth.d / 2
+  return {
+    hearth,
+    pots: [-W2 + 1.05, -W2 + 2.75, -W2 + 4.35, 0.85].map((x, i) => ({ x, r: i === 3 ? 0.26 : 0.4 })), // 가마솥 3 + 작은 솥
+    cupboard: { x: W2 - 0.32, z: 0.55, w: 0.5, l: 2.6, h: 2.0 }, // 오른쪽 벽 찬장 (z 방향으로 긴)
+    shelf: { x: W2 - 1.55, z: D2 - 0.35, w: 1.9, d: 0.5, h: 1.7 }, // 뒤 오른쪽 선반
+    table: { x: 2.55, z: -0.15, w: 1.7, d: 0.75, h: 0.78 }, // 가운데 오른쪽 손질 상
+    trays: { x: W2 - 1.4, z: -D2 + 0.45, w: 2.4, d: 0.55, h: 0.42 }, // 앞 오른쪽 소반 받침
+    jars: [[-W2 + 0.55, -D2 + 0.55, 0.42], [-W2 + 1.4, -D2 + 0.45, 0.34], [-W2 + 0.5, -D2 + 1.45, 0.36]], // 옹기 [x, z, 반지름]
+    buckets: [[-W2 + 2.3, -D2 + 0.4], [-W2 + 2.85, -D2 + 0.42]],
+    chest: { x: -W2 + 0.5, z: 0.15, w: 0.75, d: 1.0, h: 0.75 }, // 뒤주
   }
 }

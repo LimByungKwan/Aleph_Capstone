@@ -3,14 +3,18 @@ import { layout } from '../../game/data/mapData.js'
 import { GYEONGHOERU, GYEONGHOERU_DECK_Y, HALLS, HYANGWON, HYANGWON_Y1, PALACE_ORIGIN_Z, PONDS, pyeonjeonSpots } from '../../game/Map/styles/hj/gyeongbokLayout.js'
 import { registerPalaceSeat, registerWarpSpot } from './palaceSeating.js'
 import { useHallDoors } from './hjSync.js'
+import { zoneToWorld } from './hjAreas.js'
 
 // [3. 개발 > 프론트엔드] 경복궁 관람 안내판 (혜진 영화·드라마 구역)
 // 광화문 앞 안내판을 누르면 목록이 뜨고, 고른 전각 앞으로 바로 옮겨 줘요 (PalaceGuideMenu.jsx).
 // 좌표는 배치 파일(gyeongbokLayout.js)의 A 좌표를 월드 좌표로 바꿔 계산해요.
 
+// tab: 위쪽 탭 — 'palace' 경복궁 · 'gyeongseong' 1930 경성거리
 export const usePalaceGuide = create((set) => ({
   open: false,
-  show: () => set({ open: true }),
+  tab: 'palace',
+  show: (tab) => set(typeof tab === 'string' ? { open: true, tab } : { open: true }),
+  setTab: (tab) => set({ tab }),
   hide: () => set({ open: false }),
 }))
 
@@ -52,8 +56,29 @@ export const GUIDE_STOPS = palace
       { id: 'donggung', name: '자선당 (동궁)', note: '세자가 살던 곳', pos: front('donggung') },
       { id: 'jagyeongjeon', name: '자경전', note: '대비의 침전', pos: front('jagyeongjeon') },
       { id: 'geoncheonggung', name: '건청궁', note: '단청 없는 백골집', pos: front('geoncheonggung') },
+      { id: 'sojubang', name: '소주방 (수라간)', note: '아궁이·가마솥·찬장', pos: front('sojubang') },
     ]
   : []
+
+// 1930 경성거리 (경복궁 신무문 북쪽). 좌표는 hj_drama.json 구역 기준 → zoneToWorld
+const gs = (lx, lz) => zoneToWorld(lx, lz)
+export const GYEONGSEONG_STOPS = palace
+  ? [
+      { id: 'gs_clock', name: '시계탑 광장', note: '경성거리 입구 · 꽃밭과 벤치', pos: gs(0, 16.8) },
+      { id: 'gs_station', name: '경성역 앞', note: '전차 정류장 · 돔 지붕 역사', pos: gs(-25.4, 35) },
+      { id: 'gs_platform', name: '기차 승강장', note: '증기기관차 타는 곳', pos: gs(-40.1, 40) },
+      { id: 'gs_jongno', name: '종로 전차 정류장', note: '땡땡 전차 타는 곳', pos: gs(-1.6, 47.2) },
+      { id: 'gs_west', name: '극장·호텔 거리', note: '서쪽 거리 · 극장과 호텔', pos: gs(-27.5, 60) },
+      { id: 'gs_east', name: '백화점·빵집 거리', note: '동쪽 거리 · 백화점과 레코드 가게', pos: gs(27.5, 60) },
+      { id: 'gs_gov', name: '총독부 앞', note: '돌계단과 기둥 현관', pos: gs(-7.5, 77) },
+    ]
+  : []
+
+// 안내판 위쪽 탭: 구역마다 갈 곳 목록
+export const GUIDE_AREAS = [
+  { id: 'palace', name: '🏯 경복궁', stops: GUIDE_STOPS },
+  { id: 'gyeongseong', name: '🚃 경성거리', stops: GYEONGSEONG_STOPS },
+]
 
 // ── 전각 문 열고 닫기 ─────────────────────────────
 // 들어갈 수 있는 전각(solid)마다 가운데 칸 문을 E로 열고 닫아요. 닫히면 문 자리에 충돌 박스가 생겨 못 지나가요.

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { layout } from '../../game/data/mapData.js'
 import { PALACE_SEATS, THRONE_ROOM_POSITION } from './palaceInteriorLayout.js'
 import { findBoardable } from './rideSeats.js'
+import { trackHjArea } from './hjAreas.js'
 
 const palace = layout.props.find(item => item.id === 'HJ/haewol_palace')
 const SIT_RADIUS = 1.12
@@ -73,6 +74,7 @@ export function updatePalaceSeating(player, locked) {
     pendingWarp = null
   }
   const position = player.body.translation()
+  trackHjArea(position) // 경복궁·경성거리에 들어오면 입장 카드
 
   // ── 전차·기차에 타고 있을 때: 좌석을 따라 같이 움직이고, 정차했을 때만 내릴 수 있어요 ──
   if (state.seated?.vehicle) {

@@ -16,4 +16,14 @@ export const useZoneEntryStore = create((set, get) => ({
     set({ welcomeAt: now, lastEnteredAt: now })
   },
   dismissWelcome: () => set({ welcomeAt: 0 }),
+
+  // 구역 안 작은 구역(경복궁·경성거리) 입장 카드 — hjAreas.js가 캐릭터가 들어온 걸 알려 줘요
+  // 방금 세트장 입장 배너가 떴으면(게이트 바로 뒤가 경복궁) 겹치지 않게 건너뛰어요
+  areaWelcome: null, // { at, id }
+  showArea: (id) => {
+    const now = Date.now()
+    if (now - get().lastEnteredAt < COOLDOWN_MS) return
+    set({ areaWelcome: { at: now, id } })
+  },
+  dismissArea: () => set({ areaWelcome: null }),
 }))

@@ -460,3 +460,7 @@
   .hj-enter *, .hj-enter { animation: none !important; }
   .hj-enter__fade { display: none; }
 }
+.hj-enter__banner p.hj-enter__tagline {
+  margin: 0 0 4px;
+  color: var(--ui-text, inherit);
+}

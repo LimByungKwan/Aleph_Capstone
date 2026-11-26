@@ -4,6 +4,8 @@ import { listMyStamps } from '../../api/client.js'
 import { useUiStore } from './uiStore.js'
 import { useAsync } from './common.jsx'
 import { useZoneEntryStore } from './zoneEntryStore.js'
+import { areaById } from './hjAreas.js'
+import { usePalaceGuide } from './palaceGuide.js'
 
 // [3. 개발 > 프론트엔드] 영화·드라마 구역 입장 환영 (혜진 구역 전용)
 // 게이트 통과/클릭 → 따뜻한 종이색(#F9F6EE) 페이드 + "🎬 영화·드라마 세트장에 입장하셨습니다!" 배너
@@ -14,11 +16,17 @@ const HJ_SPOTS = mapPlaces.filter((p) => p.zone === 'HJ' && p.type === 'spot')
 export default function EntranceWelcome() {
   const welcomeAt = useZoneEntryStore((s) => s.welcomeAt)
   const dismiss = useZoneEntryStore((s) => s.dismissWelcome)
-  if (!welcomeAt) return null
-  return <Welcome key={welcomeAt} onClose={dismiss} />
+  const areaWelcome = useZoneEntryStore((s) => s.areaWelcome)
+  const dismissArea = useZoneEntryStore((s) => s.dismissArea)
+  if (welcomeAt) return <Welcome key={welcomeAt} onClose={dismiss} />
+  const area = areaWelcome && areaById(areaWelcome.id)
+  if (area) return <Welcome key={areaWelcome.at} area={area} onClose={dismissArea} />
+  return null
 }
 
-function Welcome({ onClose }) {
+// area가 있으면 세트장 안 작은 구역(경복궁·경성거리) 입장 카드, 없으면 세트장 전체 입장 배너
+function Welcome({ area = null, onClose }) {
+  const showGuide = usePalaceGuide((s) => s.show)
   const userId = useUiStore((s) => s.userId)
   const openModal = useUiStore((s) => s.openModal)
   const { data } = useAsync(() => listMyStamps({ userId }), [userId])
@@ -32,10 +40,11 @@ function Welcome({ onClose }) {
 
   return (
     <div className="hj-enter" role="status" aria-live="polite">
-      <div className="hj-enter__fade" />
+      {!area && <div className="hj-enter__fade" />}
       <div className="hj-enter__banner ui-interactive">
-        <span className="ui-eyebrow">Movie · Drama Set</span>
-        <h2>🎬 영화·드라마 세트장에 입장하셨습니다!</h2>
+        <span className="ui-eyebrow">{area ? area.eyebrow : 'Movie · Drama Set'}</span>
+        <h2>{area ? `${area.emoji} ${area.name}에 입장하셨습니다!` : '🎬 영화·드라마 세트장에 입장하셨습니다!'}</h2>
+        {area && <p className="hj-enter__tagline">{area.tagline}</p>}
         <p>
           이 구역 촬영지 스탬프 <strong>{data ? `${got} / ${HJ_SPOTS.length}` : '…'}</strong>
           {data && got < HJ_SPOTS.length ? ' · 남은 촬영지를 찾아보세요' : data ? ' · 모두 모았어요! 🎉' : ''}
@@ -44,6 +53,11 @@ function Welcome({ onClose }) {
           <button type="button" className="ui-btn" onClick={() => (openModal('stampbook'), onClose())}>
             📖 스탬프북
           </button>
+          {area && (
+            <button type="button" className="ui-btn" onClick={() => (showGuide(area.id), onClose())}>
+              🪧 안내판
+            </button>
+          )}
           <button type="button" className="ui-btn ui-btn--ink" onClick={onClose}>
             둘러보기
           </button>

@@ -133,3 +133,30 @@
   font-size: 12px;
   opacity: 0.7;
 }
+/* 안내판 위쪽 구역 탭 (경복궁 · 경성거리) */
+.rk-guide-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+.rk-guide-tab {
+  flex: 1;
+  min-height: 40px;
+  border: 1px solid rgba(246, 239, 220, 0.28);
+  border-radius: 10px;
+  background: rgba(246, 239, 220, 0.08);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rk-guide-tab:hover,
+.rk-guide-tab:focus-visible {
+  background: rgba(246, 239, 220, 0.18);
+  outline: none;
+}
+.rk-guide-tab.is-active {
+  background: #f6efdc;
+  border-color: #f6efdc;
+  color: #2a241d;
+}
