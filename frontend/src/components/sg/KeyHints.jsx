@@ -12,6 +12,7 @@ const ROWS = [
 ]
 const SCALE = 1.2 // 전체 배율 (키·글자·간격을 한꺼번에 키움)
 const BASE_HEIGHT = 118
+export const KEY_HINTS_BOTTOM = 64 + Math.round((BASE_HEIGHT - 8) * SCALE) // 이 아래에 KpopIntro 다시 보기 버튼
 
 export default function KeyHints() {
   const touch = useIsTouch()

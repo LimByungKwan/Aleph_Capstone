@@ -31,7 +31,7 @@ const SPOTS = [
 ]
 const SPOT_TYPES = SPOTS.map((s) => s.type)
 
-function inKpopZone() {
+export function inKpopZone() {
   if (!playerPose.ready || !ZONE) return false
   const [cx, cz] = ZONE.origin
   const [w, d] = ZONE.size
