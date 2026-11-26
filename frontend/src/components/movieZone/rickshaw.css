@@ -163,3 +163,111 @@
 
 .rk-quiz-choices { display: grid; gap: 8px; }
 .rk-quiz-choices [aria-pressed="true"] { border-color: #e2c27d; }
+
+.rk-arrival {
+  position: absolute;
+  bottom: clamp(82px, 16vh, 145px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(470px, calc(100vw - 32px));
+  max-height: 44vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 13px 18px;
+  border: 1px solid #aa9771;
+  border-radius: 14px;
+  background: #282821f5;
+  color: #fff7e3;
+  box-shadow: 0 5px 20px #0004;
+}
+.rk-arrival p { margin: 6px 0 10px; line-height: 1.65; word-break: keep-all; }
+.rk-arrival audio { max-width: 100%; }
+
+/* 자동차 운전 조작 (CarDriveHint.jsx): 화면 아래 가운데, 큰 키보드 모양 */
+.car-hud {
+  /* 오른쪽 아래(미니맵 위): 가운데 아래 E 안내 문구를 가리지 않게 */
+  position: absolute;
+  right: 16px;
+  bottom: 100px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(24, 22, 21, 0.86);
+  color: #f6efdc;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 5;
+}
+.car-hud__speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+}
+.car-hud__speed strong {
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.car-hud__speed span {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.car-hud__keys {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.car-hud__row {
+  display: flex;
+  gap: 6px;
+}
+.car-hud__key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 52px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #f6efdc;
+  color: #2c2a29;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+  transition: background 80ms ease-out, transform 80ms ease-out;
+}
+.car-hud__key b {
+  font-size: 20px;
+  line-height: 1.1;
+}
+.car-hud__key small {
+  font-size: 11px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+.car-hud__key.is-down {
+  background: #ffc46b;
+  transform: translateY(2px);
+}
+@media (max-width: 560px) {
+  .car-hud { gap: 10px; padding: 10px 12px; bottom: 96px; }
+  .car-hud__key { min-width: 46px; height: 44px; }
+  .car-hud__key small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .car-hud__key { transition: none; }
+}
+
+/* 매표소 · 끄는 인력거 창 */
+.rk-booth { top: 50%; bottom: auto; transform: translate(-50%, -50%); }
+.rk-wallet { margin: 8px 0 10px; font-size: 14px; }
+.rk-wallet strong { color: #ffc46b; }
+.rk-choice:disabled { opacity: 0.45; cursor: not-allowed; }
+.rk-pull { bottom: 190px; }
+.rk-pull .rk-choice small { opacity: 0.75; }
+
+/* 운전 중에는 조작판에 E(내리기)가 있으니 아래 E 안내 문구는 숨겨요 (겹치지 않게) */
+body:has(.car-hud) .ui-scene-hint { display: none; }

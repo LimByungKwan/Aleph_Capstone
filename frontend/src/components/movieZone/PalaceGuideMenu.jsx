@@ -28,7 +28,7 @@ export default function PalaceGuideMenu() {
     const onKey = (e) => {
       if (quizId) {
         if (e.key === 'Escape') { e.preventDefault(); hide() }
-        if (e.key !== 'Tab') e.stopImmediatePropagation()
+        if (e.key !== 'Tab' && !(e.target instanceof HTMLInputElement)) e.stopImmediatePropagation()
         return
       }
       if (e.key === 'Escape') {

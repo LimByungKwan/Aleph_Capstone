@@ -59,6 +59,15 @@ export function updateVehicleWorld(vehicle, object, localSeats, exitLocal) {
   vehicle._inv.copy(object.matrixWorld).invert()
 }
 
+/** 좌석 id('차량id/좌석id', hj.sit으로 받은 값)로 지금 이 화면의 좌석 찾기 — 다른 사람을 그 자리에 앉혀 그릴 때 써요 */
+export function findSeatById(seatId) {
+  if (!seatId) return null
+  for (const vehicle of vehicles.values()) {
+    for (const seat of vehicle.seats) if (seat.id === seatId) return seat
+  }
+  return null
+}
+
 // 플레이어 근처에서 탈 수 있는(정차한) 차량 찾기
 export function findBoardable(x, y, z) {
   // 여러 대가 가까우면 차체 옆면에 더 가까운 차를 골라요 (섬 승강장 양쪽 기차)

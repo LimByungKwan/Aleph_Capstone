@@ -6,6 +6,7 @@ import { GWANGHWAMUN, GYEONGHOERU, GYEONGHOERU_DECK_Y, HALLS, HYANGWON, HYANGWON
 import { registerPalaceSeat, registerWarpSpot } from './palaceSeating.js'
 import { useHallDoors } from './hjSync.js'
 import { GS_SHIFT, zoneToWorld } from './hjAreas.js'
+import { BUGAK_TOP } from '../../game/Map/styles/hj/HjBugaksan.jsx'
 import { BALLOON_PAD, ENTRANCE, RIDES, SAFARI_BOARD, parkToWorld } from '../../game/Map/styles/hj/themeParkLayout.js'
 
 // [3. 개발 > 프론트엔드] 경복궁 관람 안내판 (혜진 영화·드라마 구역)
@@ -45,8 +46,8 @@ if (palace) {
   const palaceGate = palaceToWorld(0, GWANGHWAMUN.az + 2.8)
   registerWarpSpot({ id: 'seoul_palace_enter', position: plazaGate, radius: 2.2,
     prompt: '광화문으로 경복궁 입장', warpTo: palaceGate })
-  registerWarpSpot({ id: 'seoul_palace_return', position: palaceGate, radius: 2.2,
-    prompt: '광화문광장으로 돌아가기', warpTo: plazaGate })
+  // (경복궁 광화문 안쪽의 "광화문광장으로 돌아가기"는 1930 궁궐에서 갑자기 2026 서울로 가 버려 헷갈려서 뺐어요.
+  //  현대 서울로는 경성역 시간 열차로 가요)
   const floor1 = 0.17 + HYANGWON.base + 1.0 // 캐릭터 몸통 높이
   const floor2 = 0.17 + HYANGWON_Y1 + 1.0
   const at = (lx, lz, y) => palaceToWorld(HYANGWON.ax + lx, HYANGWON.az + lz, y)
@@ -85,6 +86,8 @@ const gs = (lx, lz) => zoneToWorld(lx, lz)
 export const GYEONGSEONG_STOPS = palace
   ? [
       { id: 'gs_pass', name: '북악산 고갯길 · 숙정문', note: '성곽과 바위산 사이 돌길', pos: zoneToWorld(4.5, 20) },
+      // 북악산은 구역 기준 z 17.4에 놓여 있어요 (hj_drama.json bugaksan)
+      { id: 'bugak_top', name: '북악산 정상 전망대', note: '등산로 꼭대기 · 팔각정 · 망원경', pos: zoneToWorld(BUGAK_TOP.x - 2.5, 17.4 + BUGAK_TOP.z - 3.2, BUGAK_TOP.y + 1.1) },
       { id: 'gs_clock', name: '시계탑 광장', note: '경성거리 입구 · 꽃밭과 벤치', pos: gs(0, 16.8) },
       { id: 'gs_station', name: '경성역 앞', note: '전차 정류장 · 돔 지붕 역사', pos: gs(-25.4, 35) },
       { id: 'gs_platform', name: '기차 승강장', note: '증기기관차 타는 곳', pos: gs(-40.1, 40) },

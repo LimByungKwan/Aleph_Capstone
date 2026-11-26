@@ -17,9 +17,9 @@ export const GATE = {
   h: 6.2, // 석축 높이
   band: 0.9, // 무늬 띠 높이
   arches: [
-    { x: -5.6, hw: 1.5, spring: 2.4 }, // 왼쪽 (반지름 = hw, 꼭대기 = spring + hw)
-    { x: 0, hw: 2.1, spring: 3.0 }, // 가운데
-    { x: 5.6, hw: 1.5, spring: 2.4 }, // 오른쪽
+    { x: -5.6, hw: 1.5, spring: 2.4, blind: true }, // 왼쪽: 막힌 문 (반지름 = hw, 꼭대기 = spring + hw)
+    { x: 0, hw: 2.1, spring: 3.0 }, // 가운데: 드나드는 입구
+    { x: 5.6, hw: 1.5, spring: 2.4, blind: true }, // 오른쪽: 막힌 문
   ],
 }
 export const GATE_TOP = GATE.h + GATE.band + 0.15 // 문루가 서는 높이
@@ -209,6 +209,21 @@ function ringGeometry(a, width = 0.42) {
   return new THREE.ExtrudeGeometry(s, { depth: 0.12, bevelEnabled: false, curveSegments: 20 })
 }
 
+// 홍예 모양 판 (막힌 문 메움용)
+const fillCache = new Map()
+function archFill(a) {
+  const key = `${a.x}|${a.hw}|${a.spring}`
+  if (fillCache.has(key)) return fillCache.get(key)
+  const sh = new THREE.Shape()
+  sh.moveTo(a.x - a.hw, 0)
+  sh.lineTo(a.x - a.hw, a.spring)
+  sh.absarc(a.x, a.spring, a.hw, Math.PI, 0, true)
+  sh.lineTo(a.x + a.hw, 0)
+  sh.closePath()
+  const g = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: false, curveSegments: 16 })
+  fillCache.set(key, g)
+  return g
+}
 const RING = mat('#f1ece0', { roughness: 0.8 })
 const DOOR = mat('#b23a2c', { roughness: 0.7 })
 const BRASS = new THREE.MeshStandardMaterial({ color: '#c9a24a', roughness: 0.35, metalness: 0.6 })
@@ -226,8 +241,26 @@ export function Sukjeongmun({ position = [0, 0, 0] }) {
     const bands = []
     const extras = []
     for (const a of arches) {
-      // 문짝: 홍예 안 양쪽 벽으로 활짝 열린 붉은 판문 두 짝 (가운데 z = -0.2 근처에 경첩)
       const leafH = a.spring + a.hw * 0.55
+      if (a.blind) {
+        // 막힌 옆문: 앞뒤 홍예 안쪽(0.7m 들어간 자리)에 닫힌 붉은 판문 두 짝 (뒤는 돌로 메움)
+        for (const face of [-1, 1]) {
+          const z = face * (d / 2 - 0.62)
+          for (const side of [-1, 1]) {
+            const x = a.x + side * (a.hw / 2)
+            extras.push({ kind: 'door', p: [x, a.spring / 2 + 0.06, z], s: [a.hw - 0.04, a.spring, 0.12] })
+            for (const yy of [0.25, 0.55, 0.85]) bands.push({ p: [x, a.spring * yy, z + face * 0.07], s: [a.hw - 0.12, 0.09, 0.02] })
+            for (let row = 0; row < 6; row += 1) {
+              for (let col = 0; col < 3; col += 1) {
+                studs.push({ p: [x - (a.hw - 0.4) / 2 + col * ((a.hw - 0.4) / 2), 0.35 + row * (a.spring - 0.6) / 5, z + face * 0.075], s: [0.045, 0.045, 0.045] })
+              }
+            }
+          }
+        }
+        for (const s of [-1, 1]) extras.push({ kind: 'key', p: [a.x, a.spring + a.hw + 0.32, s * (d / 2 + 0.07)], s: [0.55, 0.62, 0.16] })
+        continue
+      }
+      // 문짝: 홍예 안 양쪽 벽으로 활짝 열린 붉은 판문 두 짝 (가운데 z = -0.2 근처에 경첩)
       for (const side of [-1, 1]) {
         const x = a.x + side * (a.hw - 0.09)
         const zc = -0.25 - a.hw / 2
@@ -308,8 +341,16 @@ export function Sukjeongmun({ position = [0, 0, 0] }) {
           <mesh geometry={g} material={RING} position={[0, 0, d / 2]} />
         </group>
       ))}
-      {/* 홍예 안 천장 그림 */}
-      {arches.map((a, i) => (
+      {/* 막힌 옆문: 홍예 모양 돌판으로 안쪽을 메워요 (앞뒤) */}
+      {arches.filter((a) => a.blind).map((a, i) => (
+        <group key={`fill${i}`}>
+          {[-1, 1].map((face) => (
+            <mesh key={face} geometry={archFill(a)} material={stone} position={[0, 0, face * (d / 2 - 0.55) - 0.15]} />
+          ))}
+        </group>
+      ))}
+      {/* 홍예 안 천장 그림 (드나드는 가운데 문만) */}
+      {arches.filter((a) => !a.blind).map((a, i) => (
         <mesh key={i} position={[a.x, a.spring, 0]} rotation={[Math.PI / 2, 0, 0]} material={a.hw > 2 ? ceilC : ceilS}>
           <cylinderGeometry args={[a.hw - 0.02, a.hw - 0.02, d - 0.04, 24, 1, true, Math.PI / 2, Math.PI]} />
         </mesh>
