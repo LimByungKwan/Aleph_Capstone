@@ -18,6 +18,9 @@ const GOOD_TOKEN = 'good-token'
 let calls
 let rpcHandler
 let tableRows
+let sessionChecks // session_ok를 부른 토큰들
+let sessionOk // session_ok 응답 { data, error }
+let replacedUsers // onSessionReplaced로 받은 userId들
 
 function fakeQuery(token, table) {
   const filters = []
@@ -60,6 +63,11 @@ function fakeClient(token) {
       },
     },
     rpc(name, args) {
+      // 계정당 로그인 1곳 검사는 모든 로그인 요청마다 불려서, 다른 테스트의 calls 비교를 흐리지 않게 따로 기록
+      if (name === 'session_ok') {
+        sessionChecks.push(token)
+        return Promise.resolve(sessionOk)
+      }
       calls.push({ token, rpc: name, args })
       return Promise.resolve(rpcHandler(name, args))
     },
@@ -76,7 +84,11 @@ let server
 let base
 
 before(async () => {
-  server = createApp({ supabase, allowedOrigins: ['https://aleph-capstone.vercel.app'] }).listen(0)
+  server = createApp({
+    supabase,
+    allowedOrigins: ['https://aleph-capstone.vercel.app'],
+    onSessionReplaced: (userId) => replacedUsers.push(userId),
+  }).listen(0)
   await new Promise((r) => server.once('listening', r))
   base = `http://127.0.0.1:${server.address().port}`
 })
@@ -86,6 +98,9 @@ beforeEach(() => {
   calls = []
   rpcHandler = () => ({ data: null, error: null })
   tableRows = {}
+  sessionChecks = []
+  sessionOk = { data: true, error: null }
+  replacedUsers = []
 })
 
 async function api(method, path, { token, body, origin } = {}) {
@@ -212,6 +227,66 @@ describe('회원가입 · 로그인', () => {
   test('만료된 refresh 토큰은 401', async () => {
     const res = await api('POST', '/auth/refresh', { body: { refreshToken: 'old' } })
     assert.equal(res.status, 401)
+  })
+})
+
+describe('계정당 로그인 1곳 (새 로그인 우선)', () => {
+  test('로그인하면 새 토큰으로 claim_session → 다른 기기를 끊었으면 onSessionReplaced(userId)', async () => {
+    rpcHandler = (name) => ({ data: name === 'claim_session' ? { replaced: true } : null, error: null })
+    const res = await api('POST', '/auth/login', { body: { email: 'a@example.com', password: 'right-pass' } })
+    assert.equal(res.status, 200)
+    assert.ok(calls.some((c) => c.rpc === 'claim_session' && c.token === GOOD_TOKEN))
+    assert.deepEqual(replacedUsers, [USER.id])
+  })
+
+  test('처음 로그인(끊은 기기 없음)이면 onSessionReplaced를 부르지 않음', async () => {
+    rpcHandler = (name) => ({ data: name === 'claim_session' ? { replaced: false } : null, error: null })
+    await api('POST', '/auth/login', { body: { email: 'a@example.com', password: 'right-pass' } })
+    assert.deepEqual(replacedUsers, [])
+  })
+
+  test('끊긴 기기의 토큰은 401 SESSION_REPLACED, DB 함수는 부르지 않음 (읽기·쓰기 모두)', async () => {
+    sessionOk = { data: false, error: null }
+    const stamp = await api('POST', '/stamps', { token: GOOD_TOKEN, body: { placeId: 'spot_jm_stairs' } })
+    assert.equal(stamp.status, 401)
+    assert.equal(stamp.body.error.code, 'SESSION_REPLACED')
+    const list = await api('GET', '/stamps/me', { token: GOOD_TOKEN })
+    assert.equal(list.body.error.code, 'SESSION_REPLACED')
+    assert.equal(calls.length, 0)
+    assert.deepEqual(sessionChecks, [GOOD_TOKEN, GOOD_TOKEN])
+  })
+
+  test('역할 검사보다 먼저 막음: 끊긴 관리자 토큰은 403이 아니라 401 SESSION_REPLACED', async () => {
+    sessionOk = { data: false, error: null }
+    const res = await api('GET', '/admin/stats', { token: GOOD_TOKEN })
+    assert.equal(res.status, 401)
+    assert.equal(res.body.error.code, 'SESSION_REPLACED')
+  })
+
+  test('세션 확인 자체가 실패하면 통과시키지 않고 500 (내부 내용은 숨김)', async () => {
+    sessionOk = { data: null, error: { message: 'connection refused' } }
+    const res = await api('POST', '/stamps', { token: GOOD_TOKEN, body: { placeId: 'spot_jm_stairs' } })
+    assert.equal(res.status, 500)
+    assert.equal(res.body.error.code, 'SERVER_ERROR')
+    assert.equal(calls.length, 0)
+  })
+
+  test('DB 두 번째 겹이 던진 SESSION_REPLACED도 401로 바뀜', async () => {
+    rpcHandler = () => ({ data: null, error: { message: 'SESSION_REPLACED', details: '다른 기기에서 로그인해서 이 기기는 로그아웃됐어요.' } })
+    const res = await api('POST', '/stamps', { token: GOOD_TOKEN, body: { placeId: 'spot_jm_stairs' } })
+    assert.equal(res.status, 401)
+    assert.equal(res.body.error.code, 'SESSION_REPLACED')
+  })
+
+  test('로그아웃: 그 토큰으로 release_session, 끊긴 토큰·토큰 없음·DB 실패여도 항상 204', async () => {
+    assert.equal((await api('POST', '/auth/logout', { token: GOOD_TOKEN })).status, 204)
+    assert.deepEqual(calls, [{ token: GOOD_TOKEN, rpc: 'release_session', args: undefined }])
+
+    sessionOk = { data: false, error: null }
+    assert.equal((await api('POST', '/auth/logout', { token: GOOD_TOKEN })).status, 204)
+    assert.equal((await api('POST', '/auth/logout')).status, 204)
+    rpcHandler = () => ({ data: null, error: { message: 'boom' } })
+    assert.equal((await api('POST', '/auth/logout', { token: GOOD_TOKEN })).status, 204)
   })
 })
 

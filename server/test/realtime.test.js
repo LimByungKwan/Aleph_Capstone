@@ -8,14 +8,17 @@ import { attachRealtime, REALTIME_PATH } from '../src/realtime.js'
 
 const ORIGIN = 'http://localhost:5173'
 const GOOD = 'good-token'
+const REPLACED = 'replaced-token' // 진짜 토큰이지만 같은 계정이 다른 기기에서 로그인해서 끊긴 것
 
-function fakeClient() {
+function fakeClient(token) {
   return {
     auth: {
-      async getUser(token) {
-        return token === GOOD ? { data: { user: { id: 'user-1' } }, error: null } : { data: {}, error: { message: 'bad' } }
+      async getUser(t) {
+        if (t === GOOD || t === REPLACED) return { data: { user: { id: 'user-1' } }, error: null }
+        return { data: {}, error: { message: 'bad' } }
       },
     },
+    rpc: (name) => Promise.resolve(name === 'session_ok' ? { data: token !== REPLACED, error: null } : { data: null, error: null }),
     from: () => ({
       select() {
         return this
@@ -143,6 +146,40 @@ describe('멀티 접속', () => {
     const spammer = await join()
     for (let i = 0; i < 10; i += 1) spammer.send({ t: 'move', p: [0, 1, 0], r: 0, s: 0 })
     assert.equal(await spammer.closed, 1008)
+  })
+
+  test('계정당 1개: 다른 기기에서 로그인해 끊긴 토큰은 4001로 거절', async () => {
+    const c = connect()
+    await c.opened
+    c.send({ t: 'hello', token: REPLACED })
+    assert.equal(await c.closed, 4001)
+    assert.equal(realtime.count(), 0)
+  })
+
+  test('계정당 1개: 같은 계정으로 새 연결이 오면 이전 연결은 4002, 손님끼리는 제한 없음', async () => {
+    const guest1 = await join()
+    const guest2 = await join()
+    const first = await join({ token: GOOD })
+    guest1.ws.close()
+    guest2.ws.close()
+    await Promise.all([guest1.closed, guest2.closed])
+
+    const second = await join({ token: GOOD })
+    assert.equal(await first.closed, 4002)
+    assert.equal(realtime.count(), 1)
+    second.ws.close()
+    await second.closed
+  })
+
+  test('kickUser: 로그인 API가 다른 기기를 끊으면 그 계정 연결을 4001로, 손님은 그대로', async () => {
+    const guest = await join()
+    const user = await join({ token: GOOD })
+    assert.equal(realtime.kickUser('user-1'), 1)
+    assert.equal(await user.closed, 4001)
+    assert.equal(realtime.kickUser(null), 0)
+    assert.equal(realtime.count(), 1)
+    guest.ws.close()
+    await guest.closed
   })
 
   test('정원(테스트에서는 3명)이 차면 503으로 거절', async () => {
