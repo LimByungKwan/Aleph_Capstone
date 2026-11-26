@@ -27,7 +27,7 @@
 | 5-b | 로그인 시도 제한 | ✅ | 같은 IP 15분 30번, 같은 이메일 실패 15분 5번 넘으면 잠깐 막음 | 서버 테스트 통과 | `server/src/app.js:91-92`, `server/test/rateLimit.test.js` |
 | 6-a | 감사 로그 | ✅ | 역할 변경·가게 홍보문구·쿠폰 사용을 DB 트리거가 자동 기록. 관리자도 고치거나 지울 수 없음 | 11/23 시연용 사장님 지정이 첫 기록으로 남음 | `20261125120000_jm_audit_log.sql`, `supabase/tests/jm_audit_log_test.sql` |
 | 6-b | 권한 우회 403 테스트 | ✅ | 권한 없는 요청이 정확히 막히는지 자동 테스트 | 서버 테스트 **69개 통과**(401·403·역할 미들웨어·보안 헤더 포함, 11/24 기준). RLS 구조라 "남의 데이터 조회"는 403이 아니라 **0건**으로 나옴 | `server/test/app.test.js`, 매트릭스 SQL |
-| 7 | OWASP ZAP 점검 | ✅ 수동 스캔 (빈틈 4 → 고침) | ZAP 2.17.0으로 배포 사이트·API를 **둘러보고 응답만 검사**(공격 요청을 보내는 능동 스캔은 안 함 — Render 무료 서버·시연 데이터 보호) | 11/24: **High 0개**. API는 헤더 경고 0개(정보성 1개). 배포 사이트는 Medium 3개(CSP 없음, `X-Frame-Options` 없음, 정적 파일 `Access-Control-Allow-Origin: *`)·Low 2개(`nosniff` 없음, 번들 안 타임스탬프) | 리포트 원본: [고치기 전](zap/jm-zap-1124-before.html) · [고친 뒤](zap/jm-zap-1124-after.html), 스캔 설정 [jm-zap-baseline.yaml](zap/jm-zap-baseline.yaml). 고친 뒤 다시 스캔: `X-Frame-Options`·`nosniff` 경고 사라짐, 대신 "CSP가 일부만 있음" 경고 4개(스크립트 제한 CSP를 시연 뒤로 미룬 결정 그대로) — High는 여전히 0. 로그인한 화면 안쪽·POST API는 범위 밖 |
+| 7 | OWASP ZAP 점검 | ✅ 수동 스캔 (빈틈 4 → 고침) | ZAP 2.17.0으로 배포 사이트·API를 **둘러보고 응답만 검사**(공격 요청을 보내는 능동 스캔은 안 함 — Render 무료 서버·시연 데이터 보호) | 11/24: **High 0개**. API는 헤더 경고 0개(정보성 1개). 배포 사이트는 Medium 3개(CSP 없음, `X-Frame-Options` 없음, 정적 파일 `Access-Control-Allow-Origin: *`)·Low 2개(`nosniff` 없음, 번들 안 타임스탬프) | 리포트 원본: [고치기 전](zap/jm-zap-1124-before.html) · [고친 뒤](zap/jm-zap-1124-after.html), 스캔 설정 [jm-zap-baseline.yaml](zap/jm-zap-baseline.yaml). 고친 뒤 다시 스캔: `X-Frame-Options`·`nosniff` 경고 사라짐, 대신 "CSP가 일부만 있음" 경고 4개(스크립트 제한 CSP를 시연 뒤로 미룬 결정 그대로) — High는 여전히 0. 로그인한 화면 안쪽·POST API는 범위 밖. **11/26 다시 스캔**([리포트](zap/jm-zap-1126.html)): 계정당 로그인 1곳·관리자 2단계 인증으로 새로 생긴 API 3개(`POST /auth/logout`, `/auth/mfa/verify`, `/auth/mfa/enroll`)를 요청 목록에 더함 → **High 0, API 경고 0**(정보성 1개, 11/24와 같음), 화면 경고도 11/24 고친 뒤와 같음. 새 API 3개 모두 HSTS·`nosniff`·`DENY`·`no-referrer` 헤더 확인, 외부 Origin 요청에 허용 헤더 없음 |
 
 | 8 | 계정당 로그인 1곳 (11/26 추가) | ✅ 로컬 검증 (배포 전) | **새 로그인 우선**: 같은 계정으로 다른 기기에서 로그인하면 이전 기기는 다음 요청부터 401 `SESSION_REPLACED` → 화면이 로그아웃하고 "다른 기기에서 로그인했어요" 안내. 토큰 안의 `session_id`(로그인 1번마다 새로 생김, refresh해도 그대로)를 계정마다 하나만 DB에 기록해 비교. **두 겹**: ① 서버 `requireAuth` ② DB `require_user`(스탬프·쿠폰·꾸미기 등 쓰기 함수 첫 줄) → 끊긴 기기가 서버를 건너뛰고 Supabase를 직접 불러도 쓰기는 막힘. 멀티 접속도 계정당 1개(새 접속 우선) | SQL 15개(끊긴 기기 쓰기 거절, 로그아웃 뒤 옛 세션 부활 안 함, 감사 로그 `session_replaced`, 표 직접 읽기·쓰기 0건) + 서버 10개(401 순서·확인 실패 시 500·로그아웃 항상 204·소켓 4001/4002) + 화면 3개 | `supabase/migrations/20261130120000_jm_single_session.sql`, `supabase/tests/jm_single_session_test.sql`, `server/src/app.js` `requireAuth`·`/auth/logout`, `server/src/realtime.js` `closeUser`, `frontend/src/api/session.js` `handleSessionReplaced` |
 
@@ -79,7 +79,7 @@ npm test
 
 ### ZAP 다시 돌리는 법 (수동 스캔, Docker 없이)
 
-ZAP 2.17.0 크로스플랫폼 zip(공식 GitHub 릴리스, SHA-256 `94c8f767…61fbff0` 확인) + Java 17. 설정 파일은 둘러보기(spider 최대 2분) + GET 요청 7개(`/health`, `/me`, `/me`+외부 Origin, `/stamps/me`, `/admin/stats`, `/shops/shop_hj_snack/promo`, 없는 주소) + 수동 검사 + 보고서이고 **activeScan 잡이 없다**.
+ZAP 2.17.0 크로스플랫폼 zip(공식 GitHub 릴리스, SHA-256 `94c8f767…61fbff0` 확인) + Java 17. 설정 파일은 둘러보기(spider 최대 2분) + GET 요청 7개(`/health`, `/me`, `/me`+외부 Origin, `/stamps/me`, `/admin/stats`, `/shops/shop_hj_snack/promo`, 없는 주소) + POST 3개(`/auth/logout`, `/auth/mfa/verify`, `/auth/mfa/enroll`, 토큰 없이 — 11/26 추가) + 수동 검사 + 보고서이고 **activeScan 잡이 없다**.
 
 ```bash
 java -jar zap-2.17.0.jar -cmd -port 8095 -autorun zap-baseline.yaml   # 8080이 쓰이고 있으면 -port로 바꿈
