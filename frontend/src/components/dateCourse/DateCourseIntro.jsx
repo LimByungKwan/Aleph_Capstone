@@ -86,7 +86,9 @@ function IntroPlayer() {
   }, [])
   return <dialog ref={dialog} className="date-intro" aria-label="데이트 코스 영상" onCancel={closeIntro}>
     <video src={import.meta.env.BASE_URL + 'date-course.webm'} autoPlay muted playsInline controls={failed}
-      onEnded={closeIntro} onError={() => setFailed(true)} aria-label="데이트 코스 명소와 별빛 전망대 전경" />
+      onEnded={closeIntro} onError={() => setFailed(true)} aria-label="28초 동안 둘러보는 데이트 코스. 낮의 분수 광장과 카페, 밤의 포토존을 지나 별빛 전망대에서 아침을 맞이해요.">
+      <track kind="descriptions" srcLang="ko" label="장소별 체험 안내" src={import.meta.env.BASE_URL + 'date-course.ko.vtt'} />
+    </video>
     {failed && <p role="alert">영상을 불러올 수 없어요. 더보기에서 다시 재생해 주세요.</p>}
     <button type="button" autoFocus onClick={closeIntro}>{failed ? '닫기' : '건너뛰기'}</button>
   </dialog>
