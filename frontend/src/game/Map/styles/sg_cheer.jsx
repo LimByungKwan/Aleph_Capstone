@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
 import { Box, Cyl, mat } from './kit.jsx'
 import { CHEER_PANEL, useSgCheer } from './sg_cheerStore.js'
+import { sgSpots } from './sg_spots.js'
 
 // ── SUNSET WAVE 응원 자리 (SG) ─────────────────────
 // 무대 앞 관객석의 응원봉 받침대 + 감지·E키. 화면 UI(리듬 게임)는 components/sg/CheerGame.jsx
@@ -57,5 +58,5 @@ function CheerSensor({ id }) {
     return () => window.removeEventListener('keydown', down)
   }, [id])
 
-  return <group ref={anchor} />
+  return <group ref={(o) => { anchor.current = o; sgSpots.sg_cheer_spot = o }} /> // KpopGuide 워프 도착점으로 등록
 }
