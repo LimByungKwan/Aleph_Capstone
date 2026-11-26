@@ -89,36 +89,71 @@ function grassPatch(id, c, rot, w, d, elevation, avoid = [], density = 1.2) {
 //    (11/25 밤 지민 요청) 애니 구역에 들어서면 바로 터널: 입구 광장을 없애고 터널 앞면을 구역 입구에서 7m 안쪽(z 33)에
 //    입구 앞 7m(z 33 ~ 40)는 숲길 + 병관 님 워프 도착 자리(구역 x -10, z 36)
 // ─────────────────────────────────────────────
-road('jm_entry_path', 'stone', [0, 36.5], [7, 0.08, 7])
-prop('jm_town_stone', 'jmStoneMonument', [12.5, 37.5], [2.2, 2.6, 0.5], { rotationDeg: -35, signs: [{ text: '湯灯町' }] })
-for (const [i, x, z] of [[1, -5.2, 38.4], [2, 5.2, 38.4]]) stoneLantern(`jm_entry_lantern_${i}`, [x, z])
-prop('jm_entry_sign', 'jmArrowSign', [8.4, 37], [1.6, 2.1, 0.2], { rotationDeg: -25, signs: [{ text: '붉은 터널', dir: 'left' }, { text: '음식점 거리', dir: 'left' }] })
+const ENTRY_TRUNKS = [] // 입구 숲길 나무 (뒤의 양옆 숲이 겹치지 않게 같이 봄)
+//    (11/26 지민 요청) 구역에 들어서면 먼저 작은 숲길(z 40 → 24), 그 끝에 숲에 숨은 터널 입구. 터널은 1.6배 → 1배로 줄이고
+//    뒤(풀밭 쪽) z 4.2는 그대로 두어 터널 앞면이 z 22.2로 물러남. 숲길 그림 = jm_tunnel.jsx JmForestPath (나무 목록은 여기서 만들어 넘김)
+for (const [i, x, z] of [[1, -2.3, 38.6], [2, 2.3, 38.6]]) stoneLantern(`jm_entry_lantern_${i}`, [x, z])
 
-const TUN_Z = 18.6
-const TUN_S = 1.6 // 터널 그림·판정 배율 (jm_tunnel.jsx TUNNEL 숫자 × TUN_S)
+const TUN_S = 1 // 터널 그림·판정 배율 (jm_tunnel.jsx TUNNEL 숫자 × TUN_S)
+const TUN_Z = r2(4.2 + 9 * TUN_S) // 터널 뒤(풀밭 쪽)를 z 4.2에 고정
+{
+  // 숲길: 가운데 길(|x| < 1.6) 양옆 안쪽 줄·바깥 줄 나무 + 멀리 듬성듬성 큰 나무. 건물 앞 z 22 ~ 24.5는 창이 보이게 비움
+  const FC = [0, 31] // 숲길 소품 가운데 (z 22 ~ 40)
+  let seed = 26
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const avoid = [[-10, 36.5, 3.2], [-2.3, 38.6, 1], [2.3, 38.6, 1], [0, 23.7, 1.2], [-2.7, 30.5, 1], [2.8, 34.4, 1]] // 워프 도착 자리·석등·석상·돌 사당
+  const ok = (x, z, r) => z > 24.5 && z < 39.6 && Math.abs(x) > 1.9 + r && !avoid.some(([ax, az, ar]) => Math.hypot(x - ax, z - az) < ar + r)
+  const trunks = ENTRY_TRUNKS
+  const add = (x, z, h, r) => {
+    if (!ok(x, z, r) || trunks.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < 1.3)) return
+    trunks.push([x, z, h, r])
+  }
+  for (let z = 25.2; z < 39.6; z += 2.0) {
+    for (const s of [-1, 1]) {
+      add(r2(s * (2.5 + rnd() * 0.9)), r2(z + rnd() * 0.8), r2(5.7 + rnd() * 1.1), r2(0.16 + rnd() * 0.1))
+      add(r2(s * (4.8 + rnd() * 2.0)), r2(z + 0.9 + rnd() * 0.6), r2(4.9 + rnd() * 1.6), r2(0.2 + rnd() * 0.12))
+    }
+  }
+  for (let z = 26; z < 39.6; z += 3.2)
+    for (let ax = 8.5; ax < 19.5; ax += 3.4)
+      for (const s of [-1, 1]) add(r2(s * (ax + rnd() * 1.6)), r2(z + rnd() * 1.4), r2(5.6 + rnd() * 2), r2(0.24 + rnd() * 0.14))
+  trunks.forEach(([x, z, , r], i) => wall(`jm_forest_tree_${i}`, [x, z], [r2(r * 2 + 0.1), 3, r2(r * 2 + 0.1)]))
+  prop('jm_forest_path', 'jmForestPath', FC, [40, 9, 18], {
+    collider: false,
+    trunks: trunks.map(([x, z, h, r]) => [r2(x - FC[0]), r2(z - FC[1]), h, r]),
+    avoid: avoid.map(([x, z, r]) => [r2(x - FC[0]), r2(z - FC[1]), r]),
+  })
+}
 const ts = (n) => r2(n * TUN_S)
 prop('jm_tunnel_gate', 'jmTunnelGate', [0, TUN_Z], [ts(20), ts(16), ts(18)], { collider: false, scale: TUN_S })
 for (const s of [-1, 1]) {
   const k = s < 0 ? 'w' : 'e'
-  wall(`jm_tunnel_gate_${k}`, [s * ts(4.4), r2(TUN_Z + ts(6))], [ts(5.2), ts(8.2), ts(6)])
+  // (11/26 영화 장면 모양) 앞 덩어리 폭 9: 아치 양옆 x 1.8 ~ 4.5
+  wall(`jm_tunnel_gate_${k}`, [s * ts(3.15), r2(TUN_Z + ts(6))], [ts(2.7), ts(9.6), ts(6)])
   // (11/25 밤) 양옆 날개채 + 끝 망루 (jm_tunnel.jsx TUNNEL.wing과 같은 숫자)
-  wall(`jm_tunnel_wing_${k}`, [s * ts(10.75), r2(TUN_Z + ts(6))], [ts(7.5), ts(4.2), ts(4.6)], { camera: true })
-  wall(`jm_tunnel_tower_${k}`, [s * ts(15.7), r2(TUN_Z + ts(6))], [ts(2.8), ts(7.2), ts(2.8)], { camera: true })
-  wall(`jm_tunnel_tube_${k}`, [s * ts(2.25), TUN_Z], [ts(0.9), ts(4.5), ts(6)], { camera: true })
-  wall(`jm_tunnel_hall_${k}`, [s * ts(4.8), r2(TUN_Z - ts(6))], [ts(0.4), ts(5.2), ts(6)])
-  wall(`jm_tunnel_hall_back_${k}`, [s * ts(3.4), r2(TUN_Z - ts(3.3))], [ts(3.2), ts(5.2), ts(0.6)])
-  wall(`jm_tunnel_hall_front_${k}`, [s * ts(3.4), r2(TUN_Z - ts(8.7))], [ts(3.2), ts(5.2), ts(0.6)])
+  // 양옆 낮고 긴 벽: x 4.5 ~ 14.5, 앞면 z 8.4, 깊이 5 (jm_tunnel.jsx TUNNEL.wing)
+  wall(`jm_tunnel_wing_${k}`, [s * ts(9.5), r2(TUN_Z + ts(5.9))], [ts(10), ts(6.8), ts(5)], { camera: true })
+  // (11/26) 굴 6m → 3m, 대합실 10×6 → 14×9 (jm_tunnel.jsx TUNNEL.tube·hall과 같은 숫자)
+  wall(`jm_tunnel_tube_${k}`, [s * ts(2.25), r2(TUN_Z + ts(1.5))], [ts(0.9), ts(4.5), ts(3)], { camera: true })
+  wall(`jm_tunnel_hall_${k}`, [s * ts(6.8), r2(TUN_Z - ts(4.5))], [ts(0.4), ts(6.4), ts(9)])
+  wall(`jm_tunnel_hall_back_${k}`, [s * ts(4.4), r2(TUN_Z - ts(0.3))], [ts(5.2), ts(6.4), ts(0.6)])
+  wall(`jm_tunnel_hall_front_${k}`, [s * ts(4.4), r2(TUN_Z - ts(8.7))], [ts(5.2), ts(6.4), ts(0.6)])
+  // 대합실 기둥 + 기둥을 등진 의자 한 쌍 (jm_tunnel.jsx JmWaitingHall COLS_X·COLS_Z)
+  for (const cx of [-2.6, 2.6]) for (const dz of [-1.9, 1.9]) if (s < 0) wall(`jm_hall_col_${cx < 0 ? 'w' : 'e'}${dz < 0 ? 'n' : 's'}`, [ts(cx), r2(TUN_Z + ts(-4.5 + dz))], [ts(1.9), 1.1, ts(1.7)])
 }
 const TUN_FRONT = r2(TUN_Z + ts(9))
 const TUN_BACK = r2(TUN_Z - ts(9))
 // (사진 참고) 석상은 아치 바로 오른쪽, 건물 둘레는 우거진 숲·덤불
-prop('jm_tunnel_statue', 'jmTwoFaceStatue', [3.7, r2(TUN_FRONT + 1)], [0.9, 1.8, 0.9], { collider: [0.8, 1.8, 0.8] })
+// (11/26 지민 요청) 석상은 터널 큰 아치 바로 앞 한가운데 (양옆으로 1.3m씩 지나갈 틈)
+prop('jm_tunnel_statue', 'jmTwoFaceStatue', [0, r2(TUN_FRONT + 1.5)], [0.9, 1.25, 0.8], { collider: [0.85, 1.25, 0.75] })
 for (const [i, x, z] of [[1, -30, 30.6], [2, 30.5, 29.6], [3, -19, 37.5], [4, 19.5, 37.5], [5, -30, 21.6], [6, 30.5, 19.6]]) prop(`jm_tunnel_bush_${i}`, 'jmFlowerBush', [x, z], [3.6, 2.4, 3.2], { seed: 9 + i, green: true, collider: [2.6, 2, 2.2] })
-for (const [i, x, z, r] of [[1, -8, 34.6, 20], [2, 8.6, 34.8, -15]]) prop(`jm_tunnel_hokora_${i}`, 'jmStoneHokora', [x, z], [0.8, 1.1, 0.7], { rotationDeg: r })
+for (const [i, x, z, r] of [[1, -2.7, 30.5, 75], [2, 2.8, 34.4, -80]]) prop(`jm_tunnel_hokora_${i}`, 'jmStoneHokora', [x, z], [0.8, 1.1, 0.7], { rotationDeg: r })
 for (const [i, x, z] of [[5, -15, 39], [6, 15.5, 39], [7, -33, 26], [8, 33, 25], [11, -28, 35], [12, 28.5, 36], [13, -22, 15.6], [14, 22.5, 13.6], [15, -26, 38], [16, 26, 38.5]]) {
   tree(`jm_entry_maple_${i}`, i % 3 === 0 ? 'jmSakura' : 'jmMaple', [x, z])
 }
 light('jm_light_tunnel', [0, TUN_Z])
+// (11/26) 입장 안내: 터널 안은 화면 가장자리 어둡게, 풀밭 쪽 출구를 나서면 세로쓰기 제목 (jm_entryTitle.jsx)
+prop('jm_entry_title', 'jmEntryTitle', [0, TUN_BACK], [0.1, 0.1, 0.1], { collider: false, tunnel: r2(TUN_FRONT - TUN_BACK), halfWidth: ts(6.6) })
 light('jm_light_entry', [0, 36])
 
 // ─────────────────────────────────────────────
@@ -135,12 +170,14 @@ for (const [i, x, z, r] of [[4, -4, -6, 15], [5, 4.2, -14, -20], [6, -4.6, -21, 
 }
 for (const [i, x, z, s] of [[1, -14, -5, 'jmMaple'], [2, 12, -26.5, 'jmSakura'], [3, -30, -26.5, 'jmMaple'], [4, 34, -26.5, 'jmMaple'], [5, -60, -4, 'jmSakura']]) tree(`jm_field_tree_${i}`, s, [x, z])
 for (const [i, x, z, r] of [[1, 16, -7, -10], [2, -36, -6, 15], [3, 21, 2, 25]]) prop(`jm_field_hut_${i}`, 'jmFieldHut', [x, z], [4.2, 3, 3.6], { rotationDeg: r })
-prop('jm_field_sign', 'jmArrowSign', [3.4, -10.5], [1.6, 2.1, 0.2], { rotationDeg: -20, signs: [{ text: '음식점 거리', dir: 'left' }, { text: '전망 무대', dir: 'right' }] })
+// (11/26 지민 요청) 팻말은 「전망대」만, 동쪽 돌길 바로 옆(길 안에 서지 않게 북쪽 가)
+prop('jm_field_sign', 'jmArrowSign', [3.2, -12.2], [1.6, 2.1, 0.2], { rotationDeg: -20, signs: [{ text: '전망대', dir: 'right' }] })
 light('jm_light_field', [0, -18])
 grassPatch('jm_grass_field', [0, -12], 0, 112, 30, 0.02, [{ strip: 2.2 }], 0.5)
 
 // 전망 무대 (BK 전망대 흔들다리와 이어짐 — 자리·높이 그대로)
-road('jm_field_east', 'stone', [16.3, -10], [24.6, 0.06, 3], { color: '#a8946e' })
+// (11/26 지민 요청) 동쪽 돌길을 가운데 돌길(x 1.7)까지 이어 붙임 (옛 시작 x 4 → 1.7)
+road('jm_field_east', 'stone', [15.15, -10], [26.9, 0.06, 3], { color: '#a8946e' })
 terrain.push({ type: 'platform', id: 'jm_stage', rect: [31, -13, 43, 1], height: 6.5, surface: 'paver', lights: true,
   rails: [{ edge: 'north' }, { edge: 'west' }, { edge: 'south', gaps: [[35.3, 38.7]] }, { edge: 'east', gaps: [[-6.4, -3.6]] }] })
 terrain.push({ type: 'stairs', id: 'jm_stage_stairs', from: [37, 14, 0], to: [37, 1, 6.5], width: 3 })
@@ -156,20 +193,104 @@ terrain.push(...keep.terrain) // jm_tower_deck: 무대 → BK 전망대
 // 3. 강 + 징검돌 (z -28 → -50, 폭 22m): (11/25 밤 지민 요청) 물에 걸어 들어갈 수 있음 (물높이 0.45m, 걸으면 물방울·물결). 징검돌로 건너도 됨
 // ─────────────────────────────────────────────
 const RIVER = { z: -39, w: 22 }
-for (const [k, cx, len] of [['w', -65, 126], ['e', 65, 126]]) {
-  prop(`jm_river_${k}`, 'jmCanal', [cx, RIVER.z], [RIVER.w, 0.1, len], { rotationDeg: 90, natural: true, wade: true, depth: 0.3, curb: false, collider: false })
-}
-prop('jm_river_ford', 'jmCanal', [0, RIVER.z], [RIVER.w, 0.1, 4], { rotationDeg: 90, natural: true, wade: true, depth: 0.3, collider: false, curb: false })
+// (11/26 지민 요청: 강물이 너무 많음 → 장면 사진처럼 바위 사이 틈에만 얕게) 물높이 0.3 → 0.14, 바위 아래쪽만 잠김
+const RIVER_WATER = 0.14
+// (11/26 지민 요청) 일직선 강(jmCanal 띠)은 없애고, 바위 사이 물은 마을 둘레 물길과 한 줄기로 이은 굽이치는 물길(JmChannelWater)로 — 아래 '마을을 둘러싼 물길'
 // (11/25 밤) 물에 잠기던 징검돌을 물(0.3) 위로: 양 끝은 0.35(둑에서 한 걸음), 가운데는 0.55
 for (let i = 0; i < 10; i++) {
   const h = i === 0 || i === 9 ? 0.35 : 0.55
-  road(`jm_river_stone_${i + 1}`, null, [i % 2 ? -0.5 : 0.5, r2(RIVER.z + RIVER.w / 2 - 1.3 - i * 2.15)], [1.7, h, 1.4], { color: '#8d877c' })
+  // (11/26) 걷는 상자는 조금 작게 + 위에 윗면 평평한 바위(jmBoulderRiver 모양 5)를 덮어 상자 모서리가 안 보이게
+  road(`jm_river_stone_${i + 1}`, null, [i % 2 ? -0.5 : 0.5, r2(RIVER.z + RIVER.w / 2 - 1.3 - i * 2.15)], [1.2, h, 1.0], { color: '#9f967f' })
+}
+
+// (11/26 지민 요청: 장면 사진처럼 이끼 낀 바위 강바닥 → 2차: 작은 돌만 많아 정신없음 → 큰 바위를 많이 섞어 돌길처럼)
+//   범위: 강(남쪽 둑 ~ 북쪽 둑) + 강 북쪽 둑에서 마을 남쪽 끝 단(z -60)까지 (그림의 초록 부분), 폭 |x| < 64
+//   큰 바위(반지름 1.2 ~ 2.3)는 윗면이 평평한 모양(5·6·7)으로 돌길처럼, 중간·작은 바위는 둥근 모양(0~4)으로 틈을 메움
+//   돌계단 발치(|x| < 6.8, 북쪽 띠)·징검돌 길(|x| < 1.7)·소나무 자리는 비움. 굽이치는 물길 하나는 남김
+//   걷기: 가운데 건너는 쪽(|x| < 22)의 낮은 큰 바위는 윗면 높이 상자(길)를 깔아 밟고 건넘, 나머지 큰·중간 바위는 jmCollider로 막음
+{
+  let seed = 3911
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const z0 = -59.6 // 마을 남쪽 끝 단 바로 앞 (북쪽)
+  const z1 = RIVER.z + RIVER.w / 2 // 강 남쪽 둑
+  const XMAX = 64
+  const channel = (x) => RIVER.z + 2.6 * Math.sin(x / 8.5) + 1.2 * Math.sin(x / 3.1 + 1)
+  const rocks = []
+  const slabs = [] // 밟는 상자
+  const placed = []
+  // (11/26 지민 요청: 돌이 너무 많음 → 개수는 줄이고 간격은 넓게, 자연스럽게) 바위 사이 최소 간격을 넓히고,
+  //   자리마다 '모임 정도'(느린 물결 무늬)를 둬서 바위가 군데군데 무리 짓고 그 사이는 물이 트이게
+  const free = (x, z, r) => !placed.some(([px, pz, pr]) => Math.hypot(px - x, pz - z) < (pr + r) * 1.15 + 0.4)
+  const cluster = (x, z) => 0.5 + 0.5 * Math.sin(x / 9.3 + 0.7) * Math.cos(z / 6.1 - 0.4) + 0.25 * Math.sin((x + z) / 4.3)
+  // (11/26 지민 요청: 병관 님 데이트 코스 구역 침범 금지) 그 구역 = 월드 x 45 ~ 125, 당긴 뒤 구역 z -35부터 남쪽 (여기는 당기기 전 좌표라 z -48)
+  //   바위 띠 동쪽 끝은 x 41 언저리에서 들쭉날쭉하게 끝나고, 마을 단 앞 좁은 띠(당기기 전 z -49 북쪽)만 동쪽 바다까지 이어짐
+  const BK_Z = -48 - 1
+  const eastEdge = (z) => 40.5 + 2.2 * Math.sin(z / 3.7) + 1.2 * Math.sin(z / 1.9 + 0.8)
+  const bkZone = (x, z, r) => x + r > eastEdge(z) && z + r > BK_Z
+  const blocked = (x, z, r) =>
+    (z < RIVER.z - RIVER.w / 2 + 0.6 && Math.abs(x) < 6.8 + r) || // 돌계단 발치
+    Math.abs(x) < 1.7 + r * 0.6 || // 징검돌 길
+    Math.hypot(x - 10.5, z + 55) < 2.4 + r || // 큰 소나무
+    bkZone(x, z, r) // 병관 님 구역
+  const flatTop = (top) => r2((top + 0.22) / (1.28 * 0.85))
+  // 1) 큰 평평한 바위부터 (먼저 자리를 잡아 돌길 뼈대)
+  for (let z = z0 + 1.6; z < z1 - 0.8; z += 3.6) {
+    for (let x = -XMAX; x < XMAX; x += 4.0) {
+      const px = r2(x + (rnd() - 0.5) * 1.6)
+      const pz = r2(z + (rnd() - 0.5) * 1.4)
+      const r = r2(1.2 + rnd() * 1.1)
+      if (Math.abs(pz - channel(px)) < 1.0 + r * 0.7 || blocked(px, pz, r) || !free(px, pz, r) || rnd() > 0.25 + 0.6 * cluster(px, pz)) continue
+      const top = r2(0.28 + rnd() * 0.4)
+      placed.push([px, pz, r])
+      rocks.push([px, pz, r, flatTop(top), Math.round(rnd() * 360), 5 + Math.floor(rnd() * 3), top])
+    }
+  }
+  // 2) 중간 둥근 바위 → 3) 작은 돌 (틈 메우기, 물길 둘레는 작은 돌만)
+  for (const [step, rMin, rMax, keep] of [[2.8, 0.7, 1.1, 0.4], [2.2, 0.35, 0.6, 0.28]]) {
+    for (let z = z0 + 1; z < z1 - 0.6; z += step) {
+      for (let x = -XMAX; x < XMAX; x += step) {
+        const px = r2(x + (rnd() - 0.5) * step)
+        const pz = r2(z + (rnd() - 0.5) * step)
+        let r = rMin + rnd() * (rMax - rMin)
+        const dc = Math.abs(pz - channel(px))
+        if (dc < 0.75) continue
+        if (dc < 1.8) r = Math.min(r, 0.5)
+        r = r2(r)
+        if (rnd() > keep * (0.4 + cluster(px, pz)) || blocked(px, pz, r) || !free(px, pz, r)) continue
+        placed.push([px, pz, r])
+        rocks.push([px, pz, r, r2(r * (0.55 + rnd() * 0.5)), Math.round(rnd() * 360), Math.floor(rnd() * 5), 0])
+      }
+    }
+  }
+  // 4) 징검돌 위 평평한 바위 (윗면 = 길 상자 윗면 + 1cm)
+  const FORD = []
+  for (let i = 0; i < 10; i++) {
+    const top = i === 0 || i === 9 ? 0.35 : 0.55
+    FORD.push([i % 2 ? -0.5 : 0.5, r2(RIVER.z + RIVER.w / 2 - 1.3 - i * 2.15), 0.98, flatTop(top + 0.01), Math.round(rnd() * 360), 5, -1])
+  }
+  rocks.forEach(([x, z, r, hh, rot, v, top], i) => {
+    if (v >= 5 && Math.abs(x) < 22 && top <= 0.55) {
+      // 밟고 건너는 큰 평평한 바위: 윗면 높이 상자 (바위 윗면 안쪽에 숨는 크기)
+      road(`jm_river_slab_${i}`, null, [x, z], [r2(r * 0.9), r2(top - 0.02), r2(r * 0.78)], { color: '#958c7a' })
+      slabs.push(i)
+    } else if (r > 0.55) {
+      wall(`jm_river_rock_${i}`, [x, z], [r2(r * 1.5), r2(Math.max(0.6, (v >= 5 ? top : hh) + 0.2)), r2(r * 1.3)])
+    }
+  })
+  rocks.push(...FORD)
+  // 바위 밑 젖은 자갈 바닥 (가장자리가 흐려져 풀밭과 섞임, jm_spirit.jsx JmDirtFloor tint)
+  // 병관 님 구역을 빼고 두 장: 본 띠(x -67 ~ 42) + 마을 단 앞 좁은 띠(x 40 ~ 67, 구역 경계보다 북쪽)
+  prop('jm_riverbed_floor', 'jmDirtFloor', [-12.5, r2((z0 + z1) / 2)], [109, 0.02, r2(z1 - z0 + 4)], { collider: false, tint: '#7a7462', fade: 3, y: 0.03 }) // 물(0.2)보다 아래, 먼저 그림
+  prop('jm_riverbed_floor_e', 'jmDirtFloor', [53.5, r2((z0 - 2 + BK_Z + 0.5) / 2)], [27, 0.02, r2(BK_Z + 0.5 - z0 + 2)], { collider: false, tint: '#7a7462', fade: 3, y: 0.03 })
+  const RC = [0, r2((z0 + z1) / 2)]
+  prop('jm_riverbed', 'jmBoulderRiver', RC, [XMAX * 2, 2, r2(z1 - z0)], { collider: false, waterY: RIVER_WATER, rocks: rocks.map(([x, z, r, hh, rot, v]) => [r2(x - RC[0]), r2(z - RC[1]), r, hh, rot, v]) })
+  console.log(`바위 강바닥: 바위 ${rocks.length} (밟는 큰 바위 ${slabs.length})`)
 }
 
 // (11/25 밤 지민 승인) 물수제비: 강 남쪽 둑 돌무더기 앞에서 E → Space로 힘 조절 → 강 하류(서쪽)로 던짐 (jm_skipstone.jsx)
 //   물 높이 0.3m에 맞춰 소품 높이 0.25 (체험은 소품 높이 + 0.05를 수면으로 계산)
 prop('jm_skip_spot', 'jmSkipSpot', [-14, -27.6], [1.4, 0.3, 1], {
-  collider: false, rotationDeg: 200, elevation: 0.25,
+  collider: false, rotationDeg: 200, elevation: r2(RIVER_WATER - 0.05), // 물수제비 수면 = 소품 높이 + 0.05
   skip: { start: [-14.4, -29], dir: [-0.894, -0.447], width: 19, points: [[-14, -37], [-24, -38.5], [-34, -39], [-46, -39], [-58, -39], [-72, -39], [-86, -39], [-100, -39]] },
 })
 bench('jm_bench_river_1', [-20, -26.8], 180)
@@ -182,8 +303,9 @@ const TOWN = 6
 // (11/25 거리 장면 참고) 넓은 돌계단 + 계단 옆 큰 소나무
 terrain.push({ type: 'stairs', id: 'jm_town_stairs', from: [0, -50.2, 0], to: [0, -60, TOWN], width: 12 })
 prop('jm_town_pine', 'jmBigTree', [10.5, -55], [7, 14, 7], { collider: [1.2, 8, 1.2] })
-prop('jm_town_gate', 'jmTownGate', [0, -62.5], [13, 8, 1], { elevation: TOWN, collider: false, signs: [{ text: '灯籠横丁' }] })
-for (const s of [-1, 1]) wall(`jm_town_gate_pillar_${s < 0 ? 'w' : 'e'}`, [s * 6.1, -62.5], [0.8, 8, 0.8], { elevation: TOWN })
+// (11/26 점검) 문 폭 13 → 10.4: 기둥이 입구 분홍 집·베란다 가게 옆벽(큰길 쪽 면 x ±5.5)에 0.8m 파묻혀 있었음
+prop('jm_town_gate', 'jmTownGate', [0, -62.5], [10.4, 8, 1], { elevation: TOWN, collider: false, signs: [{ text: '灯籠横丁' }] })
+for (const s of [-1, 1]) wall(`jm_town_gate_pillar_${s < 0 ? 'w' : 'e'}`, [s * 4.8, -62.5], [0.8, 8, 0.8], { elevation: TOWN })
 // ─────────────────────────────────────────────
 // 5. 음식점 거리 (바닥 높이 6 + 계단식 단): 가운데 큰길(x -5 ~ 5, z -60 → -150) + 가로 거리(z -87 ~ -93)
 //    (11/25 지민 요청) 평평하지 않게 단을 나눔: 큰길 북쪽 7.4m / 가로 거리 서쪽 7.2m / 동쪽 8.4m, 단 사이는 계단
@@ -204,12 +326,16 @@ terrain.push({ type: 'platform', id: 'jm_town_east', rect: [16, -108, 64, -76], 
 terrain.push({ type: 'stairs', id: 'jm_crossing_slope', from: [72, -92, TOWN], to: [64, -92, T_E], width: 5, smooth: true })
 prop('jm_crossing_slope_road', 'jmSlopeRoad', [72, -92], [5, r2(T_E - TOWN), 8], { rotationDeg: 90, elevation: TOWN, collider: false })
 terrain.push({ type: 'stairs', id: 'jm_town_stairs_n', from: [0, -93, TOWN], to: [0, -97, T_N], width: 10 })
+// (11/26 지민이 보낸 큰길 사진) 큰길 끝 계단 위: 큰 소나무 + 붉은 등대 모양 석등 (가운데를 막지 않게 살짝 동쪽·서쪽)
+prop('jm_town_top_pine', 'jmBigTree', [3.6, -100.5], [7, 13, 7], { elevation: T_N, collider: [1.1, 8, 1.1] })
+prop('jm_town_top_lantern', 'jmRedLanternTower', [-1.4, -99.6], [1.3, 4.2, 1.3], { elevation: T_N, collider: [0.9, 4, 0.9] })
 terrain.push({ type: 'stairs', id: 'jm_town_stairs_w', from: [-12, -90, TOWN], to: [-16, -90, T_W], width: 6 })
 terrain.push({ type: 'stairs', id: 'jm_town_stairs_e', from: [10, -90, TOWN], to: [16, -90, T_E], width: 6 })
 for (const s of [-1, 1]) terrain.push({ type: 'stairs', id: `jm_alley_stairs_${s < 0 ? 'w' : 'e'}`, from: [s * 19.5, -125, TOWN], to: [s * 15.5, -125, T_N], width: 3 })
-road('jm_town_main_s', 'stone', [0, -78], [10, 0.06, 36], { elevation: TOWN })
-road('jm_town_main_n', 'stone', [0, -123.5], [10, 0.06, 53], { elevation: T_N })
-road('jm_town_cross', 'stone', [0, -90], [32, 0.06, 6], { elevation: TOWN })
+// (11/26 지민이 보낸 거리 사진) 큰길·가로 거리는 돌길 대신 다져진 모래빛 흙길
+road('jm_town_main_s', null, [0, -78], [10, 0.06, 36], { elevation: TOWN, color: '#d6bf96' })
+road('jm_town_main_n', null, [0, -123.5], [10, 0.06, 53], { elevation: T_N, color: '#d6bf96' })
+road('jm_town_cross', null, [0, -90], [32, 0.06, 6], { elevation: TOWN, color: '#d6bf96' })
 
 // 가게 이름 (간판, 노렌, 세로 간판) — 모두 우리가 지은 이름
 const EAT_NAMES = [
@@ -229,7 +355,7 @@ function eatery(id, position, rotationDeg, { w = 8, d = 10, h, floors, look, sig
   const [bg, fg] = SIGN_COLORS[n % SIGN_COLORS.length]
   const item = {
     id, style: 'jmEatery', position, size: [w, h ?? (fl === 3 ? 11.5 : 8.5), d], rotationDeg, elevation,
-    seed: n, floors: fl, look: look ?? ['pastel', 'wood', 'retro', 'pastel', 'wood'][n % 5], sign: sign ?? { text: name, bg, fg }, noren, vsign: vs,
+    seed: n, floors: fl, look: look ?? ['pastel', 'pastel', 'retro', 'pastel', 'wood'][n % 5], // (11/26) 거리 사진처럼 알록달록한 서양식 앞면을 더 많이 sign: sign ?? { text: name, bg, fg }, noren, vsign: vs,
   }
   props.push(item)
   // 카메라 막이 (음식점 몸통을 카메라가 뚫지 않게, 걷는 판정은 위 item 상자)
@@ -241,6 +367,12 @@ function eatery(id, position, rotationDeg, { w = 8, d = 10, h, floors, look, sig
 const MAIN_Z = [-65, -74, -83, -101, -110, -119, -131, -140]
 MAIN_Z.forEach((z, i) => {
   const elevation = i < 3 ? TOWN : T_N
+  // (11/26 지민이 보낸 마을 첫 장면) 문 바로 안 첫 집: 서쪽 = 분홍 회벽 집(초록 아치 문), 동쪽 = 나무 툇마루 가게
+  if (i === 0) {
+    prop('jm_pink_house', 'jmPinkHouse', [-10, z], [8, 7.5, 9], { rotationDeg: 90, elevation })
+    prop('jm_veranda_shop', 'jmVerandaShop', [10, z], [8, 6.5, 9], { rotationDeg: -90, elevation })
+    return
+  }
   if (i !== 1) eatery(`jm_eat_w${i + 1}`, [-10, z], 90, { elevation }) // (11/25) z -74 자리는 ⑥ 언덕 계단 골목
   eatery(`jm_eat_e${i + 1}`, [10, z], -90, { elevation })
 })
@@ -250,7 +382,9 @@ ARM_X.forEach((x, i) => {
   for (const s of [-1, 1]) {
     const k = s < 0 ? 'w' : 'e'
     const elevation = s < 0 ? T_W : T_E
-    eatery(`jm_eat_arm_${k}s${i + 1}`, [s * x, -82], 180, { elevation })
+    const it = eatery(`jm_eat_arm_${k}s${i + 1}`, [s * x, -82], 180, { elevation })
+    // (11/26 지민 요청) 큰길에서 오른쪽(동쪽) 골목에 들어서자마자 오른편 가게 = 음식 산더미·찜통 가게 (가게 안 사진 참고)
+    if (s > 0 && i === 0) Object.assign(it, { feast: true, look: 'wood' })
     eatery(`jm_eat_arm_${k}n${i + 1}`, [s * x, -98], 0, { elevation })
   }
 })
@@ -263,8 +397,9 @@ for (const s of [-1, 1]) {
   if (s > 0) [-30, -44].forEach((x, i) => eatery(`jm_eat_edge_${k}${i + 1}`, [s * -x, -68.5], 0, { w: 11, d: 11, floors: 3, h: 12.5 }))
 }
 // 큰길·가로 거리 위 등 줄
-for (const [z, e] of [[-69.5, TOWN], [-78.5, TOWN], [-105.5, T_N], [-114.5, T_N], [-135.5, T_N]]) prop(`jm_lantern_line_${-z}`, 'jmLanternLine', [0, z], [10, 5.4], { elevation: e, collider: false })
-for (const x of [25.5, 34.5, 43.5, 52.5]) for (const s of [-1, 1]) prop(`jm_lantern_line_x${s < 0 ? 'w' : 'e'}${x}`, 'jmLanternLine', [s * x, -90], [6, 5.4], { rotationDeg: 90, elevation: s < 0 ? T_W : T_E, collider: false })
+// (11/26 지민 요청: 등불이 너무 많음) 가로지르는 등 줄은 큰길 3줄 + 가로 거리 양쪽 2줄씩만
+for (const [z, e] of [[-71.5, TOWN], [-81.5, TOWN], [-106.5, T_N]]) prop(`jm_lantern_line_${-z}`, 'jmLanternLine', [0, z], [10, 5.4], { elevation: e, collider: false })
+for (const x of [25.5, 43.5]) for (const s of [-1, 1]) prop(`jm_lantern_line_x${s < 0 ? 'w' : 'e'}${x}`, 'jmLanternLine', [s * x, -90], [6, 5.4], { rotationDeg: 90, elevation: s < 0 ? T_W : T_E, collider: false })
 for (const [i, z, e] of [[1, -64, TOWN], [2, -88, TOWN], [3, -112, T_N], [4, -140, T_N]]) light(`jm_light_town_${i}`, [0, z], { elevation: e })
 for (const s of [-1, 1]) light(`jm_light_town_arm_${s < 0 ? 'w' : 'e'}`, [s * 40, -90], { elevation: s < 0 ? T_W : T_E })
 // 다리 앞 광장 (북쪽 단) — (11/25 밤 마을 압축) 광장이 6m로 얕아져서 압축 뒤 좌표로 직접 둠: 다리 쪽 난간 앞에 한 줄
@@ -355,7 +490,7 @@ for (const sc of SCENES) {
   const L = (lx, lz) => rotate(sc.c, sc.rot, lx, lz)
   const E = { elevation: sc.e }
   // 장면 이름 팻말 하나 (담·문 대신)
-  prop(`jm_scene_${sc.n}_sign`, 'jmArrowSign', L(sc.w / 2 - 2.5, sc.d / 2 - 1.2), [1.6, 2.1, 0.2], { rotationDeg: sc.rot + 15, ...E, signs: [{ text: `${sc.title.split(' 「')[0]}`, dir: 'right' }, { text: sc.sub, dir: 'right' }] })
+  // (11/26 지민 요청: 장면 이름은 골목 입구 아치의 붉은 띠에 씀) 골목 안 화살표 팻말은 아치 띠와 겹쳐 없앰
   prop(`jm_scene_${sc.n}`, 'jmSceneRoom', sc.c, [16, 12, 16], {
     rotationDeg: sc.rot, collider: false, elevation: r2(sc.e + 0.02),
     room: { kind: sc.kind, title: sc.title, sub: sc.sub, w: sc.w, d: sc.d, inMap: true, open: true, ...(sc.stair && { stair: sc.stair }), ...(sc.pond && { pond: sc.pond }) },
@@ -406,6 +541,36 @@ for (const sc of SCENES) {
 // 골목 쌍둥이 등
 for (const [id, p, e] of [['jm_alley2_lamp', [-22.6, -123.2], TOWN], ['jm_alley3_lamp', [22.6, -123.2], TOWN], ['jm_alley1_lamp', [-62.4, -88], T_W], ['jm_alley4_lamp', [62.6, -88.6], T_E], ['jm_alley6_lamp', [-17, -71], TOWN]]) {
   prop(id, 'jmTwinLamp', p, [1.1, 3.4, 0.4], { collider: [0.3, 3.4, 0.3], elevation: e })
+}
+// (11/26 지민 요청) 장면 골목이 시작하는 곳마다 가게 줄을 뚫고 들어가는 둥근 지붕 짧은 터널 (앞 문틀 띠에 작품 이름, 안에 장면 설명) — jm_spirit.jsx JmAlleyArch
+//   [장면 번호, 자리(큰길 쪽 앞면), 앞이 보는 방향(도), 골목 폭, 터널 깊이, 바닥 높이, 문틀 색]. 터널은 앞에서 골목 안쪽(-z)으로
+{
+  // (11/26 지민 요청: 건물 사이에 틈 없이) ②③⑥은 큰길 가게 앞면 줄(x ±5.4)에 바로 붙이고 가게 깊이만큼 뚫고 들어감, 남는 틈은 건물로 채움(fill)
+  const ARCHES = [
+    [1, [-63.4, -90], 90, 5.0, 3, T_W, '#c9573a', null],
+    [2, [-5.4, -125], 90, 3.4, 9.8, T_N, '#b8863a', { w: 4, h: 8.5, color: '#9cc3d6' }],
+    [3, [5.4, -125], -90, 3.4, 9.8, T_N, '#9a5a8a', { w: 4, h: 8.5, color: '#86c7a8' }],
+    [4, [63.6, -90], -90, 5.0, 3, T_E, '#3f7a5a', null],
+    [6, [-5.4, -74.25], 90, 5.0, 9.8, TOWN, '#c9573a', { w: 9.5, h: 8.5, color: '#d9b45e' }],
+  ]
+  for (const [n, p, rot, span, depth, e, color, fill] of ARCHES) {
+    const sc = SCENES.find((x) => x.n === n)
+    // (11/26 지민 요청) 붉은 아치 띠 글자 = 장면 번호 + 장면 이름 (예: ① 비 오는 숲속 정류장), 작품 이름은 work로
+    const num = (sc.title.match(/[①-⑩]/) ?? [''])[0]
+    const work = (sc.title.match(/「(.+)」/) ?? [null, sc.title])[1]
+    prop(`jm_scene_${n}_arch`, 'jmAlleyArch', p, [span, 6, depth], { rotationDeg: rot, elevation: e, collider: false, title: `${num} ${sc.sub}`.trim(), work, color, // 안쪽 설명 팻말(sub)은 띠 글자와 겹쳐 뺌
+      ...(fill && { fill }) })
+    // 양옆 벽 판정 (로컬 x = ±(폭/2 + 0.45), z = -(0.45 + 깊이/2))
+    const a = (rot * Math.PI) / 180
+    for (const sd of [-1, 1]) {
+      const lx = sd * (span / 2 + 0.45)
+      const lz = -(0.45 + depth / 2) + 0.25
+      const side = fill ? Math.max(0, fill.w / 2 - (span / 2 + 0.3)) : 0
+      const wx = side > 0.05 ? sd * (span / 2 + 0.3 + side / 2) : lx
+      const ww = side > 0.05 ? r2(side + 0.6) : 1.0
+      wall(`jm_scene_${n}_arch_wall_${sd < 0 ? 'l' : 'r'}`, [r2(p[0] + wx * Math.cos(a) + lz * Math.sin(a)), r2(p[1] - wx * Math.sin(a) + lz * Math.cos(a))], [ww, 4.5, r2(depth + 0.5)], { rotationDeg: rot, elevation: e })
+    }
+  }
 }
 for (const s of SCENE_SHOPS) {
   const e = eateryAt[s.eat]
@@ -470,15 +635,9 @@ road('jm_pier_step', null, [r2(PIER.x1 + 0.6), r2((SHOAL.z0 + PIER.z1) / 2)], [1
 //   벽 안쪽 풀밭 강(z -39)도 서쪽 끝에서 이 강으로 흘러듦. 월드 z = 구역 z - 85
 prop('jm_outer_bay', 'jmCanal', [-140, -188.5], [73, 0.1, 24], { rotationDeg: 90, curb: false, beach: 'sea', collider: false })
 // 굽이치는 강: 여관 바다(만) → 남쪽으로 구불구불 → SG 해변 바다. 흐를수록 넓어짐(12 → 34m). 점은 구역 좌표
-prop('jm_outer_river', 'jmRiverRibbon', [0, 0], [60, 0.5, 340], { collider: false, river: {
-  points: [[-143, -143], [-151, -128], [-163, -110], [-158, -90], [-144, -72], [-147, -50], [-162, -30], [-170, -5], [-158, 20], [-147, 42], [-152, 68], [-166, 92], [-163, 118], [-150, 138], [-146, 158]],
-  widths: [12, 34], y: [0.09, 0.07], sea: true, seaStart: true,
-} })
+// (11/26) 'jm_outer_river'는 넓힌 바다 밑에 겹쳐 비쳐서 뺌
 // 풀밭 강(벽 안, 물 높이 0.3)이 서쪽 끝에서 벽을 넘어 휘어 내려가 큰 강에 합쳐짐 (합쳐질수록 넓어짐)
-prop('jm_outer_join', 'jmRiverRibbon', [0, 0], [40, 0.5, 30], { collider: false, river: {
-  points: [[-126, RIVER_Z], [-134, RIVER_Z - 0.5], [-141, RIVER_Z - 3], [-147, RIVER_Z - 9], [-150, RIVER_Z - 16]],
-  widths: [22, 15], y: [0.29, 0.1],
-} })
+// (11/26) 'jm_outer_join'는 넓힌 바다 밑에 겹쳐 비쳐서 뺌
 prop('jm_sea_rail', 'jmSeaRail', [0, TRAIN.z], [3, 0.3, 250], { rotationDeg: 90, collider: false, submerged: true })
 road('jm_pier', null, [r2((PIER.x0 + PIER.x1) / 2), r2((PIER.z0 + PIER.z1) / 2)], [r2(PIER.x1 - PIER.x0), PIER.h, r2(PIER.z1 - PIER.z0)], { color: '#8d877c' })
 prop('jm_pier_sign', 'jmStationSign', [r2(PIER.x1 - 1.5), -162], [1.6, 2.4, 0.3], { rotationDeg: 0, elevation: PIER.h, signs: [{ text: '湯灯駅' }] })
@@ -1018,6 +1177,289 @@ for (const item of props) if (item.style === null) delete item.style
   }
 }
 
+// ─────────────────────────────────────────────
+// (11/26 지민 요청: 터널에서 나와 마을 가는 길이 너무 멂 → 「마을 전체 당기기」)
+//   강·징검돌·돌계단·마을 문·마을·다리·여관 섬·바다·역(옛 풀밭 북쪽 끝 z -28보다 북쪽 전부)을 PULL m 남쪽(입구 쪽)으로 당기고,
+//   그 사이 풀밭(z 4.2 ~ -28)은 비율대로 줄임 (32.2m → 19.2m). 터널·숲길(z 4.2보다 남쪽)은 그대로
+//   그대로 두는 것: 전망 무대·무대 계단·무대 길·BK 전망대 데크(병관 님 구역과 이어짐) → NO_PULL
+//   길·바닥·충돌 벽(네모)은 양 끝을 옮겨 길이도 맞춤, 나머지는 가운데만. 안에 든 월드/구역 좌표(물수제비 길, 바깥 강 줄기, 엘리베이터 층, 장소 자리)도 같이
+// ─────────────────────────────────────────────
+const PULL = 13
+const FIELD_N = -28 // 옛 풀밭 북쪽 끝 (= 강 남쪽 둑)
+const FIELD_S = 4.2 // 터널 출구
+{
+  const k = (FIELD_S - FIELD_N - PULL) / (FIELD_S - FIELD_N)
+  const pz = (z) => r2(z <= FIELD_N ? z + PULL : z < FIELD_S ? FIELD_S + (z - FIELD_S) * k : z)
+  const fixed = (id) => /^jm_(stage|sign_tower|tower_deck)/.test(id)
+  const RECT = new Set(['jmCollider', 'jmFloor'])
+  const pullRect = (it) => {
+    const turned = Math.abs((it.rotationDeg ?? 0) % 180) === 90
+    const straight = Math.abs((it.rotationDeg ?? 0) % 90) < 0.01
+    const [cx, cz] = it.position
+    if (!straight) return void (it.position = [cx, pz(cz)])
+    const sz = turned ? it.size[0] : it.size[2]
+    const z0 = pz(cz - sz / 2)
+    const z1 = pz(cz + sz / 2)
+    it.position = [cx, r2((z0 + z1) / 2)]
+    const nz = r2(z1 - z0)
+    if (turned) it.size = [nz, it.size[1], it.size[2]]
+    else it.size = [it.size[0], it.size[1], nz]
+  }
+  for (const rd of roads) if (!fixed(rd.id)) pullRect(rd)
+  for (const it of props) {
+    if (fixed(it.id)) continue
+    if (RECT.has(it.style)) pullRect(it)
+    else it.position = [it.position[0], pz(it.position[1])]
+    if (it.skip) {
+      it.skip.start = [it.skip.start[0], pz(it.skip.start[1])]
+      it.skip.points = it.skip.points.map(([x, z]) => [x, pz(z)])
+    }
+    if (it.river?.points) it.river.points = it.river.points.map(([x, z]) => [x, pz(z)])
+    if (it.elevator?.stops) for (const st of it.elevator.stops) st.pos = [st.pos[0], st.pos[1], r2(pz(st.pos[2] - ZONE_ORIGIN_Z) + ZONE_ORIGIN_Z)]
+  }
+  for (const t of terrain) {
+    if (fixed(t.id)) continue
+    if (t.rect) {
+      const [x0, z0, x1, z1] = t.rect
+      t.rect = [x0, pz(z0), x1, pz(z1)]
+      for (const rl of t.rails ?? []) if (rl.gaps && (rl.edge === 'west' || rl.edge === 'east')) rl.gaps = rl.gaps.map((g) => g.map(pz))
+    }
+    for (const kk of ['from', 'to']) if (t[kk]) t[kk] = [t[kk][0], pz(t[kk][1]), ...t[kk].slice(2)]
+    if (t.position) t.position = [t.position[0], pz(t.position[1])]
+    if (t.points) t.points = t.points.map(([x, z, ...rest]) => [x, pz(z), ...rest])
+  }
+  for (const [id, pos] of Object.entries(placePositions)) placePositions[id] = [pos[0], pos[1], r2(pz(pos[2] - ZONE_ORIGIN_Z) + ZONE_ORIGIN_Z)]
+}
+const RIVER_BANK_S = FIELD_N + PULL // 당긴 뒤 강 남쪽 둑 (숲이 여기까지)
+
+// (11/26 지민 요청: 여관을 두른 바다도 강물처럼 자연스러운 경계) 네모 바다 판들은 걷기 막는 판정만 남기고(hideWater),
+//   그 자리를 모서리가 둥글고 물가가 일렁이는 큰 바다 하나(jm_water.jsx JmSeaLake)로. 남쪽은 마을 단 밑으로 들어가 물가 띠 없음
+for (const p of props) if (p.style === 'jmCanal' && p.beach === 'sea') p.hideWater = true
+// (11/26 지민 요청: 강 대신 바다를 넓힘 — 도안 확인 받음) 여관 둘레 ~ 북쪽 ~ 서쪽 ~ 남서쪽 기존 바다까지 한 덩어리 (jm_water.jsx JmOcean)
+//   물빛·물가는 기존 해변 바다와 같은 색 단계(모래 → 물거품 → 옥빛 → 짙은 바다). 남서쪽 열린 쪽(open)은 모래 없이 흐려져 기존 바다(지도 밖 바다)와 섞임
+//   동쪽 물가는 마을 북동쪽 모서리, 서쪽 물가는 마을·숲 서쪽 바깥 ~ K-pop 구역 서쪽 바깥(그 구역 서쪽 끝 월드 x -125보다 바깥)
+//   (구역 좌표: 월드 z = 구역 z - 85. 마을 북쪽 끝 아래로 지나는 물가는 마을 단 밑이라 안 보임)
+{
+  const O = 1
+  // (11/26 지민 요청 2차) ① 북서쪽은 물가 없이 끝없이 이어지는 바다(열린 쪽을 멀리) ② 북동쪽은 지도 북쪽 끝(구역 z -225) 안에서 호수처럼 둥근 물가로 마무리
+  //   (그 너머는 산 지형이라 넘어가면 물이 산비탈을 자름) ③ 서쪽 물가를 40m쯤 더 서쪽으로 → K-pop 구역 뒤에 땅을 남김
+  //   ④ 남쪽 끝 물가는 지도 밖 해변 모래 줄(기존 해안선)과 만나는 자리에서 끝내고 그 남쪽은 열린 쪽 → K-pop 해변 모래와 겹치지 않음
+  // (11/26 지민 요청 3차) 물가 종류: 표시 없음 = 모래 해변, L = 호수식(진흙·풀 둑, 모래 없음), O = 열린 쪽(기존 바다와 섞임)
+  //   북동쪽(여관 동쪽)·마을 북쪽 = 섬 느낌이라 호수식 / 서쪽 = 모래 해변 / 해변과 만나는 곶은 둥글게 돌아 기존 해안선 모래로 이어짐
+  const L = 'L'
+  const pts = [
+    // (11/26 4차) 동쪽은 지도 동쪽 끝(월드 x 130) 너머 산 지형이 물을 잘라서 → x 120 안쪽에서 둥글게 마무리, 북쪽도 지도 끝(구역 z -225) 안쪽
+    [116, -121, L], [123, -140, L], [121, -164, L], [110, -188, L], [88, -207, L], [55, -217, L], [15, -221, L], [-35, -222, O],
+    [-90, -400, O], [-440, -400, O], [-440, 330, O], [-280, 330, O], [-150, 178, O],
+    // (11/26 7차 지민 요청: 다 어색함 → 도안 확인 받음, 꺾이는 곳은 라운드로)
+    //   ④ K-pop 남서쪽: 해변이 기존 해안선(구역 z 128 언저리)을 따라 동쪽에서 부드럽게 들어와 서쪽으로 이어짐 (튀어나온 혹 없앰)
+    //   (8차) 기존 해변은 모래 시작선(구역 z 128)에서 11.5m 남쪽(z 140)이 물가 → 내 해변 물가도 같은 선(z 140)에서 시작, 모래 폭도 같게(11.5m)
+    [-118, 162, O], [-124, 147, O], [-134, 140], [-150, 139], [-167, 133], [-181, 117], [-188, 92], [-187, 60], [-186, 40], [-180, 18],
+    //   ① 뾰족한 곶을 없애고 서쪽 해안에서 바위 강까지 한 번에 휘는 넓은 만. 해변 → 호수식 둑은 24m에 걸쳐 섞임
+    [-166, -4, L], [-146, -18, L], [-122, -20, L], [-100, -16, L], [-82, -13, L],
+    //   ② 마을 남서쪽 모서리: 꺾임 없이 둥글게 돌아 마을 서쪽 단 밑으로
+    //   (8차) 바위 강 서쪽 끝은 강어귀(M): 바다 물과 물길 물이 10m에 걸쳐 서로 흐려지며 이어짐 (두 물이 겹쳐 물가 선이 비치던 것 없앰)
+    [-68, -12, 'M'], [-66, -48, L], [-71, -64, L], [-73, -90, L],
+    //   ③ 동쪽: 마을 동쪽을 따라 좁아지는 물굽이, 끝은 둥글게 (병관 님 구역 z -35보다 11m 위)
+    [73, -90, L], [74.5, -62, L], [75, -50, 'M'], [76, -39.5, L], [86, -39.5, L], [97, -44, L], [108, -56, L], [118, -82, L],
+  ]
+  prop('jm_ocean', 'jmOcean', [0, 0], [480, 0.2, 420], { collider: false, ocean: { pts, sand: 11.5, y: 0.05 } })
+}
+
+// (11/26 지민 요청) 마을 단(x ±77) 밖으로 삐져나와 물 위에 떠 있던 이끼 돌바닥 판(마을 압축 때 남은 것)을 마을 단 안으로 자름
+{
+  const town = terrain.find((q) => q.id === 'jm_town')
+  if (town) {
+    const [tx0, tz0, tx1, tz1] = town.rect
+    for (const p of props) {
+      if (!p.id.startsWith('jm_mossy_floor')) continue
+      const [cx, cz] = p.position
+      const hw = p.size[0] / 2
+      const hd = p.size[2] / 2
+      const x0 = Math.max(cx - hw, tx0), x1 = Math.min(cx + hw, tx1)
+      const z0 = Math.max(cz - hd, tz0), z1 = Math.min(cz + hd, tz1)
+      if (x1 - x0 < 0.5 || z1 - z0 < 0.5) continue
+      p.position = [r2((x0 + x1) / 2), r2((z0 + z1) / 2)]
+      p.size = [r2(x1 - x0), p.size[1], r2(z1 - z0)]
+    }
+  }
+}
+
+// (11/26 점검: 지민 요청 — 아치 터널과 계단이 엇나감) ④ 골목: 계단(z -79)이 가게 사이 골목·아치(z -77)보다 2m 옆으로 비껴 가게에 파고들고,
+//   아치 터널(깊이 3m)이 계단 내려가는 곳 위로 삐져나와 공중에 떠 있었음 → 계단을 골목 가운데(z -77)로, 아치는 터널 끝이 계단 꼭대기(x 46)에 닿게 3m 안쪽으로
+{
+  const st = terrain.find((t) => t.id === 'jm_crossing_slope')
+  const arch = props.find((q) => q.id === 'jm_scene_4_arch')
+  if (st && arch) {
+    const zc = arch.position[1]
+    st.from = [st.from[0], zc, ...st.from.slice(2)]
+    st.to = [st.to[0], zc, ...st.to.slice(2)]
+    const road = props.find((q) => q.id === 'jm_crossing_slope_road')
+    if (road) road.position = [road.position[0], zc]
+    const top = Math.min(st.from[0], st.to[0]) // 계단 꼭대기 x
+    const depth = arch.size[2]
+    const nx = r2(top - 0.45 - depth) // 터널 끝 = 계단 꼭대기
+    const dx = r2(nx - arch.position[0])
+    arch.position = [nx, zc]
+    for (const id of ['jm_scene_4_arch_wall_l', 'jm_scene_4_arch_wall_r']) {
+      const w = props.find((q) => q.id === id)
+      if (w) w.position = [r2(w.position[0] + dx), w.position[1]]
+    }
+    const lamp = props.find((q) => q.id === 'jm_alley4_lamp')
+    if (lamp) lamp.position = [r2(nx - 8.6), r2(zc + 3.2)] // 아치 앞길을 막지 않게 가로 거리 쪽 가게 모퉁이로
+  }
+}
+
+// (11/26 점검) 장면 마당 바닥(ScenePad: 높이 + 0.03)이 겹치는 마을 이끼 돌바닥(JmFloor: 높이 + 0.09)보다 낮아서 덮여 보이던 것
+//   → 장면 마당을 겹치는 돌바닥 윗면 바로 위로 올림 (① 논·흙길·풀밭이 돌바닥에 묻혀 벼 모만 삐죽 나와 보였음)
+{
+  const floorsAll = props.filter((q) => q.style === 'jmFloor')
+  for (const sc of props.filter((q) => q.style === 'jmSceneRoom')) {
+    const turned = Math.abs((sc.rotationDeg ?? 0) % 180) === 90
+    const rw = sc.room?.w ?? sc.size[0]
+    const rd = sc.room?.d ?? sc.size[2]
+    const hx = (turned ? rd : rw) / 2
+    const hz = (turned ? rw : rd) / 2
+    const e = sc.elevation ?? 0
+    let top = -Infinity
+    for (const f of floorsAll) {
+      const ft = (f.elevation ?? 0) + 0.03 + Math.min(f.size[1] ?? 0.06, 0.06)
+      if (ft < e - 0.02 || ft > e + 0.2) continue
+      if (Math.abs(f.position[0] - sc.position[0]) < f.size[0] / 2 + hx && Math.abs(f.position[1] - sc.position[1]) < f.size[2] / 2 + hz) top = Math.max(top, ft)
+    }
+    if (top > e) sc.elevation = r2(top + 0.02)
+  }
+}
+
+// (11/26 지민 요청: 큰길 흙바닥이 한 색이라 어색, 골목은 돌바닥이라 따로 놂) 큰길·가로 거리는 무늬 있는 다져진 흙(jm_spirit.jsx JmDirtFloor),
+//   폭을 2m 넓혀 처마 밑까지 덮고 가장자리를 흐리게 → 돌바닥과 섞임. 골목 입구엔 흙이 골목 안으로 번진 자국(같은 흙, 사방이 흐림)
+{
+  for (const id of ['jm_town_main_s', 'jm_town_main_n', 'jm_town_cross']) {
+    const it = props.find((q) => q.id === id)
+    if (!it) continue
+    const turned = id === 'jm_town_cross'
+    Object.assign(it, { style: 'jmDirtFloor', size: turned ? [it.size[0], it.size[1], r2(it.size[2] + 2.4)] : [r2(it.size[0] + 2.4), it.size[1], it.size[2]] })
+    delete it.floor
+    delete it.color
+  }
+  // 골목 입구마다 흙이 번진 자국 (장면 골목 아치 앞)
+  for (const n of [2, 3, 6]) {
+    const a = props.find((q) => q.id === `jm_scene_${n}_arch`)
+    if (!a) continue
+    const ang = (a.rotationDeg * Math.PI) / 180
+    const lz = -2.5
+    prop(`jm_scene_${n}_spill`, 'jmDirtFloor', [r2(a.position[0] + lz * Math.sin(ang)), r2(a.position[1] + lz * Math.cos(ang))], [5, 0.02, 6], { rotationDeg: a.rotationDeg, elevation: a.elevation, collider: false })
+  }
+}
+
+// (11/26 지민 요청: 마을이 물에 둘러싸이게 — 그림의 빨간 부분) 돌 강 양 끝에서 마을 서쪽·동쪽을 따라 북쪽 바다까지 물길
+//   선은 직선이 아니라 굽이치고 폭도 점마다 다르게(jm_water.jsx JmChannelWater). 돌 강 쪽은 좁고 얕게 → 바다 쪽으로 넓게
+//   (당긴 뒤 좌표로 바로 둠: 마을 단 x ±77, z -47 ~ -122 / 바다 남쪽 끝 z ≈ -124)
+{
+  // 한 줄기: 서쪽 바다 → 마을 서쪽 → 바위 사이 굽이치는 물길(폭 2.4 ~ 5, 군데군데 웅덩이) → 마을 동쪽 → 동쪽 바다
+  const chan = (x) => r2(RIVER.z + PULL + 2.6 * Math.sin(x / 8.5) + 1.2 * Math.sin(x / 3.1 + 1)) // 바위 강 물길과 같은 선 (당긴 뒤 z)
+  // 바다 쪽 끝은 바다가 내려온 자리(z -96) 안에서 끝나 바다로 녹아듦
+  // (6차) 마을 양옆은 바다가 맡음 → 물길은 바위 강 띠만, 양 끝은 바다 안으로 들어가 흐려짐
+  const side = [[86, -31, 28, 0.1], [75, -31, 30, 0.14]] // 동쪽 끝은 병관 님 구역(z -35) 위에서 끝남
+  const mid = []
+  // (11/26 지민 요청) 바위 돌길 넓이만큼 물이 흐르게: 바위 띠(강 남쪽 둑 ~ 마을 끝 단, 폭 약 31m) 전체를 덮는 얕은 물, 가장자리는 굽이침
+  const bandC = r2((-59.6 + RIVER.z + RIVER.w / 2) / 2 + PULL)
+  const bandW = r2(RIVER.z + RIVER.w / 2 + 59.6)
+  for (let x = -62; x <= 34; x += 6) mid.push([x, r2(bandC + 1.2 * Math.sin(x / 11 + 0.4)), r2(bandW - 1 + 1.5 * Math.sin(x / 9.5 + 1.2)), 0.16])
+  // (11/26 지민 요청) 동쪽 끝은 병관 님 구역(x 45 ~, z -35 ~) 밖으로: 바위 띠 끝(x 40)에서 좁아지며 마을 단 앞(z -42)을 따라 동쪽 바다로
+  const eastTail = [[38, -37, 13, 0.16], [47, -42.5, 5.5, 0.15], [56, -43.5, 5, 0.14], [65, -44, 5, 0.13], [73, -44.5, 6.5, 0.11], [80, -46, 9, 0.09], [88, -49, 10, 0.08]]
+  const pts = [...side.map(([x, z, w, y]) => [-x, z, w, y]), ...mid, ...eastTail]
+  prop('jm_channel_ring', 'jmChannelWater', [0, 0], [200, 0.2, 110], { collider: false, river: { points: pts.map(([x, z]) => [x, z]), widths: pts.map((p) => p[2]), y: pts.map((p) => p[3]), fadeStart: 18, fadeEnd: 12, palette: 'ocean' } }) // (11/26) 바다와 같은 색 단계
+}
+
+// (11/26 지민 요청: 돌길이 맨 돌바닥이라 숲길과 안 어울림) 풀밭 돌길 위에 이끼 조각·줄눈 이끼·가장자리 풀 (jm_tunnel.jsx JmMossPath)
+for (const id of ['jm_field_path', 'jm_field_east']) {
+  const rd = roads.find((r) => r.id === id)
+  if (rd) prop(`${id}_moss`, 'jmMossPath', rd.position, [rd.size[0], 0.1, rd.size[2]], { rotationDeg: rd.rotationDeg ?? 0, collider: false, seed: id.length * 7 })
+}
+
+// (11/26 지민 요청: 숲 규모를 터널 양옆·풀밭 양쪽까지, 그림의 초록 선) 왼쪽(x -39 ~ -4.5)·오른쪽(x 4.5 ~ 26.5, 전망 무대 길 앞까지),
+//   강 남쪽 둑(RIVER_BANK_S) ~ z 39.6. 가운데 길(|x| < 4.5)·터널 건물·건물 앞 마당·다른 소품·길·단 자리는 비움. 3.3m 간격 + 흔들기, 16m 칸마다 jmForest 소품 하나
+{
+  let seed = 1126
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const SKIP_STYLES = new Set(['jmZoneLight', 'jmForestPath', 'jmForest', 'jmEntryTitle', 'jmMossPath', 'jmGrassTufts', 'jmCanal', 'jmFloor'])
+  const blocks = []
+  for (const p of props) {
+    if (SKIP_STYLES.has(p.style) || p.id.startsWith('jm_forest_tree_')) continue
+    const r = Math.max(p.size[0], p.size[2]) / 2 + 0.7
+    if (r < 15) blocks.push(['c', p.position[0], p.position[1], r])
+  }
+  for (const rd of roads) blocks.push(['r', rd.position[0], rd.position[1], rd.size[0] / 2 + 0.9, rd.size[2] / 2 + 0.9, rd.rotationDeg ?? 0])
+  for (const t of terrain) {
+    if (t.rect) blocks.push(['b', t.rect[0] - 1, t.rect[1] - 1, t.rect[2] + 1, t.rect[3] + 1])
+    if (t.from && t.to) {
+      const hw = (t.width ?? 3) / 2 + 1
+      blocks.push(['b', Math.min(t.from[0], t.to[0]) - hw, Math.min(t.from[1], t.to[1]) - 1, Math.max(t.from[0], t.to[0]) + hw, Math.max(t.from[1], t.to[1]) + 1])
+    }
+  }
+  const hitBlock = (x, z, r) =>
+    blocks.some((b) => {
+      if (b[0] === 'c') return Math.hypot(x - b[1], z - b[2]) < b[3] + r
+      if (b[0] === 'b') return x > b[1] - r && x < b[3] + r && z > b[2] - r && z < b[4] + r
+      const a = (-b[5] * Math.PI) / 180
+      const dx = x - b[1]
+      const dz = z - b[2]
+      const lx = dx * Math.cos(a) - dz * Math.sin(a)
+      const lz = dx * Math.sin(a) + dz * Math.cos(a)
+      return Math.abs(lx) < b[3] + r && Math.abs(lz) < b[4] + r
+    })
+  const inLobe = (x, z) => z > RIVER_BANK_S + 1.2 && z < 39.6 && ((x > -39 && x < -4.5) || (x > 4.5 && x < 26.5))
+  const open = (x, z) => (Math.abs(x) < 15.2 && z > 3.2 && z < 24.6) || (z > 22 && Math.abs(x) < 2.2) || Math.hypot(x + 10, z - 36.5) < 3.4
+  const all = [...ENTRY_TRUNKS]
+  const trees = []
+  const bushes = []
+  for (let z = RIVER_BANK_S + 2; z < 39.6; z += 3.3)
+    for (let x = -38.5; x < 26.5; x += 3.3) {
+      const tx = r2(x + (rnd() - 0.5) * 2.2)
+      const tz = r2(z + (rnd() - 0.5) * 2.2)
+      const h = r2(4.6 + rnd() * 2.4)
+      const r = r2(0.18 + rnd() * 0.14)
+      if (!inLobe(tx, tz) || open(tx, tz) || hitBlock(tx, tz, 0.6)) continue
+      if (all.some(([ax, az]) => Math.hypot(ax - tx, az - tz) < 2.2)) continue
+      all.push([tx, tz, h, r])
+      trees.push([tx, tz, h, r])
+      for (let k = 0; k < 2; k++) {
+        const bx = r2(tx + (rnd() - 0.5) * 3)
+        const bz = r2(tz + (rnd() - 0.5) * 3)
+        if (inLobe(bx, bz) && !open(bx, bz) && !hitBlock(bx, bz, 0.4) && Math.hypot(bx - tx, bz - tz) > r + 0.5) bushes.push([bx, bz, r2(0.4 + rnd() * 0.6)])
+      }
+    }
+  trees.forEach(([x, z, , r], i) => wall(`jm_forest_side_tree_${i}`, [x, z], [r2(r * 2 + 0.1), 3, r2(r * 2 + 0.1)]))
+  const tiles = new Map()
+  const tileOf = (x, z) => `${Math.floor(x / 16)},${Math.floor(z / 16)}`
+  const tileFor = (x, z) => {
+    const k = tileOf(x, z)
+    if (!tiles.has(k)) tiles.set(k, { trunks: [], bushes: [] })
+    return tiles.get(k)
+  }
+  for (const t of trees) tileFor(t[0], t[1]).trunks.push(t)
+  for (const b of bushes) tileFor(b[0], b[1]).bushes.push(b)
+  for (const [k, v] of tiles) {
+    const [ix, iz] = k.split(',').map(Number)
+    const c = [ix * 16 + 8, iz * 16 + 8]
+    prop(`jm_forest_${ix}_${iz}`, 'jmForest', c, [16, 8, 16], {
+      collider: false,
+      trunks: v.trunks.map(([x, z, h, r]) => [r2(x - c[0]), r2(z - c[1]), h, r]),
+      bushes: v.bushes.map(([x, z, sz]) => [r2(x - c[0]), r2(z - c[1]), sz]),
+    })
+  }
+  console.log(`양옆 숲: 나무 ${trees.length}, 덤불 ${bushes.length}, 칸 ${tiles.size}`)
+}
+
+// (11/26 지민 요청: 등불이 너무 많아 정신없음) 등불 소품(석등·등 줄·가스등·쌍등)을 차례로 세어 4개마다 1개씩 뺌 (1/4 줄임)
+const LAMP_STYLES = new Set(['jmLantern', 'jmLanternLine', 'jmGasLamp', 'jmTwinLamp'])
+{
+  let n = 0
+  const kept = props.filter((p) => !(LAMP_STYLES.has(p.style) && ++n % 4 === 0))
+  props.length = 0
+  props.push(...kept)
+}
 const zone = {
   zoneId: 'JM',
   owner: '지민',

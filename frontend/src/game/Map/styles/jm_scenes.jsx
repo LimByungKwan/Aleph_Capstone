@@ -22,9 +22,9 @@ const range = (n) => Array.from({ length: n }, (_, i) => i)
 const rnd = (i) => srand(i * 7.13 + 3.1)
 
 // 둥근 바닥: 타원형 얇은 판
-export function ScenePad({ w, d, color = '#8a8a72', inset = 1.5 }) {
+export function ScenePad({ w, d, color = '#8a8a72', inset = 1.5, z = 0 }) {
   return (
-    <mesh position={[0, 0.015, 0]} scale={[(w - inset) / 2, 1, (d - inset) / 2]}>
+    <mesh position={[0, 0.015, z]} scale={[(w - inset) / 2, 1, (d - inset) / 2]}>
       <cylinderGeometry args={[1, 1, 0.03, 40]} />
       <meshStandardMaterial color={color} roughness={1} polygonOffset polygonOffsetFactor={-1} />
     </mesh>
@@ -85,7 +85,8 @@ export function ShintaiShrine({ w, d, stair }) {
     for (let i = 0; i < 18; i++) {
       const side = i % 2 ? 1 : -1
       const z = z0 + 1 - (i >> 1) * 1.9
-      out.push({ p: [side * (sw / 2 + 1.4 + rnd(i) * 1.2), yAt(z) * 0.6, z], s: 1.4 + rnd(i + 40) * 1.1, seed: i })
+      // (11/26 점검) 계단 높이만큼 공중에 뜨던 바위 → 땅에 박고, 계단이 높아질수록 큰 바위로 (벼랑처럼 쌓여 보이게)
+      out.push({ p: [side * (sw / 2 + 1.4 + rnd(i) * 1.2), yAt(z) * 0.3, z], s: 1.4 + rnd(i + 40) * 1.1 + yAt(z) * 0.9, seed: i })
     }
     return out
   }, [z0, sw])
@@ -98,7 +99,7 @@ export function ShintaiShrine({ w, d, stair }) {
         <Boulder key={i} p={c.p} s={c.s} moss={i % 3 === 0} seed={c.seed} />
       ))}
       {[[-1, 2], [1, -1], [-1, -4], [1, 3.5]].map(([s, z], i) => (
-        <Tree key={i} p={[s * (sw / 2 + 4.2), yAt(z) * 0.5, z]} h={11} r={0.4} crown={2.2} leaf={LEAF_DEEP} s={i * 11} />
+        <Tree key={i} p={[s * (sw / 2 + 4.2), 0, z]} h={11 + yAt(z) * 0.5} r={0.4} crown={2.2} leaf={LEAF_DEEP} s={i * 11} />
       ))}
       {/* 위 마당: 분화구 테두리처럼 둘러선 이끼 바위 */}
       <group position={[0, h, tz]}>
@@ -291,14 +292,16 @@ export function NatsumeShrine({ w, d, stair }) {
       {/* 계단 양옆 우거진 여름 나무 (판정 = 줄기) */}
       {[-1, 1].map((s) => [0, 1, 2].map((k) => {
         const z = z0 - 2 - k * 4.6
-        return <Tree key={`${s}${k}`} p={[s * (sw / 2 + 2.4), yAt(z) * 0.8, z]} h={9 + k} r={0.32} crown={3} leaf={LEAF_SUMMER} s={k * 7 + (s > 0 ? 3 : 0)} />
+        // (11/26 점검) 계단 높이만큼 공중에 떠 있던 나무 → 땅에서 자라게, 대신 그만큼 키를 키움
+        return <Tree key={`${s}${k}`} p={[s * (sw / 2 + 2.4), 0, z]} h={9 + k + yAt(z) * 0.8} r={0.32} crown={3} leaf={LEAF_SUMMER} s={k * 7 + (s > 0 ? 3 : 0)} />
       }))}
       {[-1, 1].map((s) => (
         <Boulder key={s} p={[s * (sw / 2 + 0.6), 0.2, z0 - 0.5]} s={0.6} moss seed={s + 10} />
       ))}
       {/* 위 마당: 작은 붉은 도리이 → 사당 (방울 줄, 새전함) + 옆 과자 노점 */}
       <group position={[0, h, 0]}>
-        <ScenePad w={11} d={top} color="#6a8a4a" inset={0.4} />
+        {/* (11/26 점검) 위 마당 풀밭은 단 가운데(tz)에 — 전엔 z 0에 있어 절반이 계단 위로 떠 삐져나왔음 */}
+        <ScenePad w={11} d={top} color="#6a8a4a" inset={0.4} z={tz} />
         <group position={[0, 0, -4.2]}>
           {[-1, 1].map((s) => (
             <Cyl key={s} p={[s * 1.3, 1.5, 0]} rad={0.13} h={3} m={SHRINE_RED} />

@@ -47,6 +47,253 @@ const BOWL = mat('#f1e8d6', { roughness: 0.5 })
 const STEAM = mat('#ffffff', { transparent: true, opacity: 0.22, roughness: 1 })
 const WALL_LAMP = mat('#ff9ab8', { emissive: '#ff5a8a', emissiveIntensity: 1.4 })
 const FIRE = mat('#ff8a2a', { emissive: '#ff5a10', emissiveIntensity: 2.0 })
+// (11/26 지민이 보낸 거리·가게 장면 참고) 붉은 천 차양, 초록 칠 기둥, 파란 의자, 선반 항아리·접시, 음식 산더미
+const AWNING = mat('#c4382b', { roughness: 0.9, double: true })
+const AWNING_D = mat('#9a2a20', { roughness: 0.9, double: true })
+const POST_GREEN = mat('#4f8f6a', { roughness: 0.8 })
+const STOOL_BLUE = mat('#2f5a7f', { roughness: 0.6 })
+const JAR = mat('#5a2e22', { roughness: 0.5 })
+const JAR_LABEL = mat('#c9473a', { roughness: 0.7 })
+const PLATE_RIM = mat('#3a6f9a', { roughness: 0.4 })
+const BAMBOO = mat('#b08a55', { roughness: 0.8 })
+const LAMP_SHADE = mat('#2f3a33', { roughness: 0.6, double: true })
+const BULB = mat('#fff3d0', { emissive: '#ffd890', emissiveIntensity: 1.6 })
+const FOODS = {
+  dumpling: mat('#e8b58c', { roughness: 0.6 }),
+  stick: mat('#c8c46c', { roughness: 0.6 }),
+  ball: mat('#7a361d', { roughness: 0.45 }),
+  fried: mat('#a8391f', { roughness: 0.7, flat: true }),
+  tempura: mat('#e2a845', { roughness: 0.7, flat: true }),
+  glazed: mat('#c2502a', { roughness: 0.35, emissive: '#3a1004', emissiveIntensity: 0.3 }),
+}
+
+// 음식 산더미 가게 안 부엌 (11/26 지민이 보낸 가게 안 장면 2장 참고) — 카운터 너머로 보이는 방
+//   왼쪽 벽: 벽돌 화덕(아치 불구멍 + 불빛) / 가운데 뒤: 살창 창(밝게) + 비스듬한 빛줄기, 그 위 둥근 환풍구 / 위: 나무 들보·대들보 + 갓 전등 3개
+//   가운데: 나무 그루터기 도마(식칼·큰 칼), 뒤 ㄱ자 조리대(채소: 무·당근·양파, 감자 바구니) / 오른쪽: 걸린 국자들, 연통 후드 + 아궁이 불, 단지·냄비 선반
+const BRICK = mat('#5a3424', { roughness: 0.95, flat: true })
+const BRICK_D = mat('#3a2218', { roughness: 1 })
+const KIT_WALL = mat('#6a4a2c', { roughness: 0.95 })
+const KIT_FLOOR = mat('#3e2c1e', { roughness: 0.95 })
+const BEAM_W = mat('#3a2616', { roughness: 0.9 })
+const KWIN = mat('#f6ebc4', { emissive: '#ffe6a0', emissiveIntensity: 1.2 })
+const KBEAM = new THREE.MeshBasicMaterial({ color: '#ffe0a0', transparent: true, opacity: 0.1, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+const STEEL = mat('#8e9296', { roughness: 0.35, metalness: 0.8 })
+const STUMP = mat('#5e4430', { roughness: 0.95, flat: true })
+const DAIKON = mat('#ece9de', { roughness: 0.6 })
+const CARROT = mat('#d9692a', { roughness: 0.6 })
+const ONION = mat('#c79a52', { roughness: 0.6 })
+const POTATO = mat('#9a7a4a', { roughness: 0.9, flat: true })
+const WICKER = mat('#8a6a3a', { roughness: 0.95 })
+const POT = mat('#4a3a30', { roughness: 0.5, metalness: 0.2 })
+
+function FeastKitchen({ w, d, base, fh, front, seed }) {
+  const iw = w - 0.7 // 안쪽 폭
+  const back = -d / 2 + 0.35 // 뒤 벽 안쪽 면
+  const zc = (back + front - 1.0) / 2
+  const depth = front - 1.0 - back
+  const ceil = base + fh - 0.1
+  const potatoes = useMemo(() => range(14).map((i) => [srand(seed + i) * 0.5 - 0.25, srand(seed * 3 + i) * 0.5 - 0.25, 0.06 + srand(i * 7) * 0.03]), [seed])
+  return (
+    <group>
+      {/* 방 껍데기: 바닥·뒤 벽·옆 벽·천장 */}
+      <Box p={[0, base + 0.02, zc]} s={[iw, 0.04, depth]} m={KIT_FLOOR} />
+      <Box p={[0, base + fh / 2, back - 0.02]} s={[iw, fh, 0.04]} m={KIT_WALL} />
+      {[-1, 1].map((s) => (
+        <Box key={s} p={[s * (iw / 2 + 0.02), base + fh / 2, zc]} s={[0.04, fh, depth]} m={KIT_WALL} />
+      ))}
+      <Box p={[0, ceil, zc]} s={[iw, 0.06, depth]} m={BEAM_W} />
+      {/* 들보: 가로 대들보 + 세로 기둥 + 빗댄 버팀 */}
+      {[zc - depth * 0.25, zc + depth * 0.2].map((z, i) => (
+        <group key={`bm${i}`}>
+          <Box p={[0, ceil - 0.25, z]} s={[iw, 0.18, 0.18]} m={BEAM_W} />
+          {[-1, 1].map((s) => (
+            <Box key={s} p={[s * iw * 0.18, ceil - 0.6, z]} s={[0.07, 0.6, 0.07]} r={[0, 0, s * 0.6]} m={BEAM_W} />
+          ))}
+        </group>
+      ))}
+      <Box p={[iw * 0.08, base + fh / 2, back + 0.6]} s={[0.16, fh, 0.16]} m={BEAM_W} />
+      {/* 뒤 벽 살창 창 (밝게) + 비스듬한 빛줄기 + 둥근 환풍구 */}
+      <group position={[-iw * 0.12, base + 1.75, back + 0.01]}>
+        <Box p={[0, 0, 0]} s={[1.8, 0.85, 0.02]} m={KWIN} />
+        {range(7).map((i) => (
+          <Box key={`wv${i}`} p={[-0.9 + i * 0.3, 0, 0.02]} s={[0.035, 0.85, 0.02]} m={BEAM_W} />
+        ))}
+        {range(3).map((i) => (
+          <Box key={`wh${i}`} p={[0, -0.42 + i * 0.42, 0.02]} s={[1.8, 0.035, 0.02]} m={BEAM_W} />
+        ))}
+        <group position={[-1.35, 0.85, 0.02]}>
+          <Box p={[0, 0, -0.01]} s={[0.55, 0.55, 0.03]} m={BEAM_W} />
+          <mesh material={KWIN}>
+            <circleGeometry args={[0.22, 16]} />
+          </mesh>
+          {range(6).map((k) => (
+            <Box key={k} p={[0, 0, 0.02]} s={[0.44, 0.05, 0.01]} r={[0, 0, (k * Math.PI) / 6]} m={BEAM_W} />
+          ))}
+        </group>
+      </group>
+      {[[-0.6, 0.55], [0.35, 0.45]].map(([dx, wd], i) => (
+        <mesh key={`kb${i}`} position={[-iw * 0.12 + dx + 0.4, base + fh * 0.55, back + depth * 0.35]} rotation={[-0.75, 0, 0.12]} material={KBEAM}>
+          <planeGeometry args={[wd, fh * 1.2]} />
+        </mesh>
+      ))}
+      {/* 왼쪽 벽: 벽돌 화덕 + 아치 불구멍 */}
+      <group position={[-iw / 2 + 0.75, base, zc - depth * 0.1]}>
+        <Box p={[0, 0.55, 0]} s={[1.3, 1.1, 1.8]} m={BRICK} />
+        <Box p={[0, 1.6, 0]} s={[1.1, 1.0, 1.6]} m={BRICK} />
+        <Box p={[0.66, 1.15, 0]} s={[0.02, 0.6, 1.0]} m={BRICK_D} />
+        <mesh position={[0.67, 1.45, 0]} rotation={[0, Math.PI / 2, 0]} material={BRICK_D}>
+          <circleGeometry args={[0.5, 16, 0, Math.PI]} />
+        </mesh>
+        <mesh position={[0.68, 1.1, 0]} rotation={[0, Math.PI / 2, 0]} material={FIRE}>
+          <planeGeometry args={[0.8, 0.35]} />
+        </mesh>
+        <Box p={[0, 2.7, 0]} s={[1.4, 0.12, 2.0]} m={BRICK_D} />
+        <pointLight position={[1.1, 1.3, 0]} color="#ff8a3a" intensity={3} distance={4} decay={2} />
+      </group>
+      {/* 뒤 ㄱ자 조리대 + 채소 + 감자 바구니 */}
+      <group position={[0, base, back + 0.45]}>
+        <Box p={[0, 0.48, 0]} s={[iw - 2.6, 0.96, 0.7]} m={BEAM_W} />
+        <Box p={[0, 0.98, 0]} s={[iw - 2.5, 0.05, 0.78]} c="#7a5a3a" />
+        <mesh position={[-0.8, 1.06, 0.05]} rotation={[0, 0, Math.PI / 2]} material={DAIKON}>
+          <cylinderGeometry args={[0.07, 0.05, 0.55, 8]} />
+        </mesh>
+        {[0, 1].map((k) => (
+          <mesh key={`cr${k}`} position={[-0.35 + k * 0.12, 1.04, 0.12]} rotation={[0, k * 0.5, Math.PI / 2]} material={CARROT}>
+            <coneGeometry args={[0.04, 0.3, 6]} />
+          </mesh>
+        ))}
+        {[0, 1, 2].map((k) => (
+          <mesh key={`on${k}`} geometry={GEO.sphere} position={[0.05 + k * 0.14, 1.06, 0.0 + (k % 2) * 0.1]} scale={[0.06, 0.07, 0.06]} material={ONION} />
+        ))}
+        <group position={[-iw / 2 + 2.2, 0, 0.6]}>
+          <Cyl p={[0, 0.25, 0]} rad={0.32} h={0.5} m={WICKER} />
+          {potatoes.map(([x, z, r], i) => (
+            <mesh key={i} geometry={GEO.ico} position={[x, 0.5 + (i % 3) * 0.04, z]} scale={r} material={POTATO} />
+          ))}
+        </group>
+      </group>
+      {/* 가운데: 그루터기 도마 + 식칼·큰 칼 */}
+      <group position={[-iw * 0.12, base, zc + depth * 0.15]}>
+        <Cyl p={[0, 0.42, 0]} rad={0.42} h={0.84} m={STUMP} />
+        <Box p={[0.12, 1.0, 0.05]} s={[0.3, 0.32, 0.03]} r={[0, 0.4, 0.2]} m={STEEL} />
+        <Box p={[0.3, 1.0, 0.02]} s={[0.24, 0.05, 0.05]} r={[0, 0.4, 0.2]} m={BEAM_W} />
+        <Box p={[-0.15, 1.05, -0.05]} s={[0.05, 0.4, 0.015]} r={[0.15, 0, -0.08]} m={STEEL} />
+        <Box p={[-0.17, 1.33, -0.02]} s={[0.04, 0.18, 0.04]} r={[0.15, 0, -0.08]} m={BEAM_W} />
+      </group>
+      {/* 오른쪽: 연통 후드 + 아궁이 불, 걸린 국자들, 단지·냄비 선반 */}
+      <group position={[iw / 2 - 0.8, base, zc - depth * 0.05]}>
+        <Box p={[0, 0.45, 0]} s={[1.3, 0.9, 1.9]} m={BRICK} />
+        <mesh position={[-0.66, 0.42, 0.2]} rotation={[0, -Math.PI / 2, 0]} material={FIRE}>
+          <planeGeometry args={[0.4, 0.25]} />
+        </mesh>
+        <Cyl p={[0, 0.98, -0.35]} rad={0.32} h={0.18} m={POT} />
+        <Cyl p={[0, 0.98, 0.45]} rad={0.26} h={0.22} m={STEEL} />
+        <Box p={[-0.1, fh - 0.75, 0]} s={[1.5, 0.5, 2.1]} m={BRICK_D} />
+        <Box p={[0, fh - 0.3, 0]} s={[0.5, 0.6, 0.5]} m={BRICK_D} />
+        <Box p={[-0.7, 2.25, 0]} s={[0.04, 0.04, 1.6]} m={IRON} />
+        {range(4).map((k) => (
+          <group key={`ld${k}`} position={[-0.72, 2.25, -0.6 + k * 0.4]}>
+            <Box p={[0, -0.35, 0]} s={[0.02, 0.7, 0.02]} m={IRON} />
+            {k === 2 ? (
+              <Box p={[0, -0.8, 0]} s={[0.02, 0.22, 0.14]} m={STEEL} />
+            ) : (
+              <mesh geometry={GEO.sphere} position={[0, -0.75, 0]} scale={[0.06, 0.05, 0.1]} material={IRON} />
+            )}
+          </group>
+        ))}
+        <Box p={[0.5, 1.75, 0]} s={[0.35, 0.04, 1.9]} c="#4a3626" />
+        {range(4).map((k) => (
+          <Cyl key={`pt${k}`} p={[0.5, 1.88, -0.7 + k * 0.45]} rad={0.12 + (k % 2) * 0.04} h={0.22} m={k % 2 ? JAR : POT} />
+        ))}
+      </group>
+      {/* 갓 전등 3개 (긴 줄) */}
+      {[-0.3, 0.05, 0.35].map((t, i) => (
+        <group key={`pl${i}`} position={[t * iw, ceil - 0.05, zc - depth * 0.15 + i * 0.4]}>
+          <Box p={[0, -0.55, 0]} s={[0.015, 1.1, 0.015]} m={IRON} />
+          <mesh position={[0, -1.12, 0]} material={LAMP_SHADE}>
+            <coneGeometry args={[0.32, 0.16, 16, 1, true]} />
+          </mesh>
+          <mesh position={[0, -1.2, 0]} material={BULB}>
+            <sphereGeometry args={[0.06, 8, 6]} />
+          </mesh>
+        </group>
+      ))}
+      <pointLight position={[0, ceil - 1.2, zc]} color="#ffcf8a" intensity={4} distance={7} decay={1.8} />
+    </group>
+  )
+}
+
+// 큰 접시 위 음식 산더미 (돔 모양으로 쌓음) — kind: dumpling | stick | ball | fried | tempura
+function FoodMound({ p, r = 0.55, kind = 'dumpling', seed = 1 }) {
+  const items = useMemo(() => {
+    const out = []
+    let k = 0
+    const layers = 5
+    for (let l = 0; l < layers; l++) {
+      const lr = r * (1 - l / layers) * 0.92
+      const n = Math.max(1, Math.round((lr * 2 * Math.PI) / (kind === 'stick' ? 0.09 : kind === 'glazed' ? 0.12 : 0.16)))
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + l * 0.37 + seed
+        out.push({ x: Math.cos(a) * lr, z: Math.sin(a) * lr, y: 0.09 + l * (kind === 'stick' ? 0.07 : kind === 'glazed' ? 0.1 : 0.085), a, k: k++ })
+      }
+    }
+    return out
+  }, [r, kind, seed])
+  const m = FOODS[kind]
+  return (
+    <group position={p}>
+      {/* 무늬 접시: 흰 바탕 + 파란 테 */}
+      <Cyl p={[0, 0.03, 0]} rad={r + 0.12} h={0.05} m={BOWL} />
+      <Cyl p={[0, 0.045, 0]} rad={r + 0.14} h={0.03} m={PLATE_RIM} />
+      {items.map(({ x, y, z, a, k }) =>
+        kind === 'stick' || kind === 'glazed' ? (
+          <mesh key={k} position={[x, y + 0.03, z]} rotation={[0, -a, 0.9]} material={m} scale={kind === 'glazed' ? [1.9, 1.3, 1.9] : 1}>
+            <cylinderGeometry args={[0.03, kind === 'glazed' ? 0.022 : 0.03, 0.2, 6]} />
+          </mesh>
+        ) : kind === 'fried' || kind === 'tempura' ? (
+          <mesh key={k} geometry={GEO.ico} position={[x, y, z]} rotation={[a, a * 2, 0]} scale={[0.09, 0.06, 0.11]} material={m} />
+        ) : (
+          <mesh key={k} geometry={GEO.sphere} position={[x, y, z]} scale={kind === 'ball' ? [0.065, 0.06, 0.065] : [0.085, 0.065, 0.08]} material={m} />
+        ),
+      )}
+    </group>
+  )
+}
+
+// 가게 안 진열: 음식 산더미 줄 + 대나무 찜통(김) + 갓 달린 전등 (item.feast)
+function FeastCounter({ w, y, z, seed }) {
+  const kinds = ['glazed', 'dumpling', 'stick', 'ball', 'tempura', 'glazed', 'fried']
+  const n = Math.max(3, Math.min(5, Math.floor((w - 1.6) / 1.25)))
+  return (
+    <group>
+      {range(n).map((i) => (
+        <FoodMound key={i} p={[-((n - 1) * 1.25) / 2 + i * 1.25, y, z + (i % 2) * 0.12]} r={0.5} kind={kinds[(i + seed) % kinds.length]} seed={i + 1} />
+      ))}
+      <group position={[w / 2 - 0.9, y, z - 0.05]}>
+        <Cyl p={[0, 0.17, 0]} rad={0.45} h={0.34} m={BAMBOO} />
+        <Cyl p={[0, 0.5, 0]} rad={0.45} h={0.3} m={BAMBOO} />
+        <Cyl p={[0, 0.69, 0]} rad={0.47} h={0.08} m={BAMBOO} />
+        <Box p={[0, 0.78, 0]} s={[0.3, 0.06, 0.04]} m={IRON} />
+        {[0, 1, 2, 3].map((k) => (
+          <mesh key={k} position={[0.1 * k - 0.1, 1.0 + k * 0.32, 0.05 * k]} scale={[0.25 + k * 0.12, 0.15 + k * 0.05, 0.25 + k * 0.12]} material={STEAM}>
+            <sphereGeometry args={[1, 8, 6]} />
+          </mesh>
+        ))}
+      </group>
+      {[-1, 1].map((sx) => (
+        <group key={sx} position={[sx * w * 0.22, y + 1.75, z - 0.2]}>
+          <Box p={[0, 0.45, 0]} s={[0.02, 0.6, 0.02]} m={IRON} />
+          <mesh position={[0, 0.1, 0]} material={LAMP_SHADE}>
+            <coneGeometry args={[0.42, 0.22, 16, 1, true]} />
+          </mesh>
+          <mesh position={[0, 0.0, 0]} material={BULB}>
+            <sphereGeometry args={[0.08, 10, 8]} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
 
 // 건물 벽색 (붉은 칠·짙은 나무·황토·크림·초록) + 지붕색
 const WALLS = ['#8f2b22', '#5a3a26', '#b88a3e', '#e3d6b8', '#3f5d4c', '#7a2f4a']
@@ -168,17 +415,24 @@ export function JmEatery({ item }) {
     }
     return out
   }, [w, front, seed])
-  const lanterns = Math.max(2, Math.floor(w / 1.7))
+  // (11/26 지민 요청: 등불이 너무 많음) 처마 밑 등은 두 집에 한 집만, 간격도 넓게
+  const lanterns = seed % 2 === 0 ? Math.max(2, Math.floor(w / 2.4)) : 0
   const g1 = base + fh // 1층 천장
   return (
     <group>
       <Box p={[0, base / 2, 0]} s={[w, base, d]} m={STONE} />
       {/* 1층: 옆·뒤 벽 + 천장, 앞면은 트임 (안쪽 깊이 d-1) */}
-      <Box p={[0, base + fh / 2, -0.5]} s={[w, fh, d - 1]} m={DARK} />
-      <mesh position={[0, base + fh * 0.5, front - 1.02]}>
-        <planeGeometry args={[w - 0.5, fh - 0.4]} />
-        <primitive object={INNER_GLOW} attach="material" />
-      </mesh>
+      {item.feast ? (
+        <FeastKitchen w={w} d={d} base={base} fh={fh} front={front} seed={seed} />
+      ) : (
+        <>
+          <Box p={[0, base + fh / 2, -0.5]} s={[w, fh, d - 1]} m={DARK} />
+          <mesh position={[0, base + fh * 0.5, front - 1.02]}>
+            <planeGeometry args={[w - 0.5, fh - 0.4]} />
+            <primitive object={INNER_GLOW} attach="material" />
+          </mesh>
+        </>
+      )}
       {[-1, 1].map((s) => (
         <Box key={s} p={[s * (w / 2 - 0.15), base + fh / 2, front - 0.5]} s={[0.3, fh, 1]} c={wall} />
       ))}
@@ -199,12 +453,46 @@ export function JmEatery({ item }) {
           </mesh>
         ))}
       </group>
-      {range(Math.max(2, Math.floor((w - 2) / 1.6))).map((i, _, arr) => (
-        <group key={`st${i}`} position={[-(arr.length - 1) * 0.8 + i * 1.6, base, front - 0.65]}>
-          <Cyl p={[0, 0.32, 0]} rad={0.2} h={0.06} c="#7a5634" />
-          <Cyl p={[0, 0.15, 0]} rad={0.05} h={0.3} c="#3a2a1c" />
+      {/* 카운터 앞 파란 둥근 의자 (다리 셋) */}
+      {range(Math.max(2, Math.floor((w - 2) / 1.1))).map((i, _, arr) => (
+        <group key={`st${i}`} position={[-(arr.length - 1) * 0.55 + i * 1.1, base, front - 0.7]}>
+          <Cyl p={[0, 0.68, 0]} rad={0.19} h={0.08} m={STOOL_BLUE} />
+          {[0, 1, 2].map((k) => (
+            <Box key={k} p={[Math.cos((k * Math.PI * 2) / 3) * 0.1, 0.32, Math.sin((k * Math.PI * 2) / 3) * 0.1]} s={[0.035, 0.66, 0.035]} r={[Math.sin((k * Math.PI * 2) / 3) * 0.12, 0, -Math.cos((k * Math.PI * 2) / 3) * 0.12]} c="#3a2a1c" />
+          ))}
+          <Box p={[0, 0.25, 0]} s={[0.22, 0.03, 0.03]} c="#3a2a1c" />
         </group>
       ))}
+      {/* 뒤 선반: 붉은 띠 두른 항아리·포갠 접시·젓가락 통 */}
+      <group position={[0, base, front - 2.35]}>
+        <Box p={[0, 1.35, 0]} s={[w - 0.8, 0.06, 0.45]} c="#3a6f6a" />
+        <Box p={[0, 2.2, 0]} s={[w - 0.8, 0.06, 0.45]} c="#3a6f6a" />
+        {range(Math.max(3, Math.floor((w - 1.2) / 0.55))).map((i, _, arr) => {
+          const x = -((arr.length - 1) * 0.55) / 2 + i * 0.55
+          const top = (i + seed) % 3 !== 0
+          return (
+            <group key={`jr${i}`} position={[x, top ? 2.23 : 1.38, 0]}>
+              {(i + seed) % 4 === 1 ? (
+                [0, 1, 2, 3, 4].map((k) => <Cyl key={k} p={[0, 0.03 + k * 0.035, 0]} rad={0.17} h={0.025} m={BOWL} />)
+              ) : (
+                <>
+                  <mesh geometry={GEO.sphere} position={[0, 0.2, 0]} scale={[0.18, 0.21, 0.18]} material={JAR} />
+                  <Cyl p={[0, 0.42, 0]} rad={0.09} h={0.08} m={JAR} />
+                  <Cyl p={[0, 0.24, 0]} rad={0.185} h={0.06} m={JAR_LABEL} />
+                </>
+              )}
+            </group>
+          )
+        })}
+      </group>
+      {/* 초록 칠 기둥 (앞면) */}
+      {range(Math.max(2, Math.round(w / 2.6)) + 1).map((i, _, arr) => (
+        <group key={`gp${i}`} position={[-w / 2 + 0.2 + (i * (w - 0.4)) / (arr.length - 1), base, front + 0.75]}>
+          <Box p={[0, fh / 2, 0]} s={[0.18, fh, 0.18]} m={POST_GREEN} />
+          <Box p={[0, 0.1, 0]} s={[0.28, 0.2, 0.28]} m={STONE} />
+        </group>
+      ))}
+      {item.feast && <FeastCounter w={w} y={base + 1.05} z={front - 1.3} seed={seed} />}
       <group position={[(seed % 2 ? 1 : -1) * (w / 2 - 0.35), base, front + 0.6]}>
         <Cyl p={[0, 0.22, 0]} rad={0.22} h={0.44} c="#8a5a3a" />
         <mesh geometry={GEO.ico} position={[0, 0.7, 0]} scale={0.36}>
@@ -220,10 +508,20 @@ export function JmEatery({ item }) {
         </group>
       )}
       {/* 노렌 */}
+      {/* 붉은 천 차양: 처마 끝에서 늘어진 천 조각 줄 (앞면 전체) + 가운데에 노렌 글자 */}
+      {range(Math.max(4, Math.round(w / 0.75))).map((i, _, arr) => {
+        const pw = (w + 0.2) / arr.length
+        const len = 0.85 + srand(seed * 31 + i) * 0.2
+        return (
+          <mesh key={`aw${i}`} position={[-w / 2 - 0.1 + pw * (i + 0.5), g1 - len / 2 - 0.02, front + 0.95]} rotation={[0.18, 0, 0]} material={i % 5 === 2 ? AWNING_D : AWNING}>
+            <planeGeometry args={[pw - 0.04, len]} />
+          </mesh>
+        )
+      })}
       {item.noren && (
-        <mesh position={[0, g1 - 0.55, front - 0.3]}>
-          <planeGeometry args={[Math.min(w - 1.2, 3.6), 0.9]} />
-          <GlowMaterial glow={0.3} map={getJpSignTexture(item.noren, ['#1e3a5f', '#7a1d12', '#f2ead8', '#2f4a2a'][seed % 4], seed % 4 === 2 ? '#2a1a10' : '#f5f0e6', Math.min(w - 1.2, 3.6) / 0.9)} side={THREE.DoubleSide} />
+        <mesh position={[0, g1 - 0.5, front + 0.97]} rotation={[0.18, 0, 0]}>
+          <planeGeometry args={[Math.min(w - 1.2, 2.4), 0.75]} />
+          <GlowMaterial glow={0.2} map={getJpSignTexture(item.noren, '#c4382b', '#f5ead8', Math.min(w - 1.2, 2.4) / 0.75)} side={THREE.DoubleSide} />
         </mesh>
       )}
       {/* 1층 처마 + 붉은 등 줄 */}
@@ -231,7 +529,7 @@ export function JmEatery({ item }) {
         <meshStandardMaterial color={roofC} flatShading side={THREE.DoubleSide} />
       </mesh>
       {range(lanterns).map((i) => (
-        <Chochin key={i} p={[-w / 2 + 0.6 + (i * (w - 1.2)) / Math.max(1, lanterns - 1), g1 - 0.25, front + 0.9]} white={(i + seed) % 4 === 3} />
+        <Chochin key={i} p={[-w / 2 + 0.6 + (i * (w - 1.2)) / Math.max(1, lanterns - 1), g1 - 0.45, front + 0.35]} white={(i + seed) % 4 === 3} />
       ))}
       {/* 위층 몸통 + 창 띠 + 발코니 */}
       <Box p={[0, g1 + (fh * (floors - 1)) / 2, -0.1]} s={[w - 0.1, fh * (floors - 1), d - 0.2]} c={wall} />
@@ -316,11 +614,11 @@ export function JmEatery({ item }) {
           <Box p={[0, 0, -0.03]} s={[1.8, 2.2, 0.06]} c="#3a2416" />
         </group>
       )}
-      {pastel && range(Math.round(w / 0.6)).map((i) => (
+      {pastel && seed % 2 === 1 && range(Math.round(w / 0.6)).map((i) => (
         <Ball key={`sl${i}`} p={[-w / 2 + 0.3 + i * 0.6, h - roofH + 0.05 - Math.sin((i / Math.round(w / 0.6)) * Math.PI) * 0.25, front + 0.25]} rad={0.07} m={LANTERN_RED} />
       ))}
-      {/* 문 옆 큰 등 한 쌍 */}
-      {[-1, 1].map((s) => (
+      {/* 문 옆 큰 등 한 쌍 (세 집에 한 집) */}
+      {seed % 3 === 0 && [-1, 1].map((s) => (
         <group key={s} position={[s * (w / 2 - 0.45), base, front + 0.25]}>
           <Cyl p={[0, 0.9, 0]} rad={0.04} h={1.8} m={DARK} />
           <Chochin p={[0, 1.55, 0.15]} r={0.34} h={0.85} white={seed % 2 === 1} />
@@ -377,10 +675,14 @@ export function JmTownGate({ item }) {
       <mesh geometry={roof} position={[0, h, 0]}>
         <meshStandardMaterial color="#2e3236" flatShading side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, h - 2.2, 0.27]}>
-        <planeGeometry args={[3.4, 1.2]} />
-        <GlowMaterial glow={0.6} map={getJpSignTexture(text, '#2a1a12', '#f2c94c', 3.4 / 1.2)} side={THREE.DoubleSide} />
-      </mesh>
+      {/* (11/26 점검) 간판: 양면 판 하나라 마을 안쪽에서 보면 글자가 거울처럼 뒤집혀 보였음 → 판 + 앞뒤 따로 글자 */}
+      <Box p={[0, h - 2.2, 0]} s={[3.55, 1.32, 0.5]} c="#2a1a12" />
+      {[1, -1].map((sd) => (
+        <mesh key={`sg${sd}`} position={[0, h - 2.2, sd * 0.27]} rotation={[0, sd > 0 ? 0 : Math.PI, 0]}>
+          <planeGeometry args={[3.4, 1.2]} />
+          <GlowMaterial glow={0.6} map={getJpSignTexture(text, '#2a1a12', '#f2c94c', 3.4 / 1.2)} />
+        </mesh>
+      ))}
       {range(4).map((i) => (
         <Chochin key={i} p={[-w / 2 + 1.6 + (i * (w - 3.2)) / 3, h - 1.75, 0.35]} r={0.3} h={0.6} white={i % 2 === 1} />
       ))}
@@ -1678,7 +1980,535 @@ export function JmCollider({ item }) {
   return <mesh ref={ref} name="camera-blocker" visible={false} geometry={GEO.box} position={[0, h / 2, 0]} scale={[w, h, d]} />
 }
 
+// ── 붉은 등대 모양 석등 (11/26 지민이 보낸 큰길 사진: 계단 위 소나무 옆) ──
+// 돌 받침 → 붉은 기둥(아래가 퍼짐) → 흰 창 등 칸(불빛) → 붉은 처마 지붕 + 보주
+export function JmRedLanternTower() {
+  return (
+    <group>
+      <Box p={[0, 0.2, 0]} s={[1.3, 0.4, 1.3]} m={STONE} />
+      <Box p={[0, 0.5, 0]} s={[1.0, 0.2, 1.0]} m={STONE} />
+      <mesh position={[0, 1.55, 0]}>
+        <cylinderGeometry args={[0.24, 0.42, 1.9, 4, 1, false, Math.PI / 4]} />
+        <meshStandardMaterial color="#c2352a" roughness={0.7} flatShading />
+      </mesh>
+      <Box p={[0, 2.55, 0]} s={[0.95, 0.12, 0.95]} c="#8a241c" />
+      <Box p={[0, 3.0, 0]} s={[0.8, 0.8, 0.8]} c="#c2352a" />
+      {[0, 1, 2, 3].map((k) => (
+        <group key={k} rotation={[0, (k * Math.PI) / 2, 0]}>
+          <mesh position={[0, 3.0, 0.41]}>
+            <planeGeometry args={[0.5, 0.55]} />
+            <meshStandardMaterial color="#fff1d6" emissive="#ffcf7a" emissiveIntensity={1.0} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 3.55, 0]}>
+        <cylinderGeometry args={[0.15, 0.8, 0.4, 4, 1, false, Math.PI / 4]} />
+        <meshStandardMaterial color="#8a241c" roughness={0.7} flatShading />
+      </mesh>
+      <Ball p={[0, 3.88, 0]} rad={0.14} m={BRASS} />
+    </group>
+  )
+}
+
+// ── 마을 입구 마당 집 두 채 (11/26 지민이 보낸 마을 첫 장면 참고) ──
+// 분홍 회벽 집: 벗겨진 자리(푸른 회색), 위 둥근 노란 차양 띠, 둥근 창 달린 초록 아치 문, 마름모 색유리 두 짝 아치 창, 벽의 꽃 부조, 초록 갓 벽등, 화분, 굽은 돌 화단
+export function JmPinkHouse({ item }) {
+  const [w, h, d] = item.size
+  const f = d / 2
+  const flakes = useMemo(() => range(9).map((i) => [(srand(i * 3 + 1) - 0.5) * (w - 1), 1 + srand(i * 5 + 2) * (h - 2.5), 0.4 + srand(i * 7) * 0.9, 0.3 + srand(i * 11) * 0.5]), [w, h])
+  return (
+    <group>
+      <Box p={[0, h / 2, 0]} s={[w, h, d]} c="#d98a80" />
+      {flakes.map(([x, y, a, b], i) => (
+        <mesh key={`fk${i}`} position={[x, y, f + 0.01]} scale={[a, b, 1]}>
+          <circleGeometry args={[1, 7]} />
+          <meshStandardMaterial color={i % 3 ? '#a9b4c2' : '#c9c2b6'} roughness={1} />
+        </mesh>
+      ))}
+      {/* 위 둥근 노란 차양 띠 */}
+      <mesh position={[0, h - 1.0, f + 0.3]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.55, 0.55, w + 0.3, 16, 1, false, 0, Math.PI]} />
+        <meshStandardMaterial color="#e2c36a" roughness={0.8} side={THREE.DoubleSide} />
+      </mesh>
+      <Box p={[0, h - 0.4, 0]} s={[w + 0.3, 0.3, d + 0.3]} c="#c9a55a" />
+      {/* 초록 아치 문 + 둥근 창 */}
+      <group position={[-w * 0.22, 0, f + 0.02]}>
+        <Box p={[0, 1.05, 0]} s={[1.15, 2.1, 0.06]} c="#5f9a6a" />
+        <mesh position={[0, 2.1, 0]}>
+          <circleGeometry args={[0.575, 16, 0, Math.PI]} />
+          <meshStandardMaterial color="#5f9a6a" />
+        </mesh>
+        <mesh position={[0.1, 1.75, 0.04]}>
+          <ringGeometry args={[0.13, 0.19, 16]} />
+          <meshStandardMaterial color="#e8dcc0" />
+        </mesh>
+        <Box p={[0.35, 1.05, 0.05]} s={[0.18, 0.05, 0.05]} m={BRASS} />
+        <Box p={[0, 1.4, -0.01]} s={[1.45, 2.9, 0.04]} c="#b8735f" />
+      </group>
+      {/* 마름모 색유리 두 짝 아치 창 */}
+      {[-0.55, 0.55].map((dx) => (
+        <group key={dx} position={[w * 0.18 + dx, 2.3, f + 0.03]}>
+          {/* (11/26 점검) 유리판이 창틀 앞면과 같은 깊이라 겹쳐 깜빡이며 대각선으로 잘려 보였음 → 앞으로 */}
+          <mesh position={[0, 0, 0.025]}>
+            <planeGeometry args={[0.95, 1.5]} />
+            <meshStandardMaterial map={stainedTexture()} emissiveMap={stainedTexture()} emissive="#ffffff" emissiveIntensity={0.5} />
+          </mesh>
+          <Box p={[0, 0, -0.02]} s={[1.08, 1.62, 0.04]} c="#e8d9b0" />
+        </group>
+      ))}
+      <Box p={[w * 0.18, 1.45, f + 0.12]} s={[2.5, 0.12, 0.25]} c="#e8d9b0" />
+      {/* 반달 창 (차양 밑) */}
+      <mesh position={[-w * 0.05, h - 2.0, f + 0.02]}>
+        <circleGeometry args={[0.6, 16, 0, Math.PI]} />
+        <meshStandardMaterial color="#3a3a44" />
+      </mesh>
+      {/* 벽의 꽃 부조 */}
+      <group position={[-w * 0.4, 1.9, f + 0.05]}>
+        {range(6).map((k) => (
+          <mesh key={k} geometry={GEO.sphere} position={[Math.cos((k * Math.PI) / 3) * 0.32, Math.sin((k * Math.PI) / 3) * 0.32, 0]} scale={[0.22, 0.22, 0.08]}>
+            <meshStandardMaterial color="#efd6a0" />
+          </mesh>
+        ))}
+        <mesh geometry={GEO.sphere} scale={[0.16, 0.16, 0.1]}>
+          <meshStandardMaterial color="#d9a75a" />
+        </mesh>
+        <Box p={[0, -0.85, 0]} s={[0.06, 1.1, 0.04]} c="#8fae7a" />
+        {[-1, 1].map((sx) => (
+          <mesh key={sx} geometry={GEO.sphere} position={[sx * 0.25, -0.9, 0]} rotation={[0, 0, sx * 0.6]} scale={[0.26, 0.1, 0.05]}>
+            <meshStandardMaterial color="#8fae7a" />
+          </mesh>
+        ))}
+      </group>
+      {/* 초록 갓 벽등 3 */}
+      {[-0.3, 0.05, 0.38].map((t, i) => (
+        <group key={`wl${i}`} position={[t * w, h - 2.6, f + 0.05]}>
+          <Box p={[0, 0, 0.2]} s={[0.04, 0.04, 0.4]} m={IRON} />
+          <Box p={[0, -0.3, 0.4]} s={[0.24, 0.36, 0.24]} m={LANTERN_WHITE} />
+          <mesh position={[0, -0.05, 0.4]}>
+            <coneGeometry args={[0.22, 0.2, 4]} />
+            <meshStandardMaterial color="#3f7a5a" />
+          </mesh>
+        </group>
+      ))}
+      {/* 화분 + 굽은 돌 화단 */}
+      {[-0.4, -0.33].map((t, i) => (
+        <group key={`pt${i}`} position={[t * w + i * 0.3, 0, f + 0.5]}>
+          <Cyl p={[0, 0.18, 0]} rad={0.17} h={0.36} c="#b8603e" />
+          <mesh geometry={GEO.ico} position={[0, 0.48, 0]} scale={0.2}>
+            <meshStandardMaterial color="#5f8a3a" flatShading />
+          </mesh>
+        </group>
+      ))}
+      {/* (11/26 점검) 빈 굽은 돌띠만 있어 이상한 돌판처럼 보였음 → 흙 + 풀·꽃을 심은 화단으로 */}
+      <group position={[w * 0.05, 0, f + 1.6]}>
+        <mesh position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[1.3, 0.28, 6, 14, Math.PI * 0.9]} />
+          <meshStandardMaterial color="#b9b2a2" roughness={1} />
+        </mesh>
+        {range(9).map((i) => {
+          const a = (Math.PI * 0.9 * (i + 0.5)) / 9
+          return (
+            <group key={`fb${i}`} position={[Math.cos(a) * 1.3, 0.5, -Math.sin(a) * 1.3]}>
+              <mesh geometry={GEO.ico} scale={[0.26, 0.2, 0.26]}>
+                <meshStandardMaterial color={i % 2 ? '#5f8a3a' : '#4f7a34'} flatShading />
+              </mesh>
+              <mesh geometry={GEO.sphere} position={[0.05, 0.16, 0]} scale={0.07}>
+                <meshStandardMaterial color={['#f2c94c', '#e86a8a', '#f5f0e6'][i % 3]} />
+              </mesh>
+            </group>
+          )
+        })}
+      </group>
+      {/* 지붕 */}
+      <Box p={[0, h + 0.05, 0]} s={[w, 0.1, d]} c="#6a5a4a" />
+    </group>
+  )
+}
+
+// 나무 툇마루 가게: 높은 마루 + 난간, 옆 나무 계단, 처마 밑 세로 간판, 붉은 위층 판
+export function JmVerandaShop({ item }) {
+  const [w, h, d] = item.size
+  const f = d / 2
+  const deck = 1.1
+  return (
+    <group>
+      <Box p={[0, deck / 2, 0]} s={[w, deck, d]} c="#4a3626" />
+      {range(Math.round(w / 0.25)).map((i) => (
+        <Box key={`dp${i}`} p={[-w / 2 + 0.12 + i * 0.25, deck + 0.02, f - 1.2]} s={[0.22, 0.04, 2.4]} c={i % 2 ? '#8a6544' : '#7a5838'} />
+      ))}
+      <Box p={[0, deck + (h - deck) / 2, -1.2]} s={[w, h - deck, d - 2.4]} c="#6b4a30" />
+      <Box p={[0, h - 1.4, f - 2.38]} s={[w - 0.6, 1.6, 0.06]} c="#b03a4a" />
+      <Box p={[0, deck + 1.1, f - 2.38]} s={[w - 1.2, 1.8, 0.04]} m={DARK} />
+      {/* 기둥 + 처마 */}
+      {[-1, 0, 1].map((k) => (
+        <Box key={`po${k}`} p={[k * (w / 2 - 0.2), deck + (h - deck) / 2, f - 0.15]} s={[0.2, h - deck, 0.2]} c="#5a3e28" />
+      ))}
+      <Box p={[0, h + 0.1, f - 1.0]} s={[w + 0.5, 0.15, 2.8]} c="#3e3a36" />
+      {/* 난간 (앞·옆) */}
+      <Box p={[0, deck + 0.95, f - 0.1]} s={[w - 1.6, 0.07, 0.07]} c="#8a6a48" />
+      {range(Math.round((w - 1.6) / 0.22)).map((i) => (
+        <Box key={`rl${i}`} p={[-(w - 1.6) / 2 + i * 0.22, deck + 0.5, f - 0.1]} s={[0.045, 0.9, 0.045]} c="#8a6a48" />
+      ))}
+      {/* 옆 나무 계단 */}
+      {range(4).map((i) => (
+        <Box key={`stp${i}`} p={[w / 2 - 0.6, (deck * (i + 1)) / 4 - 0.05, f + 0.9 - i * 0.28]} s={[1.0, 0.08, 0.3]} c="#7a5838" />
+      ))}
+      {[-1, 1].map((sx) => (
+        <Box key={sx} p={[w / 2 - 0.6 + sx * 0.5, deck / 2, f + 0.5]} s={[0.07, deck + 0.3, 1.2]} r={[0.75, 0, 0]} c="#5a3e28" />
+      ))}
+      {/* 처마 밑 세로 간판 (우리 글자) */}
+      <VerticalSign text="甘味あり" p={[-w * 0.15, h - 1.4, f - 0.05]} h={2.2} bg="#efe4c8" fg="#7a1d12" />
+    </group>
+  )
+}
+
+// ── 장면 골목 입구: 가게 줄을 뚫고 들어가는 둥근 지붕 짧은 터널 (11/26 지민 요청 + 큰길 사진의 골목 입구 참고) ──
+// 큰길 쪽 앞면: 둥근 아치 문틀(두꺼운 띠 + 밝은 테) — 띠 위에 작품 이름을 아치를 따라, 안쪽·바깥쪽 테에 전구 줄
+// 그 뒤로 반원 지붕(골이 진 밝은 판 + 갈비 기둥)이 골목 안으로 depth만큼, 양옆은 회벽 + 아래 돌띠. 안에는 갓 전등과 장면 설명 판
+// item.size [골목 폭(안쪽), 높이, 깊이], item.title, item.sub, item.color(문틀 띠 색). 앞 = +z(큰길 쪽), 터널은 -z로
+function archBandTexture(title, color, ratio) {
+  return canvasTexture(`jmspirit:arch2:${title}:${color}:${ratio.toFixed(2)}`, 1024, 1024, (ctx, w) => {
+    const c = w / 2
+    const rOut = c
+    const rIn = c * ratio
+    ctx.clearRect(0, 0, w, w)
+    ctx.beginPath()
+    ctx.arc(c, c, rOut, Math.PI, 0)
+    ctx.arc(c, c, rIn, 0, Math.PI, true)
+    ctx.closePath()
+    ctx.fillStyle = color
+    ctx.fill()
+    // 바랜 칠·얼룩
+    for (let i = 0; i < 90; i++) {
+      ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,236,210' : '60,30,20'},${0.03 + Math.random() * 0.07})`
+      ctx.beginPath()
+      ctx.arc(Math.random() * w, Math.random() * c, 8 + Math.random() * 36, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // 테 두 줄 (밝은 칠 + 짙은 선)
+    for (const [r, col, lw] of [[rOut - 10, '#f0d9b0', 14], [rOut - 22, '#3a2416', 4], [rIn + 10, '#f0d9b0', 14], [rIn + 22, '#3a2416', 4]]) {
+      ctx.lineWidth = lw
+      ctx.strokeStyle = col
+      ctx.beginPath()
+      ctx.arc(c, c, r, Math.PI, 0)
+      ctx.stroke()
+    }
+    const chars = [...title]
+    const R = (rOut + rIn) / 2
+    const band = rOut - rIn
+    // (11/26) 긴 장면 이름도 띠 안에 들어가게 글자 크기를 줄임 (띠 길이의 82%까지)
+    const fs = Math.min(band * 0.5, (Math.PI * 0.82 * R) / (chars.length * 1.08))
+    const span = Math.min(Math.PI * 0.82, chars.length * (fs * 1.08) / R)
+    ctx.font = `bold ${Math.round(fs)}px ${JP_FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    chars.forEach((ch, i) => {
+      const t = chars.length === 1 ? 0.5 : i / (chars.length - 1)
+      const th = Math.PI / 2 + span / 2 - t * span
+      ctx.save()
+      ctx.translate(c + R * Math.cos(th), c - R * Math.sin(th))
+      ctx.rotate(Math.PI / 2 - th)
+      ctx.fillStyle = '#2a1a10'
+      ctx.fillText(ch, 5, 5)
+      ctx.fillStyle = '#fff3d6'
+      ctx.fillText(ch, 0, 0)
+      ctx.restore()
+    })
+  })
+}
+const ARCH_ROOF = mat('#d9cfb4', { roughness: 0.6, emissive: '#3a3020', emissiveIntensity: 0.25, double: true })
+const ARCH_RIB = mat('#8a7a5e', { roughness: 0.8 })
+const ARCH_TRIM = mat('#f0d9b0', { roughness: 0.8 })
+const BULB_PINK = mat('#ffd0d8', { emissive: '#ff7a9a', emissiveIntensity: 1.3 })
+// 아치 모양으로 뚫린 벽 판 (폭 fw, 높이 fh, 뚫린 곳: 다리 ±R 높이 spring까지 + 위 반원 R). 판이 아치보다 좁으면 아치 곡선 위만 남김
+const ARCH_WALL_CACHE = new Map()
+function archWallGeometry(fw, fh, R, spring, depth) {
+  const key = [fw, fh, R, spring, depth].map((v) => v.toFixed(3)).join(':')
+  if (ARCH_WALL_CACHE.has(key)) return ARCH_WALL_CACHE.get(key)
+  const hw = fw / 2
+  const sh = new THREE.Shape()
+  if (R < hw - 0.01) {
+    sh.moveTo(-hw, 0)
+    sh.lineTo(-hw, fh)
+    sh.lineTo(hw, fh)
+    sh.lineTo(hw, 0)
+    sh.lineTo(R, 0)
+    sh.lineTo(R, spring)
+    sh.absarc(0, spring, R, 0, Math.PI, false)
+    sh.lineTo(-R, 0)
+    sh.lineTo(-hw, 0)
+  } else {
+    const a0 = Math.acos(Math.min(1, hw / R))
+    const yEdge = spring + R * Math.sin(a0)
+    sh.moveTo(-hw, yEdge)
+    sh.lineTo(-hw, fh)
+    sh.lineTo(hw, fh)
+    sh.lineTo(hw, yEdge)
+    sh.absarc(0, spring, R, a0, Math.PI - a0, false)
+  }
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 28 })
+  ARCH_WALL_CACHE.set(key, g)
+  return g
+}
+export function JmAlleyArch({ item }) {
+  const [span, , depth = 5] = item.size
+  const spring = 3.0 // 아치가 휘기 시작하는 높이
+  const r = span / 2 // 안쪽 반지름
+  const band = 0.95 // 문틀 띠 폭
+  const color = item.color ?? '#c9573a'
+  const ratio = r / (r + band)
+  const tex = archBandTexture(item.title ?? '', color, ratio)
+  const geo = useMemo(() => {
+    // 문틀: 바깥(네모 + 위 반원)에서 안쪽(네모 + 위 반원)을 뺀 판, 두께 0.45
+    const R = r + band
+    const sh = new THREE.Shape()
+    sh.moveTo(-R, 0)
+    sh.lineTo(R, 0)
+    sh.lineTo(R, spring)
+    sh.absarc(0, spring, R, 0, Math.PI, false)
+    sh.lineTo(-R, 0)
+    const hole = new THREE.Path()
+    hole.moveTo(-r, 0)
+    hole.lineTo(-r, spring)
+    hole.absarc(0, spring, r, Math.PI, 0, true)
+    hole.lineTo(r, 0)
+    hole.lineTo(-r, 0)
+    sh.holes.push(hole)
+    const frame = new THREE.ExtrudeGeometry(sh, { depth: 0.45, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 1 })
+    const ring = new THREE.RingGeometry(r, R, 48, 1, 0, Math.PI)
+    // 반원 지붕 (안쪽에서도 보이게 양면) — 원통의 위쪽 반
+    // (11/26 지민 요청: 아치 옆에 네모난 벽 상자가 같이 보임 → 터널 몸통 전체를 아치 모양으로)
+    //   다리(곧게) + 위 반원으로 된 두께 0.3 둥근 굴 껍데기를 터널 깊이만큼 밀어 냄 → 밖에서 봐도 안에서 봐도 아치
+    const T = 0.3
+    const vs = new THREE.Shape()
+    vs.moveTo(-(r + T), 0)
+    vs.lineTo(-(r + T), spring)
+    vs.absarc(0, spring, r + T, Math.PI, 0, true)
+    vs.lineTo(r + T, 0)
+    vs.lineTo(r, 0)
+    vs.lineTo(r, spring)
+    vs.absarc(0, spring, r, 0, Math.PI, false)
+    vs.lineTo(-r, 0)
+    vs.lineTo(-(r + T), 0)
+    const vault = new THREE.ExtrudeGeometry(vs, { depth, bevelEnabled: false, curveSegments: 28 })
+    return { frame, ring, vault }
+  }, [r, band, spring, depth])
+  const bulbs = (rad, n) => range(n).map((i) => {
+    const th = (Math.PI * (i + 0.5)) / n
+    return [Math.cos(th) * rad, spring + Math.sin(th) * rad]
+  })
+  const legBulbs = (x) => range(5).map((i) => [x, 0.5 + i * 0.55])
+  return (
+    <group>
+      {/* 앞 문틀 + 띠 글자 */}
+      <mesh geometry={geo.frame} material={mat(color, { roughness: 0.85 })} position={[0, 0, -0.45]} />
+      {/* (11/26) 띠 글자판은 문틀 앞면(+모서리 0.04)보다 앞에 둬야 보임 */}
+      <mesh geometry={geo.ring} position={[0, spring, 0.06]}>
+        <meshStandardMaterial map={tex} transparent alphaTest={0.4} roughness={0.85} />
+      </mesh>
+      {/* 다리 쪽 밝은 띠 (문틀 앞면에 붙은 얇은 칠). 다리 밑·꺾이는 곳에 튀어나오던 네모 받침은 뺌 */}
+      {[-1, 1].map((s) => (
+        <Box key={s} p={[s * (r + band / 2), spring / 2, 0.06]} s={[band * 0.86, spring, 0.02]} m={ARCH_TRIM} />
+      ))}
+      {/* 전구: 아치 안쪽·바깥쪽 테 + 다리 */}
+      {[...bulbs(r + 0.14, 15), ...bulbs(r + band - 0.12, 21), ...legBulbs(-(r + 0.14)), ...legBulbs(r + 0.14)].map(([x, y], i) => (
+        <Ball key={`b${i}`} p={[x, y, 0.1]} rad={0.065} m={i % 3 === 1 ? BULB_PINK : LANTERN_RED} />
+      ))}
+      {/* 둥근 굴 껍데기 (다리 + 반원 지붕 한 덩어리) + 갈비 */}
+      <mesh geometry={geo.vault} material={ARCH_ROOF} position={[0, 0, -0.45 - depth]} />
+      {range(Math.max(2, Math.round(depth / 1.1)) + 1).map((i, _, arr) => {
+        const z = -0.45 - (i * depth) / (arr.length - 1)
+        return (
+          <mesh key={`rb${i}`} position={[0, spring, z]} material={ARCH_RIB}>
+            <torusGeometry args={[r - 0.04, 0.06, 5, 20, Math.PI]} />
+          </mesh>
+        )
+      })}
+      {range(9).map((i) => {
+        const th = (Math.PI * (i + 0.5)) / 9
+        return <Box key={`rl${i}`} p={[Math.cos(th) * (r - 0.04), spring + Math.sin(th) * (r - 0.04), -0.45 - depth / 2]} s={[0.05, 0.05, depth]} r={[0, 0, th]} m={ARCH_RIB} />
+      })}
+      {/* 안쪽 아래 돌띠 */}
+      {[-1, 1].map((s) => (
+        <Box key={`w${s}`} p={[s * (r - 0.02), 0.35, -0.45 - depth / 2]} s={[0.06, 0.7, depth]} m={STONE} />
+      ))}
+      {/* (11/26 지민 요청: 건물 사이에 틈 없이 빽빽하게) item.fill = { w: 가게 사이 틈 폭, h: 가게 높이 }
+           문틀 옆 남는 틈·문틀 위를 건물 몸통으로 꽉 채움 → 건물을 뚫고 들어가는 골목 터널처럼. 위에는 색유리 아치 창 + 작은 발코니 */}
+      {item.fill && (() => {
+        const R = r + band
+        const crown = spring + R
+        const fh = Math.max(crown + 1.6, item.fill.h)
+        const wallC = item.fill.color ?? '#d9b45e'
+        return (
+          <group>
+            {/* (11/26 지민 요청: 아치가 네모난 홈 안에 들어간 것처럼 보임) 건물 벽을 아치 모양으로 뚫린 판 한 장으로
+                 → 붉은 문틀 바로 뒤에서 벽이 아치 테두리를 따라 둥글게 맞닿음 (전엔 벽 앞면 0.4m 뒤에 네모 어깨판이 있어 네모 홈이 생겼음) */}
+            <mesh geometry={archWallGeometry(item.fill.w, fh, R - 0.06, spring, depth + 0.4)} position={[0, 0, -0.45 - depth]}>
+              <meshStandardMaterial color={wallC} roughness={0.9} />
+            </mesh>
+            <Box p={[0, fh - 0.1, -0.45 - depth / 2 + 0.2]} s={[item.fill.w + 0.4, 0.2, depth + 0.8]} c="#3a2416" />
+            <group position={[0, crown + (fh - crown) / 2 + 0.1, 0.24]}>
+              <mesh>
+                <planeGeometry args={[1.3, 1.7]} />
+                <meshStandardMaterial map={stainedTexture()} emissiveMap={stainedTexture()} emissive="#ffffff" emissiveIntensity={0.6} />
+              </mesh>
+              <Box p={[0, 0, -0.03]} s={[1.5, 1.9, 0.06]} c="#3a2416" />
+              {/* 작은 발코니 */}
+              <Box p={[0, -0.95, 0.3]} s={[1.9, 0.1, 0.7]} c="#4a2f1f" />
+              <Box p={[0, -0.45, 0.62]} s={[1.9, 0.06, 0.06]} c="#3f7a6a" />
+              {range(8).map((i) => (
+                <Box key={i} p={[-0.9 + i * (1.8 / 7), -0.68, 0.62]} s={[0.05, 0.5, 0.05]} c="#3f7a6a" />
+              ))}
+            </group>
+          </group>
+        )
+      })()}
+      {/* 안: 갓 전등 + 장면 설명 판 */}
+      <group position={[0, spring + r - 0.1, -0.45 - depth * 0.45]}>
+        <Box p={[0, -0.25, 0]} s={[0.015, 0.5, 0.015]} m={IRON} />
+        <mesh position={[0, -0.55, 0]} material={LAMP_SHADE}>
+          <coneGeometry args={[0.3, 0.16, 14, 1, true]} />
+        </mesh>
+        <mesh position={[0, -0.62, 0]} material={BULB}>
+          <sphereGeometry args={[0.06, 8, 6]} />
+        </mesh>
+      </group>
+      {item.sub && (
+        <group position={[0, spring - 0.15, -0.6]}>
+          <Box p={[0, 0, -0.03]} s={[Math.min(span - 0.3, 3.4) + 0.12, 0.46, 0.05]} c="#3a2416" />
+          <mesh>
+            <planeGeometry args={[Math.min(span - 0.3, 3.4), 0.36]} />
+            <GlowMaterial glow={0.35} map={getJpSignTexture(item.sub, '#efe4c8', '#5a1d12', Math.min(span - 0.3, 3.4) / 0.36)} />
+          </mesh>
+        </group>
+      )}
+    </group>
+  )
+}
+
+
+// ── 다져진 흙길 바닥 (11/26 지민 요청: 큰길 흙바닥이 한 색이라 어색함 → 자연스럽게) ──
+// 무늬(반복): 모래빛 바탕 + 얼룩덜룩한 밝고 어두운 자국 + 사람이 다녀 다져진 길 자국 + 잔돌 + 가는 금
+// 가장자리(반복 없음): 1.5m쯤에 걸쳐 투명하게 흐려져 처마 밑 돌바닥과 자연스럽게 섞임
+// item.size [폭, _, 길이], item.spill(골목 입구 쪽 흙이 번진 자국 여부)
+let dirtTex = null
+function dirtTexture() {
+  if (dirtTex) return dirtTex
+  const N = 512
+  const c = document.createElement('canvas')
+  c.width = c.height = N
+  const x = c.getContext('2d')
+  x.fillStyle = '#c9ad83'
+  x.fillRect(0, 0, N, N)
+  let seed = 77
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const blob = (px, py, r, col) => {
+    for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) {
+      const g = x.createRadialGradient(px + ox, py + oy, 0, px + ox, py + oy, r)
+      g.addColorStop(0, col)
+      g.addColorStop(1, 'rgba(0,0,0,0)')
+      x.fillStyle = g
+      x.beginPath()
+      x.arc(px + ox, py + oy, r, 0, Math.PI * 2)
+      x.fill()
+    }
+  }
+  for (let i = 0; i < 70; i++) blob(rnd() * N, rnd() * N, 30 + rnd() * 90, rnd() < 0.5 ? 'rgba(232,212,170,0.35)' : 'rgba(140,108,72,0.22)')
+  // 다져진 길 자국 (세로로 길게)
+  for (let k = 0; k < 3; k++) {
+    const cx = 80 + rnd() * 350
+    x.strokeStyle = 'rgba(120,92,60,0.10)'
+    x.lineWidth = 26 + rnd() * 20
+    x.beginPath()
+    x.moveTo(cx, -10)
+    x.bezierCurveTo(cx + 30, 170, cx - 30, 340, cx, N + 10)
+    x.stroke()
+  }
+  // 잔돌
+  for (let i = 0; i < 650; i++) {
+    const r = rnd() < 0.85 ? 1 + rnd() * 2 : 3 + rnd() * 4
+    x.fillStyle = ['#8f7a5e', '#a69378', '#6f604c', '#ddc9a2'][Math.floor(rnd() * 4)]
+    x.beginPath()
+    x.ellipse(rnd() * N, rnd() * N, r, r * (0.6 + rnd() * 0.4), rnd() * 3, 0, Math.PI * 2)
+    x.fill()
+  }
+  // 가는 금
+  x.strokeStyle = 'rgba(100,78,52,0.25)'
+  x.lineWidth = 1.5
+  for (let k = 0; k < 9; k++) {
+    let px = rnd() * N
+    let py = rnd() * N
+    x.beginPath()
+    x.moveTo(px, py)
+    for (let s2 = 0; s2 < 5; s2++) {
+      px += (rnd() - 0.5) * 40
+      py += 10 + rnd() * 25
+      x.lineTo(px, py)
+    }
+    x.stroke()
+  }
+  dirtTex = new THREE.CanvasTexture(c)
+  dirtTex.colorSpace = THREE.SRGBColorSpace
+  dirtTex.wrapS = dirtTex.wrapT = THREE.RepeatWrapping
+  dirtTex.anisotropy = 8
+  return dirtTex
+}
+const edgeTexCache = {}
+function edgeFadeTexture(fx, fz) {
+  const key = `${fx.toFixed(2)}:${fz.toFixed(2)}`
+  if (edgeTexCache[key]) return edgeTexCache[key]
+  const N = 256
+  const c = document.createElement('canvas')
+  c.width = c.height = N
+  const x = c.getContext('2d')
+  const img = x.createImageData(N, N)
+  let seed = 5
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const wob = Array.from({ length: 64 }, () => rnd())
+  for (let j = 0; j < N; j++)
+    for (let i = 0; i < N; i++) {
+      const u = i / (N - 1)
+      const v = j / (N - 1)
+      const w1 = wob[Math.floor(v * 63)] * 0.6
+      const w2 = wob[Math.floor(u * 63)] * 0.6
+      const ex = Math.min(u, 1 - u) / Math.max(0.001, fx) - w1 * 0.5
+      const ez = Math.min(v, 1 - v) / Math.max(0.001, fz) - w2 * 0.5
+      const a = Math.max(0, Math.min(1, Math.min(ex, ez)))
+      const k = (j * N + i) * 4
+      const vv = Math.round(255 * a * a * (3 - 2 * a))
+      img.data[k] = img.data[k + 1] = img.data[k + 2] = vv
+      img.data[k + 3] = 255
+    }
+  x.putImageData(img, 0, 0)
+  const t = new THREE.CanvasTexture(c)
+  edgeTexCache[key] = t
+  return t
+}
+export function JmDirtFloor({ item }) {
+  const [w, , d] = item.size
+  const m = useMemo(() => {
+    const map = dirtTexture().clone()
+    map.needsUpdate = true
+    map.repeat.set(w / 6, d / 6)
+    return new THREE.MeshStandardMaterial({
+      map, color: item.tint ?? '#ffffff', alphaMap: edgeFadeTexture((item.fade ?? 1.6) / w, item.fadeEnds === false ? 0.0001 : (item.fade ?? 1.6) / d), transparent: true, depthWrite: false, roughness: 1,
+      polygonOffset: true, polygonOffsetFactor: -4,
+    })
+  }, [w, d, item.fadeEnds, item.tint, item.fade])
+  // 아래 이끼 돌바닥 판(JmFloor) 윗면이 바닥 높이 + 0.07이라 그보다 조금 위에
+  return (
+    <mesh position={[0, item.y ?? 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]} material={m} renderOrder={item.y != null ? -1 : 0} userData={{ noMerge: true }}>
+      <planeGeometry args={[w, d]} />
+    </mesh>
+  )
+}
+
 export const JM_SPIRIT_STYLES = {
+  jmDirtFloor: JmDirtFloor,
+  jmAlleyArch: JmAlleyArch,
+  jmPinkHouse: JmPinkHouse,
+  jmVerandaShop: JmVerandaShop,
+  jmRedLanternTower: JmRedLanternTower,
   jmCollider: JmCollider,
   jmBoilerBasement: JmBoilerBasement,
   jmBasementDoor: JmBasementDoor,
