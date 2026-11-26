@@ -5,6 +5,7 @@ import { USE_SERVER } from '../../api/session.js'
 import { usePlayerCharacter } from '../Player/characterStore.js'
 import { connectRealtime, disconnectRealtime, sendCharacter, sendMove, useRealtimeStore } from './realtimeStore.js'
 import RemotePlayer from './RemotePlayer.jsx'
+import { isWavingInPhoto } from '../Map/styles/bk_photoRoom.js'
 
 // [지민] 멀티 접속: 내 위치를 서버로 보내고, 같은 맵의 다른 사람들을 <Physics> 안에 배치
 
@@ -48,12 +49,13 @@ export default function MultiplayerPresence({ playerRef }) {
     const v = player.currLinVel
     const s = v ? Math.hypot(v.x, v.z) : 0
     const g = player.isOnGround
+    const waving = isWavingInPhoto()
     const prev = last.current
     const changed =
-      !prev || Math.abs(prev.x - x) + Math.abs(prev.y - y) + Math.abs(prev.z - z) > 0.02 || Math.abs(prev.r - r) > 0.02 || prev.g !== g || Math.abs(prev.s - s) > 0.1
+      !prev || prev.waving !== waving || Math.abs(prev.x - x) + Math.abs(prev.y - y) + Math.abs(prev.z - z) > 0.02 || Math.abs(prev.r - r) > 0.02 || prev.g !== g || Math.abs(prev.s - s) > 0.1
     if (!changed && sinceSent.current < IDLE_RESEND) return
-    sendMove([x, y, z], r, s, g)
-    last.current = { x, y, z, r, s, g }
+    sendMove([x, y, z], r, s, g, waving)
+    last.current = { x, y, z, r, s, g, waving }
     sinceSent.current = 0
   })
 

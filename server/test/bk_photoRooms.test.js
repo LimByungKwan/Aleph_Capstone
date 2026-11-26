@@ -114,6 +114,27 @@ describe('커플 포토존 인생네컷 멀티', () => {
     await bye(a, b)
   })
 
+  test('손 흔들기 포즈를 두 화면에 보내고, 준비가 풀리면 포즈를 지움', async () => {
+    const { a, b, sa, sb } = await pair()
+    try {
+      a.send({ t: 'photo.ready', roomId: sa.roomId, ready: true, spot: 'a', pose: 'wave' })
+      const waving = { t: 'photo.ready_state', a: true, b: false, poses: { a: 'wave' } }
+      assert.deepEqual(await Promise.all([a.next('photo.ready_state'), b.next('photo.ready_state')]), [waving, waving])
+
+      a.send({ t: 'photo.ready', roomId: sa.roomId, ready: false })
+      assert.deepEqual(await a.next('photo.ready_state'), { t: 'photo.ready_state', a: false, b: false })
+      b.send({ t: 'photo.ready', roomId: sb.roomId, ready: true, spot: 'b', pose: 'idle' })
+      assert.deepEqual(await a.next('photo.ready_state'), { t: 'photo.ready_state', a: false, b: true })
+      assert.equal(a.inbox.some((msg) => msg.t === 'photo.shot'), false)
+
+      a.send({ t: 'photo.ready', roomId: sa.roomId, ready: true, spot: 'a', pose: 'wave' })
+      assert.deepEqual(await a.next('photo.ready_state'), { ...waving, b: true })
+      assert.deepEqual(await a.next('photo.shot'), { t: 'photo.shot', index: 0, total: 4 })
+    } finally {
+      await bye(a, b)
+    }
+  })
+
   test('같은 발자국은 대기하고 반대 색으로 바꿔 서면 양쪽 촬영 시작', async () => {
     const { a, b, sa, sb } = await pair()
     a.send({ t: 'photo.ready', roomId: sa.roomId, ready: true, spot: 'b' })
