@@ -36,7 +36,7 @@ const pressed = (...codes) => codes.some((c) => keys.has(c))
 export default function HjDrivableCar({ item }) {
   const [bx, bz] = item.position
   const ref = useRef(null)
-  const st = useRef({ x: bx, z: bz, yaw: item.yaw ?? 0, speed: 0, steer: 0 })
+  const st = useRef({ x: bx, z: bz, yaw: item.yaw ?? 0, speed: 0, steer: 0, idle: 0 })
   const vehicle = useMemo(() => ({ id: item.id, label: '자동차', stopped: true, w: 1.8, l: 4.4, reach: 1.4, seats: [], driving: true }), [item.id])
   useEffect(() => registerVehicle(vehicle), [vehicle])
 
@@ -47,10 +47,15 @@ export default function HjDrivableCar({ item }) {
     // [멀티] 다른 사람이 운전 중이면 그 사람 화면이 보낸 위치를 따라가요 (그동안은 못 타요)
     const remote = driving ? null : remoteVehicle(item.id)
     if (remote) {
-      s.x = remote.p[0]
-      s.z = remote.p[2]
-      s.yaw = remote.r
+      // 0.1초마다 오는 위치로 툭툭 튀지 않게 부드럽게 따라가요 (멀리 떨어져 있으면 바로 옮김)
+      const far = Math.hypot(remote.p[0] - s.x, remote.p[2] - s.z) > 8
+      const k = far ? 1 : 1 - Math.exp(-12 * dt)
+      s.x += (remote.p[0] - s.x) * k
+      s.z += (remote.p[2] - s.z) * k
+      const dyaw = Math.atan2(Math.sin(remote.r - s.yaw), Math.cos(remote.r - s.yaw))
+      s.yaw += dyaw * k
       s.speed = 0
+      s.idle = 0
       if (ref.current) {
         ref.current.position.set(s.x - bx, CAR_Y, s.z - bz)
         ref.current.rotation.y = s.yaw
@@ -59,6 +64,16 @@ export default function HjDrivableCar({ item }) {
       updateVehicleWorld(vehicle, ref.current, SEAT, [-1.7, 0.1, -0.3])
       return
     }
+    // 아무도 안 탄 채 40초가 지나면 처음 자리로 천천히 돌아가요 (새로 들어온 사람·새로고침한 화면과 자리가 같아지게)
+    if (!driving) {
+      s.idle += dt
+      if (s.idle > 40 && (Math.abs(s.x - bx) > 0.05 || Math.abs(s.z - bz) > 0.05)) {
+        s.x = bx
+        s.z = bz
+        s.yaw = item.yaw ?? 0
+        s.speed = 0
+      }
+    } else s.idle = 0
     const up = driving && pressed('KeyW', 'ArrowUp')
     const down = driving && pressed('KeyS', 'ArrowDown')
     const left = driving && pressed('KeyA', 'ArrowLeft')
@@ -78,7 +93,7 @@ export default function HjDrivableCar({ item }) {
     const fx = Math.sin(yaw) * AXLE
     const fz = Math.cos(yaw) * AXLE
     if (Math.abs(s.speed) > 0.001) {
-      if (circleFree(x + fx, z + fz, R) && circleFree(x - fx, z - fz, R)) {
+      if (circleFree(x + fx, z + fz, R, item.id) && circleFree(x - fx, z - fz, R, item.id)) {
         s.x = x
         s.z = z
         s.yaw = yaw

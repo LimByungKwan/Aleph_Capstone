@@ -34,7 +34,7 @@ import SettingsPanel from './SettingsPanel.jsx'
 import SeasonalWeather from './Map/SeasonalWeather.jsx'
 import ShaderWarmup from './ShaderWarmup.jsx'
 import PointLightLock from './PointLightLock.jsx'
-import { southGroundExtension } from './data/mapData.js'
+import { layout, southGroundExtension } from './data/mapData.js'
 import PalaceTourPresence from '../components/movieZone/PalaceTourPresence.jsx'
 import MultiplayerPresence from './multiplayer/MultiplayerPresence.jsx' // [지민] 멀티 접속
 import { WarpZones } from './Map/styles/bk_warpZones.jsx' // [병관] 구역 워프존
@@ -208,6 +208,24 @@ function SkyAmbient() {
 const overviewSouthLimit = southGroundExtension
   ? Math.max(126, southGroundExtension.position[1] + southGroundExtension.size[2] / 2)
   : 126
+// [혜진] 둘러보기에서 끌어 볼 수 있는 범위: 맵 땅 전체(+ 맵 끝 밖으로 넓힌 땅 opensBoundary)까지
+const overviewBounds = (() => {
+  const [gw, gd] = layout.ground.size
+  const [gcx, gcz] = layout.ground.center ?? [0, 0]
+  let x0 = Math.min(-126, gcx - gw / 2)
+  let x1 = Math.max(126, gcx + gw / 2)
+  let z0 = Math.min(-126, gcz - gd / 2)
+  let z1 = Math.max(overviewSouthLimit, gcz + gd / 2)
+  for (const item of layout.roads.filter((r) => r.opensBoundary)) {
+    const [x, z] = item.position
+    const [w, , d] = item.size
+    x0 = Math.min(x0, x - w / 2)
+    x1 = Math.max(x1, x + w / 2)
+    z0 = Math.min(z0, z - d / 2)
+    z1 = Math.max(z1, z + d / 2)
+  }
+  return { x0, x1, z0, z1 }
+})()
 
 function OverviewCamera() {
   const camera = useThree((state) => state.camera)
@@ -286,8 +304,8 @@ function OverviewCamera() {
         const controls = controlsRef.current
         if (!controls) return
         const { target } = controls
-        const x = THREE.MathUtils.clamp(target.x, -126, 126)
-        const z = THREE.MathUtils.clamp(target.z, -126, overviewSouthLimit)
+        const x = THREE.MathUtils.clamp(target.x, overviewBounds.x0, overviewBounds.x1)
+        const z = THREE.MathUtils.clamp(target.z, overviewBounds.z0, overviewBounds.z1)
         camera.position.x += x - target.x
         camera.position.z += z - target.z
         target.x = x
