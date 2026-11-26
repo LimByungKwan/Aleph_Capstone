@@ -6,6 +6,7 @@ import { GWANGHWAMUN, GYEONGHOERU, GYEONGHOERU_DECK_Y, HALLS, HYANGWON, HYANGWON
 import { registerPalaceSeat, registerWarpSpot } from './palaceSeating.js'
 import { useHallDoors } from './hjSync.js'
 import { GS_SHIFT, zoneToWorld } from './hjAreas.js'
+import { BALLOON_PAD, ENTRANCE, RIDES, SAFARI_BOARD, parkToWorld } from '../../game/Map/styles/hj/themeParkLayout.js'
 
 // [3. 개발 > 프론트엔드] 경복궁 관람 안내판 (혜진 영화·드라마 구역)
 // 광화문 앞 안내판을 누르면 목록이 뜨고, 고른 전각 앞으로 바로 옮겨 줘요 (PalaceGuideMenu.jsx).
@@ -94,10 +95,22 @@ export const GYEONGSEONG_STOPS = palace
     ]
   : []
 
+// 해월 드림파크 (경복궁 동쪽 놀이공원)
+const pk = (px, pz) => parkToWorld(px, pz, 1.4)
+export const PARK_STOPS = [
+  { id: 'pk_gate', name: '드림파크 입구', note: '매표소·꽃밭·주차장', pos: pk(ENTRANCE.gateX + 4, ENTRANCE.gateZ) },
+  { id: 'pk_wheel', name: '관람차', note: '곤돌라 12개가 천천히 돌아요', pos: pk(RIDES.wheel.x + 9, RIDES.wheel.z - 12) },
+  { id: 'pk_carousel', name: '회전목마', note: '줄무늬 천막 · 오르내리는 목마', pos: pk(RIDES.carousel.x, RIDES.carousel.z - 9) },
+  { id: 'pk_swing', name: '회전그네', note: '돌면 의자가 바깥으로 날아올라요', pos: pk(RIDES.swing.x + 12, RIDES.swing.z + 10) },
+  { id: 'pk_balloon', name: '열기구 마당', note: '내려앉으면 E로 타기', pos: pk(BALLOON_PAD.x + 4, BALLOON_PAD.z - 3) },
+  { id: 'pk_safari', name: '사파리 정류장', note: '지프가 서면 E로 타기', pos: pk(SAFARI_BOARD.x, SAFARI_BOARD.z - 1.5) },
+]
+
 // 안내판 위쪽 탭: 구역마다 갈 곳 목록
 export const GUIDE_AREAS = [
   { id: 'palace', name: '🏯 경복궁', stops: GUIDE_STOPS },
   { id: 'gyeongseong', name: '🚃 경성거리', stops: GYEONGSEONG_STOPS },
+  { id: 'park', name: '🎡 드림파크', stops: PARK_STOPS },
 ]
 
 // ── 전각 문 열고 닫기 ─────────────────────────────

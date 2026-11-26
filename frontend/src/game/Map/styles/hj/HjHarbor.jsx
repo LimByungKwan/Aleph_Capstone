@@ -72,12 +72,17 @@ export function HjSea({ item }) {
   }, [w, d, deep, item.shoreEdge])
   const base = useMemo(() => Float32Array.from(geometry.attributes.position.array), [geometry])
 
-  useFrame(({ clock }) => {
+  const seaCenter = useMemo(() => new THREE.Vector3(), [])
+  useFrame(({ clock, camera }) => {
     const pos = ref.current?.geometry.attributes.position
     if (!pos) return
     const t = clock.elapsedTime
-    // [3. 개발 > 렌더링 최적화] 물결의 속도는 유지하고 메시 갱신은 초당 최대 30회로 제한해요.
-    const tick = Math.floor(t * 30)
+    // [7. 유지보수 > 성능] 바다 근처(가장자리에서 60m 안)에 있을 때만 물결을 움직여요. 멀리서는 잔잔해 보여도 티가 안 나요
+    ref.current.getWorldPosition(seaCenter)
+    const reach = Math.max(w, d) / 2 + 60
+    if (seaCenter.distanceToSquared(camera.position) > reach * reach) return
+    // [3. 개발 > 렌더링 최적화] 물결의 속도는 유지하고 메시 갱신은 초당 최대 20회로 제한해요.
+    const tick = Math.floor(t * 20)
     if (lastWaveTick.current === tick) return
     lastWaveTick.current = tick
     for (let i = 0; i < pos.count; i += 1) {

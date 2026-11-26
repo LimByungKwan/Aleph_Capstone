@@ -47,9 +47,16 @@ export function updateVehicleWorld(vehicle, object, localSeats, exitLocal) {
   })
   tmp.set(exitLocal[0], exitLocal[1], exitLocal[2])
   object.localToWorld(tmp)
-  vehicle.exit = [tmp.x, tmp.y, tmp.z]
-  const inv = object.matrixWorld.clone().invert()
-  vehicle.toLocal = (x, y, z) => tmp.set(x, y, z).applyMatrix4(inv)
+  // 매 프레임 새 배열·행렬·함수를 만들면 메모리 청소(GC) 때 화면이 끊겨요 → 한 번 만들어 두고 값만 바꿔요
+  if (!vehicle.exit) vehicle.exit = [0, 0, 0]
+  vehicle.exit[0] = tmp.x
+  vehicle.exit[1] = tmp.y
+  vehicle.exit[2] = tmp.z
+  if (!vehicle._inv) {
+    vehicle._inv = new THREE.Matrix4()
+    vehicle.toLocal = (x, y, z) => tmp.set(x, y, z).applyMatrix4(vehicle._inv)
+  }
+  vehicle._inv.copy(object.matrixWorld).invert()
 }
 
 // 플레이어 근처에서 탈 수 있는(정차한) 차량 찾기
