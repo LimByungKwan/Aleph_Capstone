@@ -192,8 +192,8 @@ export async function confirmMfaEnroll(factorId, code) {
   useSessionStore.setState({ mfa: MFA_OK, mfaPrompt: null })
 }
 
-export async function signup({ email, password, name }) {
-  const data = await request('/auth/signup', { method: 'POST', body: { email, password, name } })
+export async function signup({ email, password, name, signupCode }) {
+  const data = await request('/auth/signup', { method: 'POST', body: { email, password, name, signupCode } })
   if (data.needsEmailConfirm) throw new ApiError('EMAIL_NOT_CONFIRMED', '메일함에서 인증 링크를 누른 뒤 로그인해 주세요.')
   setLoggedIn(data.session, data.user)
   return data.user
