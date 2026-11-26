@@ -48,7 +48,7 @@ function unlock() {
     master = ctx.createGain()
     master.gain.value = muted ? 0 : MASTER_VOLUME
     master.connect(ctx.destination)
-    // 1초짜리 하얀 소음 (발소리·물소리·셔터의 재료)
+    // 1초짜리 하얀 소음 (발소리·스탬프·셔터의 재료)
     noiseBuffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
     const data = noiseBuffer.getChannelData(0)
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
@@ -124,26 +124,4 @@ export const sfx = {
     noise({ duration: 0.04, gain: 0.35, filter: 'highpass', freq: 2500 })
     noise({ start: 0.07, duration: 0.05, gain: 0.25, filter: 'highpass', freq: 1800 })
   },
-}
-
-// ── 분수 물소리 (계속 흐르는 소리, 거리에 따라 크기만 바뀜) ─────────
-let water = null
-export function setWaterLevel(level) {
-  if (!ctx || ctx.state !== 'running') return
-  if (!water) {
-    const src = ctx.createBufferSource()
-    src.buffer = noiseBuffer
-    src.loop = true
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'bandpass'
-    lp.frequency.value = 1400
-    lp.Q.value = 0.6
-    const g = ctx.createGain()
-    g.gain.value = 0
-    src.connect(lp).connect(g).connect(master)
-    src.start()
-    water = { gain: g, filter: lp }
-  }
-  water.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, level)) * 0.22, ctx.currentTime, 0.3)
-  water.filter.frequency.setTargetAtTime(1200 + Math.random() * 400, ctx.currentTime, 0.4) // 살짝 출렁이게
 }

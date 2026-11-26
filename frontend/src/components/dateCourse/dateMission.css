@@ -247,6 +247,7 @@
 .date-mural-header h2 { margin: 0; font: 700 clamp(15px, 3vw, 20px) var(--ui-serif); }
 .date-mural-frame { position: absolute; inset: 16% 9% 22%; border: 2px dashed #ffe5ef; border-radius: 13px; box-shadow: 0 0 0 100vmax #160b1954; pointer-events: none; }
 .date-mural-frame[data-ready="true"] { border: 2px solid #a2ffce; }
+.date-mural-stick { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: 29%; z-index: 1; cursor: default; }
 .date-mural-controls { bottom: max(10px, env(safe-area-inset-bottom)); display: grid; gap: 5px; text-align: center; padding: 7px 8px; }
 .date-mural-controls p { margin: 0; font-size: 12px; }
 .date-mural-controls ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px 9px; list-style: none; padding: 0; margin: 0; font-size: 11px; color: #ffe4b5; }

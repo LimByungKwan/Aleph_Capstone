@@ -45,7 +45,9 @@ function validMove(msg) {
   const [x, y, z] = p
   if (Math.abs(x) > MAP_LIMIT || Math.abs(z) > MAP_LIMIT || y < -100 || y > 300) return null
   if (!Number.isFinite(r) || !Number.isFinite(s) || s < 0 || s > 30) return null
-  return [round(x), round(y), round(z), round(r, 3), round(s), msg.g ? 1 : 0]
+  const state = [round(x), round(y), round(z), round(r, 3), round(s), msg.g ? 1 : 0]
+  if (typeof msg.waving === 'boolean') state.push(msg.waving ? 1 : 0)
+  return state
 }
 
 /** 다른 사람에게 보여 줄 정보만 (이메일·역할·DB id는 보내지 않음) */
@@ -97,8 +99,31 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     if (typeof token !== 'string' || !token) return { name: '손님', userId: null }
     const { data, error } = await supabase.anon().auth.getUser(token)
     if (error || !data?.user) return { name: '손님', userId: null } // 만료된 토큰이면 손님으로 (접속 자체는 허용)
-    const { data: profile } = await supabase.asUser(token).from('profiles').select('display_name').eq('id', data.user.id).maybeSingle()
+    const db = supabase.asUser(token)
+    const [{ data: profile }, session] = await Promise.all([
+      db.from('profiles').select('display_name').eq('id', data.user.id).maybeSingle(),
+      Promise.resolve().then(() => db.rpc('session_ok')).catch(() => null),
+    ])
+    // 다른 기기에서 로그인해서 끊긴 토큰 → 접속 거절 (화면은 이 코드를 보고 로그아웃 안내). 확인 자체가 실패하면 막지 않음(API가 막음)
+    if (!session?.error && session?.data === false) return { name: '손님', userId: null, replaced: true }
     return { name: profile?.display_name || '순례객', userId: data.user.id }
+  }
+
+  // 계정당 멀티 접속 1개: 같은 계정의 다른 연결을 끊음
+  //   4001 = 다른 기기에서 로그인해서 이 로그인이 끊김 (화면: 로그아웃 + 안내)
+  //   4002 = 같은 로그인으로 다른 탭·창이 접속함 (화면: 다시 연결하지 않음 — 다시 붙으면 서로 끊는 반복이 생김)
+  const CLOSE_REPLACED = 4001
+  const CLOSE_ELSEWHERE = 4002
+  function closeUser(userId, code, reason, except = null) {
+    if (!userId) return 0 // 손님은 계정이 없어서 제한하지 않음
+    let n = 0
+    for (const [ws, peer] of peers) {
+      if (ws !== except && peer.userId === userId) {
+        ws.close(code, reason)
+        n++
+      }
+    }
+    return n
   }
 
   wss.on('connection', (ws, req) => {
@@ -143,12 +168,15 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       if (msg.t === 'hello' && !peer.ready && !peer.identifying) {
         peer.identifying = true
         try {
-          Object.assign(peer, await identify(msg.token))
+          const { replaced, ...who } = await identify(msg.token)
+          if (replaced) return ws.close(CLOSE_REPLACED, 'session replaced')
+          Object.assign(peer, who)
         } catch (error) {
           console.warn('[realtime] 토큰 확인 실패 → 손님으로 접속', error?.message)
         }
         if (typeof msg.characterId === 'string' && CHARACTER_RE.test(msg.characterId)) peer.characterId = msg.characterId
         if (ws.readyState !== ws.OPEN) return
+        closeUser(peer.userId, CLOSE_ELSEWHERE, 'opened elsewhere', ws) // 새 연결 우선 (로그인 정책과 같은 방향)
         clearTimeout(helloTimer)
         peer.ready = true
         const others = [...peers.values()].filter((p) => p !== peer && p.ready).map(publicPeer)
@@ -221,6 +249,8 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     photo,
     /** 지금 접속 중인 사람 수 (테스트·로그용) */
     count: () => [...peers.values()].filter((p) => p.ready).length,
+    /** 다른 기기에서 로그인했을 때 app.js가 부름 → 그 계정의 기존 연결을 바로 끊음 (끊은 연결 수) */
+    kickUser: (userId) => closeUser(userId, CLOSE_REPLACED, 'session replaced'),
     close: () => {
       tarot.close()
       photo.close()

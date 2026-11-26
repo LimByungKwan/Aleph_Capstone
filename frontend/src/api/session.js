@@ -45,6 +45,9 @@ export const useSessionStore = create(() => ({
   user: saved?.user ?? null,
   session: saved?.session ?? null,
   loginPrompt: null,
+  // 관리자 2단계 인증: { enrolled, ok, required } (서버 /me·로그인 응답). mfaPrompt가 있으면 6자리 코드 창이 뜸
+  mfa: null,
+  mfaPrompt: null,
 }))
 
 /**
@@ -67,8 +70,28 @@ function setLoggedIn(session, user) {
 }
 
 export function logout() {
+  // 서버에 "이 기기 로그인 끝"을 알림 → 이 토큰과 앞서 끊긴 옛 토큰이 다시 쓰이지 않게 (기다리지 않음, 실패해도 화면은 로그아웃)
+  const token = useSessionStore.getState().session?.accessToken
+  if (USE_SERVER && token) {
+    fetch(`${API_URL}/auth/logout`, { method: 'POST', headers: { authorization: `Bearer ${token}` } }).catch(() => {})
+  }
   save(null)
-  useSessionStore.setState({ user: null, session: null })
+  useSessionStore.setState({ user: null, session: null, mfa: null, mfaPrompt: null })
+}
+
+// 계정당 로그인 1곳 (새 로그인 우선): 같은 계정으로 다른 기기에서 로그인하면 서버가 SESSION_REPLACED를 돌려줌
+// → 이 기기는 로그아웃하고 이유를 로그인 창으로 알림 (모르는 사이에 다른 사람이 로그인했다면 여기서 알아챌 수 있음)
+// 서버에 로그아웃을 다시 알리지 않는 이유: 기록은 이미 새 기기 것이라 바꿀 게 없음
+export const SESSION_REPLACED_PROMPT = {
+  title: '다른 기기에서 로그인했어요',
+  reason: '같은 계정은 한 곳에서만 쓸 수 있어서 이 기기는 로그아웃됐어요. 내가 한 게 아니라면 다시 로그인한 뒤 비밀번호를 바꿔 주세요.',
+}
+export function handleSessionReplaced() {
+  // 같은 브라우저의 다른 탭이 방금 새로 로그인해서 저장해 둔 값은 지우지 않음 (끊긴 게 저장된 그 토큰일 때만 지움)
+  const mine = useSessionStore.getState().session?.accessToken
+  const stored = loadSaved()
+  if (!stored || stored.session.accessToken === mine) save(null)
+  useSessionStore.setState({ user: null, session: null, mfa: null, mfaPrompt: null, loginPrompt: SESSION_REPLACED_PROMPT })
 }
 
 async function request(path, { method = 'GET', body, token } = {}) {
@@ -119,6 +142,10 @@ export async function authRequest(path, options = {}) {
   try {
     return await request(path, { ...options, token: useSessionStore.getState().session?.accessToken })
   } catch (error) {
+    // 끊긴 로그인은 토큰을 새로 받아도 session_id가 같아서 계속 거절됨 → refresh 없이 바로 로그아웃
+    if (error.code === 'SESSION_REPLACED') handleSessionReplaced()
+    // 2단계 인증을 등록한 관리자가 코드 없이 관리자 기능을 부름 → 코드 창
+    if (error.code === 'MFA_REQUIRED') openMfaPrompt()
     if (error.code !== 'UNAUTHORIZED') throw error
     await refresh()
     return request(path, { ...options, token: useSessionStore.getState().session?.accessToken })
@@ -129,9 +156,40 @@ export async function authRequest(path, options = {}) {
 export const publicRequest = (path) => request(path)
 
 export async function login({ email, password }) {
-  const { session, user } = await request('/auth/login', { method: 'POST', body: { email, password } })
+  const { session, user, mfa = null } = await request('/auth/login', { method: 'POST', body: { email, password } })
   setLoggedIn(session, user)
+  // 2단계 인증을 등록한 관리자: 비밀번호 다음에 6자리 코드 창 (닫으면 순례객 기능만 됨)
+  useSessionStore.setState({ mfa, mfaPrompt: mfa?.required ? MFA_PROMPT : null })
   return user
+}
+
+// ── 관리자 2단계 인증 (TOTP) — 서버 /auth/mfa/* (server/src/app.js) ──
+const MFA_PROMPT = { reason: '이 관리자 계정은 2단계 인증을 켜 두었어요. 인증 앱에 보이는 6자리를 넣어 주세요.' }
+export function openMfaPrompt() {
+  useSessionStore.setState({ mfaPrompt: MFA_PROMPT })
+}
+export function closeMfaPrompt() {
+  useSessionStore.setState({ mfaPrompt: null })
+}
+const MFA_OK = { enrolled: true, ok: true, required: false }
+
+/** 로그인 2단계: 코드가 맞으면 aal2 토큰으로 바꿔 끼움 */
+export async function verifyMfa(code) {
+  const { session } = await authRequest('/auth/mfa/verify', { method: 'POST', body: { code } })
+  setLoggedIn(session)
+  useSessionStore.setState({ mfa: MFA_OK, mfaPrompt: null })
+}
+
+/** 등록 시작 (관리자만): { factorId, qrCode(data URI), secret } */
+export function startMfaEnroll() {
+  return authRequest('/auth/mfa/enroll', { method: 'POST' })
+}
+
+/** 등록 마무리: 앱에 뜬 코드로 확인 → 등록 완료 + 이번 로그인은 바로 aal2 */
+export async function confirmMfaEnroll(factorId, code) {
+  const { session } = await authRequest('/auth/mfa/enroll/verify', { method: 'POST', body: { factorId, code } })
+  setLoggedIn(session)
+  useSessionStore.setState({ mfa: MFA_OK, mfaPrompt: null })
 }
 
 export async function signup({ email, password, name }) {
@@ -162,11 +220,12 @@ export function wakeServer() {
 export async function refreshUser() {
   if (!USE_SERVER || !useSessionStore.getState().session) return
   try {
-    const { user } = await authRequest('/me')
+    const { user, mfa = null } = await authRequest('/me')
     const { session } = useSessionStore.getState()
     if (!session) return
     save({ session, user })
-    useSessionStore.setState({ user })
+    // 새로고침했는데 코드를 아직 안 넣은 관리자(aal1)는 코드 창을 다시 띄움
+    useSessionStore.setState({ user, mfa, ...(mfa?.required ? { mfaPrompt: MFA_PROMPT } : {}) })
   } catch {
     // 서버가 잠들어 있거나 네트워크 문제 → 다음 접속 때 다시 시도
   }

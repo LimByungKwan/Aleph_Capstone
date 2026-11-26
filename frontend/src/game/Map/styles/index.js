@@ -30,6 +30,7 @@ import { BdayCafe, PopupStore, Stage } from './kpop.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { SgStudio } from './sg_studio.jsx'
 import { SgCheer } from './sg_cheer.jsx'
+import { SgFanNpc } from './sg_fanNpc.jsx'
 import { SG_AUDITION_STYLES } from './sg_audition.jsx'
 import { SG_DOME_STYLES } from './sg_dome.jsx'
 import { SG_DOME_SHOW_STYLES } from './sg_domeShow.jsx'
@@ -100,6 +101,7 @@ export const STYLES = {
   artistLounge: FilmingAlleyShop,
   soundStudio: SgStudio,
   cheerSpot: SgCheer, // 응원봉 리듬 게임 (sg_cheer.jsx)
+  fanWaver: SgFanNpc, // 팬 문화 거리의 손 흔드는 팬 (sg_fanNpc.jsx)
   ...SG_AUDITION_STYLES, // 썬그레이 오디션 세트·게이트·파일런 (sg_audition.jsx)
   ...SG_DOME_STYLES, // 잠실 주경기장 느낌 돔 (sg_dome.jsx, Codex 작성)
   ...SG_DOME_SHOW_STYLES, // 돔 바닥선 서치라이트·밤 폭죽 (sg_domeShow.jsx)

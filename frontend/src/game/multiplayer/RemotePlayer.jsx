@@ -1,11 +1,20 @@
-import { Component, Suspense, useEffect, useMemo, useRef } from 'react'
+import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html, useGLTF } from '@react-three/drei'
+import { CapsuleCollider, RigidBody, useBeforePhysicsStep, useFilterContactPair, useRapier } from '@react-three/rapier'
 import { AnimationMixer, LoopOnce, LoopRepeat, MathUtils } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import characters from '@shared/characters.json'
-import { PLAYER_RUN_SPEED, PLAYER_WALK_SPEED } from '../config.js'
+import {
+  PLAYER_CAPSULE_HALF_HEIGHT,
+  PLAYER_CAPSULE_RADIUS,
+  PLAYER_RUN_SPEED,
+  PLAYER_SPEED_BOOST,
+  PLAYER_WALK_SPEED,
+} from '../config.js'
 import { labelLayer } from '../labelLayer.js'
+import { isWavingInPhoto } from '../Map/styles/bk_photoRoom.js'
+import { createWavePose } from '../Player/wavePose.js'
 import { useRealtimeStore } from './realtimeStore.js'
 import { useRemoteSeats } from '../../components/movieZone/hjSync.js' // [혜진] 다른 사람이 앉아 있으면 앉은 자세로
 
@@ -17,6 +26,9 @@ import { useRemoteSeats } from '../../components/movieZone/hjSync.js' // [혜진
 const FOLLOW = 12 // 클수록 빨리 따라감
 const TELEPORT = 8 // m 이상 차이 나면 바로 이동
 const CLIPS = ['Idle', 'Walk', 'Run', 'Jump']
+const CAPSULE_ARGS = [PLAYER_CAPSULE_HALF_HEIGHT, PLAYER_CAPSULE_RADIUS]
+const CONTACT_PREDICTION = 0.2 // 마주 달릴 때 다음 물리 스텝의 접촉을 미리 계산
+const REMOTE_BODY_DATA = { ecctrl: { excludeRay: true } } // 지면 및 차량 바퀴 레이캐스트에서 제외
 
 function shortestAngle(from, to) {
   return from + (((to - from + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI
@@ -25,7 +37,7 @@ function shortestAngle(from, to) {
 function Placeholder() {
   return (
     <mesh position={[0, -0.2, 0]}>
-      <capsuleGeometry args={[0.3, 1, 8, 16]} />
+      <capsuleGeometry args={[PLAYER_CAPSULE_RADIUS, PLAYER_CAPSULE_HALF_HEIGHT * 2, 8, 16]} />
       <meshStandardMaterial color="#8a9bb0" />
     </mesh>
   )
@@ -54,6 +66,7 @@ function RemoteModel({ id, character }) {
     return object
   }, [scene])
   const mixer = useMemo(() => new AnimationMixer(model), [model])
+  const wave = useMemo(() => createWavePose(model, character.id), [model, character.id])
   const actions = useRef(null)
   const weight = useRef({ Idle: 1, Walk: 0, Run: 0, Jump: 0 })
   const airborne = useRef(false)
@@ -84,7 +97,7 @@ function RemoteModel({ id, character }) {
     }
   }, [animations, mixer, model])
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const current = actions.current
     const state = useRealtimeStore.getState().peers[id]?.state
     if (!current || !state) return
@@ -110,67 +123,111 @@ function RemoteModel({ id, character }) {
       weight.current[name] = MathUtils.damp(weight.current[name], target[name], 10, dt)
       current[name].setEffectiveWeight(weight.current[name])
     }
-    // 걸음 속도에 맞춰 발 움직임 빠르기 조절 (미끄러지듯 걷지 않게)
-    current.Walk?.setEffectiveTimeScale(Math.max(speed, 0.3) / character.gaitSpeed.Walk)
-    current.Run?.setEffectiveTimeScale(Math.max(speed, 0.3) / character.gaitSpeed.Run)
+    // 내 캐릭터(CharacterModel)와 같게: 이동은 빠르지만 다리는 원래 속도의 박자로 (11/26 SG, 혜진님 확인)
+    current.Walk?.setEffectiveTimeScale(Math.max(speed / PLAYER_SPEED_BOOST, 0.3) / character.gaitSpeed.Walk)
+    current.Run?.setEffectiveTimeScale(Math.max(speed / PLAYER_SPEED_BOOST, 0.3) / character.gaitSpeed.Run)
+    wave?.reset()
     mixer.update(dt)
+    const waving = state.length > 6 ? state[6] === 1 : isWavingInPhoto(id)
+    wave?.updatePhoto(waving, clock.elapsedTime, dt)
   })
 
   // 내 캐릭터와 같은 기준: 받은 위치는 캡슐 중심(땅에서 1m 위)
   return <primitive object={model} position={[0, -1, 0]} dispose={null} />
 }
 
-export default function RemotePlayer({ id, name, characterId }) {
+export default function RemotePlayer({ id, name, characterId, playerRef }) {
+  const { rapier } = useRapier()
+  const body = useRef(null)
   const group = useRef(null)
-  const placed = useRef(false)
+  const [initialPose] = useState(() => {
+    const [x, y, z, yaw] = useRealtimeStore.getState().peers[id]?.state ?? [0, 0, 0, 0]
+    return { position: [x, y, z], rotation: [0, yaw, 0] }
+  })
+  const teleported = useRef(false)
   const character = characters.find((c) => c.id === characterId) ?? characters[0]
+
+  useFilterContactPair((_, __, first, second) => {
+    const remote = body.current?.handle
+    if (first !== remote && second !== remote) return null
+    // 원격 캐릭터는 내 캐릭터에만 물리 힘을 가함 (탈것 등에는 영향 없음).
+    const other = first === remote ? second : first
+    return other === playerRef.current?.body.handle ? rapier.SolverFlags.COMPUTE_IMPULSE : rapier.SolverFlags.EMPTY
+  })
+
+  useBeforePhysicsStep((world) => {
+    const rigidBody = body.current
+    const state = useRealtimeStore.getState().peers[id]?.state
+    if (!rigidBody || !state) return
+    const [x, y, z] = state
+    const position = rigidBody.translation()
+    if (Math.abs(position.x - x) + Math.abs(position.y - y) + Math.abs(position.z - z) > TELEPORT) {
+      const destination = { x, y, z }
+      rigidBody.setTranslation(destination, true)
+      rigidBody.setNextKinematicTranslation(destination)
+      teleported.current = true
+      return
+    }
+    rigidBody.setNextKinematicTranslation({
+      x: MathUtils.damp(position.x, x, FOLLOW, world.timestep),
+      y: MathUtils.damp(position.y, y, FOLLOW, world.timestep),
+      z: MathUtils.damp(position.z, z, FOLLOW, world.timestep),
+    })
+  })
 
   useFrame((_, delta) => {
     const g = group.current
     const state = useRealtimeStore.getState().peers[id]?.state
     if (!g || !state) return
-    const [x, y, z, yaw] = state
-    const dt = Math.min(delta, 0.1)
-    const far = Math.abs(g.position.x - x) + Math.abs(g.position.z - z) > TELEPORT
-    if (!placed.current || far) {
-      g.position.set(x, y, z)
-      g.rotation.y = yaw
-      placed.current = true
-      return
-    }
-    g.position.x = MathUtils.damp(g.position.x, x, FOLLOW, dt)
-    g.position.y = MathUtils.damp(g.position.y, y, FOLLOW, dt)
-    g.position.z = MathUtils.damp(g.position.z, z, FOLLOW, dt)
     // [혜진] 앉아 있으면 자리 방향을 바라봄
     const sit = useRemoteSeats.getState().seats[id]
-    const faceYaw = sit && Number.isFinite(sit.r) ? sit.r : yaw
-    g.rotation.y = MathUtils.damp(g.rotation.y, shortestAngle(g.rotation.y, faceYaw), FOLLOW, dt)
+    const faceYaw = sit && Number.isFinite(sit.r) ? sit.r : state[3]
+    g.rotation.y = teleported.current
+      ? faceYaw
+      : MathUtils.damp(g.rotation.y, shortestAngle(g.rotation.y, faceYaw), FOLLOW, Math.min(delta, 0.1))
+    teleported.current = false
   })
 
   return (
-    <group ref={group} name={`remote-player-${id}`}>
-      <ModelBoundary key={character.id}>
-        <Suspense fallback={<Placeholder />}>
-          <RemoteModel id={id} character={character} />
-        </Suspense>
-      </ModelBoundary>
-      {/* 머리 위 이름표 (다른 이름표들과 같은 HTML 층에 그림) */}
-      <Html portal={labelLayer} position={[0, 1.05, 0]} center style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '2px 8px',
-            borderRadius: 999,
-            background: 'rgba(255, 255, 255, 0.88)',
-            color: '#3b3128',
-            fontSize: 12,
-            fontWeight: 600,
-            whiteSpace: 'nowrap',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-          }}
-        >
-          {name}
-        </div>
-      </Html>
-    </group>
+    <RigidBody
+      ref={body}
+      type="kinematicPosition"
+      colliders={false}
+      position={initialPose.position}
+      softCcdPrediction={CONTACT_PREDICTION}
+      userData={REMOTE_BODY_DATA}
+      name={`remote-player-${id}`}
+    >
+      <CapsuleCollider
+        ref={(collider) => collider?.setActiveHooks(rapier.ActiveHooks.FILTER_CONTACT_PAIRS)}
+        args={CAPSULE_ARGS}
+        friction={0}
+        frictionCombineRule={rapier.CoefficientCombineRule.Multiply}
+      />
+      <group ref={group} rotation={initialPose.rotation}>
+        <ModelBoundary key={character.id}>
+          <Suspense fallback={<Placeholder />}>
+            <RemoteModel id={id} character={character} />
+          </Suspense>
+        </ModelBoundary>
+        {/* 머리 위 이름표 (다른 이름표들과 같은 HTML 층에 그림) */}
+        <Html portal={labelLayer} position={[0, 1.05, 0]} center style={{ pointerEvents: 'none' }}>
+          <div
+            style={{
+              padding: '2px 8px',
+              borderRadius: 999,
+              background: 'rgba(255, 255, 255, 0.88)',
+              color: '#3b3128',
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+            }}
+          >
+            {name}
+          </div>
+        </Html>
+      </group>
+    </RigidBody>
   )
 }

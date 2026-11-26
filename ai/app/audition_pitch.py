@@ -14,6 +14,7 @@ import math
 import os
 import urllib.request
 from functools import lru_cache
+from pathlib import Path
 
 import librosa
 import numpy as np
@@ -29,8 +30,14 @@ CRACK_SEC = 0.06  # 이 시간 이상 이어질 때 삑사리
 MIN_VOICED_RATIO = 0.5  # 음표 구간의 절반 이상 소리가 있어야 부른 것으로 봄
 
 
+# 기준 멜로디 원본은 프론트 public/audition/ 하나뿐. 서버는 저장소의 그 파일을 디스크에서 바로 읽음
+# (Render도 저장소 전체를 받아 두므로 places.py가 shared/places.json을 읽는 것과 같은 방식)
+# 11/26: Vercel 주소로 받아 오던 방식이 배포 서버에서 503 → 네트워크·환경변수 없이 읽게 바꿈
+MELODY_DIR = Path(__file__).resolve().parents[2] / "frontend" / "public" / "audition"
+
+
 def _melody_base_url() -> str:
-    # 기준 멜로디 원본은 프론트 public/audition/ 하나뿐. 배포 때 Vercel 주소로 바꿈
+    # 저장소 파일이 없을 때(ai/ 폴더만 따로 배포 등)만 쓰는 예비 경로
     return os.environ.get("AUDITION_MELODY_URL", "http://localhost:5173/audition").rstrip("/")
 
 
@@ -53,9 +60,13 @@ def check_melody(notes: list) -> list[dict]:
 
 @lru_cache(maxsize=16)  # 곡을 고치면 서버를 다시 켜야 반영됨 (실패는 캐시되지 않음)
 def load_melody(song_id: str) -> tuple:
-    # song_id는 호출 전에 허용 목록으로 검사됨 → 임의 주소로 요청이 가지 않음
-    with urllib.request.urlopen(f"{_melody_base_url()}/{song_id}.json", timeout=5) as res:
-        data = json.load(res)
+    # song_id는 호출 전에 허용 목록으로 검사됨 → 임의 경로·주소로 가지 않음
+    local = MELODY_DIR / f"{song_id}.json"
+    if local.is_file():
+        data = json.loads(local.read_text(encoding="utf-8"))
+    else:
+        with urllib.request.urlopen(f"{_melody_base_url()}/{song_id}.json", timeout=5) as res:
+            data = json.load(res)
     return tuple(check_melody(data.get("notes")))
 
 

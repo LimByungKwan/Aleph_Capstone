@@ -4,8 +4,10 @@ import { useGLTF } from '@react-three/drei'
 import { AnimationMixer, LoopOnce, LoopRepeat, MathUtils, Quaternion, Vector3 } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { useGameStore } from '../../store/gameStore.js'
-import { PLAYER_RUN_SPEED, PLAYER_WALK_SPEED } from '../config.js'
+import { PLAYER_RUN_SPEED, PLAYER_SPEED_BOOST, PLAYER_WALK_SPEED } from '../config.js'
+import { isWavingInPhoto } from '../Map/styles/bk_photoRoom.js'
 import { usePlayerCharacter } from './characterStore.js'
+import { createWavePose } from './wavePose.js'
 
 function Placeholder() {
   return <mesh castShadow>
@@ -51,6 +53,7 @@ function AnimatedCharacter({ character, playerRef, palaceSeat }) {
     return object
   }, [scene, animations])
   const mixer = useMemo(() => new AnimationMixer(model), [model])
+  const wave = useMemo(() => createWavePose(model, character.id), [model, character.id])
   const actions = useRef(null)
   const speed = useRef(0)
   const phase = useRef(0)
@@ -83,7 +86,7 @@ function AnimatedCharacter({ character, playerRef, palaceSeat }) {
     }
   }, [animations, mixer, model])
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const current = actions.current
     const player = playerRef.current
     if (!current || !player) return
@@ -122,14 +125,17 @@ function AnimatedCharacter({ character, playerRef, palaceSeat }) {
     // Keep the same leading foot when blending between clips with different lengths.
     const walkDuration = current.Walk.getClip().duration
     const runDuration = current.Run.getClip().duration
-    const walkRate = velocity / character.gaitSpeed.Walk / walkDuration
-    const runRate = velocity / character.gaitSpeed.Run / runDuration
+    // 이동은 PLAYER_SPEED_BOOST배 빠르지만 다리는 원래 속도의 박자로 (발이 미끄러져 보이는 대신 동작이 차분)
+    const walkRate = velocity / PLAYER_SPEED_BOOST / character.gaitSpeed.Walk / walkDuration
+    const runRate = velocity / PLAYER_SPEED_BOOST / character.gaitSpeed.Run / runDuration
     phase.current = (phase.current + dt * MathUtils.lerp(walkRate, runRate, run)) % 1
     current.Walk.setEffectiveTimeScale(0)
     current.Run.setEffectiveTimeScale(0)
     current.Walk.time = phase.current * walkDuration
     current.Run.time = phase.current * runDuration
+    wave?.reset()
     mixer.update(dt)
+    wave?.updatePhoto(isWavingInPhoto(), clock.elapsedTime, dt)
   })
 
   // ecctrl's floating capsule rests 1m above the ground (.5 + .3 + .2).

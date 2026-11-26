@@ -10,12 +10,8 @@ import { useGameStore } from '../../store/gameStore.js'
 import { updatePalaceSeating, usePalaceSeatStore } from '../../components/movieZone/palaceSeating.js'
 import { usePalaceTour } from '../../components/movieZone/palaceTourStore.js'
 import { useSpecialAccess } from '../../components/movieZone/specialAccessStore.js'
-import { PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
+import { PLAYER_CAPSULE_HALF_HEIGHT, PLAYER_CAPSULE_RADIUS, PLAYER_JUMP_SPEED, PLAYER_RUN_SPEED, PLAYER_WALK_SPEED, RESPAWN_Y } from '../config.js'
 import CharacterModel from './CharacterModel.jsx'
-
-// 캐릭터 몸 크기 (지름 0.6m, 키 약 1.6m)
-const CAPSULE_RADIUS = 0.3
-const CAPSULE_HALF_HEIGHT = 0.5
 
 // hub.json의 playerStart [x, z] 위, 1.5m 높이에서 떨어지며 시작
 const [START_X, START_Z] = layout.playerStart
@@ -84,8 +80,8 @@ export default function Player({ playerRef, showModel = true }) {
       ref={playerRef}
       name="player"
       position={PLAYER_SPAWN}
-      capsuleRadius={CAPSULE_RADIUS}
-      capsuleHalfHeight={CAPSULE_HALF_HEIGHT}
+      capsuleRadius={PLAYER_CAPSULE_RADIUS}
+      capsuleHalfHeight={PLAYER_CAPSULE_HALF_HEIGHT}
       maxWalkVel={PLAYER_WALK_SPEED}
       maxRunVel={PLAYER_RUN_SPEED}
       jumpVel={PLAYER_JUMP_SPEED}

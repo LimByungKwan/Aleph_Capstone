@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { API_URL, USE_SERVER, useSessionStore } from '../../api/session.js'
+import { API_URL, USE_SERVER, handleSessionReplaced, useSessionStore } from '../../api/session.js'
 
 // [지민] 멀티 접속 연결 관리 — 서버(server/src/realtime.js)와 WebSocket으로 위치를 주고받음
 // - 서버 모드(VITE_API_URL)에서만 켜짐. mock 모드는 혼자 플레이(예전 그대로)
@@ -86,9 +86,14 @@ function open() {
       // 모르는 메시지는 무시
     }
   }
-  socket.onclose = () => {
+  socket.onclose = (event) => {
     if (ws === socket) ws = null
     useRealtimeStore.setState({ status: 'off', selfId: null, peers: {} })
+    // 계정당 멀티 접속 1개 (server/src/realtime.js)
+    //   4001: 다른 기기에서 같은 계정으로 로그인 → 이 기기는 로그아웃 + 안내, 아래에서 손님으로 다시 연결
+    //   4002: 같은 로그인으로 다른 탭·창이 접속 → 다시 붙지 않음 (다시 붙으면 두 탭이 서로 끊는 반복)
+    if (event?.code === 4001 && useSessionStore.getState().session) handleSessionReplaced()
+    if (event?.code === 4002) return
     if (!wanted) return
     clearTimeout(retryTimer)
     retryTimer = setTimeout(open, retryMs)
@@ -115,8 +120,8 @@ function sendRaw(msg) {
 }
 
 /** 내 위치 보내기 (MultiplayerPresence가 0.1초마다 부름) */
-export function sendMove(p, r, s, g) {
-  sendRaw({ t: 'move', p, r, s, g })
+export function sendMove(p, r, s, g, waving) {
+  sendRaw({ t: 'move', p, r, s, g, waving })
 }
 
 /** [병관] 데이트 코스 멀티 메시지 보내기 (tarot.* · photo.* · lift.* · episode.* 만) */

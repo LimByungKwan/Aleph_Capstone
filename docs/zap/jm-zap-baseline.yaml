@@ -1,4 +1,4 @@
-# SceneWalk 수동(baseline) 점검 — 공격 요청 없음 (activeScan 잡 없음)
+# SceneWalk 수동(baseline) 점검 (11/26: 새 API 3개 추가) — 공격 요청 없음 (activeScan 잡 없음)
 # 둘러보기(spider, 최대 2분) + GET 요청 몇 개 → 오가는 응답만 수동 검사 → 보고서
 env:
   contexts:
@@ -37,6 +37,12 @@ jobs:
         method: GET
       - url: "https://scenewalk-api.onrender.com/shops/shop_hj_snack/promo"
         method: GET
+      - url: "https://scenewalk-api.onrender.com/auth/logout"
+        method: POST
+      - url: "https://scenewalk-api.onrender.com/auth/mfa/verify"
+        method: POST
+      - url: "https://scenewalk-api.onrender.com/auth/mfa/enroll"
+        method: POST
       - url: "https://scenewalk-api.onrender.com/no-such-path"
         method: GET
   - type: passiveScan-wait

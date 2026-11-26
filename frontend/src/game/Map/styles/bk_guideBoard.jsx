@@ -3,8 +3,10 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
+import { layout } from '../../data/mapData.js'
 import { GEO, mat } from './kit.jsx'
 import { DATE_MISSIONS, mapPoint, useDateMission } from './bk_dateMission.js'
+import { dateMapBounds, drawDateMapBase } from './bk_dateMapPlan.js'
 
 // 데이트 코스 안내판 (담당: 병관) — 영화·드라마 구역 "경복궁 관람길" 안내판과 같은 역할
 // 데이트 코스 입구 안쪽에 서 있는 나무 안내판. 누르거나 앞에서 E → 데이트 코스 지도(DateMission.jsx의 DateMap)
@@ -15,53 +17,124 @@ const H = 1.6
 const NEAR = 3
 const WOOD = mat('#8b5e3c')
 const ROOF = mat('#be185d')
+const PAPER = '#fffaf0'
+const INK = '#5c2340'
+const PIN = '#9d174d'
+const FONT = '"Malgun Gothic", "Apple SD Gothic Neo", sans-serif'
+const BOARD_WIDTH = 704
+const BOARD_HEIGHT = 512
+const MAP_WIDTH = 660
+const MAP_SCALE = MAP_WIDTH / dateMapBounds.height
+const MAP = { x: 22, y: 76, w: MAP_WIDTH, h: dateMapBounds.width * MAP_SCALE }
+const guideBoardPosition = layout.props.find(({ id }) => id === 'BK/date_guide_board')?.position
 
-// 안내판 그림: 제목 + 구역 모양 + 미션 위치 점 (캔버스로 직접 그림)
-function boardTexture() {
-  const c = document.createElement('canvas')
-  c.width = 704
-  c.height = 512
-  const g = c.getContext('2d')
-  g.fillStyle = '#fff8f1'
-  g.fillRect(0, 0, c.width, c.height)
-  g.strokeStyle = '#f9a8d4'
-  g.lineWidth = 14
-  g.strokeRect(7, 7, c.width - 14, c.height - 14)
-  g.fillStyle = '#9d174d'
-  g.font = 'bold 46px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif'
+// 세로로 긴 구역 지도를 시계 방향으로 돌려 가로 안내판에 맞춥니다.
+function toBoard([x, z]) {
+  return [MAP.x + MAP.w - (z - dateMapBounds.top) * MAP_SCALE, MAP.y + (x - dateMapBounds.left) * MAP_SCALE]
+}
+
+function missionPin(g, x, y, number, radius) {
+  g.beginPath()
+  g.arc(x, y, radius, 0, Math.PI * 2)
+  g.fillStyle = PIN
+  g.fill()
+  g.strokeStyle = PAPER
+  g.lineWidth = 2.5
+  g.stroke()
+  g.fillStyle = '#fff'
+  g.font = `bold ${radius + 3}px ${FONT}`
   g.textAlign = 'center'
-  g.fillText('💕 데이트 코스 안내', c.width / 2, 72)
-  // 구역 지도 (가로로 눕혀 그림: 왼쪽 = 입구)
-  const box = { x: 70, y: 110, w: 564, h: 300 }
-  g.fillStyle = '#e8f2dc'
-  g.fillRect(box.x, box.y, box.w, box.h)
-  g.fillStyle = '#cfe3b8'
-  g.fillRect(box.x + box.w * 0.5, box.y, box.w * 0.5, box.h)
-  const toBoard = ([x, z]) => [box.x + ((40 - z) / 160) * box.w, box.y + ((x - 45) / 80) * box.h]
-  g.font = '30px "Segoe UI Emoji", "Apple Color Emoji", sans-serif'
   g.textBaseline = 'middle'
-  for (const m of DATE_MISSIONS) {
-    const [x, y] = toBoard(mapPoint(m))
-    g.fillStyle = '#ffffff'
+  g.fillText(number, x, y + 0.5)
+}
+
+function createGuideBoardCanvas() {
+  const canvas = document.createElement('canvas')
+  canvas.width = BOARD_WIDTH * 2
+  canvas.height = BOARD_HEIGHT * 2
+  const g = canvas.getContext('2d')
+  g.scale(2, 2)
+  g.fillStyle = PAPER
+  g.fillRect(0, 0, BOARD_WIDTH, BOARD_HEIGHT)
+  g.strokeStyle = '#c77d99'
+  g.lineWidth = 6
+  g.strokeRect(3, 3, BOARD_WIDTH - 6, BOARD_HEIGHT - 6)
+  g.fillStyle = INK
+  g.font = `bold 38px ${FONT}`
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.fillText('데이트 코스 안내', BOARD_WIDTH / 2, 41)
+
+  g.beginPath()
+  g.roundRect(MAP.x, MAP.y, MAP.w, MAP.h, 8)
+  g.save()
+  g.clip()
+  g.translate(MAP.x + MAP.w, MAP.y)
+  g.rotate(Math.PI / 2)
+  g.scale(MAP_SCALE, MAP_SCALE)
+  g.imageSmoothingQuality = 'high'
+  drawDateMapBase(g)
+  g.restore()
+  g.strokeStyle = '#8b9a7c'
+  g.lineWidth = 2
+  g.stroke()
+
+  DATE_MISSIONS.forEach((mission, index) => {
+    const [x, y] = toBoard(mapPoint(mission))
+    missionPin(g, x, y, index + 1, 13)
+  })
+
+  if (guideBoardPosition) {
+    const [x, y] = toBoard(guideBoardPosition)
+    g.fillStyle = '#254448'
     g.beginPath()
-    g.arc(x, y, 22, 0, Math.PI * 2)
+    g.arc(x, y, 6, 0, Math.PI * 2)
     g.fill()
-    g.strokeStyle = '#f472b6'
-    g.lineWidth = 4
+    g.strokeStyle = PAPER
+    g.lineWidth = 2.5
     g.stroke()
-    g.fillStyle = '#000'
-    g.fillText(m.icon, x, y + 2)
+    g.beginPath()
+    g.roundRect(x + 10, y - 12, 78, 24, 5)
+    g.fill()
+    g.fillStyle = PAPER
+    g.font = `bold 14px ${FONT}`
+    g.fillText('현재 위치', x + 49, y)
   }
-  g.fillStyle = '#6b5a45'
-  g.font = '26px "Malgun Gothic", sans-serif'
-  g.fillText('안내판을 눌러 지도 보기 · 미션 7곳', c.width / 2, 462)
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  return tex
+
+  g.beginPath()
+  g.roundRect(MAP.x + MAP.w - 67, MAP.y + 12, 54, 26, 5)
+  g.fillStyle = PAPER
+  g.fill()
+  g.fillStyle = '#254448'
+  g.font = `bold 15px ${FONT}`
+  g.fillText('북 →', MAP.x + MAP.w - 40, MAP.y + 25)
+
+  DATE_MISSIONS.forEach(({ short }, index) => {
+    const x = 37 + (index % 4) * 164
+    const y = index < 4 ? 446 : 471
+    missionPin(g, x, y, index + 1, 9)
+    g.fillStyle = INK
+    g.font = `bold 17px ${FONT}`
+    g.textAlign = 'left'
+    g.fillText(short, x + 15, y, 142)
+  })
+  g.fillStyle = '#654839'
+  g.font = `bold 16px ${FONT}`
+  g.textAlign = 'center'
+  g.fillText('안내판을 눌러 확대 지도 보기', BOARD_WIDTH / 2, 494)
+
+  return canvas
 }
 
 export function GuideBoard() {
-  const board = useMemo(() => new THREE.MeshStandardMaterial({ map: boardTexture(), roughness: 0.8 }), [])
+  const anisotropy = useThree(({ gl }) => Math.min(gl.capabilities.getMaxAnisotropy(), 8))
+  const texture = useMemo(() => {
+    const map = new THREE.CanvasTexture(createGuideBoardCanvas())
+    map.colorSpace = THREE.SRGBColorSpace
+    map.anisotropy = anisotropy
+    return map
+  }, [anisotropy])
+  useEffect(() => () => texture.dispose(), [texture])
   const open = () => useDateMission.getState().openMap()
   return (
     <group>
@@ -71,13 +144,14 @@ export function GuideBoard() {
       <mesh geometry={GEO.box} material={WOOD} position={[0, 1.55, -0.03]} scale={[W + 0.2, H + 0.2, 0.06]} />
       <mesh
         geometry={GEO.plane}
-        material={board}
         position={[0, 1.55, 0.005]}
         scale={[W, H, 1]}
         onClick={(e) => (e.stopPropagation(), open())}
         onPointerOver={() => (document.body.style.cursor = 'pointer')}
         onPointerOut={() => (document.body.style.cursor = '')}
-      />
+      >
+        <meshStandardMaterial map={texture} roughness={0.8} />
+      </mesh>
       <mesh geometry={GEO.box} material={ROOF} position={[0, 2.5, 0]} rotation={[0.25, 0, 0]} scale={[W + 0.5, 0.08, 0.6]} />
       <BoardInteraction onOpen={open} />
     </group>

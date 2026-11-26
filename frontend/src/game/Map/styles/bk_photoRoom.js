@@ -5,16 +5,27 @@ import { onTarotMessage, sendTarot } from '../../multiplayer/realtimeStore.js'
 // 서버: server/src/bk_photoRooms.js (멀티) / 혼자 찍기는 이 파일이 서버 대신 컷 신호를 냄
 // 화면·3D: bk_photoBooth.jsx
 //
-// phase: 'idle' | 'gather'(하트 앞 발자국에 서기) | 'shooting'(4컷, 카메라는 삼각대 자리) | 'done'(네컷 완성)
+// phase: 'idle' | 'gather'(발자국에 서서 포즈를 고르고 준비) | 'shooting'(4컷) | 'done'(네컷 완성)
 // shot: { index, at } 지금 컷 (at = 신호 받은 시각, 화면이 3·2·1 뒤 찍음) / shots: 찍은 컷 이미지(data URL)
 
 export const SHOTS = 4
 export const SHOT_GAP_MS = 4500 // 서버(bk_photoRooms.js shotGapMs)와 같게
 export const COUNTDOWN_MS = 3000
 
-const initial = { invite: null, outgoing: null, room: null, solo: false, phase: 'idle', ready: { a: false, b: false }, sameSpot: false, shot: null, shots: [], result: null, notice: null }
+const initial = {
+  invite: null, outgoing: null, room: null, solo: false, phase: 'idle',
+  spot: null, pose: 'idle', confirmed: false, ready: { a: false, b: false }, poses: {}, sameSpot: false,
+  shot: null, shots: [], result: null, notice: null,
+}
 
 export const usePhotoRoom = create(() => ({ ...initial }))
+
+export function isWavingInPhoto(peerId) {
+  const { phase, room, spot, pose, poses } = usePhotoRoom.getState()
+  if (!room || (phase !== 'gather' && phase !== 'shooting')) return false
+  if (!peerId) return Boolean(spot) && pose === 'wave'
+  return room.partner?.id === peerId && poses[room.role === 'a' ? 'b' : 'a'] === 'wave'
+}
 
 const NOTICES = { left: '상대가 사진 찍기를 그만뒀어요.', expired: '시간이 지나 취소됐어요.' }
 let soloTimers = []
@@ -33,7 +44,7 @@ export function handlePhotoMessage(msg) {
     case 'photo.start':
       return set({ ...initial, room: { roomId: msg.roomId, role: msg.role, me: msg.me, partner: msg.partner }, phase: 'gather' })
     case 'photo.ready_state':
-      return set({ ready: { a: msg.a, b: msg.b }, sameSpot: Boolean(msg.sameSpot) })
+      return set({ ready: { a: msg.a, b: msg.b }, poses: msg.poses ?? {}, sameSpot: Boolean(msg.sameSpot) })
     case 'photo.shot':
       return set({ phase: 'shooting', shot: { index: msg.index, at: performance.now() } })
     case 'photo.done':
@@ -67,17 +78,25 @@ export const photoRoom = {
   startSolo() {
     usePhotoRoom.setState({ ...initial, solo: true, room: { roomId: 'solo', role: 'a', me: { name: '나' }, partner: null }, phase: 'gather' })
   },
-  /** 내가 발자국 위에 섰는지 (bk_photoBooth.jsx가 바뀔 때만 부름) */
-  setReady(spot) {
+  setSpot(spot) {
     const s = usePhotoRoom.getState()
-    if (!s.room || s.phase !== 'gather') return
-    const ready = spot !== null
+    if (!s.room || s.phase !== 'gather' || s.spot === spot) return
+    usePhotoRoom.setState({ spot, confirmed: false })
+    if (s.confirmed && !s.solo) sendTarot({ t: 'photo.ready', roomId: s.room.roomId, ready: false })
+  },
+  selectPose(pose) {
+    const s = usePhotoRoom.getState()
+    if (s.phase === 'gather' && !s.confirmed) usePhotoRoom.setState({ pose })
+  },
+  confirm() {
+    const s = usePhotoRoom.getState()
+    if (!s.room || s.phase !== 'gather' || !s.spot || s.confirmed) return
+    usePhotoRoom.setState({ confirmed: true })
     if (s.solo) {
-      usePhotoRoom.setState({ ready: { a: ready, b: true } })
-      if (ready) startSoloShots()
+      startSoloShots()
       return
     }
-    sendTarot({ t: 'photo.ready', roomId: s.room.roomId, ready, spot })
+    sendTarot({ t: 'photo.ready', roomId: s.room.roomId, ready: true, spot: s.spot, pose: s.pose })
   },
   saveShot(index, url) {
     const shots = [...usePhotoRoom.getState().shots]
@@ -104,7 +123,8 @@ export const photoRoom = {
 function startSoloShots() {
   soloTimers.forEach(clearTimeout)
   soloTimers = []
-  for (let index = 0; index < SHOTS; index++) {
+  handlePhotoMessage({ t: 'photo.shot', index: 0, total: SHOTS })
+  for (let index = 1; index < SHOTS; index++) {
     soloTimers.push(setTimeout(() => handlePhotoMessage({ t: 'photo.shot', index, total: SHOTS }), index * SHOT_GAP_MS))
   }
   soloTimers.push(setTimeout(() => handlePhotoMessage({ t: 'photo.done' }), SHOTS * SHOT_GAP_MS + 1500))

@@ -2,14 +2,14 @@ import { randomUUID } from 'node:crypto'
 
 // 커플 포토존 "같이 찍는 인생네컷" 멀티 (담당: 병관) — 지민 님 멀티 접속(realtime.js) WebSocket 위
 //
-// 흐름: A가 접속 중인 사람 B 초대 → B 수락 → 두 사람이 하트 앞 서로 다른 발자국에 섬(photo.ready)
+// 흐름: A가 B 초대 → B 수락 → 서로 다른 발자국에서 포즈 선택 후 준비(photo.ready)
 //       → 둘 다 서 있으면 서버가 4컷 신호(photo.shot 0~3)를 같은 간격으로 두 화면에 보냄
 //       → 각 화면이 3·2·1 뒤 자기 화면을 찍어 네컷을 만듦 → photo.done → 방 지움
 // 사진(이미지)은 서버로 보내지 않음. 서버는 "언제 찍을지" 신호만 맞춰 줌. DB 저장 없음
 //
-// 화면 → 서버: photo.invite {to} · photo.respond {inviteId, accept} · photo.ready {roomId, ready, spot?} · photo.leave
+// 화면 → 서버: photo.invite {to} · photo.respond {inviteId, accept} · photo.ready {roomId, ready, spot?, pose?} · photo.leave
 // 서버 → 화면: photo.invite_sent · photo.invited · photo.declined · photo.start {roomId, role, me, partner}
-//             photo.ready_state {a, b} · photo.shot {index, total} · photo.done · photo.cancelled {reason} · photo.error
+//             photo.ready_state {a, b, poses?} · photo.shot {index, total} · photo.done · photo.cancelled {reason} · photo.error
 
 const DEFAULTS = {
   inviteMs: 30_000,
@@ -94,7 +94,10 @@ export function createPhotoRooms({ send, findPeer, options = {} }) {
     const spot = msg.spot === undefined ? me.role : msg.spot
     if (msg.ready && spot !== 'a' && spot !== 'b') return
     me.spot = msg.ready ? spot : null
+    me.waving = msg.ready && msg.pose === 'wave'
     const state = Object.fromEntries(room.members.map((m) => [m.role, m.spot !== null]))
+    const poses = Object.fromEntries(room.members.filter((m) => m.waving).map((m) => [m.role, 'wave']))
+    if (Object.keys(poses).length) state.poses = poses
     const sameSpot = state.a && state.b && room.members[0].spot === room.members[1].spot
     if (sameSpot) state.sameSpot = true
     for (const m of room.members) send(m.ws, { t: 'photo.ready_state', ...state })
