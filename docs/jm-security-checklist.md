@@ -50,12 +50,14 @@
 | 3 | 로그인 토큰을 localStorage에 저장 | 화면에 XSS가 생기면 토큰을 훔칠 수 있음 | 알고 한 타협: 짧은 만료(1시간) + 화면에 사용자 입력을 HTML로 넣지 않음(React 기본). 근거 `frontend/src/api/session.js:14` |
 | 4 | **배포 화면(Vercel)에 보안 헤더가 거의 없음** (ZAP으로 발견): `Content-Security-Policy`·`X-Frame-Options`·`X-Content-Type-Options` 없음. API(Render)는 11/24에 다 넣음 | ① 다른 사이트가 우리 화면을 iframe에 넣어 클릭을 속일 수 있음(클릭재킹) ② CSP가 없어서 XSS가 생기면 막아 줄 두 번째 벽이 없음 — 빈틈 3(토큰 localStorage)과 겹침. 정적 파일의 `ACAO: *`는 Vercel 기본값이고 로그인 정보가 안 실려서 위험 낮음 | ✅ 11/24 고침 (PR #80): `frontend/vercel.json`에 `X-Frame-Options: DENY`·`nosniff`·`Referrer-Policy`·CSP 일부(`frame-ancestors 'none'; object-src 'none'; base-uri 'self'`). 배포 후 실제 사이트에서 4개 모두 확인, JS·3D 모델 파일 형식 정상(`nosniff`로 막히지 않음), 화면·콘솔 오류 없음. 남은 것: 스크립트를 제한하는 CSP(`script-src` 등)는 three.js·WebAssembly·외부 API 때문에 화면이 깨질 수 있어 **시연 뒤** 검토 |
 | 5 | **사장님 공용 계정(jm-demo-owner)만 bcrypt 비용 값이 06이었음** (나머지는 10) | 비용 6은 10보다 해시 한 번 계산이 약 16배 빨라서, DB 해시가 새면 비밀번호 추측이 더 쉬움. 공용 계정이라 영향이 큼 | ✅ 11/24 고침: 원인은 SQL Editor에서 `crypt(…, gen_salt('bf'))`로 넣은 것으로 봄(pgcrypto 기본 비용 6). 지민이 **같은 비밀번호**를 `gen_salt('bf', 10)`으로 다시 저장 → 확인 쿼리에서 8개 계정 모두 비용 10. 앞으로 SQL로 비밀번호를 넣을 일이 있으면 `gen_salt('bf', 10)`을 쓸 것 |
+| 10 | 회원가입 코드 (11/26 추가) | ✅ 로컬 검증 (실제 DB 적용·코드 설정은 지민 확인 뒤) | **아는 사람만 가입**: 가입 화면에 팀이 정한 코드를 넣어야 계정이 생김. 검사는 `auth.users`에 행이 들어가기 직전 **DB 트리거**에서 함 → 서버를 건너뛰고 Supabase Auth에 바로 가입해도 같은 곳에서 막힘. 코드는 **SHA-256 해시만** API에 공개되지 않는 `private` 스키마에 저장, 사용자 메타데이터에서도 지워서 원문이 어디에도 남지 않음. 틀린 코드 IP당 15분 5번 제한. 이미 가입한 계정·로그인은 영향 없음 | SQL 15개(꺼짐이면 가입, 없음·틀림·대소문자 다름 거절, 공백 무시, 메타데이터에 안 남음, 원문 저장 안 됨, 바꾼 뒤 옛 코드 거절, anon·authenticated는 표·함수 접근 불가) + 서버 2개(메타데이터로 넘김, 5번 틀리면 429이고 6번째는 Supabase까지 안 감) | `supabase/migrations/20261202120000_jm_signup_code.sql`, `supabase/tests/jm_signup_code_test.sql`, `server/src/app.js` `/auth/signup`, `frontend/src/components/auth/LoginPage.jsx` |
 
 ### 알고 정한 위험 (팀 결정)
 
 - **이메일 인증 꺼 둠** (시연 12/01까지): 무료 메일 발송 제한 때문에 켜면 가입이 막힘. 실제 메일로 가입하는 건 팀 약속으로 지킴 → [jm-admin-accounts.md](jm-admin-accounts.md)
 - **사장님 계정은 공용 1개**: 한 명이 비밀번호를 5번 틀리면 15분 모두 잠김, 감사 로그가 한 사람으로 찍힘. 11/26부터 계정당 로그인 1곳이라 **두 사람이 동시에 쓰면 먼저 들어온 쪽이 끊김** → 시연 때 사장님 화면은 한 사람만 연다(운영 규칙). 시연 뒤 사장님 계정을 사람마다 1개씩 만드는 것으로 정리
 - **계정당 로그인 1곳의 한계**: 끊긴 토큰으로 Supabase를 직접 부르면 "본인 데이터 읽기"(RLS)는 토큰 만료(1시간) 전까지 가능. Auth 세션 자체를 끊으려면 모든 RLS를 무시하는 `service_role` 키가 서버에 있어야 하는데, 키가 새면 피해가 훨씬 커서 넣지 않는 쪽을 택함. 쓰기는 DB `require_user`가 막음
+- **가입 코드는 팀 공용 1개**: 사람마다 다른 초대 코드가 더 안전하지만, 시연까지 운영할 화면(발급·만료 관리)을 만들 시간이 없어 공용 1개 + 언제든 바꾸기로 정함. 코드가 새면 `select private.set_signup_code('새 코드');`로 바로 바꿈(이미 가입한 사람은 그대로). Supabase Auth는 DB 거절 이유를 숨기므로 서버는 가입 때 DB 거절을 모두 "코드 오류"로 안내함 (가입 때 DB가 거절하는 건 코드뿐)
 - **"기존 로그인 우선"을 고르지 않은 이유**: 비밀번호를 훔친 사람이 먼저 들어오면 진짜 사용자가 못 들어오고, 탭만 닫은 정상 사용자도 막힘. 새 로그인 우선이면 진짜 사용자가 다시 로그인하는 것만으로 훔친 쪽이 끊기고, 끊긴 쪽 화면 안내 + 감사 로그로 알아챌 수 있음
 
 ## 다시 확인하는 법
