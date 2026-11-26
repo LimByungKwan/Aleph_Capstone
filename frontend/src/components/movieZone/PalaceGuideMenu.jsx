@@ -1,4 +1,6 @@
-import { useEffect } from 'react'
+import { PalaceQuiz, readQuizProgress } from './PalaceQuiz.jsx'
+import { palaceQuestions } from './palaceQuestions.js'
+import { useEffect, useState } from 'react'
 import { requestPalaceWarp } from './palaceSeating.js'
 import { GUIDE_AREAS, usePalaceGuide } from './palaceGuide.js'
 import './rickshaw.css'
@@ -11,6 +13,8 @@ export default function PalaceGuideMenu() {
   const tab = usePalaceGuide((s) => s.tab)
   const setTab = usePalaceGuide((s) => s.setTab)
   const hide = usePalaceGuide((s) => s.hide)
+  const quizId = usePalaceGuide(s => s.quizId)
+  const [solved, setSolved] = useState(readQuizProgress)
   const area = GUIDE_AREAS.find((a) => a.id === tab) ?? GUIDE_AREAS[0]
   const stops = area.stops
 
@@ -22,6 +26,11 @@ export default function PalaceGuideMenu() {
   useEffect(() => {
     if (!open) return undefined
     const onKey = (e) => {
+      if (quizId) {
+        if (e.key === 'Escape') { e.preventDefault(); hide() }
+        if (e.key !== 'Tab') e.stopImmediatePropagation()
+        return
+      }
       if (e.key === 'Escape') {
         hide()
         return
@@ -38,11 +47,14 @@ export default function PalaceGuideMenu() {
         go(stops[n - 1])
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, Boolean(quizId))
+    return () => window.removeEventListener('keydown', onKey, Boolean(quizId))
   })
 
   if (!open) return null
+  const quizStop = stops.find(stop => stop.id === quizId)
+  if (quizStop) return <PalaceQuiz key={quizId} stop={quizStop} solved={solved} onSolve={setSolved}
+    onClose={hide} onGuide={() => usePalaceGuide.getState().show('palace')} />
   return (
     <div className="rk-panel rk-guide ui-interactive" role="dialog" aria-label="관람 안내판">
       <div className="rk-guide-head">
@@ -72,6 +84,7 @@ export default function PalaceGuideMenu() {
         ))}
       </div>
       <p className="rk-sub">고르면 그 앞으로 바로 이동해요 · 숫자키 1~9 · ←/→ 구역 바꾸기 · Esc 닫기</p>
+      {tab === 'palace' && <p className="rk-sub">역사 퀴즈 {solved.length}/4 · 현장 퀴즈 장소를 고른 뒤 E를 눌러 도전하세요.</p>}
       <div className="rk-choices" role="tabpanel">
         {stops.map((stop, i) => (
           <button
@@ -85,7 +98,7 @@ export default function PalaceGuideMenu() {
           >
             {i < 9 ? <kbd>{i + 1}</kbd> : <kbd>·</kbd>}
             <span className="rk-guide-name">
-              {stop.name}
+              {stop.name}{palaceQuestions[stop.id] && (solved.includes(stop.id) ? ' · 퀴즈 완료' : ' · 현장 퀴즈')}
               <small>{stop.note}</small>
             </span>
           </button>

@@ -45,6 +45,10 @@ export function requestLocationDocent(locationId) {
   return postAi(`/docent/${encodeURIComponent(locationId)}`, null, 'GET')
 }
 
+export function requestPalaceEpisode(spot, topic) {
+  return postAi(`/palace/${encodeURIComponent(spot)}/episode`, { topic })
+}
+
 async function postAi(path, body, method = 'POST') {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)

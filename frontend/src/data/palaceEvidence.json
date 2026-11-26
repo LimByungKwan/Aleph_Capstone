@@ -1,0 +1,106 @@
+[
+  {
+    "id": "gyeonghoeru-1",
+    "spot": "gyeonghoeru",
+    "title": "연못에서 나온 용",
+    "text": "1997년에 경회루 연못의 물을 빼다가 청동 용이 발견됐어요. 목조 누각을 불에서 지켜 달라는 뜻으로 용 한 쌍을 넣었다는 기록이 전해져요.",
+    "answer": "청동 용",
+    "distractors": [
+      "돌거북",
+      "금동 봉황"
+    ],
+    "source": "궁능유적본부 · 경복궁 자주 묻는 질문",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R404000000.do?schGroupCode=gbg"
+  },
+  {
+    "id": "gyeonghoeru-2",
+    "spot": "gyeonghoeru",
+    "title": "누각에서 비를 기다린 이유",
+    "text": "경회루에서는 외국 사신을 맞고 연회도 열었어요. 가뭄이 들었을 때는 이곳에서 기우제를 지냈어요.",
+    "answer": "기우제",
+    "distractors": [
+      "과거 시험",
+      "즉위식"
+    ],
+    "source": "궁능유적본부 · 경회루·향원정 특별관람 해설",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R402000000.do?id=20260318082201573013&schBcid=normal1&schM=view"
+  },
+  {
+    "id": "geoncheonggung-1",
+    "spot": "geoncheonggung",
+    "title": "전등을 밝힌 연못",
+    "text": "건청궁에 전깃불이 들어올 때 발전 설비에는 향원지의 물이 쓰였어요. 정원에 있던 연못과 궁의 전등은 이렇게 이어져 있었어요.",
+    "answer": "향원지",
+    "distractors": [
+      "경회루 연못",
+      "청계천"
+    ],
+    "source": "궁능유적본부 · 경복궁 자주 묻는 질문",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R404000000.do?schGroupCode=gbg"
+  },
+  {
+    "id": "geoncheonggung-2",
+    "spot": "geoncheonggung",
+    "title": "고종이 전기 공사를 맡긴 곳",
+    "text": "고종은 에디슨 전기회사에 궁궐 전기 공사를 맡겼어요. 건청궁 앞에는 그 일을 기념하는 표석이 있어요.",
+    "answer": "에디슨 전기회사",
+    "distractors": [
+      "궁중 악공",
+      "집현전 학자"
+    ],
+    "source": "궁능유적본부 · 경복궁 자주 묻는 질문",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R404000000.do?schGroupCode=gbg"
+  },
+  {
+    "id": "sujeongjeon-1",
+    "spot": "sujeongjeon",
+    "title": "수정전 터의 옛 이름",
+    "text": "오늘날 수정전이 서 있는 곳에는 세종 때 집현전이 있었어요. 수정전 앞에서 예전 궁궐 지도를 펼친다면 같은 자리에 다른 건물 이름이 보이는 셈이에요.",
+    "answer": "집현전",
+    "distractors": [
+      "소주방",
+      "규장각"
+    ],
+    "source": "궁능유적본부 · 경복궁 자주 묻는 질문",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R404000000.do?schGroupCode=gbg"
+  },
+  {
+    "id": "sujeongjeon-2",
+    "spot": "sujeongjeon",
+    "title": "세종 시대의 글자",
+    "text": "수정전 터의 집현전은 훈민정음의 역사와 관련된 장소예요. 지금 보는 전각과 세종 때 학자들이 일했던 건물은 시대가 달라요.",
+    "answer": "훈민정음",
+    "distractors": [
+      "경국대전",
+      "승정원일기"
+    ],
+    "source": "궁능유적본부 · 경복궁 자주 묻는 질문",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R404000000.do?schGroupCode=gbg"
+  },
+  {
+    "id": "sojubang-1",
+    "spot": "sojubang",
+    "title": "실록에 등장하는 장금",
+    "text": "중종을 치료한 장금은 의녀로 기록돼 있어요. 장금이 궁중 요리사로 활약하는 장면은 드라마의 설정이에요.",
+    "answer": "의녀",
+    "distractors": [
+      "궁중 요리사",
+      "궁중 악사"
+    ],
+    "source": "궁능유적본부 · 경복궁 자주 묻는 질문",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R404000000.do?schGroupCode=gbg"
+  },
+  {
+    "id": "sojubang-2",
+    "spot": "sojubang",
+    "title": "잔칫날의 궁중 부엌",
+    "text": "소주방에서는 더운 음식과 궁중 잔치에 쓸 떡을 준비했어요. 찬 음식을 맡은 곳은 생과방이었어요.",
+    "answer": "생과방",
+    "distractors": [
+      "집현전",
+      "사정전"
+    ],
+    "source": "궁능유적본부 · 경복궁 자주 묻는 질문",
+    "url": "https://royal.khs.go.kr/ROYAL/contents/R404000000.do?schGroupCode=gbg"
+  }
+]
