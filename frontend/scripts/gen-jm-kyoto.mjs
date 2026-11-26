@@ -848,14 +848,15 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
     const x0 = YU_VOID.x0
     const len = YU_VOID.x1 - YU_VOID.x0
     const ah = (x) => r2(y0 + b.arch * Math.sin((Math.PI * (x - x0)) / len))
-    const n = 4
+    // (11/26 점검) 걷는 계단 판이 굽은 다리 바닥 위로 군데군데 허옇게 비쳐 보였음 → 8칸으로 곡선을 더 따라가고 12cm 낮춰 바닥 밑에 숨김
+    const n = 8
     for (let i = 0; i < n; i++) {
       const xa = r2(x0 + (len * i) / n)
       const xb = r2(x0 + (len * (i + 1)) / n)
       const [lo, hi] = ah(xa) <= ah(xb) ? [xa, xb] : [xb, xa]
       const [lx, lz] = at(lo, b.z)
       const [hx, hz] = at(hi, b.z)
-      terrain.push({ type: 'stairs', id: `jm_yutoya_bridge_ramp_${i + 1}`, from: [lx, lz, el(ah(lo))], to: [hx, hz, el(ah(hi))], width: r2(b.w - 0.5), smooth: true, walls: false })
+      terrain.push({ type: 'stairs', id: `jm_yutoya_bridge_ramp_${i + 1}`, from: [lx, lz, r2(el(ah(lo)) - 0.12)], to: [hx, hz, r2(el(ah(hi)) - 0.12)], width: r2(b.w - 0.5), smooth: true, walls: false })
       const low = Math.min(ah(xa), ah(xb))
       const high = Math.max(ah(xa), ah(xb))
       for (const s of [-1, 1]) wall(`jm_yutoya_bridge_rail_${s < 0 ? 'n' : 's'}${i + 1}`, at(r2((xa + xb) / 2), r2(b.z + s * (b.w / 2 - 0.08))), [r2(len / n + 0.1), r2(high - low + 1.1), 0.15], { elevation: el(low) })
