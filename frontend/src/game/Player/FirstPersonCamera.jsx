@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { EYE_HEIGHT, LOOK_SENSITIVITY } from '../config.js'
 import { PLAYER_START_YAW } from './Player.jsx'
+import { useSettings } from '../settingsStore.js'
 import { useSpecialAccess } from '../../components/movieZone/specialAccessStore.js'
 
 const MAX_PITCH = 1.4 // 위아래로 볼 수 있는 최대 각도 (약 80도)
@@ -27,8 +28,9 @@ export default function FirstPersonCamera({ playerRef }) {
     }
     const onMove = (event) => {
       if (!dragging) return
-      look.current.yaw -= (event.clientX - lastX) * LOOK_SENSITIVITY
-      look.current.pitch -= (event.clientY - lastY) * LOOK_SENSITIVITY
+      const k = LOOK_SENSITIVITY * useSettings.getState().mouseSensitivity // ⚙ 설정의 마우스 감도
+      look.current.yaw -= (event.clientX - lastX) * k
+      look.current.pitch -= (event.clientY - lastY) * k
       look.current.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, look.current.pitch))
       lastX = event.clientX
       lastY = event.clientY

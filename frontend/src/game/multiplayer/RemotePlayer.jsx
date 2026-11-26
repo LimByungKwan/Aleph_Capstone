@@ -13,6 +13,7 @@ import {
   PLAYER_WALK_SPEED,
 } from '../config.js'
 import { labelLayer } from '../labelLayer.js'
+import { ChatBubbleBox, useChatBubble } from './ChatBubble.jsx'
 import { isWavingInPhoto } from '../Map/styles/bk_photoRoom.js'
 import { createWavePose } from '../Player/wavePose.js'
 import { useRealtimeStore } from './realtimeStore.js'
@@ -146,6 +147,7 @@ export default function RemotePlayer({ id, name, characterId, playerRef }) {
   })
   const teleported = useRef(false)
   const character = characters.find((c) => c.id === characterId) ?? characters[0]
+  const chat = useChatBubble(id) // [지민] 말풍선 채팅
 
   useFilterContactPair((_, __, first, second) => {
     const remote = body.current?.handle
@@ -212,6 +214,12 @@ export default function RemotePlayer({ id, name, characterId, playerRef }) {
         </ModelBoundary>
         {/* 머리 위 이름표 (다른 이름표들과 같은 HTML 층에 그림) */}
         <Html portal={labelLayer} position={[0, 1.05, 0]} center style={{ pointerEvents: 'none' }}>
+          {/* 말풍선은 이름표 위로 (이름표 자리는 그대로 두려고 아래 기준으로 위로 쌓음) */}
+          {chat && (
+            <div style={{ position: 'absolute', left: '50%', bottom: '100%', transform: 'translateX(-50%)', width: 'max-content', maxWidth: 220 }}>
+              <ChatBubbleBox text={chat} />
+            </div>
+          )}
           <div
             style={{
               padding: '2px 8px',

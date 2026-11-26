@@ -571,30 +571,40 @@ function oceanGeometry(O) {
     const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L))
     return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz)
   }
+  const distances = (x, z) => {
+    let dBeach = Infinity
+    let dLake = Infinity
+    let dOpen = Infinity
+    let dMouth = Infinity
+    for (let a = 0; a < N; a++) {
+      const p = poly[a]
+      const q = poly[(a + 1) % N]
+      const dd = segDist(x, z, p, q)
+      if (p[2] === 'O') dOpen = Math.min(dOpen, dd)
+      else if (p[2] === 'M') dMouth = Math.min(dMouth, dd) // 강어귀: 물길(JmChannelWater)과 서로 흐려지며 겹치는 쪽
+      else if (p[2] === 'L') dLake = Math.min(dLake, dd)
+      else dBeach = Math.min(dBeach, dd)
+    }
+    return { dBeach, dLake, dOpen, dMouth }
+  }
   const pos = new Float32Array((nx + 1) * (nz + 1) * 3)
   const col = new Float32Array((nx + 1) * (nz + 1) * 4)
   const keep = new Uint8Array((nx + 1) * (nz + 1))
+  const flat = new Uint8Array((nx + 1) * (nz + 1)) // 흔들지 않았고, 물 안쪽이며, 불투명한 점 → 큰 칸으로 합쳐도 되는 점
   const c = new THREE.Color()
   const y = O.y ?? 0.05
   for (let j = 0; j <= nz; j++)
     for (let i = 0; i <= nx; i++) {
       const k = j * (nx + 1) + i
-      // 가장자리가 격자처럼 보이지 않게 점을 살짝 흔듦
-      const x = x0 + i * S + Math.sin(j * 1.7 + i * 0.3) * 0.6
-      const z = z0 + j * S + Math.cos(i * 1.3 + j * 0.4) * 0.6
-      let dBeach = Infinity
-      let dLake = Infinity
-      let dOpen = Infinity
-      let dMouth = Infinity
-      for (let a = 0; a < N; a++) {
-        const p = poly[a]
-        const q = poly[(a + 1) % N]
-        const dd = segDist(x, z, p, q)
-        if (p[2] === 'O') dOpen = Math.min(dOpen, dd)
-        else if (p[2] === 'M') dMouth = Math.min(dMouth, dd) // 강어귀: 물길(JmChannelWater)과 서로 흐려지며 겹치는 쪽
-        else if (p[2] === 'L') dLake = Math.min(dLake, dd)
-        else dBeach = Math.min(dBeach, dd)
-      }
+      const gx = x0 + i * S
+      const gz = z0 + j * S
+      // 가장자리가 격자처럼 보이지 않게 점을 살짝 흔듦 — 물가에서 먼 바다 한가운데는 흔들지 않음 (큰 칸으로 합칠 수 있게)
+      let dist = distances(gx, gz)
+      const calm = Math.min(dist.dBeach, dist.dLake) > CALM_D && Math.min(dist.dOpen, dist.dMouth) > 20
+      const x = calm ? gx : gx + Math.sin(j * 1.7 + i * 0.3) * 0.6
+      const z = calm ? gz : gz + Math.cos(i * 1.3 + j * 0.4) * 0.6
+      if (!calm) dist = distances(x, z)
+      const { dBeach, dLake, dOpen, dMouth } = dist
       const dShore = Math.min(dBeach, dLake)
       // 호수식 물가 비중: 가까운 물가가 호수 쪽이면 1 (두 종류가 만나는 곳은 12m에 걸쳐 섞임)
       const lakeW = dLake === Infinity ? 0 : dBeach === Infinity ? 1 : Math.max(0, Math.min(1, 0.5 + (dBeach - dLake) / 24))
@@ -625,10 +635,29 @@ function oceanGeometry(O) {
       if (dMouth < 10) alpha *= inS ? Math.max(0, Math.min(1, dMouth / 10)) : 0 // 강어귀는 10m에 걸쳐 물길 물로 넘어감
       pos.set([x, y + (d < 0 ? -0.01 : 0), z], k * 3)
       col.set([c.r, c.g, c.b, Math.max(0, alpha)], k * 4)
+      flat[k] = calm && inS && alpha >= 0.999 ? 1 : 0
     }
+  // (11/26 최적화) 바다 한가운데(물가에서 CALM_D m 넘게 떨어진 곳)는 2m 칸 4×4개를 8m 칸 하나로 합침
+  //   색이 천천히 바뀌는 곳이라 큰 칸 모서리 색을 이어 칠해도 거의 같고, 높이가 모두 같아 이음매 틈이 없음
+  //   물가 쪽은 그대로 2m 칸 → 물가 선 모양은 그대로. 삼각형 약 15.9만 → 절반 이하
   const idx = []
+  const B = 4
+  const done = new Uint8Array(nx * nz)
+  for (let bj = 0; bj + B <= nz; bj += B)
+    for (let bi = 0; bi + B <= nx; bi += B) {
+      let all = true
+      for (let j = bj; j <= bj + B && all; j++) for (let i = bi; i <= bi + B; i++) if (!flat[j * (nx + 1) + i]) { all = false; break }
+      if (!all) continue
+      const a = bj * (nx + 1) + bi
+      const b = a + B
+      const cc = a + B * (nx + 1)
+      const dd = cc + B
+      idx.push(a, cc, b, b, cc, dd)
+      for (let j = bj; j < bj + B; j++) for (let i = bi; i < bi + B; i++) done[j * nx + i] = 1
+    }
   for (let j = 0; j < nz; j++)
     for (let i = 0; i < nx; i++) {
+      if (done[j * nx + i]) continue
       const a = j * (nx + 1) + i
       const b = a + 1
       const cc = a + nx + 1
@@ -647,6 +676,7 @@ function oceanGeometry(O) {
   return g
 }
 const LAKE_BANK = 3.5
+const CALM_D = 22 // 물가에서 이만큼 떨어진 바다 한가운데는 큰 칸으로 합침 (물거품·얕은 물 색 단계는 20m 안쪽)
 const LAKE_MUD = new THREE.Color('#7d6e52')
 const LAKE_GRASS = new THREE.Color('#5f8a45')
 const lakeBank = new THREE.Color()

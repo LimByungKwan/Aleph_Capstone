@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { CameraControls, CameraControlsImpl } from '@react-three/drei'
 import { Spherical } from 'three'
 import { PLAYER_SPAWN, PLAYER_START_FORWARD } from './Player.jsx'
+import { useSettings } from '../settingsStore.js'
 import { CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE } from '../config.js'
 
 const { ACTION } = CameraControlsImpl
@@ -16,6 +17,7 @@ const UPLOOK_GAP = 0.25 // 올려다볼 때 카메라가 땅에서 떠 있을 �
 export default function FollowCamera({ playerRef }) {
   const controlsRef = useRef(null)
   const scene = useThree((state) => state.scene)
+  const sensitivity = useSettings((s) => s.mouseSensitivity) // ⚙ 설정의 마우스 감도 (1 = 기본)
 
   useEffect(() => {
     const controls = controlsRef.current
@@ -73,6 +75,8 @@ export default function FollowCamera({ playerRef }) {
       maxDistance={CAMERA_MAX_DISTANCE}
       maxPolarAngle={Math.PI * 0.95}
       smoothTime={0.12}
+      azimuthRotateSpeed={sensitivity}
+      polarRotateSpeed={sensitivity}
     />
   )
 }

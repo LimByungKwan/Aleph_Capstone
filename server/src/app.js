@@ -216,6 +216,11 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
       options: { data: { display_name: name || '순례객' } },
     })
     if (error) throw fromAuthError(error)
+    // 이미 있는 이메일: Supabase는 설정(이메일 인증·가입자 숨김)에 따라 에러 대신 identities가 빈 가짜 사용자를 돌려줌
+    //   → 그대로 두면 화면에는 "가입됨/메일 확인"처럼 보여서 같은 아이디로 또 가입된 것처럼 보였음 (11/26 지민 확인)
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new HttpError(409, 'EMAIL_TAKEN', '이미 가입한 이메일이에요.')
+    }
     // 이메일 인증이 켜져 있으면 session이 없다
     if (!data.session) return res.status(201).json({ needsEmailConfirm: true })
 
