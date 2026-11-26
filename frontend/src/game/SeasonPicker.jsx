@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { SEASON_LABELS, useSeason, useSeasonStore } from './seasons.js'
+import { sendWorld } from './multiplayer/realtimeStore.js'
 
 export default function SeasonPicker() {
   const season = useSeason()
@@ -26,6 +27,7 @@ export default function SeasonPicker() {
           const value = event.currentTarget.value
           refresh()
           setPreview(value === 'auto' ? null : value)
+          sendWorld({ season: value === 'auto' ? null : value }) // [지민] 관리자만 보이는 메뉴 → 접속한 모든 사람에게 같은 계절
           event.currentTarget.blur()
         }}
         style={{ borderRadius: 6, padding: '4px 6px', color: '#2c2a29', background: '#f9f6ee' }}

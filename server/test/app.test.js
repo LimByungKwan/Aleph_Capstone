@@ -55,8 +55,10 @@ function fakeClient(token) {
         if (password !== 'right-pass') return { data: {}, error: { code: 'invalid_credentials' } }
         return { data: { user: { ...USER, email }, session: { access_token: GOOD_TOKEN, refresh_token: 'r1', expires_at: 123 } }, error: null }
       },
-      async signUp({ options }) {
+      async signUp({ email, options }) {
         calls.push({ signUpData: options.data })
+        // 이미 있는 이메일: Supabase는 에러 대신 identities가 빈 사용자를 돌려줄 때가 있음
+        if (email === 'taken@example.com') return { data: { user: { ...USER, identities: [] }, session: null }, error: null }
         return { data: { user: USER, session: null }, error: null }
       },
       async refreshSession() {
@@ -221,6 +223,12 @@ describe('회원가입 · 로그인', () => {
     assert.equal(res.status, 201)
     assert.deepEqual(res.body, { needsEmailConfirm: true })
     assert.deepEqual(calls[0].signUpData, { display_name: '하늘' })
+  })
+
+  test('이미 가입한 이메일로 다시 가입하면 409 EMAIL_TAKEN (덮어쓴 것처럼 보이지 않게)', async () => {
+    const res = await api('POST', '/auth/signup', { body: { email: 'taken@example.com', password: 'secret12', name: '또' } })
+    assert.equal(res.status, 409)
+    assert.equal(res.body.error.code, 'EMAIL_TAKEN')
   })
 
   test('비밀번호가 틀리면 401 INVALID_LOGIN', async () => {

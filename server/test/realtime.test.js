@@ -9,12 +9,14 @@ import { attachRealtime, REALTIME_PATH } from '../src/realtime.js'
 const ORIGIN = 'http://localhost:5173'
 const GOOD = 'good-token'
 const REPLACED = 'replaced-token' // 진짜 토큰이지만 같은 계정이 다른 기기에서 로그인해서 끊긴 것
+const ADMIN = 'admin-token' // 역할이 admin인 계정 (2단계 인증은 등록 안 함)
 
 function fakeClient(token) {
   return {
     auth: {
       async getUser(t) {
         if (t === GOOD || t === REPLACED) return { data: { user: { id: 'user-1' } }, error: null }
+        if (t === ADMIN) return { data: { user: { id: 'admin-1' } }, error: null }
         return { data: {}, error: { message: 'bad' } }
       },
     },
@@ -26,7 +28,7 @@ function fakeClient(token) {
       eq() {
         return this
       },
-      maybeSingle: () => Promise.resolve({ data: { display_name: '지민' }, error: null }),
+      maybeSingle: () => Promise.resolve({ data: token === ADMIN ? { display_name: '관리자', role: 'admin' } : { display_name: '지민', role: 'pilgrim' }, error: null }),
     }),
   }
 }
@@ -188,12 +190,66 @@ describe('멀티 접속', () => {
     await guest.closed
   })
 
-  test('정원(테스트에서는 3명)이 차면 503으로 거절', async () => {
+  test('정원(테스트에서는 3명)이 차면 full 안내 후 4003, 자리가 나면 다시 들어옴', async () => {
     const people = [await join(), await join(), await join()]
     assert.equal(realtime.count(), 3)
     const extra = connect()
-    await assert.rejects(extra.opened, (error) => error.status === 503)
-    for (const p of people) p.ws.close()
-    await Promise.all(people.map((p) => p.closed))
+    await extra.opened
+    extra.send({ t: 'hello' })
+    assert.deepEqual(await extra.next('full'), { t: 'full', max: 3 })
+    assert.equal(await extra.closed, 4003)
+    // 한 명이 나가면 자리가 나서 새 사람이 들어옴
+    people[0].ws.close()
+    await people[0].closed
+    const again = await join()
+    assert.equal(realtime.count(), 3)
+    for (const p of [people[1], people[2], again]) p.ws.close()
+    await Promise.all([people[1].closed, people[2].closed, again.closed])
+  })
+
+  test('bye를 보내면 바로 나감 처리 (연결이 늦게 끊겨도 캐릭터가 남지 않게)', async () => {
+    const a = await join()
+    const b = await join()
+    await a.next('join')
+    b.send({ t: 'bye' })
+    assert.equal((await a.next('leave')).id, b.welcome.id)
+    await b.closed
+    a.ws.close()
+    await a.closed
+  })
+
+  test('말풍선 채팅: 모두에게(보낸 사람 포함), 줄바꿈 정리, 너무 길거나 1초 안에 또 보내면 버림', async () => {
+    const a = await join({ token: GOOD })
+    const b = await join()
+    a.send({ t: 'chat', text: '  안녕\n하세요  ' })
+    const got = await b.next('chat')
+    assert.deepEqual(got, { t: 'chat', id: a.welcome.id, name: '지민', text: '안녕 하세요' })
+    assert.equal((await a.next('chat')).text, '안녕 하세요')
+    a.send({ t: 'chat', text: '바로 또' }) // 1초 안
+    b.send({ t: 'chat', text: 'x'.repeat(81) }) // 81자
+    b.send({ t: 'chat', text: '   ' })
+    await new Promise((r) => setTimeout(r, 150))
+    assert.equal(b.inbox.filter((m) => m.t === 'chat').length, 0)
+    a.ws.close()
+    b.ws.close()
+    await Promise.all([a.closed, b.closed])
+  })
+
+  test('관리자 시간대·계절: 관리자만 바꿀 수 있고 모두에게, 나중에 들어온 사람도 같은 값', async () => {
+    const guest = await join()
+    assert.deepEqual((await guest.next('world')).world, { timeOfDay: null, season: null })
+    guest.send({ t: 'world.set', timeOfDay: 'night' }) // 손님은 무시
+    const admin = await join({ token: ADMIN })
+    await admin.next('world')
+    admin.send({ t: 'world.set', timeOfDay: 'party', season: 'winter' }) // 이상한 시간대는 버리고 계절만
+    assert.deepEqual((await guest.next('world')).world, { timeOfDay: null, season: 'winter' })
+    admin.send({ t: 'world.set', timeOfDay: 'night' })
+    assert.deepEqual((await guest.next('world')).world, { timeOfDay: 'night', season: 'winter' })
+    const late = await join()
+    assert.deepEqual((await late.next('world')).world, { timeOfDay: 'night', season: 'winter' })
+    admin.send({ t: 'world.set', timeOfDay: null, season: null }) // 원래대로
+    await late.next('world')
+    for (const c of [guest, admin, late]) c.ws.close()
+    await Promise.all([guest.closed, admin.closed, late.closed])
   })
 })
