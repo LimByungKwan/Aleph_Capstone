@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import io
 import logging
+import threading
+import time
 import wave
 from typing import Literal
 
@@ -18,12 +20,28 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile  # request.form()이 주는 타입 (fastapi.UploadFile은 그 하위 클래스라 isinstance가 실패)
 
 from .audition_judge import judge_keyboard, judge_take
-from .audition_pitch import load_melody
+from .audition_pitch import load_melody, warm_up
 from .limits import allow_request
 
 log = logging.getLogger("scenewalk.audition")
 
-router = APIRouter()
+
+
+def _start_warm_up() -> None:
+    """서버 시작 직후 음정 분석을 뒤에서 미리 돌림 (서버는 바로 요청을 받음)"""
+
+    def run() -> None:
+        t = time.perf_counter()
+        try:
+            warm_up()
+            print(f"[audition] 음정 분석 warm-up 완료 {time.perf_counter() - t:.1f}초", flush=True)  # Render 로그에서 확인용 (이 로거는 WARNING부터만 보임)
+        except Exception as e:  # warm-up이 실패해도 서버는 그대로 (첫 요청이 느릴 뿐)
+            log.warning("음정 분석 warm-up 실패: %r", e)
+
+    threading.Thread(target=run, name="audition-warm-up", daemon=True).start()
+
+
+router = APIRouter(on_startup=[_start_warm_up])  # TestClient(app)는 startup을 안 돌려서 테스트는 느려지지 않음
 
 SONG_IDS = {"sungray-01"}  # 허용 목록. frontend/public/audition/<id>.json 과 맞춘다
 # 22초 곡+6초 여유도 모노 48kHz 16비트는 28×48000×2+44=2,688,044바이트라 충분하다.
