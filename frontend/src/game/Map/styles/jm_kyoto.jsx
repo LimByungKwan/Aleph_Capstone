@@ -675,6 +675,11 @@ const seeded = (n) => {
 }
 
 export function JmCanal({ item }) {
+  // (11/26) 여관 섬 둘레 바다는 자연스러운 물가의 큰 바다(jm_water.jsx JmSeaLake)가 그림 → 네모 바다 판은 걷기 막는 판정만 남기고 그리지 않음
+  if (item.hideWater) return null
+  return <JmCanalBody item={item} />
+}
+function JmCanalBody({ item }) {
   const [w, , len] = item.size
   const curb = item.curb ?? true
   const natural = item.natural ?? false
@@ -704,7 +709,7 @@ export function JmCanal({ item }) {
   }, [natural, len, inner])
   return (
     <group>
-      <Box p={[0, 0.02, 0]} s={[w, 0.04, len]} c={item.wade ? '#8a7d5e' : natural ? '#3e3b33' : '#4a443d'} />
+      <Box p={[0, 0.02, 0]} s={[w, 0.04, len]} c={item.wade ? '#57523f' : natural ? '#3e3b33' : '#4a443d'} />
       {/* 물 밑 돌: 물보다 낮게 깔아 비쳐 보이게 */}
       {!item.wade && rocks.bed.map((b, i) => (
         <mesh key={`b${i}`} position={b.p} scale={[b.r, b.r * 0.4, b.r]} material={BED_STONE}>
@@ -718,7 +723,8 @@ export function JmCanal({ item }) {
           {item.banks !== false && <RiverBanks w={w} len={len} depth={item.depth ?? 0.3} ends={item.ends} />}
         </group>
       ) : item.beach === 'sea' ? (
-        <RiverWater w={w} len={len} sea y={0.06} far={60 + len / 2} />
+        // (11/26 지민 요청: 마을 쪽 바다도 새 물길과 같은 모양으로 이어지게) 한 색 판 → 강·물길과 같은 색 단계(물가 탁한 초록 → 가운데 짙은 청록) + 물결
+        <RiverWater w={w} len={len} y={0.07} deep far={60 + len / 2} />
       ) : (
         <SeaWater deep={water.deep} surface={water.surface} y={0.045} gap={0.06} far={60 + len / 2} />
       )}
