@@ -2202,7 +2202,6 @@ function archBandTexture(title, color, ratio) {
 }
 const ARCH_ROOF = mat('#d9cfb4', { roughness: 0.6, emissive: '#3a3020', emissiveIntensity: 0.25, double: true })
 const ARCH_RIB = mat('#8a7a5e', { roughness: 0.8 })
-const ARCH_WALL = mat('#e2c9a0', { roughness: 0.95 })
 const ARCH_TRIM = mat('#f0d9b0', { roughness: 0.8 })
 const BULB_PINK = mat('#ffd0d8', { emissive: '#ff7a9a', emissiveIntensity: 1.3 })
 export function JmAlleyArch({ item }) {
@@ -2232,9 +2231,21 @@ export function JmAlleyArch({ item }) {
     const frame = new THREE.ExtrudeGeometry(sh, { depth: 0.45, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 1 })
     const ring = new THREE.RingGeometry(r, R, 48, 1, 0, Math.PI)
     // 반원 지붕 (안쪽에서도 보이게 양면) — 원통의 위쪽 반
-    const roof = new THREE.CylinderGeometry(r + 0.05, r + 0.05, depth, 28, 1, true, -Math.PI / 2, Math.PI)
-    roof.rotateX(-Math.PI / 2) // 축 Y → Z, 반원이 위로
-    return { frame, ring, roof }
+    // (11/26 지민 요청: 아치 옆에 네모난 벽 상자가 같이 보임 → 터널 몸통 전체를 아치 모양으로)
+    //   다리(곧게) + 위 반원으로 된 두께 0.3 둥근 굴 껍데기를 터널 깊이만큼 밀어 냄 → 밖에서 봐도 안에서 봐도 아치
+    const T = 0.3
+    const vs = new THREE.Shape()
+    vs.moveTo(-(r + T), 0)
+    vs.lineTo(-(r + T), spring)
+    vs.absarc(0, spring, r + T, Math.PI, 0, true)
+    vs.lineTo(r + T, 0)
+    vs.lineTo(r, 0)
+    vs.lineTo(r, spring)
+    vs.absarc(0, spring, r, 0, Math.PI, false)
+    vs.lineTo(-r, 0)
+    vs.lineTo(-(r + T), 0)
+    const vault = new THREE.ExtrudeGeometry(vs, { depth, bevelEnabled: false, curveSegments: 28 })
+    return { frame, ring, vault }
   }, [r, band, spring, depth])
   const bulbs = (rad, n) => range(n).map((i) => {
     const th = (Math.PI * (i + 0.5)) / n
@@ -2249,38 +2260,31 @@ export function JmAlleyArch({ item }) {
       <mesh geometry={geo.ring} position={[0, spring, 0.06]}>
         <meshStandardMaterial map={tex} transparent alphaTest={0.4} roughness={0.85} />
       </mesh>
-      {/* 다리 쪽 밝은 띠·받침 */}
+      {/* 다리 쪽 밝은 띠 (문틀 앞면에 붙은 얇은 칠). 다리 밑·꺾이는 곳에 튀어나오던 네모 받침은 뺌 */}
       {[-1, 1].map((s) => (
-        <group key={s}>
-          <Box p={[s * (r + band / 2), spring / 2, 0.03]} s={[band * 0.86, spring, 0.04]} m={ARCH_TRIM} />
-          <Box p={[s * (r + band / 2), 0.25, -0.2]} s={[band + 0.2, 0.5, 0.75]} m={STONE} />
-          <Box p={[s * (r + band / 2), spring + 0.05, -0.2]} s={[band + 0.16, 0.14, 0.62]} c="#3a2416" />
-        </group>
+        <Box key={s} p={[s * (r + band / 2), spring / 2, 0.06]} s={[band * 0.86, spring, 0.02]} m={ARCH_TRIM} />
       ))}
       {/* 전구: 아치 안쪽·바깥쪽 테 + 다리 */}
       {[...bulbs(r + 0.14, 15), ...bulbs(r + band - 0.12, 21), ...legBulbs(-(r + 0.14)), ...legBulbs(r + 0.14)].map(([x, y], i) => (
         <Ball key={`b${i}`} p={[x, y, 0.1]} rad={0.065} m={i % 3 === 1 ? BULB_PINK : LANTERN_RED} />
       ))}
-      {/* 반원 지붕 + 갈비 + 지붕 위 덮개 */}
-      <mesh geometry={geo.roof} material={ARCH_ROOF} position={[0, spring, -0.45 - depth / 2]} />
+      {/* 둥근 굴 껍데기 (다리 + 반원 지붕 한 덩어리) + 갈비 */}
+      <mesh geometry={geo.vault} material={ARCH_ROOF} position={[0, 0, -0.45 - depth]} />
       {range(Math.max(2, Math.round(depth / 1.1)) + 1).map((i, _, arr) => {
         const z = -0.45 - (i * depth) / (arr.length - 1)
         return (
           <mesh key={`rb${i}`} position={[0, spring, z]} material={ARCH_RIB}>
-            <torusGeometry args={[r + 0.08, 0.06, 5, 20, Math.PI]} />
+            <torusGeometry args={[r - 0.04, 0.06, 5, 20, Math.PI]} />
           </mesh>
         )
       })}
       {range(9).map((i) => {
         const th = (Math.PI * (i + 0.5)) / 9
-        return <Box key={`rl${i}`} p={[Math.cos(th) * (r + 0.1), spring + Math.sin(th) * (r + 0.1), -0.45 - depth / 2]} s={[0.05, 0.05, depth]} r={[0, 0, th]} m={ARCH_RIB} />
+        return <Box key={`rl${i}`} p={[Math.cos(th) * (r - 0.04), spring + Math.sin(th) * (r - 0.04), -0.45 - depth / 2]} s={[0.05, 0.05, depth]} r={[0, 0, th]} m={ARCH_RIB} />
       })}
-      {/* 양옆 벽 (아치 시작 높이까지) + 아래 돌띠 */}
+      {/* 안쪽 아래 돌띠 */}
       {[-1, 1].map((s) => (
-        <group key={`w${s}`}>
-          <Box p={[s * (r + 0.15), spring / 2, -0.45 - depth / 2]} s={[0.3, spring, depth]} m={ARCH_WALL} />
-          <Box p={[s * (r + 0.02), 0.35, -0.45 - depth / 2]} s={[0.06, 0.7, depth]} m={STONE} />
-        </group>
+        <Box key={`w${s}`} p={[s * (r - 0.02), 0.35, -0.45 - depth / 2]} s={[0.06, 0.7, depth]} m={STONE} />
       ))}
       {/* (11/26 지민 요청: 건물 사이에 틈 없이 빽빽하게) item.fill = { w: 가게 사이 틈 폭, h: 가게 높이 }
            문틀 옆 남는 틈·문틀 위를 건물 몸통으로 꽉 채움 → 건물을 뚫고 들어가는 골목 터널처럼. 위에는 색유리 아치 창 + 작은 발코니 */}
