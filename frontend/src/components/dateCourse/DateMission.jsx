@@ -9,7 +9,8 @@ import { EpisodePanel } from '../../game/Map/styles/bk_episodePanel.jsx'
 import { useEpisodeRoom } from '../../game/Map/styles/bk_episodeRoom.js'
 import { useWarps } from '../../game/Map/styles/bk_warpStore.js'
 import { DateCourseMap } from '../../game/Map/styles/bk_dateCourseMap.jsx'
-import { goToWineBar, WineTastingHud } from '../../game/Map/styles/bk_wineTasting.jsx'
+import { openWineTasting, useWineTastingNear, WineTastingHud } from '../../game/Map/styles/bk_wineTasting.jsx'
+import { WINE_MISSION_ID } from '../../game/Map/styles/bk_wineTastingData.js'
 import { DATE_BADGE_COUNT, DATE_MISSIONS, DATE_STAMP_COUNT, getMission, inDateZone, mapPoint, openNearby, useDateMission } from '../../game/Map/styles/bk_dateMission.js'
 import './dateMission.css'
 
@@ -36,7 +37,12 @@ function openActivity(type, canStart, prepare) {
   if (!canStart() || game.openPanel) return false
   prepare?.()
   useDateMission.getState().close()
-  game.open({ type })
+  if (type === MURAL_FRAME_PANEL) {
+    // 촬영 구도를 잡는 동안에는 패널을 열어 둔 채 일반 이동을 써요.
+    useGameStore.setState({ openPanel: { type }, inputLocked: false })
+  } else {
+    game.open({ type })
+  }
   return true
 }
 
@@ -77,6 +83,7 @@ function DateMissionContent({ enabled }) {
   const panelOpen = useGameStore((s) => Boolean(s.openPanel))
   const cafeOrderOpen = useGameStore((s) => s.openPanel?.type === CAFE_ORDER_PANEL)
   const muralFrameOpen = useGameStore((s) => s.openPanel?.type === MURAL_FRAME_PANEL)
+  const wineNear = useWineTastingNear()
   const { openCard, openMap, close } = useDateMission.getState()
   const pass = saved.accounts[userId] ?? EMPTY
   const episodeInvite = useEpisodeRoom((s) => s.invite)
@@ -110,10 +117,10 @@ function DateMissionContent({ enabled }) {
     }
     const onKeyDown = (event) => {
       if (event.code !== 'KeyE' || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return
-      if (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable], dialog')) return
+      if (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable], dialog, [role="dialog"]')) return
       const date = useDateMission.getState()
-      if (date.card || date.mapOpen || !(openCafeOrder() || openMuralFrame())) return
-      // 주문 카운터와 벽화 발자국에서는 E로 데이트 체험을 열어요.
+      if (date.card || date.mapOpen || !(openCafeOrder() || openMuralFrame() || openWineTasting())) return
+      // 체험 발판 근처에서는 E로 데이트 체험을 열어요.
       event.preventDefault()
       event.stopImmediatePropagation()
     }
@@ -133,6 +140,7 @@ function DateMissionContent({ enabled }) {
   const doneCount = Object.keys(pass.done).length
   const stampCount = Object.keys(pass.stamps).length
   const near = (m) => {
+    if (m.id === WINE_MISSION_ID) return wineNear
     const [x, z] = mapPoint(m)
     return Math.hypot(x - here.x, z - here.z) < NEAR
   }
@@ -142,10 +150,11 @@ function DateMissionContent({ enabled }) {
     else if (count) toast?.(`🔖 데이트 스탬프 ${count} / ${DATE_STAMP_COUNT}`, 'ok')
   }
   const mission = card ? getMission(card) : null
-  const atActivity = !panelOpen && (here.atCafe || here.atMural)
-  const activity = here.atCafe
-    ? { id: 'cafe', label: '주문하기', open: openCafeOrder }
-    : { id: 'mural', label: '구도 맞추기', open: openMuralFrame }
+  const activity = panelOpen ? null : [
+    here.atCafe && { id: 'cafe', label: '주문하기', prompt: '소란 커피 주문하기', open: openCafeOrder },
+    here.atMural && { id: 'mural', label: '구도 맞추기', prompt: '엔딩 장면 맞추기', open: openMuralFrame },
+    wineNear && { id: WINE_MISSION_ID, label: '테이스팅 시작', prompt: '달빛 테이스팅', open: openWineTasting },
+  ].find(Boolean)
 
   return (
     <>
@@ -183,7 +192,6 @@ function DateMissionContent({ enabled }) {
                 <button type="button" className="ui-btn" onClick={() => useWarps.getState().goto({
                   center: [61, -37.8], label: '정자 가는 산책로 입구',
                 })}>정자 가는 길</button>
-                <button type="button" className="ui-btn" onClick={goToWineBar}>달빛 와인바 가는 길</button>
                 <button type="button" className="ui-btn" onClick={() => openCard('episodes')}>{episodeLabel}</button>
                 {stampCount === DATE_STAMP_COUNT && <button type="button" className="ui-btn" onClick={() => openCard('reward')}>완주 보상 보기</button>}
               </div>
@@ -191,9 +199,11 @@ function DateMissionContent({ enabled }) {
           )}
         </aside>
       )}
-      {atActivity && !episodeInvite && !card && !mapOpen && (
-        <button type="button" className="ui-btn ui-interactive date-activity-prompt" onClick={activity.open}>
-          <kbd>E</kbd> {here.atCafe ? '소란 커피 주문하기' : '엔딩 장면 맞추기'}
+      {activity && !episodeInvite && !card && !mapOpen && (
+        <button type="button"
+          className={`ui-btn ui-interactive date-activity-prompt${activity.id === WINE_MISSION_ID ? ' wine-tasting-prompt' : ''}`}
+          onClick={activity.open}>
+          <kbd>E</kbd> {activity.prompt}
         </button>
       )}
       {(episodeInvite || (!here.inZone && episodeInProgress)) && !panelOpen && !card && !mapOpen && (
@@ -210,7 +220,7 @@ function DateMissionContent({ enabled }) {
       )}
       {!cafeOrderOpen && mission && (
         <MissionCard key={mission.id} m={mission} done={Boolean(pass.done[mission.id])} stamped={Boolean(pass.stamps[mission.id])} count={stampCount}
-          isNear={near(mission)} activity={atActivity && mission.id === activity.id ? activity : null}
+          isNear={near(mission)} activity={mission.id === activity?.id ? activity : null}
           onCollect={() => collect(mission.id)} onClose={close} />
       )}
       {!cafeOrderOpen && card === 'reward' && <Reward onClose={close} />}

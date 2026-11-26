@@ -3,18 +3,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Vector3 } from 'three'
 import { create } from 'zustand'
-import { layout } from '../../data/mapData.js'
 import { useGameStore } from '../../../store/gameStore.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { GEO, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
-import { useWarps } from './bk_warpStore.js'
+import { useDateMission } from './bk_dateMission.js'
+import { readWineBest, saveWineBest, WINE_MISSION_ID, WINE_ROUND_COUNT as ROUND_COUNT, wineTastingPosition } from './bk_wineTastingData.js'
 
-export const WINE_BAR_ID = 'BK/b_wine'
+export { WINE_BAR_ID } from './bk_wineTastingData.js'
 const PANEL = 'bk_wine_tasting'
-const ROUND_COUNT = 3
-const STORAGE = 'scenewalk.wine-tasting'
 const useSpot = create(() => ({ near: false }))
+export const useWineTastingNear = () => useSpot((state) => state.near)
 const markerMaterial = mat('#784966', { emissive: '#67405c', emissiveIntensity: 0.32 })
 
 const MENU = [
@@ -42,17 +41,6 @@ function makeFlight() {
   }))
 }
 
-const tastingPosition = (item) => [item.size[0] / 2 - 0.55, 0.27, item.size[2] / 2 + 3.05]
-
-export function goToWineBar() {
-  const item = layout.buildings.find(({ id }) => id === WINE_BAR_ID)
-  if (item) useWarps.getState().goto({
-    anchor: { name: item.id, local: tastingPosition(item) },
-    clearance: 0.28,
-    label: '달빛 와인바 테라스',
-  })
-}
-
 export function WineTastingSpot({ item }) {
   const scene = useThree((state) => state.scene)
   const anchor = useRef(null)
@@ -75,16 +63,17 @@ export function WineTastingSpot({ item }) {
   })
 
   return (
-    <group ref={anchor} position={tastingPosition(item)} userData={{ noShadow: true }}>
+    <group ref={anchor} position={wineTastingPosition(item)} userData={{ noShadow: true }}>
       <mesh geometry={GEO.cyl48} material={markerMaterial} position={[0, 0.006, 0]} scale={[0.57, 0.022, 0.57]} />
       <mesh geometry={GEO.plane} material={sign} position={[0, 1.48, -2.75]} scale={[1.46, 0.37, 1]} />
     </group>
   )
 }
 
-function openTasting() {
+export function openWineTasting() {
   const game = useGameStore.getState()
   if (!useSpot.getState().near || game.openPanel || game.inputLocked) return false
+  useDateMission.getState().close()
   game.open({ type: PANEL })
   return true
 }
@@ -95,43 +84,16 @@ function closeTasting() {
 }
 
 export function WineTastingHud({ enabled }) {
-  const near = useSpot((state) => state.near)
+  const near = useWineTastingNear()
   const panel = useGameStore((state) => state.openPanel?.type)
   const userId = useUiStore((state) => state.userId)
 
   useEffect(() => {
-    if (!enabled || !near) {
-      closeTasting()
-      return
-    }
-    function onKeyDown(event) {
-      if (event.code !== 'KeyE' || event.repeat || event.altKey || event.ctrlKey || event.metaKey
-        || event.target?.closest?.('input, select, textarea, [contenteditable], dialog, [role="dialog"]')) return
-      if (openTasting()) {
-        event.preventDefault()
-        event.stopImmediatePropagation()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown, true)
-    return () => window.removeEventListener('keydown', onKeyDown, true)
+    if (!enabled || !near) closeTasting()
   }, [enabled, near])
 
-  if (!enabled || !near) return null
-  if (panel === PANEL) return <TastingDialog key={userId} userId={userId} />
-  if (panel) return null
-  return (
-    <button type="button" className="ui-btn ui-interactive date-activity-prompt wine-tasting-prompt" onClick={openTasting}>
-      <kbd>E</kbd> 달빛 테이스팅
-    </button>
-  )
-}
-
-function readBest(userId) {
-  try {
-    return Math.max(0, Math.min(ROUND_COUNT, Number(localStorage.getItem(`${STORAGE}.${userId}`)) || 0))
-  } catch {
-    return 0
-  }
+  if (!enabled || !near || panel !== PANEL) return null
+  return <TastingDialog key={userId} userId={userId} />
 }
 
 function TastingDialog({ userId }) {
@@ -139,7 +101,8 @@ function TastingDialog({ userId }) {
   const [flight, setFlight] = useState(makeFlight)
   const [answers, setAnswers] = useState([])
   const [reveal, setReveal] = useState(false)
-  const [best, setBest] = useState(() => readBest(userId))
+  const [best, setBest] = useState(() => readWineBest(userId) ?? 0)
+  const stamped = useDateMission((state) => Boolean(state.saved.accounts[userId]?.stamps?.[WINE_MISSION_ID]))
   const round = answers.length - Number(reveal)
   const current = flight[round]
   const score = answers.filter(Boolean).length
@@ -147,19 +110,17 @@ function TastingDialog({ userId }) {
   useEffect(() => {
     const node = dialog.current
     node.showModal()
-    return () => {
-      node.close()
-      queueMicrotask(() => { if (!node.isConnected) closeTasting() })
-    }
+    return () => node.close()
   }, [])
 
   const answer = (choice) => {
     if (reveal) return
     const correct = choice === current.drink
     if (answers.length + 1 === ROUND_COUNT) {
-      const record = Math.max(best, readBest(userId), score + Number(correct))
+      const record = Math.max(best, readWineBest(userId) ?? 0, score + Number(correct))
       setBest(record)
-      try { localStorage.setItem(`${STORAGE}.${userId}`, String(record)) } catch { /* 현재 기록은 화면에 표시 */ }
+      saveWineBest(userId, record)
+      useDateMission.getState().markDone(WINE_MISSION_ID)
     }
     setAnswers([...answers, correct])
     setReveal(true)
@@ -168,6 +129,10 @@ function TastingDialog({ userId }) {
     setFlight(makeFlight())
     setAnswers([])
     setReveal(false)
+  }
+  const viewMission = () => {
+    closeTasting()
+    useDateMission.getState().openCard(WINE_MISSION_ID)
   }
 
   return (
@@ -201,7 +166,11 @@ function TastingDialog({ userId }) {
           <div className="wine-tasting__result">
             <h3>{score === ROUND_COUNT ? '세 잔의 풍미를 모두 맞혔어요!' : '오늘의 테이스팅을 마쳤어요'}</h3>
             <p>이번 기록 <strong>{score}/{ROUND_COUNT}</strong> · 최고 <strong>{best}/{ROUND_COUNT}</strong></p>
-            <button type="button" className="ui-btn wine-tasting__primary" onClick={retry}>새로운 조합으로 다시 하기</button>
+            <p>✓ 데이트 체험 완료 · {stamped ? '스탬프를 이미 받았어요.' : '스탬프를 받을 수 있어요.'}</p>
+            <div className="special-actions">
+              <button type="button" className="ui-btn wine-tasting__primary" onClick={viewMission}>{stamped ? '미션 안내 보기' : '스탬프 받으러 가기'}</button>
+              <button type="button" className="ui-btn" onClick={retry}>새로운 조합으로 다시 하기</button>
+            </div>
           </div>
         )}
       </div>

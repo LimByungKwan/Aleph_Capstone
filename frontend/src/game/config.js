@@ -17,6 +17,8 @@ export const SHOW_PLACE_LABELS = true // 상호작용 지점 이름표
 export const PHYSICS_DEBUG = false // 충돌 박스·센서를 선으로 보기
 
 // ── 캐릭터 ───────────────────────────────────
+export const PLAYER_CAPSULE_RADIUS = 0.3
+export const PLAYER_CAPSULE_HALF_HEIGHT = 0.5
 export const PLAYER_WALK_SPEED = 1.6 // 리타기팅한 보폭에 맞춘 걷기 (m/s)
 export const PLAYER_RUN_SPEED = 4.2 // 달리기, Shift (m/s)
 export const PLAYER_JUMP_SPEED = 5 // 점프 힘
