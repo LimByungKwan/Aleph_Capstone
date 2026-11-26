@@ -112,7 +112,7 @@ function Searchlight({ y, color, phase }) {
 }
 
 // ── 3. 오디션 세트 (앞(+z)이 골목 입구 쪽, 뒤(-z)가 LED 벽) ──
-export const SINGER_Z = -1.05 // 지원자가 서는 자리 (세트 가운데 기준, +z가 앞쪽 입구). 마이크(-0.35)가 책상 앞면(-1.6)에서 0.2m
+export const SINGER_Z = 2.5 // 지원자가 서는 자리 (세트 가운데 기준, +z가 앞쪽 입구). 11/26 들어와 자연스럽게 멈추는 자리(실측 2.55)로. 마이크·조명·자동 시작이 모두 이 값을 따름
 const JUDGE_Z = -2 // 심사위원 책상: 세트 안쪽(LED 벽 앞), 입구 쪽을 바라봄
 
 export function AuditionSet({ item }) {
