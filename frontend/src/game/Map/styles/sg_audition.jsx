@@ -7,6 +7,7 @@ import { useGameStore } from '../../../store/gameStore.js'
 import { Ball, Box, Cyl, GEO, Instances, mat, texMat } from './kit.jsx'
 import { AUDITION_PANEL, JUDGES, useSgAudition } from './sg_auditionStore.js'
 import { getSignTexture } from './textures.js'
+import { sgSpots } from './sg_spots.js'
 
 // ── 썬그레이 오디션 (SG) ─────────────────────────
 // 뮤비 촬영 골목 끝의 오디션 세트 + 골목 입구 게이트 + 구역 입구 파일런 간판
@@ -265,7 +266,7 @@ function AuditionSensor({ id }) {
     return () => window.removeEventListener('keydown', down)
   }, [id])
 
-  return <group ref={anchor} position={[0, 0, SINGER_Z]} />
+  return <group ref={(o) => { anchor.current = o; sgSpots.sg_audition_spot = o }} position={[0, 0, SINGER_Z]} /> // KpopGuide 워프 도착점으로 등록
 }
 
 JUDGES.forEach((judge) => useGLTF.preload(import.meta.env.BASE_URL + judge.model))
