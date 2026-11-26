@@ -17,6 +17,8 @@ export const SHOW_PLACE_LABELS = true // 상호작용 지점 이름표
 export const PHYSICS_DEBUG = false // 충돌 박스·센서를 선으로 보기
 
 // ── 캐릭터 ───────────────────────────────────
+export const PLAYER_CAPSULE_RADIUS = 0.3
+export const PLAYER_CAPSULE_HALF_HEIGHT = 0.5
 export const PLAYER_SPEED_BOOST = 2 // 11/26 맵이 넓어 이동만 2배. 다리 동작 박자는 원래 속도 그대로 (CharacterModel이 이 값으로 나눔)
 export const PLAYER_WALK_SPEED = 1.6 * PLAYER_SPEED_BOOST // 걷기 (m/s). 1.6 = 리타기팅한 보폭에 맞춘 원래 걷기
 export const PLAYER_RUN_SPEED = 4.2 * PLAYER_SPEED_BOOST // 달리기, Shift (m/s)
