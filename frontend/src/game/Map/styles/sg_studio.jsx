@@ -5,6 +5,7 @@ import { useGameStore } from '../../../store/gameStore.js'
 import { Box, Cyl, GEO, Instances, mat } from './kit.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { useSgStudio } from './sg_studioStore.js'
+import { sgSpots } from './sg_spots.js'
 
 // ── 물결 레코딩 스튜디오 (SG) ─────────────────────
 // 기존 골목 가게 모양(FilmingAlleyShop) + 2층 외벽 장식 + TTS 체험의 3D 쪽(감지·E키)
@@ -109,5 +110,5 @@ function StudioSensor({ id, front }) {
     [id],
   )
 
-  return <group ref={anchor} position={[0, 0, front + 1.5]} />
+  return <group ref={(o) => { anchor.current = o; sgSpots.sg_studio_spot = o }} position={[0, 0, front + 1.5]} /> // KpopGuide 워프 도착점으로 등록
 }
