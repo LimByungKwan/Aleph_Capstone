@@ -28,6 +28,7 @@ create table if not exists private.signup_code (
   updated_at timestamptz not null default now()
 );
 revoke all on private.signup_code from public, anon, authenticated;
+alter table private.signup_code enable row level security;  -- 정책 없음 = API로는 아무도 못 읽음 (security definer 함수만 읽음, 실제 DB 11/26 적용 때 같이 켬)
 
 create or replace function private.hash_signup_code(p_code text)
 returns text language sql immutable set search_path = '' as $$
