@@ -9,8 +9,6 @@
   "entrance": { "position": [40, 0], "rotationDeg": 90, "width": 6 },
 
   "roads": [
-    {"id": "sg_market_rose", "style": "brick", "position": [-1, -16], "size": [27, 0.065, 3.8]},
-    {"id": "sg_market_link_rose", "style": "tile", "position": [3, -12.6], "size": [3, 0.055, 3.3]},
     {"id": "sg_market_tide", "style": "brick", "position": [-1, 16], "size": [27, 0.065, 3.8]},
     {"id": "sg_market_link_tide", "style": "tile", "position": [3, 12.6], "size": [3, 0.055, 3.3]},
     {"id": "sg_fan_walk", "style": "stone", "position": [8, 26], "size": [3.4, 0.04, 34]},
@@ -22,14 +20,16 @@
     {"id": "sg_cafe_walk", "style": "brick", "position": [18, -5], "size": [19, 0.04, 2]},
     { "id": "sg_entry", "style": "asphalt", "position": [30, 0], "size": [20, 0.02, 6], "rotationDeg": 0 },
     { "id": "sg_audience", "style": "tile", "position": [5.5, 0], "size": [15, 0.02, 22], "rotationDeg": 0 },
-    { "id": "sg_alley_floor", "style": "brick", "position": [26, 14], "size": [5, 0.02, 22], "rotationDeg": 0 }
+    { "id": "sg_alley_floor", "style": "brick", "position": [26, 14], "size": [5, 0.02, 22], "rotationDeg": 0 },
+    { "id": "sg_fan_street", "style": "brick", "position": [22, -30], "size": [34, 0.055, 8], "rotationDeg": 0 },
+    { "id": "sg_fan_street_link", "style": "stone", "position": [10, -17.5], "size": [3, 0.05, 19], "rotationDeg": 0 }
   ],
 
   "markings": [],
 
   "buildings": [
     { "id": "sg_stage", "style": "stage", "position": [-7.5, 0], "size": [22, 10, 11], "rotationDeg": 90, "model": null },
-    { "id": "sg_cheer", "style": "cheerSpot", "position": [6, 5], "size": [0.5, 1.5, 0.5], "rotationDeg": 0, "model": null },
+    { "id": "sg_cheer", "mapName": "SUNSET WAVE 응원석", "style": "cheerSpot", "position": [6, 5], "size": [0.5, 1.5, 0.5], "rotationDeg": 0, "model": null },
     { "id": "sg_ent", "style": "agencyLobby", "position": [-27, 0], "size": [20, 12, 14], "rotationDeg": 90, "color": "#d6cee0", "model": null, "signs": [{ "text": "SUNGRAY 엔터테인먼트", "bg": "#30223b", "awning": "#845879", "fg": "#f4daf7" }] },
     { "id": "sg_dorm", "style": "artistLounge", "position": [-26, -27], "size": [16, 10, 10], "rotationDeg": 0, "color": "#e2d6c9", "model": null, "signs": [{ "text": "아티스트 레지던스", "bg": "#4e4748", "awning": "#8ba99c", "fg": "#fff0ce" }] },
     { "id": "sg_studio", "style": "soundStudio", "position": [-26, 27], "size": [16, 8, 10], "rotationDeg": 180, "color": "#c8d9d7", "model": null, "signs": [{ "text": "물결 레코딩 스튜디오", "bg": "#214951", "awning": "#41646c", "fg": "#ddfff6" }] },
@@ -46,19 +46,14 @@
       "signs": [{ "text": "네온 코인노래방", "bg": "#0f172a", "fg": "#22d3ee", "awning": "#0891b2" }] },
     { "id": "sg_alley_e3", "style": "photoStudio", "position": [31.5, 20.5], "size": [8, 10, 6], "rotationDeg": -90, "color": "#d5dde8", "model": null,
       "signs": [{ "text": "구름 사진관", "bg": "#f0f9ff", "fg": "#0369a1", "awning": "#38bdf8" }] },
-    { "id": "sg_audition", "style": "auditionSet", "position": [26, 29], "size": [11, 6.5, 8], "rotationDeg": 180, "collider": false, "model": null },
-    { "id": "sg_audition_wall_w", "position": [20.7, 29], "size": [0.4, 6.5, 8], "rotationDeg": 0, "color": "#2b1d42", "model": null },
-    { "id": "sg_audition_wall_e", "position": [31.3, 29], "size": [0.4, 6.5, 8], "rotationDeg": 0, "color": "#2b1d42", "model": null },
-    { "id": "sg_audition_wall_back", "position": [26, 32.8], "size": [11, 6.5, 0.4], "rotationDeg": 0, "color": "#2b1d42", "model": null },
-    { "id": "sg_audition_pylon", "style": "auditionPylon", "position": [36, 5.5], "size": [4.5, 9, 0.5], "rotationDeg": 90, "collider": [0.5, 9, 0.5], "model": null }
+    { "id": "sg_audition", "mapName": "SUNGRAY 오디션", "style": "auditionSet", "position": [-3, -21], "size": [11, 6.5, 8], "rotationDeg": 45, "collider": false, "model": null },
+    { "id": "sg_audition_wall_w", "position": [0.75, -24.75], "size": [0.4, 6.5, 8], "rotationDeg": 45, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_wall_e", "position": [-6.75, -17.25], "size": [0.4, 6.5, 8], "rotationDeg": 45, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_wall_back", "position": [-5.69, -23.69], "size": [11, 6.5, 0.4], "rotationDeg": 45, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_pylon", "style": "auditionPylon", "position": [36, 4.2], "size": [4.5, 7.3, 0.5], "rotationDeg": 90, "collider": [0.5, 7.3, 0.5], "model": null }
   ],
 
   "props": [
-    {"id": "sg_cart_rose0", "style": "festivalCart", "position": [-10.0, -19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "grill", "signs": [{"text": "숯불 닭꼬치", "bg": "#ab5056", "fg": "#fff0d9"}]},
-    {"id": "sg_cart_rose1", "style": "festivalCart", "position": [-3.5999999999999996, -19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "cakes", "signs": [{"text": "별빛 미니케이크", "bg": "#ac6588", "fg": "#fff0d9"}]},
-    {"id": "sg_cart_rose2", "style": "festivalCart", "position": [2.8000000000000007, -19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "fan", "signs": [{"text": "응원봉 공방", "bg": "#786197", "fg": "#fff0d9"}]},
-    {"id": "sg_market_bench_rose0", "style": "bench", "position": [-7, -13.25], "size": [2, 0.9, 0.7], "rotationDeg": 180},
-    {"id": "sg_market_bench_rose1", "style": "bench", "position": [0, -13.25], "size": [2, 0.9, 0.7], "rotationDeg": 180},
     {"id": "sg_cart_tide0", "style": "festivalCart", "position": [-10.0, 19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "fish", "signs": [{"text": "부산 어묵", "bg": "#af7053", "fg": "#fff0d9"}]},
     {"id": "sg_cart_tide1", "style": "festivalCart", "position": [-3.5999999999999996, 19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "drink", "signs": [{"text": "물비늘 에이드", "bg": "#428783", "fg": "#fff0d9"}]},
     {"id": "sg_cart_tide2", "style": "festivalCart", "position": [2.8000000000000007, 19.45], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "cakes", "signs": [{"text": "파도 디저트", "bg": "#6084a8", "fg": "#fff0d9"}]},
@@ -83,8 +78,23 @@
     {"id": "sg_walk_sign2", "style": "signPost", "position": [-19, 40], "size": [1, 2.6, 0.25], "rotationDeg": 180, "signs": [{"text": "SUNGRAY 선셋 데크", "bg": "#365762", "fg": "#fff2da"}]},
     { "id": "sg_alley_lamp1", "style": "lamp", "position": [23.8, 16.5], "size": [0.3, 4.5, 0.3], "rotationDeg": 90 },
     { "id": "sg_alley_lamp2", "style": "lamp", "position": [28.2, 16.5], "size": [0.3, 4.5, 0.3], "rotationDeg": -90 },
-    { "id": "sg_audition_gate", "style": "auditionGate", "position": [26, 5.5], "size": [7, 7.5, 0.6], "rotationDeg": 180, "collider": false },
+    { "id": "sg_audition_gate", "style": "auditionGate", "position": [1.95, -16.05], "size": [7, 7.5, 0.6], "rotationDeg": 45, "collider": false },
     { "id": "sg_dome", "style": "kpopDome", "position": [0, 0], "size": [84.5, 18, 90], "rotationDeg": 0, "collider": false },
-    { "id": "sg_dome_show", "style": "kpopDomeShow", "position": [0, 0], "size": [84.5, 38, 90], "rotationDeg": 0, "collider": false }
+    { "id": "sg_dome_show", "style": "kpopDomeShow", "position": [0, 0], "size": [84.5, 38, 90], "rotationDeg": 0, "collider": false },
+    { "id": "sg_fan_tree0", "style": "cherryTree", "position": [12.5, -24.5], "size": [3.2, 4.3, 3.2], "rotationDeg": 0 },
+    {"id": "sg_fan_cart_n0", "style": "festivalCart", "position": [11, -33.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "fan", "signs": [{"text": "응원봉 대여", "bg": "#7c3aed", "fg": "#f5f3ff"}]},
+    {"id": "sg_fan_cart_n1", "style": "festivalCart", "position": [16.2, -33.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "drink", "signs": [{"text": "컵홀더 음료", "bg": "#0e7490", "fg": "#ecfeff"}]},
+    {"id": "sg_fan_cart_n2", "style": "festivalCart", "position": [21.4, -33.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "cakes", "signs": [{"text": "생일 컵케이크", "bg": "#db2777", "fg": "#fff1f7"}]},
+    {"id": "sg_fan_cart_n3", "style": "festivalCart", "position": [26.6, -33.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "fan", "signs": [{"text": "슬로건 타월", "bg": "#4338ca", "fg": "#eef2ff"}]},
+    {"id": "sg_fan_cart_n4", "style": "festivalCart", "position": [31.8, -33.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "grill", "signs": [{"text": "팬미팅 닭꼬치", "bg": "#b45309", "fg": "#fff7ed"}]},
+    {"id": "sg_fan_cart_n5", "style": "festivalCart", "position": [37, -33.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 0, "menu": "cakes", "signs": [{"text": "포토카드 쿠키", "bg": "#9333ea", "fg": "#faf5ff"}]},
+    {"id": "sg_fan_cart_s0", "style": "festivalCart", "position": [16.2, -26.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "fish", "signs": [{"text": "앨범 붕어빵", "bg": "#a16207", "fg": "#fefce8"}]},
+    {"id": "sg_fan_cart_s1", "style": "festivalCart", "position": [21.4, -26.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "drink", "signs": [{"text": "응원 에이드", "bg": "#0369a1", "fg": "#f0f9ff"}]},
+    {"id": "sg_fan_cart_s2", "style": "festivalCart", "position": [26.6, -26.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "fan", "signs": [{"text": "포토카드 교환", "bg": "#be185d", "fg": "#fdf2f8"}]},
+    {"id": "sg_fan_cart_s3", "style": "festivalCart", "position": [31.8, -26.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "cakes", "signs": [{"text": "팬레터 마카롱", "bg": "#7e22ce", "fg": "#faf5ff"}]},
+    {"id": "sg_fan_cart_s4", "style": "festivalCart", "position": [37, -26.5], "size": [4.25, 3, 2.46], "collider": [3.82, 2.9, 1.73], "rotationDeg": 180, "menu": "grill", "signs": [{"text": "콘서트 떡꼬치", "bg": "#b91c1c", "fg": "#fef2f2"}]},
+    { "id": "sg_fanst_lamp0", "style": "lamp", "position": [7.6, -33.6], "size": [0.35, 3.7, 0.35], "rotationDeg": 0 },
+    { "id": "sg_fanst_lamp1", "style": "lamp", "position": [7.6, -26.4], "size": [0.35, 3.7, 0.35], "rotationDeg": 0 },
+    { "id": "sg_fan_npc", "style": "fanWaver", "position": [24, -30], "size": [0.6, 1.7, 0.6], "rotationDeg": 0, "character": "female" }
   ]
 }

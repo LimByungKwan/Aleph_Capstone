@@ -67,8 +67,28 @@ function setLoggedIn(session, user) {
 }
 
 export function logout() {
+  // 서버에 "이 기기 로그인 끝"을 알림 → 이 토큰과 앞서 끊긴 옛 토큰이 다시 쓰이지 않게 (기다리지 않음, 실패해도 화면은 로그아웃)
+  const token = useSessionStore.getState().session?.accessToken
+  if (USE_SERVER && token) {
+    fetch(`${API_URL}/auth/logout`, { method: 'POST', headers: { authorization: `Bearer ${token}` } }).catch(() => {})
+  }
   save(null)
   useSessionStore.setState({ user: null, session: null })
+}
+
+// 계정당 로그인 1곳 (새 로그인 우선): 같은 계정으로 다른 기기에서 로그인하면 서버가 SESSION_REPLACED를 돌려줌
+// → 이 기기는 로그아웃하고 이유를 로그인 창으로 알림 (모르는 사이에 다른 사람이 로그인했다면 여기서 알아챌 수 있음)
+// 서버에 로그아웃을 다시 알리지 않는 이유: 기록은 이미 새 기기 것이라 바꿀 게 없음
+export const SESSION_REPLACED_PROMPT = {
+  title: '다른 기기에서 로그인했어요',
+  reason: '같은 계정은 한 곳에서만 쓸 수 있어서 이 기기는 로그아웃됐어요. 내가 한 게 아니라면 다시 로그인한 뒤 비밀번호를 바꿔 주세요.',
+}
+export function handleSessionReplaced() {
+  // 같은 브라우저의 다른 탭이 방금 새로 로그인해서 저장해 둔 값은 지우지 않음 (끊긴 게 저장된 그 토큰일 때만 지움)
+  const mine = useSessionStore.getState().session?.accessToken
+  const stored = loadSaved()
+  if (!stored || stored.session.accessToken === mine) save(null)
+  useSessionStore.setState({ user: null, session: null, loginPrompt: SESSION_REPLACED_PROMPT })
 }
 
 async function request(path, { method = 'GET', body, token } = {}) {
@@ -119,6 +139,8 @@ export async function authRequest(path, options = {}) {
   try {
     return await request(path, { ...options, token: useSessionStore.getState().session?.accessToken })
   } catch (error) {
+    // 끊긴 로그인은 토큰을 새로 받아도 session_id가 같아서 계속 거절됨 → refresh 없이 바로 로그아웃
+    if (error.code === 'SESSION_REPLACED') handleSessionReplaced()
     if (error.code !== 'UNAUTHORIZED') throw error
     await refresh()
     return request(path, { ...options, token: useSessionStore.getState().session?.accessToken })

@@ -15,9 +15,13 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,ht
 
 const port = Number(process.env.PORT) || 4000
 
-const server = createApp({ supabase, allowedOrigins }).listen(port, () => {
+let realtime = null
+// 다른 기기에서 로그인하면(새 로그인 우선) 그 계정의 멀티 접속도 바로 끊음
+const onSessionReplaced = (userId) => realtime?.kickUser(userId)
+
+const server = createApp({ supabase, allowedOrigins, onSessionReplaced }).listen(port, () => {
   console.log(`[scenewalk-api] http://localhost:${port}  (허용 화면 주소: ${allowedOrigins.join(', ')})`)
 })
 
 // 멀티 접속: 같은 포트에서 WebSocket(/realtime)도 받음 (Render 무료 서비스는 포트 1개)
-attachRealtime(server, { supabase, allowedOrigins })
+realtime = attachRealtime(server, { supabase, allowedOrigins })

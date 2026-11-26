@@ -7,12 +7,14 @@ import { useGameStore } from '../../../store/gameStore.js'
 import { Ball, Box, Cyl, GEO, Instances, mat, texMat } from './kit.jsx'
 import { AUDITION_PANEL, JUDGES, useSgAudition } from './sg_auditionStore.js'
 import { getSignTexture } from './textures.js'
+import { sgSpots } from './sg_spots.js'
 
 // ── 썬그레이 오디션 (SG) ─────────────────────────
-// 뮤비 촬영 골목 끝의 오디션 세트 + 골목 입구 게이트 + 구역 입구 파일런 간판
+// 콘서트 무대 북쪽의 오디션 세트 + 세트 바로 앞 게이트 + 구역 입구 파일런 간판
 // 화면 UI(미리 듣기·녹음·결과)는 components/sg/AuditionPanel.jsx
 // - 세트는 collider:false(안으로 걸어 들어감), 옆·뒤 벽 충돌은 sg_kpop.json의 sg_audition_wall_* 상자가 맡음
-// - 감지·E키는 응원봉 게임(sg_cheer.jsx)과 같은 방식: useFrame 거리 계산
+// - 감지·E키는 응원봉 게임(sg_cheer.jsx)과 같은 방식: useFrame 거리 계산. 마이크 자리에 들어서면 E 없이도 바로 열림
+// - 배치(11/26): 콘서트 무대 북쪽(노점 줄 자리)에서 앞쪽(+z)이 남동쪽(무대·시계탑 쪽)을 봄. 심사위원은 안쪽, 마이크는 그 바로 앞
 // - 빛나는 부품은 실제 조명 대신 emissive + 더하기 합성 빔 (조명 수를 늘리지 않음)
 
 const NEAR_DIST = 1.8
@@ -42,14 +44,14 @@ export function AuditionPylon({ item }) {
       <Cyl p={[0, (h - panelH) / 2, 0]} rad={0.18} h={h - panelH} m={METAL} />
       <Box p={[0, h - panelH / 2, 0]} s={[w + 0.3, panelH + 0.3, 0.3]} m={DARK} />
       <mesh {...glow} geometry={GEO.plane} position={[0, h - panelH * 0.38, 0.16]} scale={[w, panelH * 0.62, 1]} material={signMat('SUNGRAY 오디션', '#2b1d42', '#ffd6f0', w / (panelH * 0.62), 1.2)} />
-      <mesh {...glow} geometry={GEO.plane} position={[0, h - panelH * 0.84, 0.16]} scale={[w, panelH * 0.3, 1]} material={signMat('뮤비 골목 안에서 지금 도전 ▶', '#ff4fa3', '#ffffff', w / (panelH * 0.3), 1)} />
+      <mesh {...glow} geometry={GEO.plane} position={[0, h - panelH * 0.84, 0.16]} scale={[w, panelH * 0.3, 1]} material={signMat('무대 옆에서 바로 도전 ▶', '#ff4fa3', '#ffffff', w / (panelH * 0.3), 1)} />
       <Marquee w={w + 0.3} y={h + 0.2} z={0.18} />
       <Marquee w={w + 0.3} y={h - panelH - 0.2} z={0.18} />
     </>
   )
 }
 
-// ── 2. 골목 입구 게이트: 네온 기둥 + 전구 간판 + 하늘로 흔들리는 서치라이트 ──
+// ── 2. 오디션 게이트 (세트 바로 앞): 네온 기둥 + 전구 간판 + 하늘로 흔들리는 서치라이트 ──
 export function AuditionGate({ item }) {
   const [w, h] = item.size
   const x = w / 2 - 0.3
@@ -110,7 +112,8 @@ function Searchlight({ y, color, phase }) {
 }
 
 // ── 3. 오디션 세트 (앞(+z)이 골목 입구 쪽, 뒤(-z)가 LED 벽) ──
-export const SINGER_Z = -1.2 // 지원자가 서는 자리 (세트 가운데 기준)
+export const SINGER_Z = 2.5 // 지원자가 서는 자리 (세트 가운데 기준, +z가 앞쪽 입구). 11/26 들어와 자연스럽게 멈추는 자리(실측 2.55)로. 마이크·조명·자동 시작이 모두 이 값을 따름
+const JUDGE_Z = -2 // 심사위원 책상: 세트 안쪽(LED 벽 앞), 입구 쪽을 바라봄
 
 export function AuditionSet({ item }) {
   const [w, h, d] = item.size
@@ -135,7 +138,7 @@ export function AuditionSet({ item }) {
           <SpotBeam from={[x, h - 0.6, SINGER_Z + 0.4]} to={[0, 0, SINGER_Z]} color={i === 1 ? '#fff3c4' : i ? '#b18cff' : '#ff7ab6'} />
         </group>
       ))}
-      {/* 마이크 자리: 바닥 원 + 스탠드 */}
+      {/* 마이크 자리: 바닥 원 + 스탠드 (심사위원 책상 바로 앞) */}
       <mesh {...glow} geometry={GEO.cyl} material={SPOT} position={[0, 0.07, SINGER_Z]} scale={[1.1, 0.01, 1.1]} />
       <Cyl p={[0, 0.75, SINGER_Z - 0.35]} rad={0.025} h={1.5} m={METAL} />
       <Cyl p={[0, 0.02, SINGER_Z - 0.35]} rad={0.22} h={0.04} m={METAL} />
@@ -144,7 +147,7 @@ export function AuditionSet({ item }) {
       <Cyl p={[w / 2 - 1.4, 0.7, 0.6]} rad={0.04} h={1.4} m={METAL} />
       <Box p={[w / 2 - 1.4, 1.5, 0.6]} s={[0.5, 0.35, 0.3]} r={[0, -0.7, 0]} m={DARK} />
       <Ball {...glow} p={[w / 2 - 1.4, 1.62, 0.6]} rad={0.04} m={PINK} />
-      <JudgeTable z={2.2} />
+      <JudgeTable z={JUDGE_Z} />
       <AuditionSensor id={item.id} />
     </>
   )
@@ -164,10 +167,10 @@ function SpotBeam({ from, to, color }) {
   return <mesh {...glow} geometry={BEAM_GEO} material={material} position={position} quaternion={quaternion} scale={[0.7, length, 0.7]} />
 }
 
-// 심사위원 책상: 지원자(-z) 쪽을 바라봄
+// 심사위원 책상: 세트 안쪽에서 지원자·입구(+z) 쪽을 바라봄 (책상 안 좌표는 -z가 앞이라 반 바퀴 돌림)
 function JudgeTable({ z }) {
   return (
-    <group position={[0, 0, z]}>
+    <group position={[0, 0, z]} rotation={[0, Math.PI, 0]}>
       <Box p={[0, 0.74, 0]} s={[6.6, 0.06, 0.9]} m={DESK} />
       <Box p={[0, 0.38, -0.4]} s={[6.6, 0.7, 0.05]} m={DESK} />
       <Box {...glow} p={[0, 0.06, -0.44]} s={[6.6, 0.04, 0.03]} m={PINK} />
@@ -252,7 +255,11 @@ function AuditionSensor({ id }) {
     anchor.current.getWorldPosition(tmp.spot)
     player.current.getWorldPosition(tmp.me)
     const near = Math.hypot(tmp.me.x - tmp.spot.x, tmp.me.z - tmp.spot.z) < NEAR_DIST
-    if (near !== useSgAudition.getState().near) useSgAudition.getState().setNear(near)
+    if (near === useSgAudition.getState().near) return
+    useSgAudition.getState().setNear(near)
+    // 마이크 자리에 들어서는 순간 E 없이 바로 오디션 화면. 닫은 뒤엔 자리를 나갔다 와야 다시 열림
+    const game = useGameStore.getState()
+    if (near && !game.openPanel && !game.nearbyPlaceId) game.open({ type: AUDITION_PANEL, placeId: id })
   })
 
   useEffect(() => {
@@ -265,7 +272,7 @@ function AuditionSensor({ id }) {
     return () => window.removeEventListener('keydown', down)
   }, [id])
 
-  return <group ref={anchor} position={[0, 0, SINGER_Z]} />
+  return <group ref={(o) => { anchor.current = o; sgSpots.sg_audition_spot = o }} position={[0, 0, SINGER_Z]} /> // KpopGuide 워프 도착점으로 등록
 }
 
 JUDGES.forEach((judge) => useGLTF.preload(import.meta.env.BASE_URL + judge.model))

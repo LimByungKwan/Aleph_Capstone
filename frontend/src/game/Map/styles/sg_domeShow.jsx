@@ -9,7 +9,7 @@ import { DOME, FIREWORK_HEIGHT, domeBasePoints } from './sg_domeShape.js'
 // ── K-POP 돔 조명 쇼 (SG) ────────────────────────
 // 1) 돔 바닥선을 따라 2m 간격 서치라이트: 바닥선 바로 바깥에 세우고 빔이 바깥·위로 흔들림
 //    (안쪽에 두면 돔 캐노피에 빔이 가로막힘). 빔 160여 개를 InstancedMesh 하나로 그림
-// 2) 밤이 되면(설정 ⚙ 시간대 '밤') 돔보다 20m 위에서 1분 동안 폭죽. 중앙 광장 시계탑에서 보임
+// 2) 밤인 동안(설정 ⚙ 시간대 '밤') 돔보다 20m 위에서 폭죽: 몇 초 몰아 터뜨리고 몇 초 쉬기를 반복. 중앙 광장 시계탑에서 보임
 //    입자 하나하나를 Points 하나에 모아 CPU로 갱신 (draw call 2개: 입자 + 꼬리 없음)
 // 개발 중 확인용: 브라우저 콘솔에서 window.__sgFireworks() 로 바로 발사
 
@@ -74,8 +74,9 @@ function Searchlights() {
 }
 
 // ── 폭죽 ─────────────────────────────────────────
-const SHOW_SECONDS = 60
-const MAX_PARTICLES = 12000 // 피날레(8초, 70발 안팎) 동시 입자 약 8천 개 + 여유
+const VOLLEY_SECONDS = 5 // 한 번 몰아 터뜨리는 시간
+const PAUSE_SECONDS = 6 // 다음 묶음까지 쉬는 시간 (11/26: 1분 쇼 한 번 → 짧게 반복으로)
+const MAX_PARTICLES = 12000 // 한 묶음 마지막(3발씩 몰아침) 동시 입자 수천 개 + 여유
 const GRAVITY = -9.8
 const PALETTE = ['#ff4fa3', '#b18cff', '#5ce1ff', '#ffd166', '#ffffff', '#7dff9b', '#ff7a45']
 // 폭죽이 올라가는 바닥 범위: 돔 안쪽 (캐노피 아래를 피해 가운데 쪽)
@@ -181,11 +182,11 @@ function launch(pool, shape = Math.floor(Math.random() * 5)) {
   emit(pool, x, 0.5, z, (Math.random() - 0.5) * 2, vy, (Math.random() - 0.5) * 2, tmpColor.set('#fff3c4'), 10, { drag: 1, gravity: GRAVITY, kind: 1, burst: shape })
 }
 
-// 1분 동안의 발사 계획: 점점 잦아지고, 마지막 8초는 한꺼번에(피날레)
-export function fireworkSchedule(seconds = SHOW_SECONDS) {
+// 한 묶음의 발사 계획: 처음엔 한 발씩, 점점 잦아지다가 마지막 1.5초는 3발씩 몰아침
+export function fireworkSchedule(seconds = VOLLEY_SECONDS) {
   const plan = []
-  for (let t = 0.5; t < seconds - 8; t += 1.4 - (t / seconds) * 0.9) plan.push({ t, count: t > seconds * 0.5 ? 2 : 1 })
-  for (let t = seconds - 8; t < seconds; t += 0.35) plan.push({ t, count: 3 })
+  for (let t = 0; t < seconds - 1.5; t += 0.7 - (t / seconds) * 0.4) plan.push({ t, count: t > seconds * 0.4 ? 2 : 1 })
+  for (let t = seconds - 1.5; t < seconds; t += 0.5) plan.push({ t, count: 3 })
   return plan
 }
 
@@ -209,7 +210,7 @@ function Fireworks() {
   // 시작 시각은 다음 프레임에서 정함 (밤 상태로 처음 들어올 때 지난 발사가 한꺼번에 몰리지 않게)
   const start = () => { show.current = { start: null, plan: fireworkSchedule(), index: 0 } }
 
-  // 밤으로 바뀌면(또는 밤 상태로 들어오면) 1분 쇼
+  // 밤으로 바뀌면(또는 밤 상태로 들어오면) 첫 묶음. 다음 묶음은 아래 useFrame이 이어서 예약
   useEffect(() => {
     if (timeOfDay === 'night') start()
   }, [timeOfDay])
@@ -229,7 +230,12 @@ function Fireworks() {
         for (let k = 0; k < s.plan[s.index].count; k++) launch(pool)
         s.index++
       }
-      if (s.index >= s.plan.length) show.current = null
+      // 묶음이 끝나면 아직 밤일 때만 PAUSE_SECONDS 뒤에 다음 묶음 (start가 미래라 그때까지 발사 없음)
+      if (s.index >= s.plan.length) {
+        show.current = useSettings.getState().timeOfDay === 'night'
+          ? { start: clock.elapsedTime + PAUSE_SECONDS, plan: fireworkSchedule(), index: 0 }
+          : null
+      }
     }
 
     let alive = 0
