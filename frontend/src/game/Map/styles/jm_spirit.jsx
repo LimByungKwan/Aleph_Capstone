@@ -675,10 +675,14 @@ export function JmTownGate({ item }) {
       <mesh geometry={roof} position={[0, h, 0]}>
         <meshStandardMaterial color="#2e3236" flatShading side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, h - 2.2, 0.27]}>
-        <planeGeometry args={[3.4, 1.2]} />
-        <GlowMaterial glow={0.6} map={getJpSignTexture(text, '#2a1a12', '#f2c94c', 3.4 / 1.2)} side={THREE.DoubleSide} />
-      </mesh>
+      {/* (11/26 점검) 간판: 양면 판 하나라 마을 안쪽에서 보면 글자가 거울처럼 뒤집혀 보였음 → 판 + 앞뒤 따로 글자 */}
+      <Box p={[0, h - 2.2, 0]} s={[3.55, 1.32, 0.5]} c="#2a1a12" />
+      {[1, -1].map((sd) => (
+        <mesh key={`sg${sd}`} position={[0, h - 2.2, sd * 0.27]} rotation={[0, sd > 0 ? 0 : Math.PI, 0]}>
+          <planeGeometry args={[3.4, 1.2]} />
+          <GlowMaterial glow={0.6} map={getJpSignTexture(text, '#2a1a12', '#f2c94c', 3.4 / 1.2)} />
+        </mesh>
+      ))}
       {range(4).map((i) => (
         <Chochin key={i} p={[-w / 2 + 1.6 + (i * (w - 3.2)) / 3, h - 1.75, 0.35]} r={0.3} h={0.6} white={i % 2 === 1} />
       ))}
@@ -2044,7 +2048,8 @@ export function JmPinkHouse({ item }) {
       {/* 마름모 색유리 두 짝 아치 창 */}
       {[-0.55, 0.55].map((dx) => (
         <group key={dx} position={[w * 0.18 + dx, 2.3, f + 0.03]}>
-          <mesh>
+          {/* (11/26 점검) 유리판이 창틀 앞면과 같은 깊이라 겹쳐 깜빡이며 대각선으로 잘려 보였음 → 앞으로 */}
+          <mesh position={[0, 0, 0.025]}>
             <planeGeometry args={[0.95, 1.5]} />
             <meshStandardMaterial map={stainedTexture()} emissiveMap={stainedTexture()} emissive="#ffffff" emissiveIntensity={0.5} />
           </mesh>
@@ -2175,8 +2180,10 @@ function archBandTexture(title, color, ratio) {
     const chars = [...title]
     const R = (rOut + rIn) / 2
     const band = rOut - rIn
-    const span = Math.min(Math.PI * 0.8, chars.length * (band / R) * 0.95)
-    ctx.font = `bold ${Math.round(band * 0.5)}px ${JP_FONT}`
+    // (11/26) 긴 장면 이름도 띠 안에 들어가게 글자 크기를 줄임 (띠 길이의 82%까지)
+    const fs = Math.min(band * 0.5, (Math.PI * 0.82 * R) / (chars.length * 1.08))
+    const span = Math.min(Math.PI * 0.82, chars.length * (fs * 1.08) / R)
+    ctx.font = `bold ${Math.round(fs)}px ${JP_FONT}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     chars.forEach((ch, i) => {
@@ -2238,7 +2245,8 @@ export function JmAlleyArch({ item }) {
     <group>
       {/* 앞 문틀 + 띠 글자 */}
       <mesh geometry={geo.frame} material={mat(color, { roughness: 0.85 })} position={[0, 0, -0.45]} />
-      <mesh geometry={geo.ring} position={[0, spring, 0.03]}>
+      {/* (11/26) 띠 글자판은 문틀 앞면(+모서리 0.04)보다 앞에 둬야 보임 */}
+      <mesh geometry={geo.ring} position={[0, spring, 0.06]}>
         <meshStandardMaterial map={tex} transparent alphaTest={0.4} roughness={0.85} />
       </mesh>
       {/* 다리 쪽 밝은 띠·받침 */}
@@ -2251,7 +2259,7 @@ export function JmAlleyArch({ item }) {
       ))}
       {/* 전구: 아치 안쪽·바깥쪽 테 + 다리 */}
       {[...bulbs(r + 0.14, 15), ...bulbs(r + band - 0.12, 21), ...legBulbs(-(r + 0.14)), ...legBulbs(r + 0.14)].map(([x, y], i) => (
-        <Ball key={`b${i}`} p={[x, y, 0.08]} rad={0.065} m={i % 3 === 1 ? BULB_PINK : LANTERN_RED} />
+        <Ball key={`b${i}`} p={[x, y, 0.1]} rad={0.065} m={i % 3 === 1 ? BULB_PINK : LANTERN_RED} />
       ))}
       {/* 반원 지붕 + 갈비 + 지붕 위 덮개 */}
       <mesh geometry={geo.roof} material={ARCH_ROOF} position={[0, spring, -0.45 - depth / 2]} />

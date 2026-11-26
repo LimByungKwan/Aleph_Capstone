@@ -489,7 +489,7 @@ for (const sc of SCENES) {
   const L = (lx, lz) => rotate(sc.c, sc.rot, lx, lz)
   const E = { elevation: sc.e }
   // 장면 이름 팻말 하나 (담·문 대신)
-  prop(`jm_scene_${sc.n}_sign`, 'jmArrowSign', L(sc.w / 2 - 2.5, sc.d / 2 - 1.2), [1.6, 2.1, 0.2], { rotationDeg: sc.rot + 15, ...E, signs: [{ text: `${sc.title.split(' 「')[0]}`, dir: 'right' }, { text: sc.sub, dir: 'right' }] })
+  // (11/26 지민 요청: 장면 이름은 골목 입구 아치의 붉은 띠에 씀) 골목 안 화살표 팻말은 아치 띠와 겹쳐 없앰
   prop(`jm_scene_${sc.n}`, 'jmSceneRoom', sc.c, [16, 12, 16], {
     rotationDeg: sc.rot, collider: false, elevation: r2(sc.e + 0.02),
     room: { kind: sc.kind, title: sc.title, sub: sc.sub, w: sc.w, d: sc.d, inMap: true, open: true, ...(sc.stair && { stair: sc.stair }), ...(sc.pond && { pond: sc.pond }) },
@@ -554,8 +554,11 @@ for (const [id, p, e] of [['jm_alley2_lamp', [-22.6, -123.2], TOWN], ['jm_alley3
   ]
   for (const [n, p, rot, span, depth, e, color, fill] of ARCHES) {
     const sc = SCENES.find((x) => x.n === n)
-    const title = (sc.title.match(/「(.+)」/) ?? [null, sc.title])[1]
-    prop(`jm_scene_${n}_arch`, 'jmAlleyArch', p, [span, 6, depth], { rotationDeg: rot, elevation: e, collider: false, title, sub: sc.sub, color, ...(fill && { fill }) })
+    // (11/26 지민 요청) 붉은 아치 띠 글자 = 장면 번호 + 장면 이름 (예: ① 비 오는 숲속 정류장), 작품 이름은 work로
+    const num = (sc.title.match(/[①-⑩]/) ?? [''])[0]
+    const work = (sc.title.match(/「(.+)」/) ?? [null, sc.title])[1]
+    prop(`jm_scene_${n}_arch`, 'jmAlleyArch', p, [span, 6, depth], { rotationDeg: rot, elevation: e, collider: false, title: `${num} ${sc.sub}`.trim(), work, color, // 안쪽 설명 팻말(sub)은 띠 글자와 겹쳐 뺌
+      ...(fill && { fill }) })
     // 양옆 벽 판정 (로컬 x = ±(폭/2 + 0.45), z = -(0.45 + 깊이/2))
     const a = (rot * Math.PI) / 180
     for (const sd of [-1, 1]) {
@@ -1278,6 +1281,27 @@ for (const p of props) if (p.style === 'jmCanal' && p.beach === 'sea') p.hideWat
       p.position = [r2((x0 + x1) / 2), r2((z0 + z1) / 2)]
       p.size = [r2(x1 - x0), p.size[1], r2(z1 - z0)]
     }
+  }
+}
+
+// (11/26 점검) 장면 마당 바닥(ScenePad: 높이 + 0.03)이 겹치는 마을 이끼 돌바닥(JmFloor: 높이 + 0.09)보다 낮아서 덮여 보이던 것
+//   → 장면 마당을 겹치는 돌바닥 윗면 바로 위로 올림 (① 논·흙길·풀밭이 돌바닥에 묻혀 벼 모만 삐죽 나와 보였음)
+{
+  const floorsAll = props.filter((q) => q.style === 'jmFloor')
+  for (const sc of props.filter((q) => q.style === 'jmSceneRoom')) {
+    const turned = Math.abs((sc.rotationDeg ?? 0) % 180) === 90
+    const rw = sc.room?.w ?? sc.size[0]
+    const rd = sc.room?.d ?? sc.size[2]
+    const hx = (turned ? rd : rw) / 2
+    const hz = (turned ? rw : rd) / 2
+    const e = sc.elevation ?? 0
+    let top = -Infinity
+    for (const f of floorsAll) {
+      const ft = (f.elevation ?? 0) + 0.03 + Math.min(f.size[1] ?? 0.06, 0.06)
+      if (ft < e - 0.02 || ft > e + 0.2) continue
+      if (Math.abs(f.position[0] - sc.position[0]) < f.size[0] / 2 + hx && Math.abs(f.position[1] - sc.position[1]) < f.size[2] / 2 + hz) top = Math.max(top, ft)
+    }
+    if (top > e) sc.elevation = r2(top + 0.02)
   }
 }
 

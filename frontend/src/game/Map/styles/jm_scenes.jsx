@@ -22,9 +22,9 @@ const range = (n) => Array.from({ length: n }, (_, i) => i)
 const rnd = (i) => srand(i * 7.13 + 3.1)
 
 // 둥근 바닥: 타원형 얇은 판
-export function ScenePad({ w, d, color = '#8a8a72', inset = 1.5 }) {
+export function ScenePad({ w, d, color = '#8a8a72', inset = 1.5, z = 0 }) {
   return (
-    <mesh position={[0, 0.015, 0]} scale={[(w - inset) / 2, 1, (d - inset) / 2]}>
+    <mesh position={[0, 0.015, z]} scale={[(w - inset) / 2, 1, (d - inset) / 2]}>
       <cylinderGeometry args={[1, 1, 0.03, 40]} />
       <meshStandardMaterial color={color} roughness={1} polygonOffset polygonOffsetFactor={-1} />
     </mesh>
@@ -298,7 +298,8 @@ export function NatsumeShrine({ w, d, stair }) {
       ))}
       {/* 위 마당: 작은 붉은 도리이 → 사당 (방울 줄, 새전함) + 옆 과자 노점 */}
       <group position={[0, h, 0]}>
-        <ScenePad w={11} d={top} color="#6a8a4a" inset={0.4} />
+        {/* (11/26 점검) 위 마당 풀밭은 단 가운데(tz)에 — 전엔 z 0에 있어 절반이 계단 위로 떠 삐져나왔음 */}
+        <ScenePad w={11} d={top} color="#6a8a4a" inset={0.4} z={tz} />
         <group position={[0, 0, -4.2]}>
           {[-1, 1].map((s) => (
             <Cyl key={s} p={[s * 1.3, 1.5, 0]} rad={0.13} h={3} m={SHRINE_RED} />
