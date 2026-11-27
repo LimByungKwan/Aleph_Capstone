@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore.js'
-import { APPROACH, CHEER_PANEL, GAME_SECONDS, POINTS, WINDOW, judge, makeNotes, useSgCheer } from '../../game/Map/styles/sg_cheerStore.js'
+import { APPROACH, GAME_SECONDS, POINTS, WINDOW, judge, makeNotes } from '../../game/Map/styles/sg_cheerStore.js'
 
 // SUNSET WAVE 응원봉 리듬 게임 화면. 담당: 성근(SG)
 // 3D 쪽(받침대·감지·E키)은 game/Map/styles/sg_cheer.jsx
@@ -20,20 +20,6 @@ function readBest() {
 }
 
 export default function CheerGame() {
-  const near = useSgCheer((s) => s.near)
-  const open = useGameStore((s) => s.openPanel?.type === CHEER_PANEL)
-  if (open) return <Game />
-  if (!near) return null
-  return (
-    <div style={hudWrap}>
-      <div style={chip}>
-        <kbd style={kbd}>E</kbd> SUNSET WAVE 응원봉 리듬 게임
-      </div>
-    </div>
-  )
-}
-
-function Game() {
   const [phase, setPhase] = useState('ready') // 'ready' | 'playing' | 'result'
   const [now, setNow] = useState(0)
   const [best, setBest] = useState(readBest)
@@ -173,8 +159,6 @@ const TARGET = 70
 const JUDGE_COLOR = { perfect: '#ffe066', good: '#9be7c4', miss: '#ff8fa3' }
 // drei <Html> 이름표(z-index 최대 16777271) 위에 뜨게 UiRoot와 같은 값
 const overlay = { position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5, 3, 18, 0.56)', zIndex: 16777280 }
-const hudWrap = { position: 'absolute', left: 0, right: 0, bottom: 72, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 20 }
-const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
 // 작은 화면에서는 내용만 세로로 스크롤해 조작 버튼까지 닿게
 const panel = { boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.2vh, 14px)', width: 'min(1220px, 92vw)', minHeight: 'min(750px, 86vh)', maxHeight: 'min(760px, 86vh)', overflowY: 'auto', overflowX: 'hidden', padding: 'clamp(16px, 2.4vw, 36px)', borderRadius: 20, border: '1px solid #756097', background: 'rgba(24,18,43,0.97)', boxShadow: '0 24px 80px #0009, 0 0 36px #b18cff22', color: '#fff', fontSize: 'clamp(16px, 1.5vw, 20px)', overflowWrap: 'anywhere', lineHeight: 1.5 }
 const stage = { '--target-size': 'clamp(76px, 12vw, 144px)', position: 'relative', flex: '1 0 auto', height: 'clamp(280px, 52vh, 520px)', minHeight: 280, borderRadius: 14, border: '1px solid #4e3b70', background: 'radial-gradient(circle at center, #2b1d52, #160f26)', overflow: 'hidden', cursor: 'pointer', touchAction: 'manipulation', userSelect: 'none' }

@@ -8,6 +8,7 @@ import { labelLayer } from '../labelLayer.js'
 import { distanceTo, formatDistance, playerPose } from '../../store/playerPose.js'
 import { usePhotoStore } from '../../store/photoStore.js'
 import { composePhoto, whereAmI } from '../../components/photo/composePhoto.js'
+import { findPlayer } from '../Player/findPlayer.js'
 
 // 루미 추천 코스의 "다음 목적지" 표시 (담당: 병관)
 // 멀리서도 보이는 빛기둥 + 위아래로 움직이는 화살표 + 이름표. 도착하면 다음 장소로 옮겨감 (courseStore)
@@ -60,7 +61,7 @@ function PlayerPoseTracker() {
   const frame = useRef(0)
   useFrame(({ camera }) => {
     // 캐릭터를 아직 못 찾았으면 30프레임마다 한 번만 찾기 (장면 전체를 훑는 일이라)
-    if (!player.current?.parent && frame.current++ % 30 === 0) player.current = scene.getObjectByName('player') ?? null
+    if (!player.current?.parent && frame.current++ % 30 === 0) player.current = findPlayer(scene)
     camera.getWorldDirection(tmpDir)
     const len = Math.hypot(tmpDir.x, tmpDir.z)
     if (len > 1e-3) {

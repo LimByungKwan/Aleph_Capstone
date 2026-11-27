@@ -6,6 +6,7 @@ import { Box, Cyl, GEO, Instances, mat } from './kit.jsx'
 import { FilmingAlleyShop } from './filmingAlley.jsx'
 import { useSgStudio } from './sg_studioStore.js'
 import { sgSpots } from './sg_spots.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // ── 물결 레코딩 스튜디오 (SG) ─────────────────────
 // 기존 골목 가게 모양(FilmingAlleyShop) + 2층 외벽 장식 + TTS 체험의 3D 쪽(감지·E키)
@@ -74,7 +75,7 @@ function StudioSensor({ id, front }) {
     const t = clock.elapsedTime
     if (!player.current?.parent && t - lastLookup.current > FIND_PLAYER_EVERY) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     if (!player.current?.parent || !anchor.current) return
     anchor.current.getWorldPosition(tmp.spot)

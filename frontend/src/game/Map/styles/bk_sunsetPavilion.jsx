@@ -9,6 +9,7 @@ import { onTarotMessage, sendTarot, useRealtimeStore } from '../../multiplayer/r
 import { hipRoofGeometry } from './geometry.js'
 import { GEO, Instances, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 const TITLE = '노을등 정자'
 const wood = mat('#ffffff', { flat: true })
@@ -149,7 +150,7 @@ function PavilionInteraction({ item, onLight }) {
       camera.getWorldDirection(vectors.eye).multiplyScalar(2).add(camera.position)
       hud.current.position.copy(hud.current.parent.worldToLocal(vectors.eye))
     }
-    if (!player.current?.parent) player.current = scene.getObjectByName('player') ?? null
+    if (!player.current?.parent) player.current = findPlayer(scene)
     const next = player.current ? pavilionPad(player.current.getWorldPosition(vectors.feet).toArray(vectors.position)) : -1
     if (next === currentPad.current) return
     currentPad.current = next

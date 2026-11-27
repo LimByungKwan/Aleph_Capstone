@@ -12,6 +12,7 @@ import { JmCanal, JmCrossing } from './jm_kyoto.jsx'
 import { hipRoofGeometry } from './geometry.js'
 import { JmBusStop } from './jm_shops.jsx'
 import { MossForest, NatsumeShrine, ScenePad, ShintaiShrine, WisteriaPath } from './jm_scenes.jsx'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 애니메이션 구역(JM) 「명장면 공간」 — 담당: 지민 (11/24)
 // 계단 거리 가게 문(jmPortalDoor) 앞에서 E → 화면이 잠깐 어두워지고 맵 밖(남쪽 바다 위 멀리)의 장면 공간(jmSceneRoom)으로 이동
@@ -69,7 +70,7 @@ export function JmPortalDoor({ item }) {
     nextCheck.current = t + 0.15
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     if (!player.current || !anchor.current) return
     anchor.current.getWorldPosition(tmp.door)
@@ -239,7 +240,7 @@ export function JmSceneRoom({ item }) {
     if (clock.elapsedTime < c.next) return
     c.next = clock.elapsedTime + 0.5
     if (room.inMap) return
-    if (!c.player?.parent) c.player = scene.getObjectByName('player') ?? null
+    if (!c.player?.parent) c.player = findPlayer(scene)
     if (!c.player) return
     c.player.getWorldPosition(me)
     if (me.z >= ROOM_Z_FROM) setMapLabels(false)

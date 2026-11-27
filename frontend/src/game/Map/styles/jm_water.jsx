@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 애니 구역(JM) 물 — 담당: 지민
 // 11/25: 물(수로·개울·호수·강)을 맵 바다(혜진 구역 hjSea, hj/HjHarbor.jsx)와 똑같이 보이게 (지민 요청: "지금은 리얼하지 않아")
@@ -202,7 +203,7 @@ export function WadeSplash({ w, len, y }) {
   }), [])
   useFrame(({ scene }, dt) => {
     if (!group.current) return
-    if (!st.player?.parent) st.player = scene.getObjectByName('player') ?? null
+    if (!st.player?.parent) st.player = findPlayer(scene)
     const step = Math.min(dt, 0.05)
     st.t += step
     if (st.player) {
@@ -556,11 +557,33 @@ function oceanGeometry(O) {
   const S = 2 // (11/26) 격자를 촘촘히 → 물가 선이 덜 각짐
   const nx = Math.ceil((x1 - x0) / S)
   const nz = Math.ceil((z1 - z0) / S)
+  // (11/27 성능) 격자 점마다 물가선 전체(N개 구간)를 훑던 계산이 첫 로딩 메인 스레드를 ~3초 멈춤
+  //   → 구간을 칸(SC m)별로 나눠 두고 가까운 칸만 봄. 결과는 같음 (R m 넘게 먼 물가는 색·투명도에 영향 없어 Infinity로 둠)
+  const SC = 16
+  const R = 80
+  const cellOf = (v, v0) => Math.floor((v - v0) / SC)
+  const gcx = Math.ceil((x1 - x0) / SC) + 1
+  const gcz = Math.ceil((z1 - z0) / SC) + 1
+  const cells = Array.from({ length: gcx * gcz }, () => [])
+  const rows = Array.from({ length: gcz }, () => []) // 안/밖 판정용: z 줄별로 그 줄을 지나는 변
+  const has = {} // 물가 종류(B·L·O·M)가 하나라도 있는지
+  for (const p of poly) has[p[2] === 'O' || p[2] === 'M' || p[2] === 'L' ? p[2] : 'B'] = true
+  for (let a = 0; a < N; a++) {
+    const p = poly[a]
+    const q = poly[(a + 1) % N]
+    const ca0 = Math.max(0, cellOf(Math.min(p[0], q[0]), x0)), ca1 = Math.min(gcx - 1, cellOf(Math.max(p[0], q[0]), x0))
+    const cb0 = Math.max(0, cellOf(Math.min(p[1], q[1]), z0)), cb1 = Math.min(gcz - 1, cellOf(Math.max(p[1], q[1]), z0))
+    for (let cb = cb0; cb <= cb1; cb++) {
+      rows[cb].push(a)
+      for (let ca = ca0; ca <= ca1; ca++) cells[cb * gcx + ca].push(a)
+    }
+  }
   const inside = (x, z) => {
     let c = false
-    for (let i = 0, j = N - 1; i < N; j = i++) {
-      const [xi, zi] = poly[i]
-      const [xj, zj] = poly[j]
+    const row = rows[Math.min(gcz - 1, Math.max(0, cellOf(z, z0)))]
+    for (const a of row) {
+      const [xi, zi] = poly[(a + 1) % N]
+      const [xj, zj] = poly[a]
       if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c
     }
     return c
@@ -571,21 +594,38 @@ function oceanGeometry(O) {
     const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L))
     return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz)
   }
-  const distances = (x, z) => {
+  const distances = (x, z, lim = R) => {
     let dBeach = Infinity
     let dLake = Infinity
     let dOpen = Infinity
     let dMouth = Infinity
-    for (let a = 0; a < N; a++) {
+    const add = (a) => {
       const p = poly[a]
-      const q = poly[(a + 1) % N]
-      const dd = segDist(x, z, p, q)
+      const dd = segDist(x, z, p, poly[(a + 1) % N])
       if (p[2] === 'O') dOpen = Math.min(dOpen, dd)
       else if (p[2] === 'M') dMouth = Math.min(dMouth, dd) // 강어귀: 물길(JmChannelWater)과 서로 흐려지며 겹치는 쪽
       else if (p[2] === 'L') dLake = Math.min(dLake, dd)
       else dBeach = Math.min(dBeach, dd)
     }
-    return { dBeach, dLake, dOpen, dMouth }
+    if (lim === Infinity) for (let a = 0; a < N; a++) add(a)
+    const cx = cellOf(x, x0)
+    const cz = cellOf(z, z0)
+    // 고리(k칸)를 넓혀 가며 봄. 고리 k까지 보면 (k-1)·SC m 안의 구간은 모두 본 것 → 네 종류 다 그보다 가깝거나 R을 넘으면 멈춤
+    for (let k = 0; lim !== Infinity; k++) {
+      for (let cb = cz - k; cb <= cz + k; cb++) {
+        if (cb < 0 || cb >= gcz) continue
+        const edge = cb === cz - k || cb === cz + k
+        for (let ca = cx - k; ca <= cx + k; ca += edge ? 1 : 2 * k || 1) {
+          if (ca >= 0 && ca < gcx) for (const a of cells[cb * gcx + ca]) add(a)
+        }
+      }
+      const seen = (k - 1) * SC
+      // 없는 종류는 기다리지 않음 (없는 종류 때문에 매 점 R까지 다 훑던 것)
+      if (seen >= lim || seen >= Math.max(has.B ? dBeach : 0, has.L ? dLake : 0, has.O ? dOpen : 0, has.M ? dMouth : 0)) break
+    }
+    // R 밖: 그 종류가 아예 없으면 Infinity(원래 값), 있으면 '아주 멀다'로 — lakeW가 '없음'과 '멂'을 구분하기 때문
+    const far = (d, kind) => (d <= lim ? d : has[kind] ? 1e9 : Infinity)
+    return { dBeach: far(dBeach, 'B'), dLake: far(dLake, 'L'), dOpen: far(dOpen, 'O'), dMouth: far(dMouth, 'M') }
   }
   const pos = new Float32Array((nx + 1) * (nz + 1) * 3)
   const col = new Float32Array((nx + 1) * (nz + 1) * 4)
@@ -604,11 +644,13 @@ function oceanGeometry(O) {
       const x = calm ? gx : gx + Math.sin(j * 1.7 + i * 0.3) * 0.6
       const z = calm ? gz : gz + Math.cos(i * 1.3 + j * 0.4) * 0.6
       if (!calm) dist = distances(x, z)
+      const inS = inside(x, z)
+      // 물 밖·열린 쪽 경계 6m 안(이웃 격자점 거리 2.8m + 흔들림 1.7m)인데 해변·호숫가 둘 다 R보다 멀면: 투명 점이어도 이웃 삼각형 색에 섞이므로 전부 훑어 정확히 다시 잼
+      if (!inS && dist.dOpen < 6 && dist.dBeach === 1e9 && dist.dLake === 1e9) dist = distances(x, z, Infinity)
       const { dBeach, dLake, dOpen, dMouth } = dist
       const dShore = Math.min(dBeach, dLake)
       // 호수식 물가 비중: 가까운 물가가 호수 쪽이면 1 (두 종류가 만나는 곳은 12m에 걸쳐 섞임)
       const lakeW = dLake === Infinity ? 0 : dBeach === Infinity ? 1 : Math.max(0, Math.min(1, 0.5 + (dBeach - dLake) / 24))
-      const inS = inside(x, z)
       const band = sand * (1 - lakeW) + LAKE_BANK * lakeW // 물가 띠 폭: 모래 8m / 호수 둑 3.5m
       const d = inS ? dShore : -dShore
       // 밖인데 열린 쪽에 더 가까우면(기존 바다 쪽) 그리지 않음

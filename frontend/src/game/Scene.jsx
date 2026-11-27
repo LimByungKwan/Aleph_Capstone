@@ -70,7 +70,9 @@ export default function Scene() {
         {/* 첫 접속 로딩 화면 (모델·텍스처 다운로드 + 셰이더 준비가 끝나면 사라짐) */}
         <LoadingScreen />
         {/* 고화질도 화면 해상도는 최대 1.5배까지 (2배면 그려야 할 픽셀이 1.8배 늘어 렉의 주원인) */}
-        <Canvas dpr={highDetail ? [1, 1.5] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
+        {/* near 0.25: 0.1이면 100m 앞 깊이 정밀도가 ~6mm라 몇 mm 차이로 겹친 바닥·지붕이 멀리서 물결처럼 깜빡임 (11/27) → 2.5배 정밀
+            캐릭터 몸통 반경이 0.3m라 1인칭에서도 벽이 0.25m 안으로 안 들어와 잘리지 않음 */}
+        <Canvas dpr={highDetail ? [1, 1.5] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.25, far: 1000 }}>
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
           <PastelSky />
 

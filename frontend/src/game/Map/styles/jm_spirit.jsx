@@ -11,6 +11,7 @@ import { useGameStore } from '../../../store/gameStore.js'
 import { NearOnly } from './jm_yutoya.jsx'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useWarps } from './bk_warpStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 같은 입력이면 같은 0~1 난수 (kit의 seeded는 난수 '함수'를 돌려줌 → 숫자로 한 번 뽑음)
 const srand = (n) => seeded(Math.round(n * 9973) + 7)()
@@ -1042,7 +1043,7 @@ export function JmElevator({ item }) {
     const t = clock.elapsedTime
     if (t < next.current) return
     next.current = t + 0.15
-    if (!player.current?.parent) player.current = scene.getObjectByName('player') ?? null
+    if (!player.current?.parent) player.current = findPlayer(scene)
     if (!player.current || !anchor.current) return
     anchor.current.getWorldPosition(tmp.a)
     player.current.getWorldPosition(tmp.b)

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 애니메이션 구역(JM) 다리 꾸미기 — 담당: 지민
 // 걷는 바닥·난간 충돌은 BK님 지형 데크(terrain "deck")가 그대로 맡고, 여기서는 그 위에 겉모습만 덧입힘
@@ -296,7 +297,7 @@ function SuspensionBridge({ points, width }) {
     }
     if (!playerRef.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      playerRef.current = scene.getObjectByName('player') ?? null
+      playerRef.current = findPlayer(scene)
     }
     let onBridge = false
     if (playerRef.current?.parent && anchor.current) {

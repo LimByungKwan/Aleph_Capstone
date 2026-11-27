@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useLoadState } from '../store/loadState.js'
 
 // [SG 성능 최적화] 점광원 "가까운 것만 켜기" + 개수 고정
 // 1) three.js는 켜진 조명 개수를 셰이더에 넣는다 → 개수가 바뀌면 모든 재질 셰이더를 다시 컴파일해서 멈춘다.
@@ -16,8 +17,10 @@ const lightPos = new THREE.Vector3()
 export default function PointLightLock() {
   const scene = useThree((state) => state.scene)
   const state = useRef(null)
+  const mapReady = useLoadState((s) => s.mapReady) // 맵 소품(점광원 포함)을 다 붙인 뒤에 찾음 (MapLayout이 나눠 붙임)
 
   useEffect(() => {
+    if (!mapReady) return
     const sources = []
     scene.traverse((object) => {
       if (object.isPointLight) sources.push(object)
@@ -35,7 +38,7 @@ export default function PointLightLock() {
       sources.forEach((light) => (light.visible = true))
       state.current = null
     }
-  }, [scene])
+  }, [scene, mapReady])
 
   useFrame(({ camera }) => {
     const s = state.current

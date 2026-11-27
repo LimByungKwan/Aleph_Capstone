@@ -1,6 +1,6 @@
 import { useGLTF } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Component, Suspense, useEffect, useMemo, useRef } from 'react'
+import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { useGameStore } from '../../../store/gameStore.js'
@@ -8,6 +8,7 @@ import { Ball, Box, Cyl, GEO, Instances, mat, texMat } from './kit.jsx'
 import { AUDITION_PANEL, JUDGES, useSgAudition } from './sg_auditionStore.js'
 import { getSignTexture } from './textures.js'
 import { sgSpots } from './sg_spots.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // ── 썬그레이 오디션 (SG) ─────────────────────────
 // 콘서트 무대 북쪽의 오디션 세트 + 세트 바로 앞 게이트 + 구역 입구 파일런 간판
@@ -18,6 +19,7 @@ import { sgSpots } from './sg_spots.js'
 // - 빛나는 부품은 실제 조명 대신 emissive + 더하기 합성 빔 (조명 수를 늘리지 않음)
 
 const NEAR_DIST = 1.8
+const JUDGE_LOAD_DIST = 9 // 마이크를 기준으로 무대 입구에 다가올 때 로드
 const FIND_PLAYER_EVERY = 1
 const glow = { userData: { noShadow: true } }
 
@@ -116,6 +118,7 @@ export const SINGER_Z = 2.5 // 지원자가 서는 자리 (세트 가운데 기�
 const JUDGE_Z = -2 // 심사위원 책상: 세트 안쪽(LED 벽 앞), 입구 쪽을 바라봄
 
 export function AuditionSet({ item }) {
+  const [showJudges, setShowJudges] = useState(false)
   const [w, h, d] = item.size
   const back = -d / 2 + 0.25
   return (
@@ -147,8 +150,8 @@ export function AuditionSet({ item }) {
       <Cyl p={[w / 2 - 1.4, 0.7, 0.6]} rad={0.04} h={1.4} m={METAL} />
       <Box p={[w / 2 - 1.4, 1.5, 0.6]} s={[0.5, 0.35, 0.3]} r={[0, -0.7, 0]} m={DARK} />
       <Ball {...glow} p={[w / 2 - 1.4, 1.62, 0.6]} rad={0.04} m={PINK} />
-      <JudgeTable z={JUDGE_Z} />
-      <AuditionSensor id={item.id} />
+      <JudgeTable z={JUDGE_Z} showJudges={showJudges} />
+      <AuditionSensor id={item.id} showJudges={showJudges} setShowJudges={setShowJudges} />
     </>
   )
 }
@@ -168,7 +171,7 @@ function SpotBeam({ from, to, color }) {
 }
 
 // 심사위원 책상: 세트 안쪽에서 지원자·입구(+z) 쪽을 바라봄 (책상 안 좌표는 -z가 앞이라 반 바퀴 돌림)
-function JudgeTable({ z }) {
+function JudgeTable({ z, showJudges }) {
   return (
     <group position={[0, 0, z]} rotation={[0, Math.PI, 0]}>
       <Box p={[0, 0.74, 0]} s={[6.6, 0.06, 0.9]} m={DESK} />
@@ -180,7 +183,7 @@ function JudgeTable({ z }) {
           <group key={judge.role} position={[x, 0, 0]}>
             <mesh {...glow} geometry={GEO.plane} position={[0, 0.45, -0.43]} rotation={[0, Math.PI, 0]} scale={[1.5, 0.34, 1]} material={signMat(judge.role, '#1a1030', judge.color, 1.5 / 0.34, 1)} />
             <Box p={[0, 0.78, -0.1]} s={[0.5, 0.03, 0.35]} m={WARM} {...glow} />
-            <JudgeSeat model={judge.model} />
+            <JudgeSeat model={judge.model} showJudge={showJudges} />
           </group>
         )
       })}
@@ -196,16 +199,18 @@ class ModelBoundary extends Component {
 }
 
 // 의자 + 앉은 심사위원 (책상 뒤 +z, 지원자 쪽 -z를 바라봄)
-function JudgeSeat({ model }) {
+function JudgeSeat({ model, showJudge }) {
   return (
     <group position={[0, 0, 0.75]}>
       <Box p={[0, 0.23, 0]} s={[0.55, 0.46, 0.55]} m={SEAT} />
       <Box p={[0, 0.8, 0.3]} s={[0.55, 0.7, 0.08]} m={SEAT} />
-      <ModelBoundary>
-        <Suspense fallback={null}>
-          <SeatedJudge path={model} />
-        </Suspense>
-      </ModelBoundary>
+      {showJudge && (
+        <ModelBoundary>
+          <Suspense fallback={null}>
+            <SeatedJudge path={model} />
+          </Suspense>
+        </ModelBoundary>
+      )}
     </group>
   )
 }
@@ -238,7 +243,7 @@ function SeatedJudge({ path }) {
 }
 
 // 마이크 앞에 서면 안내, E로 패널 열기 (다른 패널·스탬프 안내가 떠 있으면 무시)
-function AuditionSensor({ id }) {
+function AuditionSensor({ id, showJudges, setShowJudges }) {
   const scene = useThree((state) => state.scene)
   const anchor = useRef(null)
   const player = useRef(null)
@@ -246,15 +251,18 @@ function AuditionSensor({ id }) {
   const tmp = useMemo(() => ({ me: new THREE.Vector3(), spot: new THREE.Vector3() }), [])
 
   useFrame(({ clock }) => {
+    if (!showJudges && useGameStore.getState().openPanel?.type === AUDITION_PANEL) setShowJudges(true)
     const t = clock.elapsedTime
     if (!player.current?.parent && t - lastLookup.current > FIND_PLAYER_EVERY) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     if (!player.current?.parent || !anchor.current) return
     anchor.current.getWorldPosition(tmp.spot)
     player.current.getWorldPosition(tmp.me)
-    const near = Math.hypot(tmp.me.x - tmp.spot.x, tmp.me.z - tmp.spot.z) < NEAR_DIST
+    const distance = Math.hypot(tmp.me.x - tmp.spot.x, tmp.me.z - tmp.spot.z)
+    if (!showJudges && distance < JUDGE_LOAD_DIST) setShowJudges(true)
+    const near = distance < NEAR_DIST
     if (near === useSgAudition.getState().near) return
     useSgAudition.getState().setNear(near)
     // 마이크 자리에 들어서는 순간 E 없이 바로 오디션 화면. 닫은 뒤엔 자리를 나갔다 와야 다시 열림
@@ -274,8 +282,6 @@ function AuditionSensor({ id }) {
 
   return <group ref={(o) => { anchor.current = o; sgSpots.sg_audition_spot = o }} position={[0, 0, SINGER_Z]} /> // KpopGuide 워프 도착점으로 등록
 }
-
-JUDGES.forEach((judge) => useGLTF.preload(import.meta.env.BASE_URL + judge.model))
 
 // styles/index.js에서 한 줄로 등록 (sg_kpop.json의 style 이름)
 export const SG_AUDITION_STYLES = { auditionSet: AuditionSet, auditionGate: AuditionGate, auditionPylon: AuditionPylon }
