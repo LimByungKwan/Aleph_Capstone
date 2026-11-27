@@ -1,18 +1,17 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import Scene from './game/Scene.jsx'
 import UiRoot from './components/movieZone/UiRoot.jsx'
-import OwnerPage from './components/boss/OwnerPage.jsx'
-import StudioPanel from './components/sg/StudioPanel.jsx'
-import AdminPage from './components/admin/AdminPage.jsx'
 import AdminLauncher from './components/admin/AdminLauncher.jsx'
-import CheerGame from './components/sg/CheerGame.jsx'
-import AuditionPanel from './components/sg/AuditionPanel.jsx'
+import { AuditionInteraction, CheerInteraction, StudioInteraction } from './components/sg/SgInteractionUi.jsx'
 import KpopGuide from './components/sg/KpopGuide.jsx'
 import KeyHints from './components/sg/KeyHints.jsx'
 import ClockTowerMap from './components/sg/ClockTowerMap.jsx'
 import KpopIntro from './components/sg/KpopIntro.jsx'
 import { LoginGate, LoginModal } from './components/auth/LoginPage.jsx'
 import { USE_SERVER, openLogin, useSessionStore } from './api/session.js'
+
+const OwnerPage = lazy(() => import('./components/boss/OwnerPage.jsx'))
+const AdminPage = lazy(() => import('./components/admin/AdminPage.jsx'))
 
 // 주소 # 뒤로 화면 전환 (라우터 라이브러리 없이)
 //   #/       → 3D 맵 + 게임 UI(대화창·스탬프북·쿠폰함)  — 혜진
@@ -42,7 +41,9 @@ export default function App() {
   if (staffRoute) {
     return (
       <>
-        {route === '/owner' ? <OwnerPage /> : <AdminPage />}
+        <Suspense fallback={null}>
+          {route === '/owner' ? <OwnerPage /> : <AdminPage />}
+        </Suspense>
         <LoginModal />
       </>
     )
@@ -55,10 +56,10 @@ export default function App() {
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <Scene />
       <UiRoot />
-      <StudioPanel />
+      <StudioInteraction />
       <AdminLauncher />
-      <CheerGame />
-      <AuditionPanel />
+      <CheerInteraction />
+      <AuditionInteraction />
       <KpopGuide />
       <KeyHints />
       <ClockTowerMap />

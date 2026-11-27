@@ -62,10 +62,10 @@ export default function HjSeoulStation({ item }) {
 
 // ── 벽 한 조각: 겉은 벽돌, 안쪽 면은 크림색 판. 'both'면 양쪽 다 실내(크림) ──
 // 다른 실내 건물(총독부 등)에서도 써요: outer/innerColor/innerMap으로 겉·안 재질을 바꿀 수 있어요. T: 벽 두께
-export function Wall({ x0, z0, x1, z1, y0 = 0, y1, inner, outer = BRICK, innerColor = CREAM, innerMap, T = STATION.T }) {
+export function Wall({ x0, z0, x1, z1, y0 = 0, y1, topInset = 0, inner, outer = BRICK, innerColor = CREAM, innerMap, T = STATION.T }) {
   const len = Math.hypot(x1 - x0, z1 - z0)
   const angle = Math.atan2(-(z1 - z0), x1 - x0)
-  const hh = y1 - y0
+  const hh = y1 - y0 - topInset
   const both = inner === 'both'
   // 안쪽 법선을 벽 로컬 z로
   const side = both ? 0 : Math.sign(inner[0] * Math.sin(angle) + inner[1] * Math.cos(angle)) || 1
@@ -132,10 +132,10 @@ function Shell({ title }) {
     <group>
       {/* 벽 */}
       {WALLS.map(([x0, z0, x1, z1, hgt, inner], i) => (
-        <Wall key={i} x0={x0} z0={z0} x1={x1} z1={z1} y1={hgt} inner={inner} />
+        <Wall key={i} x0={x0} z0={z0} x1={x1} z1={z1} y1={hgt} topInset={x0 === x1 ? 0.016 : 0} inner={inner} />
       ))}
       {LINTELS.map(([x0, z0, x1, z1, y0, y1], i) => (
-        <Wall key={`l${i}`} x0={x0} z0={z0} x1={x1} z1={z1} y0={y0} y1={y1} inner={i === 0 ? [0, -1] : i === 1 ? [0, 1] : 'both'} />
+        <Wall key={`l${i}`} x0={x0} z0={z0} x1={x1} z1={z1} y0={y0} y1={y1} topInset={x0 === x1 ? 0.032 : 0.016} inner={i === 0 ? [0, -1] : i === 1 ? [0, 1] : 'both'} />
       ))}
       <Instances geometry={GEO.box} material={WINDOW_LIT} items={windows.outside} />
       <Instances geometry={GEO.box} material={DAYLIGHT} items={windows.inside} />
@@ -368,7 +368,7 @@ function VipRoom() {
   return (
     <group>
       <Box p={[x0, 0.03, 0]} s={[wingW - T, 0.06, d - T * 2]} c="#8a5a3a" />
-      <Box p={[x0, wingH - 0.02, 0]} s={[wingW - T, 0.04, d - T * 2]} c="#f6f1e6" />
+      <Box p={[x0, wingH - 0.036, 0]} s={[wingW - T, 0.008, d - T * 2]} c="#f6f1e6" />
       {/* 징두리 판 (앞뒤 벽 + 끝 벽) */}
       {[1, -1].map((face) => (
         <Box key={face} p={[x0, 0.55, face * (inZ - 0.03)]} s={[wingW - T, 1.1, 0.06]} c="#3a281c" />

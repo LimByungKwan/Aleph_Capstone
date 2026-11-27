@@ -16,16 +16,6 @@ const PLACE_ID = 'spot_hj_breakwater'
 const WAVE_MS = 1300
 
 export default function BreakwaterScene() {
-  const modal = useUiStore((s) => s.modal)
-  const openPanel = useGameStore((s) => s.openPanel)
-  const open = modal === 'breakwater'
-
-  // ESC(InteractionKeys)로 패널이 닫히면 장면도 같이 닫기
-  useEffect(() => {
-    if (open && !openPanel) useUiStore.getState().closeModal()
-  }, [open, openPanel])
-
-  if (!open) return null
   return <SceneContent scene={SCENES[PLACE_ID]} />
 }
 

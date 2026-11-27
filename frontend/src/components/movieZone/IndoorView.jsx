@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { CAMERA_MAX_DISTANCE } from '../../game/config.js'
 import { indoorAt } from './palaceGuide.js'
 import { usePalaceSeatStore } from './palaceSeating.js'
+import { findPlayer } from '../../game/Player/findPlayer.js'
 
 // [3. 개발 > 프론트엔드] 실내에 들어가면 1인칭 (혜진 영화·드라마 구역 · 경복궁)
 // 3인칭 카메라가 벽·지붕을 뚫고 지나가 보이지 않게, 전각 안에서는 카메라를 머리 바로 뒤로 당기고
@@ -39,7 +40,7 @@ export default function IndoorView({ playerRef }) {
     const onRickshaw = /인력거/.test(usePalaceSeatStore.getState().seated?.vehicle?.label ?? '')
     // 모드: fp(1인칭) · seat(앉은 모습 보기) · null(바깥, 원래대로)
     const mode = onRickshaw ? 'fp' : area ? (seated ? 'seat' : 'fp') : null
-    if (!playerObject.current) playerObject.current = scene.getObjectByName('player') ?? null
+    if (!playerObject.current) playerObject.current = findPlayer(scene)
     if (mode === inside.current) return
     if (!inside.current) savedDistance.current = Math.max(3, controls.distance)
     if (mode === 'fp') {

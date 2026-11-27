@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 애니 구역 입장 안내 (11/26 지민 결정: 「터널을 나서는 순간 세로쓰기 제목」) — 담당: 지민
 // 터널 안을 걷는 동안 화면 가장자리가 점점 어두워지고, 풀밭 쪽 출구를 나서는 순간 확 밝아지며
@@ -62,7 +63,7 @@ export function JmEntryTitle({ item }) {
     const t = clock.elapsedTime
     if (!player.current?.parent && t - lookupAt.current > 1) {
       lookupAt.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     if (!player.current?.parent || !anchor.current) return
     player.current.getWorldPosition(tmp.current)

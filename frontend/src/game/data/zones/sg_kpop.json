@@ -21,7 +21,7 @@
     { "id": "sg_entry", "style": "asphalt", "position": [26.5, 0], "size": [27, 0.02, 6], "rotationDeg": 0 },
     { "id": "sg_audience", "style": "tile", "position": [5.5, 0], "size": [15, 0.02, 22], "rotationDeg": 0 },
     { "id": "sg_alley_floor", "style": "brick", "position": [26, 14], "size": [5, 0.02, 22], "rotationDeg": 0 },
-    { "id": "sg_fan_street", "style": "brick", "position": [22, -30], "size": [34, 0.055, 8], "rotationDeg": 0 },
+    { "id": "sg_fan_street", "style": "brick", "position": [22, -30], "size": [34, 0.071, 8], "rotationDeg": 0 },
     { "id": "sg_fan_street_link", "style": "stone", "position": [10, -19], "size": [3, 0.05, 16], "rotationDeg": 0 }
   ],
 
@@ -47,8 +47,8 @@
     { "id": "sg_alley_e3", "style": "photoStudio", "position": [31.5, 20.5], "size": [8, 10, 6], "rotationDeg": -90, "color": "#d5dde8", "model": null,
       "signs": [{ "text": "구름 사진관", "bg": "#f0f9ff", "fg": "#0369a1", "awning": "#38bdf8" }] },
     { "id": "sg_audition", "mapName": "SUNGRAY 오디션", "style": "auditionSet", "position": [-3, -21], "size": [11, 6.5, 8], "rotationDeg": 45, "collider": false, "model": null },
-    { "id": "sg_audition_wall_w", "position": [0.75, -24.75], "size": [0.4, 6.5, 8], "rotationDeg": 45, "color": "#2b1d42", "model": null },
-    { "id": "sg_audition_wall_e", "position": [-6.75, -17.25], "size": [0.4, 6.5, 8], "rotationDeg": 45, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_wall_w", "position": [0.75, -24.75], "size": [0.4, 6.484, 8], "rotationDeg": 45, "color": "#2b1d42", "model": null },
+    { "id": "sg_audition_wall_e", "position": [-6.75, -17.25], "size": [0.4, 6.484, 8], "rotationDeg": 45, "color": "#2b1d42", "model": null },
     { "id": "sg_audition_wall_back", "position": [-5.69, -23.69], "size": [11, 6.5, 0.4], "rotationDeg": 45, "color": "#2b1d42", "model": null },
     { "id": "sg_audition_pylon", "style": "auditionPylon", "position": [36, 4.2], "size": [4.5, 7.3, 0.5], "rotationDeg": 90, "collider": [0.5, 7.3, 0.5], "model": null }
   ],

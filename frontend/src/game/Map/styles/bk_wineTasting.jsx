@@ -9,6 +9,7 @@ import { GEO, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
 import { useDateMission } from './bk_dateMission.js'
 import { readWineBest, saveWineBest, WINE_MISSION_ID, WINE_ROUND_COUNT as ROUND_COUNT, wineTastingPosition } from './bk_wineTastingData.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 export { WINE_BAR_ID } from './bk_wineTastingData.js'
 const PANEL = 'bk_wine_tasting'
@@ -53,7 +54,7 @@ export function WineTastingSpot({ item }) {
   useFrame(({ clock }) => {
     if (clock.elapsedTime - lastCheck.current < 0.1 || !anchor.current) return
     lastCheck.current = clock.elapsedTime
-    if (!player.current?.parent) player.current = scene.getObjectByName('player') ?? null
+    if (!player.current?.parent) player.current = findPlayer(scene)
     let near = false
     if (player.current) {
       anchor.current.worldToLocal(player.current.getWorldPosition(position))

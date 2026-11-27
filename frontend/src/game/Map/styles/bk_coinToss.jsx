@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { COIN_GOAL, useBkActivity } from './bk_activityStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 데이트 코스 구역(BK) 체험: 분수 동전 던지기 (소원 빌기). 담당: 병관
 //
@@ -197,7 +198,7 @@ export function FountainCoinToss({ item }) {
     // 캐릭터 찾기 (다시 생기거나 바뀔 수 있어서 가끔 다시 찾음)
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     const store = useBkActivity.getState()
     const c = store.coin

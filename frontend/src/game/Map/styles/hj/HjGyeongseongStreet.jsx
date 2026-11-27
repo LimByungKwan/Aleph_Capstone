@@ -32,7 +32,7 @@ export function HjRailway({ item }) {
   if (item.bedOnly) {
     return (
       <group>
-        <Box p={[0, 0.08, 0]} s={[bedW, 0.16, length]} c="#8a8174" />
+        <Box p={[0, 0.088, 0]} s={[bedW, 0.176, length]} c="#8a8174" />
         <Box p={[-bedW / 2 - 0.3, 0.3, 0]} s={[0.6, 0.6, length]} c="#a59d8e" />
       </group>
     )

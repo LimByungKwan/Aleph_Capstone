@@ -7,6 +7,7 @@ import { layout } from '../../data/mapData.js'
 import { GEO, mat } from './kit.jsx'
 import { DATE_MISSIONS, mapPoint, useDateMission } from './bk_dateMission.js'
 import { dateMapBounds, drawDateMapBase } from './bk_dateMapPlan.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 데이트 코스 안내판 (담당: 병관) — 영화·드라마 구역 "경복궁 관람길" 안내판과 같은 역할
 // 데이트 코스 입구 안쪽에 서 있는 나무 안내판. 누르거나 앞에서 E → 데이트 코스 지도(DateMission.jsx의 DateMap)
@@ -177,7 +178,7 @@ function BoardInteraction({ onOpen }) {
   }, [onOpen])
 
   useFrame(({ clock }) => {
-    if (!player.current?.parent && Math.floor(clock.elapsedTime) % 1 === 0) player.current = scene.getObjectByName('player') ?? null
+    if (!player.current?.parent && Math.floor(clock.elapsedTime) % 1 === 0) player.current = findPlayer(scene)
     if (!player.current || !anchor.current) return
     anchor.current.localToWorld(tmp.a.set(0, 0, 1.6))
     player.current.getWorldPosition(tmp.b)

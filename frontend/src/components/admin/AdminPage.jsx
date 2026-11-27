@@ -2,8 +2,7 @@ import { getAdminStats } from '../../api/client.js'
 import { zones } from '../../game/data/mapData.js'
 import { useUiStore } from '../movieZone/uiStore.js'
 import { LoadingBlock, errorText, useAsync } from '../movieZone/common.jsx'
-import { PageShell, RoleGate } from '../boss/PageShell.jsx'
-import { Stat } from '../boss/OwnerPage.jsx'
+import { PageShell, RoleGate, Stat } from '../boss/PageShell.jsx'
 
 // [성근] 관리자 화면 (#/admin): 접속자·스탬프·쿠폰 현황
 // 그래프는 라이브러리 없이 ui.css의 .ui-bars / .ui-hbars를 씀. 구역 이름·색은 zones/*.json에서 가져옴

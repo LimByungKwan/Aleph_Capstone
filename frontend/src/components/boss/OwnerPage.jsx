@@ -4,7 +4,7 @@ import PromoGenerator from './PromoGenerator.jsx'
 import { formatTime, getShopStats, redeemCoupon } from '../../api/client.js'
 import { currentUser, useUiStore } from '../movieZone/uiStore.js'
 import { LoadingBlock, errorText, useAsync } from '../movieZone/common.jsx'
-import { PageShell, RoleGate } from './PageShell.jsx'
+import { PageShell, RoleGate, Stat } from './PageShell.jsx'
 
 // [3. 개발 > 프론트엔드] 사장님 화면
 // 1) AI 홍보문구 생성기 (캡션 3안 + 해시태그, 릴스 대본 선택) — 우리 서비스 차별점
@@ -155,14 +155,5 @@ function ShopStats({ ownerId }) {
         )}
       </div>
     </>
-  )
-}
-
-export function Stat({ label, value }) {
-  return (
-    <div className="ui-stat">
-      <div className="ui-stat__label">{label}</div>
-      <div className="ui-stat__value">{value}</div>
-    </div>
   )
 }

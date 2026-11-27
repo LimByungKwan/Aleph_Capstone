@@ -4,6 +4,7 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
 import { useJmActivity } from './jm_activityStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 앉을 수 있는 벤치 (애니메이션 구역 전용) — 담당: 지민
 //
@@ -137,7 +138,7 @@ export function JmBench({ item }) {
     const t = clock.elapsedTime
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     const p = player.current?.parent ? player.current : null
     const store = useJmActivity.getState()

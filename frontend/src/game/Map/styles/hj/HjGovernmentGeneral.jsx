@@ -103,10 +103,10 @@ function Shell({ title }) {
   return (
     <group>
       {WALLS.map(([x0, z0, x1, z1, hgt, inner], i) => (
-        <Wall key={i} x0={x0} z0={z0} x1={x1} z1={z1} y1={hgt} inner={inner} outer={GRANITE} T={T} {...wallInner(x0, x1)} />
+        <Wall key={i} x0={x0} z0={z0} x1={x1} z1={z1} y1={hgt} topInset={x0 === x1 ? 0.016 : 0} inner={inner} outer={GRANITE} T={T} {...wallInner(x0, x1)} />
       ))}
       {LINTELS.map(([x0, z0, x1, z1, y0, y1, inner], i) => (
-        <Wall key={`l${i}`} x0={x0} z0={z0} x1={x1} z1={z1} y0={y0} y1={y1} inner={inner} outer={GRANITE} T={T} {...wallInner(x0, x1)} />
+        <Wall key={`l${i}`} x0={x0} z0={z0} x1={x1} z1={z1} y0={y0} y1={y1} topInset={x0 === x1 ? 0.032 : 0.016} inner={inner} outer={GRANITE} T={T} {...wallInner(x0, x1)} />
       ))}
       {/* 기단 (1층 바닥) */}
       <Box p={[0, FL / 2, 0]} s={[w + 0.4, FL, d + 0.4]} c={GRANITE_DARK} />
@@ -183,7 +183,7 @@ function Portico() {
         </group>
       ))}
       <Box p={[0, FL + 6.7, z]} s={[pw + 0.4, 0.5, depth + 0.4]} c={GRANITE} />
-      <Box p={[0, FL + 6.42, z]} s={[pw - 0.6, 0.06, depth - 0.4]} c={CREAM} />
+      <Box p={[0, FL + 6.404, z]} s={[pw - 0.6, 0.06, depth - 0.4]} c={CREAM} />
       <Chandelier position={[0, FL + 5.2, z]} />
       {[-3.3, 3.3].map((x) => (
         <Sconce key={x} position={[x, FL + 2.6, d / 2 + 0.05]} />
@@ -336,7 +336,7 @@ function Hall() {
         )),
       )}
       {/* 현관 홀: 칸막이 위 띠 + 샹들리에 */}
-      <Box p={[0, FL + 4.4, vestZ]} s={[hallW - T, 0.4, 0.5]} c="#d8cfbd" />
+      <Box p={[0, FL + 4.408, vestZ]} s={[hallW - T, 0.416, 0.5]} c="#d8cfbd" />
       <Chandelier position={[0, FL + 3.9, (vestZ + FZ) / 2]} rings={2} />
       <pointLight position={[0, hallH - 1, -1]} color="#ffe6bf" intensity={12} distance={14} decay={2} />
     </group>
@@ -362,7 +362,7 @@ function Lobby() {
   const coffers = useMemo(() => {
     const list = []
     for (let i = 1; i < 3; i += 1) list.push({ p: [x0 - rw / 2 + (rw / 3) * i, FL + roomH - 0.15, 0], s: [0.3, 0.3, d - T * 2] })
-    for (let k = 1; k < 6; k += 1) list.push({ p: [x0, FL + roomH - 0.15, -d / 2 + T + ((d - T * 2) / 6) * k], s: [rw, 0.3, 0.3] })
+    for (let k = 1; k < 6; k += 1) list.push({ p: [x0, FL + roomH - 0.166, -d / 2 + T + ((d - T * 2) / 6) * k], s: [rw, 0.3, 0.3] })
     return list
   }, [x0, rw])
   return (

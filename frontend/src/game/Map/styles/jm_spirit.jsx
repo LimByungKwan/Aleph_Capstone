@@ -11,6 +11,7 @@ import { useGameStore } from '../../../store/gameStore.js'
 import { NearOnly } from './jm_yutoya.jsx'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useWarps } from './bk_warpStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 import { requestPalaceWarp } from '../../../components/movieZone/palaceSeating.js'
 // (11/26 직접 타 보니) 타는 동안 매 프레임 공용 goto를 쓰면 한 프레임 늦게 적용되고 그 사이 중력이 쌓여 캐릭터가 덜컹이고 도착 뒤 0.3m 튀었음
 //   → 캐릭터 프레임 안에서 위치를 놓고 속도를 0으로 만드는 requestPalaceWarp로 붙잡음 (몸통 가운데 높이 = 바닥 + 1.6, goto exact와 같은 자리)
@@ -1110,7 +1111,7 @@ export function JmElevator({ item }) {
     const t = clock.elapsedTime
     if (t < next.current) return
     next.current = t + 0.15
-    if (!player.current?.parent) player.current = scene.getObjectByName('player') ?? null
+    if (!player.current?.parent) player.current = findPlayer(scene)
     if (!player.current || !anchor.current) return
     anchor.current.getWorldPosition(tmp.a)
     player.current.getWorldPosition(tmp.b)

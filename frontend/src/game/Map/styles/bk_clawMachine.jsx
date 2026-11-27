@@ -9,6 +9,7 @@ import { useBkActivity } from './bk_activityStore.js'
 import { GEO, mat, texMat } from './kit.jsx'
 import { getSignTexture } from './textures.js'
 import { HanokRoof, INTERIOR_MAT, LANTERN, nightGlow, piece } from './dateCourse.jsx'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 데이트 코스 구역(BK) 인형뽑기 부스 + 미니게임. 담당: 병관
 //
@@ -356,7 +357,7 @@ function ClawGame({ item }) {
     // 캐릭터 찾기 + 기계 앞인지 (앞쪽 1.9m 안)
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     if (player.current?.parent) {
       anchor.current.localToWorld(tmp.v.set(0, 0, M.z + 1.0))

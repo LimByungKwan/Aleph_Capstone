@@ -6,6 +6,7 @@ import { useGameStore } from '../../../store/gameStore.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { SKIP_GOAL, useJmActivity } from './jm_activityStore.js'
 import { canvasTexture, fitText, GlowMaterial, KR_FONT } from './jm_landmarks.jsx'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 물수제비 (벚꽃 강변길, 「초속 5미터」 성지 근처) — 담당: 지민
 //
@@ -241,7 +242,7 @@ export function JmSkipSpot({ item }) {
     if (!e) return
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     const store = useJmActivity.getState()
     const sk = store.skip
