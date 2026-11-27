@@ -13,7 +13,16 @@ export function hillHeight(hill, x, z) {
   if (r >= 1) return 0
   if (r <= plateau) return hill.height
   const t = (r - plateau) / (1 - plateau)
-  return hill.height * (1 - t * t * (3 - 2 * t))
+  const base = hill.height * (1 - t * t * (3 - 2 * t))
+  if (!hill.ridges) return base
+
+  let relief = 0
+  for (const { offset: [dx, dz], radius: [w, d], height } of hill.ridges) {
+    const distance = Math.hypot((x - cx - dx) / w, (z - cz - dz) / d)
+    relief += height * (1 - THREE.MathUtils.smoothstep(distance, 0, 1))
+  }
+  const weight = THREE.MathUtils.smoothstep(t, 0.04, 0.27) * (1 - THREE.MathUtils.smoothstep(t, 0.89, 1))
+  return Math.min(hill.height, base + relief * weight)
 }
 
 // 여러 언덕 중 가장 높은 곳 (바닥 높이)
@@ -60,7 +69,7 @@ export function buildHill(hill) {
       const x = cx - rx + (i * rx * 2) / nx
       const z = cz - rz + (j * rz * 2) / nz
       let h = hillHeight(hill, x, z)
-      if (h > 0.05 && h < hill.height - 0.05) h += (random() - 0.5) * 0.3
+      if (hill.surface !== 'meadow' && h > 0.05 && h < hill.height - 0.05) h += (random() - 0.5) * 0.3
       heights.push(h)
       points.push(x, h, z)
     }
@@ -78,6 +87,16 @@ export function buildHill(hill) {
       if (heights[a] + heights[b] + heights[c] + heights[d] <= 0) continue
       indices.push(a, c, b, b, c, d)
     }
+  }
+
+  if (hill.surface === 'meadow') {
+    const result = {
+      geometry: meadowHillGeometry(points, indices),
+      vertices: new Float32Array(points),
+      indices: new Uint32Array(indices),
+    }
+    hillCache.set(key, result)
+    return result
   }
 
   // 화면용: 면마다 색이 다른 평면 셰이딩(로우폴리)
@@ -106,6 +125,32 @@ export function buildHill(hill) {
   }
   hillCache.set(key, result)
   return result
+}
+
+function meadowHillGeometry(points, indices) {
+  const positions = new Float32Array(points)
+  const colors = new Float32Array(points.length)
+  const uv = new Float32Array(points.length / 3 * 2)
+  const moss = new THREE.Color('#b4c498')
+  const dryGrass = new THREE.Color('#f5efd0')
+  const color = new THREE.Color()
+  for (let i = 0; i < points.length; i += 3) {
+    const x = points[i]
+    const z = points[i + 2]
+    const patch = 0.5 + Math.sin(x * 0.31 + z * 0.19) * 0.24 + Math.cos(z * 0.42 - x * 0.17) * 0.24
+    const fade = THREE.MathUtils.smoothstep(points[i + 1], 0.04, 1.15)
+    color.copy(moss).lerp(dryGrass, patch)
+    colors.set([1 + (color.r - 1) * fade, 1 + (color.g - 1) * fade, 1 + (color.b - 1) * fade], i)
+    uv.set([x, -z], i / 3 * 2)
+    positions[i + 1] += VISUAL_LIFT
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+  return geometry
 }
 
 // ── 나무 데크 산책로 ──────────────────────────

@@ -3,6 +3,8 @@ import { THRONE_ROOM_POSITION } from '../../../components/movieZone/palaceInteri
 import * as palace from './hj/gyeongbokLayout.js'
 import * as park from './hj/themeParkLayout.js'
 import { BUGAK_DEPTH, OBS, PASS, TRAIL_PTS } from './hj/HjBugaksan.jsx'
+import { BEACH_BOARDWALK, BEACH_PARASOLS } from '../seabed.js'
+import { DOME } from './sg_domeShape.js'
 
 const props = new Map(layout.props.map((item) => [item.style, item]))
 
@@ -71,13 +73,31 @@ export const mountainMap = mountainItem && section('hjBugaksan',
 )
 export const mountainFeatures = { depth: BUGAK_DEPTH, pass: PASS, viewpoint: OBS, trail: TRAIL_PTS }
 
-const buildingStyles = /^(hjModernBuilding|hjSeoulStation|hjGovernmentGeneral|hjClockTower|hjMarketStall|hjTunnelPortal|jmEatery|jmFieldHut|jmPinkHouse|jmVerandaShop|jmYutoya|jmShed|kpopDome|auditionGate)$/
+const buildingStyles = /^(hjModernBuilding|hjSeoulStation|hjGovernmentGeneral|hjClockTower|hjMarketStall|hjTunnelPortal|jmEatery|jmFieldHut|jmPinkHouse|jmVerandaShop|jmYutoya|jmShed|auditionGate)$/
 export const mapPropBuildings = layout.props.filter(({ style }) => buildingStyles.test(style))
-const landmarkNames = { hjClockTower: '경성 시계탑', jmYutoya: '유토야 온천장', kpopDome: 'K-POP 공연장' }
+const landmarkNames = { hjClockTower: '경성 시계탑', jmYutoya: '유토야 온천장' }
 export const mapBuildingName = (item) => item.mapName ?? item.name ?? item.signs?.find((sign) => sign.text)?.text
   ?? item.title ?? landmarkNames[item.style]
 
-export const sectionPlaces = [palaceMap, parkMap, mountainMap].filter(Boolean).flatMap(({ places }) => places)
+export const kpopDomeMap = section('kpopDome', [DOME.minX, DOME.minZ, DOME.maxX, DOME.maxZ], [
+  { name: 'K-POP 공연장 입구', point: [DOME.maxX, 0] },
+])
+const { fromX, toX, z, depth } = BEACH_BOARDWALK
+export const kpopBeachMap = section('sungrayBeach', [fromX, z - depth / 2, toX, z + depth / 2], [
+  { name: 'SUNGRAY 선셋 데크', point: [(fromX + toX) / 2, z], size: [toX - fromX, depth] },
+  { name: '물비늘 해수욕장', point: [BEACH_PARASOLS[1][0], BEACH_PARASOLS[1][1]] },
+])
+const kpopRoads = new Map(layout.roads.filter(({ zone }) => zone === 'SG').map((item) => [item.id, item]))
+const kpopStreetPlaces = [
+  ['sg_fan_street', '팬 스트리트'], ['sg_alley_floor', '촬영 골목'], ['sg_market_tide', '물비늘 먹거리 거리'],
+].flatMap(([id, name]) => {
+  const item = kpopRoads.get(`SG/${id}`)
+  return item ? [{ name, point: item.position, size: item.size, rotationDeg: item.rotationDeg, zone: item.zone }] : []
+})
+export const sectionPlaces = [
+  ...[palaceMap, parkMap, mountainMap, kpopDomeMap, kpopBeachMap].filter(Boolean).flatMap(({ places }) => places),
+  ...kpopStreetPlaces,
+]
 export const filmAreaLabels = [
   ['경복궁', palaceMap?.bounds],
   ['해월 드림파크', parkMap?.bounds],

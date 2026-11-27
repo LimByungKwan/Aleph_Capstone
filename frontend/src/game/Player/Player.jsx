@@ -32,7 +32,7 @@ export const KEYBOARD_MAP = [
   { name: 'run', keys: ['ShiftLeft', 'ShiftRight'] },
 ]
 
-const NO_INPUT = { forward: false, backward: false, leftward: false, rightward: false, run: false, jump: false }
+const NO_INPUT = { forward: false, backward: false, leftward: false, rightward: false, run: false, jump: false, joystick: { x: 0, y: 0 } }
 
 // 키보드 + 모바일(조이스틱·버튼) 입력 합치기 (모바일 조작: components/mobile/MobileControls.jsx)
 function readInput(keys) {
@@ -65,7 +65,7 @@ export default function Player({ playerRef, showModel = true }) {
     const tour = usePalaceTour.getState()
     const paused = locked || tour.open || Boolean(tour.activeActivity) || Boolean(useSpecialAccess.getState().panel)
     const sitting = updatePalaceSeating(player, paused)
-    player.setMovement(paused || sitting ? NO_INPUT : readInput(getKeys()))
+    player.setMovement(paused || sitting || player.body?.isKinematic() ? NO_INPUT : readInput(getKeys()))
 
     // 맵 밖으로 떨어지면 시작 지점으로 리스폰
     if (player.currPos.y < RESPAWN_Y) {

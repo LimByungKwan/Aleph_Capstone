@@ -12,7 +12,7 @@ import AdminLauncher from './components/admin/AdminLauncher.jsx'
 import { AuditionInteraction, CheerInteraction, StudioInteraction } from './components/sg/SgInteractionUi.jsx' // main #122: 패널은 열 때만 받음
 import KpopGuide from './components/sg/KpopGuide.jsx'
 import KeyHints from './components/sg/KeyHints.jsx'
-import ClockTowerMap from './components/sg/ClockTowerMap.jsx'
+import HubMapInteraction from './components/minimap/HubMapInteraction.jsx' // main c3fd90e: 시계탑 지도 → 허브 지도
 import KpopIntro from './components/sg/KpopIntro.jsx'
 
 // 게임 화면 (#/): 3D 맵 + 게임 UI(대화창·스탬프북·쿠폰함 — 혜진, 스튜디오·응원·오디션·K-POP — 성근, 관리자 버튼 — 성근)
@@ -178,7 +178,7 @@ function GameUi() {
       <AuditionInteraction />
       <KpopGuide />
       <KeyHints />
-      <ClockTowerMap />
+      <HubMapInteraction />
       <KpopIntro />
     </>
   )
