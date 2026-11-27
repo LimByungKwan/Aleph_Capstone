@@ -117,7 +117,8 @@ function DetailCell({ cell, alwaysVisible, maxDistance = DETAIL_DISTANCE, aerial
     if (!ref.current) return
     const distance = camera.position.distanceToSquared(cell.center)
     const y = camera.position.y
-    ref.current.visible = aerialHide && y > AERIAL_HEIGHT ? false : alwaysVisible || y > OVERLOOK_HEIGHT || distance < maxDistance ** 2
+    const hideFromAir = aerialHide && y > AERIAL_HEIGHT
+    ref.current.visible = camera.userData.showFullMap || (!hideFromAir && (alwaysVisible || y > OVERLOOK_HEIGHT || distance < maxDistance ** 2))
   })
   return (
     <group ref={ref}>
@@ -167,7 +168,7 @@ export default function MapLayout({ showStartMarker = true, highDetail = false }
   const distantBuildings = useRef(null)
   useFrame(({ camera }) => {
     if (!detailedBuildings.current || !distantBuildings.current) return
-    const showSilhouettes = showStartMarker && !highDetail && camera.position.y > 110
+    const showSilhouettes = !camera.userData.showFullMap && showStartMarker && !highDetail && camera.position.y > 110
     detailedBuildings.current.visible = !showSilhouettes
     distantBuildings.current.visible = showSilhouettes
   })

@@ -5,6 +5,7 @@ import { STREET_BUILDINGS } from './hj/gyeongseongLayout.js'
 import { DATE_MISSIONS, mapPoint } from './bk_dateMission.js'
 import { WINE_BAR_ID, WINE_MISSION_ID } from './bk_wineTastingData.js'
 import { minimapZoneBounds } from './bk_minimapMap.js'
+import { filmAreaLabels, mapBuildingName, mapPropBuildings, sectionPlaces } from './bk_minimapSections.js'
 
 const items = new Map([...layout.buildings, ...layout.props, ...layout.terrain].map((item) => [item.id, item]))
 const missionItems = {
@@ -29,9 +30,9 @@ minimapLandmarks.push(...mapPlaces.filter((place) => !placeAliases.has(place.id)
 })))
 
 const missionBuildingIds = new Set(Object.values(missionItems))
-const shopLabels = layout.buildings.flatMap((item) => {
+const shopLabels = [...layout.buildings, ...mapPropBuildings].flatMap((item) => {
   if (missionBuildingIds.has(item.id)) return []
-  const name = item.mapName ?? item.name ?? item.signs?.find((sign) => sign.text)?.text
+  const name = mapBuildingName(item)
   return typeof name === 'string' && name.trim() ? [placeLabel(name.trim(), item)] : []
 })
 if (southGroundExtension) {
@@ -45,7 +46,7 @@ if (southGroundExtension) {
   })))
 }
 
-const placeTargets = [...minimapLandmarks, ...shopLabels].map((place) => {
+const placeTargets = [...minimapLandmarks, ...sectionPlaces, ...shopLabels].map((place) => {
   const yaw = (place.rotationDeg ?? 0) * Math.PI / 180
   return { ...place, cos: Math.cos(yaw), sin: Math.sin(yaw) }
 })
@@ -101,12 +102,13 @@ function positionLabel(contains, x, y, width, occupied) {
   })
 }
 
-export function drawMinimapZones(ctx, { contains, toScreen, occupied }) {
+export function drawMinimapZones(ctx, { contains, toScreen, occupied, showZones, showFilmAreas }) {
   ctx.save()
   ctx.font = FONT
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  for (const { name, point, color } of zoneLabels) {
+  const labels = [...(showZones ? zoneLabels : []), ...(showFilmAreas ? filmAreaLabels : [])]
+  for (const { name, point, color } of labels) {
     const [x, y] = toScreen(...point)
     if (!contains(x, y, 2)) continue
     if (!widthCache.has(name)) widthCache.set(name, Math.ceil(ctx.measureText(name).width) + 10)

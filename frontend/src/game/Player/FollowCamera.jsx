@@ -14,7 +14,7 @@ const UPLOOK_GAP = 0.25 // 올려다볼 때 카메라가 땅에서 떠 있을 �
 // 캐릭터를 따라다니는 3인칭 카메라
 // - 마우스 왼쪽 드래그: 회전 / 휠: 거리 조절 (3~5m)
 // - 건물(camera-blocker)에 가리면 카메라가 앞으로 당겨져 벽 뚫림을 줄임
-export default function FollowCamera({ playerRef }) {
+export default function FollowCamera({ playerRef, camera }) {
   const controlsRef = useRef(null)
   const scene = useThree((state) => state.scene)
   const sensitivity = useSettings((s) => s.mouseSensitivity) // ⚙ 설정의 마우스 감도 (1 = 기본)
@@ -70,6 +70,7 @@ export default function FollowCamera({ playerRef }) {
   return (
     <CameraControls
       ref={controlsRef}
+      camera={camera}
       makeDefault
       minDistance={CAMERA_MIN_DISTANCE}
       maxDistance={CAMERA_MAX_DISTANCE}

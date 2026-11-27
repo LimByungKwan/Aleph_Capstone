@@ -2,8 +2,10 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GEO, mat } from './kit.jsx'
-import { getSignTexture } from './textures.js'
+import { getSignTexture, getTiledTexture, TILE_METERS } from './textures.js'
+import { HUB_GARDEN_BORDER, HUB_GARDEN_STONE } from '../../data/hubGardenLayout.js'
 import { NIGHT_UNIFORM, colorize, nightGlow, piece } from './dateCourse.jsx'
 
 // 중앙 광장(hub.json) 전용 스타일: 나침반 바닥 무늬, 시계탑, 나무 둘레 벤치, 방향 표지판, 안내 지도판,
@@ -87,6 +89,159 @@ const benchParts = (len = 1.8) => [
   ...[-len / 2 + 0.12, len / 2 - 0.12].map((x) => piece('box', [x, 0.22, 0], [0.08, 0.44, 0.45], C.dark)),
 ]
 
+const GARDEN_BORDER = mat(HUB_GARDEN_BORDER)
+const GARDEN_STONE = mat(HUB_GARDEN_STONE)
+const INLAY_MAT = mat('#f7e9cb')
+const BORDER_INLAY = new THREE.MeshStandardMaterial({
+  color: HUB_GARDEN_BORDER, roughness: .85,
+  polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -3,
+})
+const GROUND_DETAIL = { noShadow: true }
+let paverMaterial
+
+function gardenPavers() {
+  if (!paverMaterial) {
+    const map = getTiledTexture('hubLimestone', 1, 1)
+    paverMaterial = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: .045, roughness: .88 })
+  }
+  return paverMaterial
+}
+
+function promenadeStrip(points, from, to) {
+  const vertices = []
+  const uv = []
+  const indices = []
+  for (const [i, [x, z]] of points.entries()) {
+    const [prevX, prevZ] = points[Math.max(0, i - 1)]
+    const [nextX, nextZ] = points[Math.min(points.length - 1, i + 1)]
+    const dx = nextX - prevX
+    const dz = nextZ - prevZ
+    const length = Math.hypot(dx, dz)
+    for (const offset of [from, to]) {
+      const px = x - dz / length * offset
+      const pz = z + dx / length * offset
+      vertices.push(px, 0, pz)
+      uv.push(px / TILE_METERS.hubLimestone, -pz / TILE_METERS.hubLimestone)
+    }
+    if (i) {
+      const n = i * 2
+      indices.push(n - 2, n - 1, n, n - 1, n + 1, n)
+    }
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+  return geometry
+}
+
+export function HubPromenade({ item }) {
+  const { points, width } = item.ribbon
+  const [edge, surface] = useMemo(() => {
+    const outer = width / 2
+    const inner = outer - .23
+    return [
+      merge([promenadeStrip(points, -outer, -inner), promenadeStrip(points, inner, outer)]),
+      promenadeStrip(points, -inner, inner),
+    ]
+  }, [points, width])
+  return (
+    <group userData={GROUND_DETAIL}>
+      <mesh geometry={edge} material={GARDEN_BORDER} position-y={.045} userData={GROUND_DETAIL} />
+      <mesh geometry={surface} material={gardenPavers()} position-y={.045} userData={GROUND_DETAIL} />
+    </group>
+  )
+}
+
+export function HubGardenCourt({ item }) {
+  const radius = item.size[0] / 2
+  const geometry = cached(`garden-court:${radius}`, () => {
+    const surface = new THREE.CircleGeometry(radius - .33, 64).rotateX(-Math.PI / 2)
+    const uv = surface.attributes.uv
+    for (let i = 0; i < uv.count; i++) {
+      uv.setXY(i, surface.attributes.position.getX(i) / TILE_METERS.hubLimestone,
+        -surface.attributes.position.getZ(i) / TILE_METERS.hubLimestone)
+    }
+    return surface
+  })
+  const border = cached(`garden-court-edge:${radius}`, () => new THREE.RingGeometry(radius - .33, radius, 64).rotateX(-Math.PI / 2))
+  const [inner, outer] = useMemo(() => [
+    new THREE.RingGeometry(radius - .65, radius - .55, 64).rotateX(-Math.PI / 2),
+    new THREE.RingGeometry(radius - .21, radius - .13, 64).rotateX(-Math.PI / 2),
+  ], [radius])
+  return (
+    <group position-y={.068}>
+      <mesh geometry={border} material={GARDEN_BORDER} userData={GROUND_DETAIL} dispose={null} />
+      <mesh geometry={geometry} material={gardenPavers()} userData={GROUND_DETAIL} dispose={null} />
+      <mesh geometry={inner} material={BORDER_INLAY} position-y={.009} userData={GROUND_DETAIL} />
+      <mesh geometry={outer} material={INLAY_MAT} position-y={.012} userData={GROUND_DETAIL} />
+    </group>
+  )
+}
+
+export function HubCompassBorder({ item }) {
+  const radius = item.size[0] / 2
+  const rings = useMemo(() => [
+    new THREE.RingGeometry(radius - .59, radius, 96).rotateX(-Math.PI / 2),
+    new THREE.RingGeometry(radius - .41, radius - .25, 96).rotateX(-Math.PI / 2),
+  ], [radius])
+  return (
+    <group position-y={.132}>
+      <mesh geometry={rings[0]} material={GARDEN_STONE} userData={GROUND_DETAIL} />
+      <mesh geometry={rings[1]} material={BORDER_INLAY} position-y={.007} userData={GROUND_DETAIL} />
+    </group>
+  )
+}
+
+export function HubGardenLantern() {
+  const geometry = cached('garden-lantern', () => merge([
+    piece('box', [0, .075, 0], [.32, .15, .32], C.stoneDark),
+    piece('box', [0, .43, 0], [.12, .69, .12], '#4e554c'),
+    piece('box', [0, .78, 0], [.27, .07, .27], '#4e554c'),
+    piece('box', [0, .862, 0], [.2, .12, .2], C.lamp, 1.35),
+    piece('box', [0, .947, 0], [.31, .055, .31], '#4e554c'),
+  ]))
+  return <mesh geometry={geometry} material={HUB_MAT} dispose={null} />
+}
+
+let plantingSoil
+const PLANTING_CIRCLE = new THREE.CircleGeometry(.467, 40).rotateX(-Math.PI / 2)
+const PLANTING_EDGE = new THREE.RingGeometry(.467, .5, 40).rotateX(-Math.PI / 2)
+
+export function HubPlantingBed({ item }) {
+  const [w, , d] = item.size
+  if (!plantingSoil) {
+    const map = getTiledTexture('hubSoil', 2, 2)
+    plantingSoil = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: .035, roughness: .97 })
+  }
+  return (
+    <group scale={[w, 1, d]}>
+      <mesh geometry={PLANTING_CIRCLE} material={plantingSoil} userData={GROUND_DETAIL} dispose={null} />
+      <mesh geometry={PLANTING_EDGE} material={GARDEN_STONE} userData={GROUND_DETAIL} dispose={null} />
+    </group>
+  )
+}
+
+export function HubLoungeChair({ item }) {
+  const upholstery = item.color
+  const geometry = cached(`lounge-chair:${upholstery}`, () => {
+    const cushion = (w, h, d, rounding, color, x, y, z, tilt = 0) =>
+      colorize(new RoundedBoxGeometry(w, h, d, 3, rounding).rotateX(tilt).translate(x, y, z), color)
+    const seatColor = new THREE.Color(upholstery).lerp(new THREE.Color('#fff3df'), .19)
+    return merge([
+      cushion(.99, .22, .92, .105, upholstery, 0, .2, 0),
+      cushion(.74, .24, .66, .115, seatColor, 0, .36, .08),
+      cushion(.92, .58, .25, .12, upholstery, 0, .57, -.32, -.14),
+      ...[-1, 1].flatMap(x => [
+        cushion(.22, .26, .74, .105, upholstery, x * .4, .48, .025),
+        ...[-.31, .31].map(z => piece('box', [x * .33, .066, z], [.12, .132, .12], '#635348')),
+      ]),
+    ])
+  })
+  return <mesh geometry={geometry} material={HUB_MAT} dispose={null} />
+}
+
 // ════════════════════════════════════════════
 // 나침반 바닥 무늬: 광장 가운데 큰 원. 네 구역 방향으로 구역 색 화살표 (북=JM, 동=BK, 남=HJ, 서=SG)
 // ════════════════════════════════════════════
@@ -120,6 +275,7 @@ function getCompassTexture() {
   ring(c - 8, '#b9a58e', 14)
   ring(c - 40, '#d4c4ae', 6)
   ring(c * 0.55, '#d4c4ae', 6)
+  ring(c * 0.76, '#aa9a8366', 2.8)
   // 네 방향 화살표 (캔버스 위 = 북쪽 = -z)
   const dirs = [
     ['JM', -Math.PI / 2],
@@ -176,6 +332,15 @@ function getCompassTexture() {
   ctx.beginPath()
   ctx.arc(c, c, 36, 0, Math.PI * 2)
   ctx.fill()
+  // Fine mineral flecks tie the compass inlay to the paving without obscuring its labels.
+  const grain = seeded(721)
+  for (let i = 0; i < 15500; i++) {
+    const x = grain() * c * 2
+    const y = grain() * c * 2
+    if (Math.hypot(x - c, y - c) > c - 2) continue
+    ctx.fillStyle = i % 3 === 0 ? '#72664c2d' : '#fff9db4a'
+    ctx.fillRect(x, y, 1 + grain() * 2, 1 + grain() * 2)
+  }
   compassTexture = new THREE.CanvasTexture(canvas)
   compassTexture.colorSpace = THREE.SRGBColorSpace
   compassTexture.anisotropy = 4

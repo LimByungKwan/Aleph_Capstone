@@ -8,10 +8,9 @@ import { useLoadState } from '../store/loadState.js'
 // compileAsync는 브라우저의 병렬 컴파일(KHR_parallel_shader_compile)을 써서 기다리는 동안에도 화면이 멈추지 않는다.
 // (11/27 성능) 예전엔 한 프레임 뒤에 시작해서, 그 첫 프레임이 셰이더 수백 개를 한꺼번에 동기 컴파일하며 ~2초 멈췄음
 //   → 첫 로딩 때만 컴파일이 끝날 때까지 그리기를 멈춤 (로딩 화면이 덮고 있어 안 보임)
-export default function ShaderWarmup({ trigger }) {
+export default function ShaderWarmup({ trigger, camera }) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
-  const camera = useThree((state) => state.camera)
   const setFrameloop = useThree((state) => state.setFrameloop)
   const first = useRef(true)
   const mapReady = useLoadState((s) => s.mapReady) // 맵 소품을 다 붙인 뒤에 한 번에 컴파일 (MapLayout이 나눠 붙임)

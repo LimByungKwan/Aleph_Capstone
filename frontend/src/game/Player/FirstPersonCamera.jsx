@@ -9,8 +9,7 @@ const MAX_PITCH = 1.4 // 위아래로 볼 수 있는 최대 각도 (약 80도)
 
 // 1인칭 카메라: 캐릭터 눈 위치에 카메라를 두고, 마우스 드래그로 고개를 돌림.
 // ecctrl은 "카메라가 보는 방향"을 앞(W)으로 쓰기 때문에, 고개를 돌린 쪽으로 걸어가요.
-export default function FirstPersonCamera({ playerRef }) {
-  const camera = useThree((state) => state.camera)
+export default function FirstPersonCamera({ playerRef, camera }) {
   const gl = useThree((state) => state.gl)
   // 처음엔 시작 방향(hub.json의 playerStartYawDeg)을 바라봄
   const look = useRef({ yaw: PLAYER_START_YAW, pitch: 0 })
