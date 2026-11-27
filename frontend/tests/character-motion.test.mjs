@@ -60,6 +60,7 @@ for (const gender of ['male', 'female', 'male2', 'female2', 'lumi']) {
           skirt.push([i, body.getVertexPosition(i, new Vector3())])
         }
       }
+
       assert.ok(skirt.length > 1000)
       const hand = scene.getObjectByName('RightHand')
       const lowered = hand.getWorldPosition(new Vector3())
