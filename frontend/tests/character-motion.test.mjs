@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { AnimationMixer, Box3, Vector3 } from 'three'
+import { AnimationMixer, Box3, Matrix4, Vector3 } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { createWavePose } from '../src/game/Player/wavePose.js'
@@ -40,21 +40,27 @@ for (const gender of ['male', 'female', 'male2', 'female2', 'lumi']) {
     const mixer = new AnimationMixer(scene)
     if (gender === 'female2') {
       const [body] = meshes
-      const point = new Vector3()
-      // Bind pose has a clear gap between the skirt and the lowered hands.
-      // Read it through skinning: a quantized (compressed) GLB stores position in [-1, 1], not meters.
-      body.skeleton.update()
-      const inSkirt = []
-      for (let i = 0; i < body.geometry.getAttribute('position').count; i++) {
-        body.getVertexPosition(i, point)
-        if (Math.abs(point.x) < .25 && point.y >= .62 && point.y < .95) inSkirt.push(i)
-      }
+      const hips = scene.getObjectByName('Hips')
+      const hipsIndex = body.skeleton.bones.indexOf(hips)
+      // Meshopt quantizes positions. The rest skin matrix restores coordinates in meters.
+      const bindToWorld = new Matrix4().multiplyMatrices(hips.matrixWorld, body.skeleton.boneInverses[hipsIndex])
+        .multiply(body.bindMatrix)
       const idle = mixer.clipAction(animations.find(clip => clip.name === 'Idle')).play()
       mixer.setTime(.5)
       const wave = createWavePose(scene, gender)
+      const position = body.geometry.getAttribute('position')
+      const skirt = []
+      const point = new Vector3()
       scene.updateMatrixWorld(true)
       body.skeleton.update()
-      const skirt = inSkirt.map(i => [i, body.getVertexPosition(i, new Vector3())])
+      for (let i = 0; i < position.count; i++) {
+        // Bind pose has a clear gap between the skirt and the lowered hands.
+        point.fromBufferAttribute(position, i).applyMatrix4(bindToWorld)
+        if (Math.abs(point.x) < .25 && point.y >= .62 && point.y < .95) {
+          skirt.push([i, body.getVertexPosition(i, new Vector3())])
+        }
+      }
+
       assert.ok(skirt.length > 1000)
       const hand = scene.getObjectByName('RightHand')
       const lowered = hand.getWorldPosition(new Vector3())

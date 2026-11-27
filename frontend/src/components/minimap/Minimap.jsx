@@ -461,7 +461,11 @@ export function MinimapCanvas({ zoom, onPickWarp, wide = false }) {
       ctx.strokeStyle = '#fff'
       ctx.stroke()
       ctx.restore()
-      if (overview && factor <= 1.45) drawMinimapZones(ctx, { contains, toScreen, occupied })
+      if (overview) drawMinimapZones(ctx, {
+        contains, toScreen, occupied,
+        showZones: factor <= 1.45,
+        showFilmAreas: wide || factor > 1.45,
+      })
       ctx.restore()
 
       // 다음 목적지가 미니맵 밖이면 가장자리에 화살표
