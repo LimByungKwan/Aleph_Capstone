@@ -37,6 +37,7 @@
 ### 1. 각자: 앱에서 가입 2번 (5분)
 
 1. https://aleph-capstone.vercel.app 오른쪽 위 **로그인 → 회원가입하기**
+   - **가입 코드**가 필요하다 (11/26부터). 코드는 지민이 팀 카톡으로 따로 알려 준다. 문서·깃허브·Trello에는 적지 않는다
 2. **본계정**: 이메일 `내이름@gmail.com`, 비밀번호(6자 이상), 닉네임 `병관` 처럼
 3. 로그아웃 → 다시 **회원가입하기**
 4. **사장님 계정**: 이메일 `내이름+owner@gmail.com`, 닉네임 `병관(사장님)` 처럼
@@ -146,6 +147,14 @@ where id in (select id from auth.users where email in (
 ```
 
 - 테스트 계정 `jm-test-pilgrim`, `jm-test-ui` 는 리허설 뒤, 시연(12/01) 전에 삭제 예정. 시연용 사장님 계정(`jm-demo-owner`)은 지우지 않는다.
+
+## 가입 코드 (11/26 추가)
+
+- 켜기·바꾸기: Supabase **SQL Editor**에서 `select private.set_signup_code('새 코드');` (8자 이상, 앞뒤 공백 무시, 대소문자 구분)
+- 끄기: `select private.set_signup_code(null);` → 누구나 가입
+- 켜져 있는지: `select exists (select 1 from private.signup_code) as "가입 코드 켜짐";`
+- 대시보드의 **Add user**도 코드 검사에 걸린다 → 계정은 게임 가입 화면에서 코드로 만든다
+- 코드는 해시만 저장돼서 **DB에서 다시 읽어 볼 수 없다**. 잊으면 새로 정한다
 
 ## 이메일 인증 (지금은 꺼 둠, 11/23 결정)
 

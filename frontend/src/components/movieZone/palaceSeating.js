@@ -4,6 +4,7 @@ import { PALACE_SEATS, THRONE_ROOM_POSITION } from './palaceInteriorLayout.js'
 import { findBoardable } from './rideSeats.js'
 import { trackHjArea } from './hjAreas.js'
 import { beginTimeTravel, trackSeoul } from './timeTravel.js'
+import { FARE_NAME, fareOf, useWallet } from './wallet.js'
 
 const palace = layout.props.find(item => item.id === 'HJ/haewol_palace')
 const SIT_RADIUS = 1.12
@@ -126,6 +127,13 @@ export function updatePalaceSeating(player, locked) {
     const vehicle = findBoardable(position.x, position.y, position.z)
     if (vehicle) {
       vehicle.boardHint ??= { label: vehicle.label, prompt: `${vehicle.label} 타기`, board: vehicle }
+      // 전차·기차는 표가 있어야 타요 (매표소에서 코인으로 사요)
+      const fare = fareOf(vehicle)
+      if (fare) {
+        const left = useWallet.getState().tickets[fare] ?? 0
+        vehicle.boardHint.prompt = left > 0 ? `${vehicle.label} 타기 · ${FARE_NAME[fare]} 1장 (가진 표 ${left}장)` : `${FARE_NAME[fare]}가 없어요 · 역·정류장 매표소에서 사세요`
+        vehicle.boardHint.fare = fare
+      }
       nearby = vehicle.boardHint
     }
   }
@@ -154,6 +162,12 @@ export function updatePalaceSeating(player, locked) {
   }
   if (nearby?.board && state.requested && !locked) {
     const seat = nearby.board.seats.find((s) => !s.taken)
+    // 표가 필요한데 없으면 못 타요 (있으면 1장 써요)
+    if (seat && nearby.fare && !useWallet.getState().use(nearby.fare)) {
+      useWallet.getState().openBooth()
+      usePalaceSeatStore.setState({ requested: false })
+      return false
+    }
     if (seat) {
       seat.taken = true
       lockRide(player, true)

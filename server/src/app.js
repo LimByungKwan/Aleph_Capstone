@@ -115,6 +115,8 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
   const loginFailPerEmail = createLimiter(limits.loginFailPerEmail ?? { windowMs: 15 * 60_000, max: 5 })
   // 2단계 인증 코드: 계정마다 15분에 5번 틀리면 잠깐 막음 (6자리 숫자는 100만 가지라 무작정 대입을 막아야 함)
   const mfaFailPerUser = createLimiter(limits.mfaFailPerUser ?? { windowMs: 15 * 60_000, max: 5 })
+  // 가입 코드: IP마다 15분에 5번 틀리면 잠깐 막음 (코드 맞히기 대입 차단, 20261202120000_jm_signup_code.sql)
+  const signupCodeFailPerIp = createLimiter(limits.signupCodeFailPerIp ?? { windowMs: 15 * 60_000, max: 5 })
   function blockIfLimited(limiter, key) {
     const r = limiter.check(key)
     if (r.limited) {
@@ -205,16 +207,23 @@ export function createApp({ supabase, allowedOrigins = [], limits = {}, onSessio
     const email = requireString(req.body?.email, '이메일')
     const password = requireString(req.body?.password, '비밀번호', 72)
     const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 20) : ''
+    // 가입 코드: 맞는지는 DB 트리거가 판단 (서버를 거치지 않은 가입도 같은 곳에서 막힘). 코드는 저장되지 않음
+    const signupCode = typeof req.body?.signupCode === 'string' ? req.body.signupCode.trim().slice(0, 64) : ''
     if (!EMAIL_RE.test(email)) throw new HttpError(400, 'INVALID_INPUT', '이메일 형식을 확인해 주세요.')
     blockIfLimited(authPerIp, req.ip)
+    blockIfLimited(signupCodeFailPerIp, req.ip)
     authPerIp.hit(req.ip)
 
     // 역할은 받지 않는다: 가입하면 DB 트리거가 무조건 순례객(pilgrim)으로 만든다 (권한 상승 차단)
-    const { data, error } = await supabase.anon().auth.signUp({
-      email,
-      password,
-      options: { data: { display_name: name || '순례객' } },
-    })
+    const meta = { display_name: name || '순례객' }
+    if (signupCode) meta.signup_code = signupCode
+    const { data, error } = await supabase.anon().auth.signUp({ email, password, options: { data: meta } })
+    // DB 트리거가 가입을 거절하면 Supabase Auth는 이유를 숨기고 'Database error saving new user'만 돌려줌
+    //   → 가입 때 DB가 거절하는 경우는 가입 코드뿐이라 코드 오류로 안내하고 실패 횟수를 셈
+    if (error?.code === 'unexpected_failure' && /database error saving new user/i.test(error.message ?? '')) {
+      signupCodeFailPerIp.hit(req.ip)
+      throw new HttpError(400, 'INVALID_SIGNUP_CODE', '가입 코드가 맞지 않아요.')
+    }
     if (error) throw fromAuthError(error)
     // 이미 있는 이메일: Supabase는 설정(이메일 인증·가입자 숨김)에 따라 에러 대신 identities가 빈 가짜 사용자를 돌려줌
     //   → 그대로 두면 화면에는 "가입됨/메일 확인"처럼 보여서 같은 아이디로 또 가입된 것처럼 보였음 (11/26 지민 확인)

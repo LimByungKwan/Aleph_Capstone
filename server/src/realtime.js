@@ -13,7 +13,8 @@ import { createHjWorld } from './hj_world.js'
 //   - 서버가 받은 값을 그대로 뿌리지 않고 검사한 뒤, 0.1초마다 모아서 한 번에 보낸다(10Hz)
 //     → 사람이 늘어도 메시지 수가 "사람 수 × 프레임 수"로 폭발하지 않음
 //   - 이름은 화면이 보낸 값이 아니라 로그인 토큰으로 서버가 DB에서 읽은 값 → 남의 이름으로 위장 불가
-//   - 손님(비로그인)도 접속 가능. 이름은 "손님"
+//   - 손님(비로그인)은 배포 서버에선 접속 불가 (11/27 지민: 처음부터 회원가입·로그인한 사람만 이용) → hello 때 4005로 끊음
+//     allowGuests 옵션이 true일 때만(테스트용) 손님 접속을 받고, 그때도 채팅은 로그인한 계정만
 //
 // 메시지 (JSON, 짧은 키)
 //   화면 → 서버  { t:'hello', token?, characterId? }   접속 직후 1번 (10초 안에 안 오면 끊음)
@@ -23,9 +24,10 @@ import { createHjWorld } from './hj_world.js'
 //               { t:'join', peer } / { t:'leave', id } / { t:'peer', peer }(캐릭터 변경)
 //               { t:'state', s:[[id,x,y,z,r,s,g], …] }  0.1초마다 움직인 사람만
 //   화면 → 서버  { t:'bye' }                              창을 닫거나 다른 페이지로 갈 때 → 바로 나감 처리 (프록시가 연결을 늦게 끊어도 캐릭터가 남지 않게)
-//               { t:'chat', text }                      말풍선 채팅 (1~80자, 1초에 1번)
+//               { t:'chat', text }                      말풍선 채팅 (1~80자, 1초에 1번, 로그인한 계정만 — 손님은 chat.denied)
 //               { t:'world.set', timeOfDay?, season? }  관리자만: 모든 사람의 시간대·계절을 바꿈 (null = 각자 기본값)
 //   서버 → 화면  { t:'chat', id, name, text }            모두에게 (보낸 사람 포함)
+//               { t:'chat.denied', reason:'login' }      손님이 채팅을 보냄 → 보낸 사람에게만 (화면은 로그인 창)
 //               { t:'world', world:{ timeOfDay, season } }  접속 직후 + 관리자가 바꿀 때마다 모두에게
 //               { t:'full', max }                         정원이 참 → 바로 4003으로 끊김
 //   'tarot.'으로 시작하는 메시지는 커플 타로 멀티, 'photo.'는 커플 포토존 인생네컷, 'lift.'는 전망대 엘리베이터 (병관, bk_tarotRooms.js · bk_photoRooms.js · bk_lifts.js)
@@ -41,6 +43,7 @@ const DEFAULTS = {
   maxPeers: 30,
   tickMs: 100, // 10Hz
   helloTimeoutMs: 10_000,
+  allowGuests: true, // 배포 서버(index.js)는 false. 기본값 true는 손님으로 붙는 다른 기능 테스트(bk_*.test.js)용
   heartbeatMs: 30_000, // 응답 없는 연결(와이파이 끊김 등) 정리 + Render가 연결을 끊지 않게 유지
   maxMessagesPerSecond: 40, // 화면은 10번/초 보냄. 4배 넘게 보내면 비정상으로 보고 끊음
   maxPayloadBytes: 1024,
@@ -154,6 +157,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   const CLOSE_REPLACED = 4001
   const CLOSE_ELSEWHERE = 4002
   const CLOSE_FULL = 4003 // 정원(maxPeers)이 참
+  const CLOSE_LOGIN = 4005 // 로그인하지 않음(토큰 없음·만료·잘못됨) → 화면은 토큰을 새로 받아 한 번 더, 안 되면 로그아웃
   function closeUser(userId, code, reason, except = null) {
     if (!userId) return 0 // 손님은 계정이 없어서 제한하지 않음
     let n = 0
@@ -216,8 +220,9 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         } catch (error) {
           console.warn('[realtime] 토큰 확인 실패 → 손님으로 접속', error?.message)
         }
-        if (typeof msg.characterId === 'string' && CHARACTER_RE.test(msg.characterId)) peer.characterId = msg.characterId
         if (ws.readyState !== ws.OPEN) return
+        if (!peer.userId && !cfg.allowGuests) return ws.close(CLOSE_LOGIN, 'login required')
+        if (typeof msg.characterId === 'string' && CHARACTER_RE.test(msg.characterId)) peer.characterId = msg.characterId
         // 정원: 이미 들어와 있는 사람 수 (같은 계정의 이전 연결은 곧 끊기므로 빼고 셈) → 차면 안내 후 4003으로 끊음
         //   화면은 4003을 보고 "정원이 차서 혼자 둘러보는 중" 안내 + 30초마다 다시 시도
         let inside = 0
@@ -242,6 +247,8 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
 
       if (msg.t === 'bye') return ws.close(1000, 'bye')
       if (msg.t === 'chat') {
+        // 손님(비로그인·만료된 토큰)은 읽기만. 화면도 막지만 서버가 최종으로 막음 (화면 코드는 고쳐서 보낼 수 있으니)
+        if (!peer.userId) return send(ws, { t: 'chat.denied', reason: 'login' })
         const text = cleanChat(msg.text)
         if (!text || now - peer.lastChat < CHAT_GAP_MS) return
         peer.lastChat = now

@@ -11,7 +11,7 @@ import { findPlayer } from '../../Player/findPlayer.js'
 //   kind "suspension" : 전망대로 건너가는 흔들다리 (양끝 나무 탑 + 늘어진 밧줄 + 발판 + 살짝 흔들림)
 // item.position은 [0, 0] (점이 구역 좌표)
 
-const VERMILION = '#c8452f'
+const VERMILION = '#a9543a'
 const BRASS = '#c9a54a'
 const DARK_WOOD = '#3a2a20'
 const ROPE = '#b8a07a'

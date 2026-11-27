@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { USE_SERVER } from '../../api/session.js'
-import { sendChat, useRealtimeStore } from './realtimeStore.js'
+import { USE_SERVER, openLogin, useSessionStore } from '../../api/session.js'
+import { CHAT_LOGIN, sendChat, useRealtimeStore } from './realtimeStore.js'
 import { useGameStore } from '../../store/gameStore.js'
 
 // [지민] 말풍선 채팅 입력창 (맵 어디서나) — 화면 아래 가운데
 // - Enter: 입력창 열기 / 다시 Enter: 보내기 / Esc: 닫기
 // - 보낸 글은 서버가 모두에게 돌려주고, 머리 위 말풍선(ChatBubble)과 왼쪽 아래 최근 글 목록에 뜸
 // - 입력 중 키(WASD·Space 등)는 캐릭터 조작으로 넘어가지 않게 막음
+// - 손님(비로그인)은 글을 읽기만 하고, 채팅 버튼·Enter는 로그인 창을 띄움 (서버도 손님 채팅을 버림)
 const MAX = 80
 const LOG_SHOW_MS = 12_000 // 최근 글 목록은 12초 지나면 흐려져 사라짐
 
@@ -14,6 +15,7 @@ export default function ChatBox() {
   const status = useRealtimeStore((s) => s.status)
   const maxPeers = useRealtimeStore((s) => s.maxPeers)
   const chats = useRealtimeStore((s) => s.chats)
+  const loggedIn = useSessionStore((s) => Boolean(s.session))
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [, setNow] = useState(0)
@@ -26,12 +28,19 @@ export default function ChatBox() {
       if (useGameStore.getState().inputLocked) return // 다른 패널·미니게임이 열려 있으면 그쪽 Enter
       const el = document.activeElement
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (useSessionStore.getState().loginPrompt) return // 로그인 창의 Enter
       event.preventDefault()
+      if (!useSessionStore.getState().session) return openLogin(CHAT_LOGIN)
       setOpen(true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
+
+  // 채팅 중에 로그아웃하면 입력창을 닫음
+  useEffect(() => {
+    if (!loggedIn) setOpen(false)
+  }, [loggedIn])
 
   useEffect(() => {
     if (open) input.current?.focus()
@@ -116,12 +125,19 @@ export default function ChatBox() {
             style={styles.open}
             onClick={(event) => {
               event.currentTarget.blur()
+              if (!loggedIn) return openLogin(CHAT_LOGIN)
               setOpen(true)
             }}
-            title="채팅 (Enter)"
-            aria-label="채팅 열기"
+            title={loggedIn ? '채팅 (Enter)' : '채팅은 로그인한 순례객만 쓸 수 있어요'}
+            aria-label={loggedIn ? '채팅 열기' : '로그인하고 채팅하기'}
           >
-            💬 채팅 <span style={styles.key}>Enter</span>
+            {loggedIn ? (
+              <>
+                💬 채팅 <span style={styles.key}>Enter</span>
+              </>
+            ) : (
+              '💬 로그인하고 채팅하기'
+            )}
           </button>
         )}
       </div>

@@ -1,3 +1,4 @@
+import NearOnly from './HjNearOnly.jsx' // 객차는 가까이 있을 때만 (성능)
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -120,7 +121,13 @@ export function HjSteamTrain({ item }) {
     }
     vehicle.stopped = stopped
     updateVehicleWorld(vehicle, ref.current, seats, [exitSide * (CAR_W / 2 + 1.7), 0.45, COACH_Z])
-    if (stopped && vehicle.exit) vehicle.stationExit = [...vehicle.exit]
+    if (stopped && vehicle.exit) {
+      // 새 배열을 매 프레임 만들지 않고 값만 옮겨 적어요 (GC 끊김 방지)
+      vehicle.stationExit ??= [0, 0, 0]
+      vehicle.stationExit[0] = vehicle.exit[0]
+      vehicle.stationExit[1] = vehicle.exit[1]
+      vehicle.stationExit[2] = vehicle.exit[2]
+    }
     // 객차가 터널로 들어가면 타고 있던 사람은 역 승강장에 내려 줘요 (palaceSeating.js가 처리)
     const coachIn = shown && pos + COACH_Z >= lo && pos + COACH_Z <= hi
     // 시간 열차(item.destination: "seoul"): 역을 떠나 북악산 터널(gs_tunnel_s)로 들어가면 시간 터널을 지나 2026 현대 서울 승강장에 내려요
@@ -146,13 +153,17 @@ export function HjSteamTrain({ item }) {
         ))}
       </group>
       <group ref={(el) => (parts.current.coach = el)}>
-        <PassengerCoach />
+        <NearOnly radius={150} center={[0, 0, COACH_Z]}>
+          <PassengerCoach />
+        </NearOnly>
         {people.filter(inCoach).map((s, i) => (
           <SeatedPerson key={s.id} look={i * 7 + 3} position={[s.x, s.y, s.z]} yaw={s.yaw} />
         ))}
       </group>
       <group ref={(el) => (parts.current.lounge = el)}>
-        <LoungeCar />
+        <NearOnly radius={150} center={[0, 0, LOUNGE_Z]}>
+          <LoungeCar />
+        </NearOnly>
         {people.filter((s) => !inCoach(s)).map((s, i) => (
           <SeatedPerson key={s.id} look={i * 5 + 1} position={[s.x, s.y, s.z]} yaw={s.yaw} />
         ))}

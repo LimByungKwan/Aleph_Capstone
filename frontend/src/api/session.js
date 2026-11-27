@@ -134,6 +134,18 @@ async function refresh() {
   return refreshing
 }
 
+/** 유효한 access token (만료 1분 전이면 먼저 새로 받음). 실패하면 null — 멀티 접속 hello에 씀 */
+export async function freshToken() {
+  const { session } = useSessionStore.getState()
+  if (!session) return null
+  try {
+    if (session.expiresAt && session.expiresAt * 1000 - Date.now() < 60_000) await refresh()
+  } catch {
+    return null
+  }
+  return useSessionStore.getState().session?.accessToken ?? null
+}
+
 /** 로그인이 필요한 API 호출. 만료가 가까우면 먼저 토큰을 새로 받고, 401이면 한 번 더 시도 */
 export async function authRequest(path, options = {}) {
   const { session } = useSessionStore.getState()
@@ -192,8 +204,8 @@ export async function confirmMfaEnroll(factorId, code) {
   useSessionStore.setState({ mfa: MFA_OK, mfaPrompt: null })
 }
 
-export async function signup({ email, password, name }) {
-  const data = await request('/auth/signup', { method: 'POST', body: { email, password, name } })
+export async function signup({ email, password, name, signupCode }) {
+  const data = await request('/auth/signup', { method: 'POST', body: { email, password, name, signupCode } })
   if (data.needsEmailConfirm) throw new ApiError('EMAIL_NOT_CONFIRMED', '메일함에서 인증 링크를 누른 뒤 로그인해 주세요.')
   setLoggedIn(data.session, data.user)
   return data.user

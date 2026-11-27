@@ -1,4 +1,6 @@
-import { useMemo } from 'react'
+import { useGovBuilding } from '../../../../components/movieZone/GovProject.jsx'
+import NearOnly from './HjNearOnly.jsx'
+import { useMemo, useRef } from 'react'
 import { Ball, Box, Cone, Cyl, GEO, Instances, mat } from '../kit.jsx'
 import { getSignTexture } from '../textures.js'
 import {
@@ -53,13 +55,21 @@ const IN = (v) => v - T / 2 - 0.02 // 벽 안쪽 면
 
 export default function HjGovernmentGeneral({ item }) {
   const [sw, sh, sd] = item.size
+  // 광복 프로젝트: 발파되면 가라앉고, 철거된 동안(10분)은 안 보여요 (GovProject.jsx)
+  const govRef = useRef(null)
+  useGovBuilding(govRef)
   return (
+    <group ref={govRef}>
     <group scale={[sw / w, sh / h, sd / d]}>
       <Shell title={item.title} />
       <Portico />
-      <Hall />
-      <Lobby />
-      <Office />
+      {/* 실내는 가까이 있을 때만 그려요 (성능) */}
+      <NearOnly radius={50}>
+        <Hall />
+        <Lobby />
+        <Office />
+      </NearOnly>
+    </group>
     </group>
   )
 }

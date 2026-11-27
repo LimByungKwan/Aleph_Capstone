@@ -7,6 +7,9 @@ import { useZoneEntryStore } from './zoneEntryStore.js'
 import { areaById } from './hjAreas.js'
 import { usePalaceGuide } from './palaceGuide.js'
 import TimeTunnel from './TimeTunnel.jsx'
+import TicketBoothPanel from './TicketBooth.jsx'
+import PullPanel from './PullPanel.jsx'
+import { GovBanner } from './GovProject.jsx'
 
 // [3. 개발 > 프론트엔드] 영화·드라마 구역 입장 환영 (혜진 구역 전용)
 // 게이트 통과/클릭 → 따뜻한 종이색(#F9F6EE) 페이드 + "🎬 영화·드라마 세트장에 입장하셨습니다!" 배너
@@ -20,6 +23,10 @@ export default function EntranceWelcome() {
     <>
       <TimeTunnel />
       <WelcomeCards />
+      {/* 매표소 · 끄는 인력거 · 광복 프로젝트 배너 (혜진) */}
+      <TicketBoothPanel />
+      <PullPanel />
+      <GovBanner />
     </>
   )
 }

@@ -23,7 +23,7 @@ const SHOJI = mat('#ffe2ad', { emissive: '#ffb058', emissiveIntensity: 0.85, rou
 const GLASS_WARM = mat('#ffd38a', { emissive: '#ffa640', emissiveIntensity: 1.1, roughness: 0.4 })
 const LAMP_GLASS = mat('#fff3d6', { emissive: '#ffd27a', emissiveIntensity: 1.6, roughness: 0.3 })
 const IRON = mat('#1f1d1b', { roughness: 0.6 })
-const LANTERN_RED = mat('#d0402a', { emissive: '#ff5a2e', emissiveIntensity: 1.0 })
+const LANTERN_RED = mat('#ab5038', { emissive: '#ff5a2e', emissiveIntensity: 1.0 })
 
 // 세로 간판 그림 (위에서 아래로 한 글자씩). 한국어 뜻이 있으면 맨 아래 작게
 function verticalSignTexture(text, bg, fg, aspect) {
@@ -242,7 +242,7 @@ const HEX = new THREE.CylinderGeometry(1, 0.85, 1, 6)
 // size [폭(물길 방향 직각 = x), _, 길이(z, 물길 건너는 방향)]. item.red: 붉은 난간. 밟는 면은 생성 스크립트의 길(roads)
 export function JmGinzanBridge({ item }) {
   const [w, , len] = item.size
-  const rail = item.red ? mat('#c8452f', { roughness: 0.6 }) : WOOD_DARK
+  const rail = item.red ? mat('#a9543a', { roughness: 0.6 }) : WOOD_DARK
   const posts = Math.max(3, Math.round(len / 1.2) + 1)
   return (
     <group>

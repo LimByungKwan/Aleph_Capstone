@@ -18,6 +18,7 @@ import { isWavingInPhoto } from '../Map/styles/bk_photoRoom.js'
 import { createWavePose } from '../Player/wavePose.js'
 import { useRealtimeStore } from './realtimeStore.js'
 import { useRemoteSeats } from '../../components/movieZone/hjSync.js' // [혜진] 다른 사람이 앉아 있으면 앉은 자세로
+import { findSeatById } from '../../components/movieZone/rideSeats.js' // [혜진] 탈것 좌석에 앉은 사람은 그 좌석에 붙여 그림
 
 // [지민] 다른 사람 캐릭터 1명
 // - 위치는 서버에서 0.1초마다 오므로, 그 사이를 부드럽게 따라가게(보간) 그림 → 뚝뚝 끊겨 보이지 않음
@@ -183,8 +184,14 @@ export default function RemotePlayer({ id, name, characterId, playerRef }) {
     if (!g || !state) return
     // [혜진] 앉아 있으면 자리 방향을 바라봄
     const sit = useRemoteSeats.getState().seats[id]
-    const faceYaw = sit && Number.isFinite(sit.r) ? sit.r : state[3]
-    g.rotation.y = teleported.current
+    // [혜진] 자동차·기차·열기구 같은 움직이는 탈것: 받은 위치(0.1초 간격 + 따라가기)는 차보다 늦어서 차 밖에 앉아 보여요.
+    // 이 화면의 같은 좌석 위치를 찾아 모델을 그 자리에 딱 붙이고, 좌석이 바라보는 방향(차가 돌면 같이 돌아요)을 써요
+    const rideSeat = sit ? findSeatById(sit.seat) : null
+    const p = body.current?.translation()
+    if (rideSeat && p) g.position.set(rideSeat.position[0] - p.x, rideSeat.position[1] - p.y, rideSeat.position[2] - p.z)
+    else if (g.position.x || g.position.y || g.position.z) g.position.set(0, 0, 0)
+    const faceYaw = rideSeat ? rideSeat.yaw : sit && Number.isFinite(sit.r) ? sit.r : state[3]
+    g.rotation.y = teleported.current || rideSeat
       ? faceYaw
       : MathUtils.damp(g.rotation.y, shortestAngle(g.rotation.y, faceYaw), FOLLOW, Math.min(delta, 0.1))
     teleported.current = false

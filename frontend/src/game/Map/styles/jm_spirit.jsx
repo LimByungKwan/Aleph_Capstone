@@ -4,7 +4,7 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { Box, Cyl, Ball, GEO, Instances, mat, seeded, texMat } from './kit.jsx'
-import { canvasTexture, getJpSignTexture, GlowMaterial, JP_FONT } from './jm_landmarks.jsx'
+import { canvasTexture, getJpSignTexture, getJpVerticalTexture, GlowMaterial, JP_FONT } from './jm_landmarks.jsx'
 import { getTiledTexture, TILE_METERS } from './textures.js'
 import { VerticalSign } from './jm_ginzan.jsx'
 import { useGameStore } from '../../../store/gameStore.js'
@@ -12,6 +12,10 @@ import { NearOnly } from './jm_yutoya.jsx'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useWarps } from './bk_warpStore.js'
 import { findPlayer } from '../../Player/findPlayer.js'
+import { requestPalaceWarp } from '../../../components/movieZone/palaceSeating.js'
+// (11/26 직접 타 보니) 타는 동안 매 프레임 공용 goto를 쓰면 한 프레임 늦게 적용되고 그 사이 중력이 쌓여 캐릭터가 덜컹이고 도착 뒤 0.3m 튀었음
+//   → 캐릭터 프레임 안에서 위치를 놓고 속도를 0으로 만드는 requestPalaceWarp로 붙잡음 (몸통 가운데 높이 = 바닥 + 1.6, goto exact와 같은 자리)
+const holdAt = (x, floorY, z) => requestPalaceWarp([x, floorY + 1.6, z])
 
 // 같은 입력이면 같은 0~1 난수 (kit의 seeded는 난수 '함수'를 돌려줌 → 숫자로 한 번 뽑음)
 const srand = (n) => seeded(Math.round(n * 9973) + 7)()
@@ -41,7 +45,7 @@ const WOOD = mat('#5e4130', { roughness: 0.85 })
 const IRON = mat('#23201d', { roughness: 0.55, metalness: 0.4 })
 const BRASS = mat('#b8913c', { roughness: 0.4, metalness: 0.6 })
 const INNER_GLOW = mat('#ffcf8a', { emissive: '#ff9a3c', emissiveIntensity: 0.9, roughness: 0.7 })
-const LANTERN_RED = mat('#d23a28', { emissive: '#ff4a22', emissiveIntensity: 1.1, roughness: 0.6 })
+const LANTERN_RED = mat('#ad4e38', { emissive: '#ff4a22', emissiveIntensity: 1.1, roughness: 0.6 })
 const LANTERN_WHITE = mat('#fff1d6', { emissive: '#ffcf7a', emissiveIntensity: 1.0, roughness: 0.6 })
 const LANTERN_CAP = mat('#1b1210')
 const BOWL = mat('#f1e8d6', { roughness: 0.5 })
@@ -49,12 +53,12 @@ const STEAM = mat('#ffffff', { transparent: true, opacity: 0.22, roughness: 1 })
 const WALL_LAMP = mat('#ff9ab8', { emissive: '#ff5a8a', emissiveIntensity: 1.4 })
 const FIRE = mat('#ff8a2a', { emissive: '#ff5a10', emissiveIntensity: 2.0 })
 // (11/26 지민이 보낸 거리·가게 장면 참고) 붉은 천 차양, 초록 칠 기둥, 파란 의자, 선반 항아리·접시, 음식 산더미
-const AWNING = mat('#c4382b', { roughness: 0.9, double: true })
+const AWNING = mat('#a44c38', { roughness: 0.9, double: true })
 const AWNING_D = mat('#9a2a20', { roughness: 0.9, double: true })
 const POST_GREEN = mat('#4f8f6a', { roughness: 0.8 })
 const STOOL_BLUE = mat('#2f5a7f', { roughness: 0.6 })
 const JAR = mat('#5a2e22', { roughness: 0.5 })
-const JAR_LABEL = mat('#c9473a', { roughness: 0.7 })
+const JAR_LABEL = mat('#b1675f', { roughness: 0.7 })
 const PLATE_RIM = mat('#3a6f9a', { roughness: 0.4 })
 const BAMBOO = mat('#b08a55', { roughness: 0.8 })
 const LAMP_SHADE = mat('#2f3a33', { roughness: 0.6, double: true })
@@ -65,7 +69,7 @@ const FOODS = {
   ball: mat('#7a361d', { roughness: 0.45 }),
   fried: mat('#a8391f', { roughness: 0.7, flat: true }),
   tempura: mat('#e2a845', { roughness: 0.7, flat: true }),
-  glazed: mat('#c2502a', { roughness: 0.35, emissive: '#3a1004', emissiveIntensity: 0.3 }),
+  glazed: mat('#ab6a54', { roughness: 0.35, emissive: '#3a1004', emissiveIntensity: 0.3 }),
 }
 
 // 음식 산더미 가게 안 부엌 (11/26 지민이 보낸 가게 안 장면 2장 참고) — 카운터 너머로 보이는 방
@@ -358,7 +362,7 @@ function stainedTexture() {
     ctx.lineTo(w - 6, h - 6)
     ctx.closePath()
     ctx.clip()
-    const cols = ['#e8b04a', '#d94f4f', '#4f8fd9', '#59b36b', '#f2a3c0']
+    const cols = ['#e8b04a', '#bf7070', '#4f8fd9', '#59b36b', '#f2a3c0']
     for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) {
       ctx.fillStyle = cols[(r + c * 2) % cols.length]
       ctx.beginPath()
@@ -522,7 +526,7 @@ export function JmEatery({ item }) {
       {item.noren && (
         <mesh position={[0, g1 - 0.5, front + 0.97]} rotation={[0.18, 0, 0]}>
           <planeGeometry args={[Math.min(w - 1.2, 2.4), 0.75]} />
-          <GlowMaterial glow={0.2} map={getJpSignTexture(item.noren, '#c4382b', '#f5ead8', Math.min(w - 1.2, 2.4) / 0.75)} side={THREE.DoubleSide} />
+          <GlowMaterial glow={0.2} map={getJpSignTexture(item.noren, '#a44c38', '#f5ead8', Math.min(w - 1.2, 2.4) / 0.75)} side={THREE.DoubleSide} />
         </mesh>
       )}
       {/* 1층 처마 + 붉은 등 줄 */}
@@ -546,9 +550,9 @@ export function JmEatery({ item }) {
             {(seed + k) % 2 === 0 && (
               <group position={[0, g1 + fh * k, front + 0.3]}>
                 <Box p={[0, 0.05, -0.2]} s={[w - 1.6, 0.1, 0.8]} c="#4a2f1f" />
-                <Box p={[0, 0.95, 0.15]} s={[w - 1.6, 0.08, 0.08]} c="#c0392b" />
+                <Box p={[0, 0.95, 0.15]} s={[w - 1.6, 0.08, 0.08]} c="#a24a36" />
                 {range(Math.round((w - 1) / 0.7)).map((i, _, arr) => (
-                  <Box key={i} p={[-(w - 1.6) / 2 + (i * (w - 1.6)) / Math.max(1, arr.length - 1), 0.5, 0.15]} s={[0.07, 0.9, 0.07]} c="#c0392b" />
+                  <Box key={i} p={[-(w - 1.6) / 2 + (i * (w - 1.6)) / Math.max(1, arr.length - 1), 0.5, 0.15]} s={[0.07, 0.9, 0.07]} c="#a24a36" />
                 ))}
               </group>
             )}
@@ -667,11 +671,11 @@ export function JmTownGate({ item }) {
       {[-1, 1].map((s) => (
         <group key={s} position={[s * (w / 2 - 0.4), 0, 0]}>
           <Box p={[0, 0.3, 0]} s={[1.1, 0.6, 1.1]} m={STONE} />
-          <Cyl p={[0, h / 2, 0]} rad={0.34} h={h} c="#b8352a" />
+          <Cyl p={[0, h / 2, 0]} rad={0.34} h={h} c="#9e4634" />
           <Chochin p={[0, 2.4, 0.6]} r={0.38} h={0.95} />
         </group>
       ))}
-      <Box p={[0, h - 1.2, 0]} s={[w, 0.4, 0.5]} c="#b8352a" />
+      <Box p={[0, h - 1.2, 0]} s={[w, 0.4, 0.5]} c="#9e4634" />
       <Box p={[0, h - 0.2, 0]} s={[w + 0.8, 0.5, 0.7]} c="#2a1a12" />
       <mesh geometry={roof} position={[0, h, 0]}>
         <meshStandardMaterial color="#2e3236" flatShading side={THREE.DoubleSide} />
@@ -805,16 +809,16 @@ export function JmBoilerRoom({ item }) {
       <Box p={[0, 0.05, 0]} s={[w, 0.1, d]} c="#4a4038" />
       <Box p={[0, h / 2, -front + 0.2]} s={[w, h, 0.4]} m={STONE} />
       {[-1, 1].map((s) => (
-        <Box key={s} p={[s * (w / 2 - 0.2), h / 2, 0]} s={[0.4, h, d]} c="#b9443a" />
+        <Box key={s} p={[s * (w / 2 - 0.2), h / 2, 0]} s={[0.4, h, d]} c="#a3523f" />
       ))}
       {(() => {
         const a = B.door.x - B.door.w / 2
         const b = B.door.x + B.door.w / 2
         return (
           <group>
-            <Box p={[(-w / 2 + a) / 2, h / 2, front - 0.2]} s={[a + w / 2, h, 0.4]} c="#b9443a" />
-            <Box p={[(b + w / 2) / 2, h / 2, front - 0.2]} s={[w / 2 - b, h, 0.4]} c="#b9443a" />
-            <Box p={[B.door.x, (B.door.h + h) / 2, front - 0.2]} s={[B.door.w, h - B.door.h, 0.4]} c="#b9443a" />
+            <Box p={[(-w / 2 + a) / 2, h / 2, front - 0.2]} s={[a + w / 2, h, 0.4]} c="#a3523f" />
+            <Box p={[(b + w / 2) / 2, h / 2, front - 0.2]} s={[w / 2 - b, h, 0.4]} c="#a3523f" />
+            <Box p={[B.door.x, (B.door.h + h) / 2, front - 0.2]} s={[B.door.w, h - B.door.h, 0.4]} c="#a3523f" />
             <mesh position={[B.door.x, B.door.h + 0.45, front + 0.02]}>
               <planeGeometry args={[1.4, 0.5]} />
               <GlowMaterial glow={0.5} map={getJpSignTexture('釜場', '#2a1a12', '#f3e6c8', 1.4 / 0.5)} side={THREE.DoubleSide} />
@@ -920,6 +924,9 @@ export const useJmElevator = (() => {
 const floorName = (key) => (key === 'B' ? 'B1' : `${key}F`)
 // 마지막 도착 기록: 도착한 칸은 문이 닫힌 채 시작했다가 열림
 const lastArrive = { kind: null, key: null, t: 0 }
+// (11/26) 지금 타고 가는 칸: 같은 종류의 다른 층 칸은 이동하는 동안 숨기고 "들어왔다" 판정도 안 함
+//   층마다 칸 모형이 따로 서 있어서, 움직이는 칸이 지나갈 때 겹쳐 보이고 그 칸들이 안내창·카메라를 가로채던 문제
+const rideNow = { kind: null, from: null }
 
 function cageTexture() {
   return canvasTexture('jmspirit:cage', 256, 512, (ctx, w, h) => {
@@ -939,14 +946,20 @@ function cageTexture() {
   })
 }
 
-// (11/25 지민 요청) 키보드 메뉴 대신 영화처럼 레버로 움직임:
-//   칸 안 레버 앞에서 E → 레버 잡기(캐릭터 멈춤) → W/S(↑/↓)로 레버를 밀고 당겨 층 고르기(레버가 눈금마다 기울고 위 다이얼 바늘도 따라감)
-//   → E로 출발(화면 어두워짐 → 그 층 칸으로 순간 이동) / Esc로 놓기
-// item.elevator.kind: 'staff'(구석, 보일러실·1~5층) | 'guest'(가운데 누각, 1~4층)
-// 워프는 바닥 + 1.6m에 캐릭터 중심을 두는데 서 있을 때 중심은 약 1m → 붙잡는 동안 뜨지 않게 0.6m 내림
+// (11/26 지민 요청) 영화 장면처럼: 옆벽 축에 박힌 긴 나무 레버를 밀어 올리고 내리는 엘리베이터, 벽은 어두운 나무판
+// 조작은 쉽게: 칸 안에 들어가면 오른쪽에 층 목록 → 숫자 키(1~5) 또는 층을 눌러 바로 출발 (레버가 그 층 쪽으로 돌아감)
+// item.elevator.kind: 'staff'(구석, 1~5층) | 'guest'(가운데 누각, 1~4층)
+// 워프는 바닥 + 1.6m에 캐릭터 중심을 두는데 서 있을 때 중심은 약 1m → 타고 가는 동안 뜨지 않게 0.6m 내림
+// (11/26) 층 자리 x·z는 저장된 stops가 아니라 지금 칸이 서 있는 자리에서 계산함
+//   → 맵을 늘이거나 옮겨도 층 자리가 칸과 어긋나지 않음 (예전 stops z가 칸보다 약 100m 어긋나 엉뚱한 곳으로 보내던 문제)
 const STAND_FIX = 0.6
-const LEVER_Y0 = 0.7 // 레버 홈 아래 끝 높이
-const LEVER_LEN = 1.0 // 레버 홈 길이
+// 영화 클로즈업처럼: 붉은 벽에 반원 청동 판(구멍 몇 개, 둥근 홈) + 짧은 놋쇠 팔 + 끝의 나무 원통 손잡이
+const LEVER_PIVOT = [-0.2, 1.45] // 옆벽 기준 (문 쪽 = +x, 위 = +y)
+const LEVER_LEN = 0.5
+const LEVER_SWING = 1.0 // 맨 아래층 -1.0rad ~ 맨 위층 +1.0rad (반원 안에서 돌아감)
+const LEVER_WOOD = mat('#9a5f2c', { roughness: 0.6 })
+const LEVER_BRONZE = mat('#7a4e26', { roughness: 0.45, metalness: 0.55 })
+const LEVER_HOLE = mat('#1a0e06', { roughness: 0.9 })
 // 층 글자 판 (B1·1F~5F). on = 빨갛게 빛남
 function floorTexture(key, on) {
   const label = key === 'B' ? 'B1' : `${key}F`
@@ -963,6 +976,31 @@ function floorTexture(key, on) {
     ctx.fillText(label, w / 2, h / 2 + 3)
   })
 }
+// 어두운 세로 나무판 벽 (장면 속 엘리베이터 안벽)
+function elevPlankTexture() {
+  return canvasTexture('jmspirit:elevplank', 256, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#4a2f1a'
+    ctx.fillRect(0, 0, w, h)
+    const rnd = seeded(77)
+    for (let i = 0; i < 5; i++) {
+      const x = (i * w) / 5
+      ctx.fillStyle = `rgba(${90 + rnd() * 40}, ${55 + rnd() * 25}, ${28 + rnd() * 15}, 0.55)`
+      ctx.fillRect(x + 2, 0, w / 5 - 4, h)
+      ctx.strokeStyle = 'rgba(20, 10, 4, 0.35)'
+      ctx.lineWidth = 1
+      for (let k = 0; k < 6; k++) {
+        const gx = x + 6 + rnd() * (w / 5 - 12)
+        ctx.beginPath()
+        ctx.moveTo(gx, 0)
+        ctx.bezierCurveTo(gx + rnd() * 6 - 3, h * 0.3, gx + rnd() * 6 - 3, h * 0.7, gx, h)
+        ctx.stroke()
+      }
+      ctx.fillStyle = '#1c1008'
+      ctx.fillRect(x, 0, 3, h)
+    }
+  })
+}
+const isTyping = (target) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 export function JmElevator({ item }) {
   const [w, h, d] = item.size
   const E = item.elevator
@@ -971,15 +1009,24 @@ export function JmElevator({ item }) {
   const player = useRef(null)
   const next = useRef(0)
   const [near, setNear] = useState(false)
-  const [grab, setGrab] = useState(false)
   const meIndex = Math.max(0, E.stops.findIndex((s) => s.key === E.me))
   const [sel, setSel] = useState(meIndex)
   const tmp = useMemo(() => ({ a: new THREE.Vector3(), b: new THREE.Vector3() }), [])
   const cage = useMemo(() => cageTexture(), [])
+  const planks = useMemo(() => elevPlankTexture(), [])
+  const controls = useThree((s) => s.controls)
+  const tmpQ = useMemo(() => new THREE.Quaternion(), [])
+  const rideCam = useRef(null) // 타고 가는 동안 카메라 방향(문 쪽 azimuth)
   const here = E.stops[meIndex]
   const n = E.stops.length
-  const slotY = (i) => LEVER_Y0 + (n > 1 ? (i * LEVER_LEN) / (n - 1) : LEVER_LEN / 2)
+  const leverAngle = (i) => (n > 1 ? -LEVER_SWING + (2 * LEVER_SWING * i) / (n - 1) : 0)
   const lever = useRef(null)
+  // 이 칸의 실제 x·z (월드). 칸은 위아래로만 움직이므로 한 번 재면 됨
+  const cabXZ = useRef(null)
+  const stopPos = (i) => {
+    const p = E.stops[i].pos
+    return cabXZ.current ? [cabXZ.current[0], p[1], cabXZ.current[1]] : p
+  }
   // 문: 0 = 열림, 1 = 닫힘. 막 도착한 칸이면 닫힌 채 시작
   const justArrived = () => lastArrive.kind === (E.kind ?? 'staff') && lastArrive.key === E.me && performance.now() - lastArrive.t < 5000
   const door = useRef(justArrived() ? 1 : 0)
@@ -987,7 +1034,6 @@ export function JmElevator({ item }) {
   const gateL = useRef(null)
   const gateR = useRef(null)
   const [riding, setRiding] = useState(false)
-  const grabRef = useRef(false)
   const ridingRef = useRef(false)
   const [rideIdx, setRideIdx] = useState(null)
   const ride = useRef(null)
@@ -995,10 +1041,28 @@ export function JmElevator({ item }) {
   const body = useRef(null)
 
   useFrame(({ clock }, dt) => {
-    // 레버를 잡은 동안·문이 닫히는 동안: 캐릭터를 이 칸 가운데에 붙잡아 둠 (W/S가 걷기 키이기도 해서 칸 밖으로 나가지 않게)
-    if ((grabRef.current || ridingRef.current) && !ride.current) {
-      const here = E.stops[meIndex].pos
-      useWarps.getState().goto({ exact: [here[0], here[1] - STAND_FIX, here[2]] })
+    if (!cabXZ.current && anchor.current) {
+      anchor.current.getWorldPosition(tmp.a)
+      cabXZ.current = [tmp.a.x, tmp.a.z]
+    }
+    // 문이 닫히는 동안: 캐릭터를 이 칸 가운데에 붙잡아 둠
+    if (ridingRef.current && !ride.current) {
+      const p = stopPos(meIndex)
+      holdAt(p[0], p[1] - STAND_FIX, p[2])
+    }
+    // (11/26) 문 닫힘 ~ 도착까지: 카메라를 칸 안(문 쪽 위, 0.75m)으로 당겨 둠 — 닫힌 철문(칸 끝 1.4m)보다 안쪽
+    //   칸 밖 2.6m에 있으면 층 사이를 지나는 동안 승강로 벽·창살 문이 화면을 가림. 도착하면 새 칸이 다시 2.6m로 되돌림
+    //   칸이 움직이는 동안은 카메라 중심을 캐릭터에 바로 맞춤(transition 없이): 공용 카메라의 부드러운 따라가기는 위아래로
+    //   빠르게 움직이면 몇 m씩 늦어서 카메라가 아래층에 남아 바닥판·바깥 장지문을 비췄음 (11/26 측정: 최대 6m 뒤처짐)
+    if (ridingRef.current && rideCam.current != null && controls?.rotateTo) {
+      const moving = !!ride.current
+      controls.minDistance = Math.min(controls.minDistance, 0.6)
+      if (moving && player.current) {
+        player.current.getWorldPosition(tmp.a)
+        controls.moveTo(tmp.a.x, tmp.a.y + 0.6, tmp.a.z, false)
+      }
+      controls.rotateTo(rideCam.current, 1.05, !moving)
+      controls.dollyTo(0.75, !moving)
     }
     // 타고 가는 중: 칸이 위·아래로 움직이고 캐릭터를 칸 바닥에 맞춰 같이 옮김
     const r = ride.current
@@ -1008,7 +1072,7 @@ export function JmElevator({ item }) {
       const y = r.y0 + (r.y1 - r.y0) * e
       if (body.current) body.current.position.y = y - r.y0 + Math.sin(t * 40) * 0.01
       useGameStore.setState({ inputLocked: true })
-      useWarps.getState().goto({ exact: [r.x, y - STAND_FIX, r.z] })
+      holdAt(r.x, y - STAND_FIX, r.z)
       let nearest = 0
       E.stops.forEach((st, i) => {
         if (Math.abs(st.pos[1] - y) < Math.abs(E.stops[nearest].pos[1] - y)) nearest = i
@@ -1021,11 +1085,15 @@ export function JmElevator({ item }) {
         lastArrive.kind = E.kind ?? 'staff'
         lastArrive.key = r.stop.key
         lastArrive.t = performance.now()
-        useWarps.getState().goto({ exact: [r.stop.pos[0], r.stop.pos[1] - STAND_FIX, r.stop.pos[2]] })
+        holdAt(r.x, r.y1 - STAND_FIX, r.z)
         ride.current = null
         if (body.current) body.current.position.y = 0
+        ridingRef.current = false
+        rideNow.kind = null
+        rideNow.from = null
         setRiding(false)
         setRideIdx(null)
+        setSel(meIndex)
         rideFloor.current = null
         doorTarget.current = 0
         setTimeout(() => {
@@ -1033,8 +1101,8 @@ export function JmElevator({ item }) {
         }, 200)
       }
     }
-    // 레버는 고른 눈금 각도로 부드럽게
-    if (lever.current) lever.current.position.y += (slotY(grab ? sel : meIndex) - lever.current.position.y) * Math.min(1, dt * 10)
+    // 나무 레버: 고른 층 각도로 부드럽게 돌아감
+    if (lever.current) lever.current.rotation.z += (leverAngle(sel) - lever.current.rotation.z) * Math.min(1, dt * 6)
     // 접이식 철문: 목표값 쪽으로 천천히 (1초쯤)
     door.current += Math.sign(doorTarget.current - door.current) * Math.min(Math.abs(doorTarget.current - door.current), dt * 1.2)
     const k = 0.12 + door.current * 0.88
@@ -1047,10 +1115,19 @@ export function JmElevator({ item }) {
     if (!player.current || !anchor.current) return
     anchor.current.getWorldPosition(tmp.a)
     player.current.getWorldPosition(tmp.b)
-    const inside = Math.abs(tmp.b.x - tmp.a.x) < w / 2 + 0.3 && Math.abs(tmp.b.z - tmp.a.z) < d / 2 + 0.3 && Math.abs(tmp.b.y - tmp.a.y) < 2.2
+    const otherRiding = rideNow.kind === (E.kind ?? 'staff') && rideNow.from !== E.me
+    if (body.current) body.current.visible = !otherRiding
+    // 타고 가는 동안 출발한 칸은 안내창을 계속 띄움 (캐릭터 이동이 한 프레임 늦어 잠깐 칸 밖으로 판정되던 것)
+    const inside = !otherRiding && (ridingRef.current || Math.abs(tmp.b.x - tmp.a.x) < w / 2 + 0.3 && Math.abs(tmp.b.z - tmp.a.z) < d / 2 + 0.3 && Math.abs(tmp.b.y - tmp.a.y) < 2.2)
     if (inside !== near) {
       setNear(inside)
-      if (!inside) setGrab(false)
+      // (11/26) 칸에 들어서면(도착 포함) 카메라를 열린 문 쪽 바깥에서 칸 안을 들여다보는 자리로 돌림
+      //   칸 폭이 2.8m라 뒤에서 따라오는 카메라(3~5m)는 승강로·벽 속으로 빠짐. 돌린 뒤에는 마우스로 자유롭게
+      if (inside && controls?.rotateTo) {
+        const open = tmp.b.set(0, 0, 1).applyQuaternion(anchor.current.getWorldQuaternion(tmpQ))
+        controls.rotateTo(Math.atan2(open.x, open.z), 1.2, true)
+        controls.dollyTo(2.6, true)
+      }
       if (inside && justArrived()) {
         door.current = 1
         doorTarget.current = 1
@@ -1067,86 +1144,75 @@ export function JmElevator({ item }) {
     return () => clearTimeout(t)
   }, [])
 
-  useEffect(() => {
-    grabRef.current = grab
-  }, [grab])
-  useEffect(() => {
-    ridingRef.current = riding
-  }, [riding])
-
-  // 레버를 잡는 동안 캐릭터 멈춤 (공용 inputLocked). 놓으면 되돌림
-  useEffect(() => {
-    if (!grab) return undefined
-    useGameStore.setState({ inputLocked: true })
-    return () => {
-      if (!useGameStore.getState().openPanel) useGameStore.setState({ inputLocked: false })
+  const go = (to) => {
+    if (ridingRef.current || to === meIndex || to < 0 || to >= n) return
+    if (!useWarps.getState().exact) {
+      useUiStore.getState().toast('엘리베이터는 아직 운행 준비 중이에요. 옆 계단을 이용해 주세요.', 'info')
+      return
     }
-  }, [grab])
+    const steps = Math.abs(to - meIndex)
+    const from = stopPos(meIndex)
+    const dest = stopPos(to)
+    setSel(to) // 레버가 그 층 쪽으로 돌아감
+    if (anchor.current) {
+      const open = new THREE.Vector3(0, 0, 1).applyQuaternion(anchor.current.getWorldQuaternion(tmpQ))
+      rideCam.current = Math.atan2(open.x, open.z)
+    }
+    setRiding(true)
+    ridingRef.current = true
+    rideNow.kind = E.kind ?? 'staff'
+    rideNow.from = E.me
+    useGameStore.setState({ inputLocked: true })
+    doorTarget.current = 1 // 문 닫힘 (1초쯤)
+    setTimeout(() => {
+      ride.current = { y0: from[1], y1: dest[1], x: dest[0], z: dest[2], t0: performance.now(), dur: Math.max(2000, steps * 1500), stop: E.stops[to] }
+    }, 1100)
+  }
 
+  // 숫자 키(1~5, 숫자패드 포함)로 바로 출발. 채팅 입력 중에는 무시
   useEffect(() => {
     if (!near) return undefined
-    const go = (stop) => {
-      setGrab(false)
-      if (!useWarps.getState().exact) {
-        useUiStore.getState().toast('엘리베이터는 아직 운행 준비 중이에요. 옆 계단을 이용해 주세요.', 'info')
-        return
-      }
-      const to = E.stops.findIndex((x) => x.key === stop.key)
-      const steps = Math.abs(to - meIndex)
-      setRiding(true)
-      useGameStore.setState({ inputLocked: true })
-      doorTarget.current = 1 // 문 닫힘 (1초쯤)
-      setTimeout(() => {
-        const from = E.stops[meIndex].pos
-        ride.current = { y0: from[1], y1: stop.pos[1], x: stop.pos[0], z: stop.pos[2], t0: performance.now(), dur: Math.max(2000, steps * 1500), stop }
-      }, 1100)
-    }
     const down = (event) => {
-      if (event.repeat) return
-      const game = useGameStore.getState()
-      if (game.openPanel) return
-      if (event.code === 'KeyE') {
-        if (!grab) {
-          setSel(meIndex)
-          setGrab(true)
-        } else if (sel !== meIndex) go(E.stops[sel])
-        else setGrab(false)
-        return
-      }
-      if (!grab) return
-      if (event.code === 'Escape') setGrab(false)
-      else if (event.code === 'KeyW' || event.code === 'ArrowUp') setSel((v) => Math.min(n - 1, v + 1))
-      else if (event.code === 'KeyS' || event.code === 'ArrowDown') setSel((v) => Math.max(0, v - 1))
+      if (event.repeat || isTyping(event.target) || useGameStore.getState().openPanel) return
+      const m = /^(?:Digit|Numpad)(\d)$/.exec(event.code)
+      const key = m ? m[1] : event.code === 'KeyB' ? 'B' : null
+      if (!key) return
+      const to = E.stops.findIndex((s) => s.key === key)
+      if (to < 0) return
+      event.preventDefault()
+      go(to)
     }
     window.addEventListener('keydown', down)
     return () => window.removeEventListener('keydown', down)
-  }, [near, grab, sel, meIndex, n, E])
+  })
 
   const size = useThree((s) => s.size)
-  const target = E.stops[grab || riding ? sel : meIndex]
+  const target = E.stops[sel]
   const kbd = (k) => <kbd style={{ padding: '0 5px', borderRadius: 4, background: '#e8c35a', color: '#111', fontSize: 11, fontWeight: 700 }}>{k}</kbd>
   return (
     <group ref={body}>
       <group ref={anchor} position={[0, 0.2, 0]} />
-      {/* 바닥판 + 천장 + 세 면 놋쇠 격자 + 열린 쪽 접힌 문 */}
+      {/* 바닥판 + 천장 + 세 면 나무판 벽 + 열린 쪽 접이식 철문 */}
       <Box p={[0, 0.05, 0]} s={[w, 0.1, d]} c="#3b2a1c" />
-      <Box p={[0, h - 0.1, 0]} s={[w, 0.2, d]} m={IRON} />
+      <Box p={[0, h - 0.1, 0]} s={[w, 0.2, d]} c="#2a1a0e" />
       {[
         [0, -d / 2, w, 0],
         [-w / 2, 0, d, Math.PI / 2],
         [w / 2, 0, d, -Math.PI / 2],
       ].map(([x, z, len, r], i) => (
         <group key={i} position={[x, 0, z]} rotation={[0, r, 0]}>
-          <Box p={[0, h / 2, -0.05]} s={[len, h, 0.04]} c="#4a3426" />
+          {/* 벽은 칸 안쪽에서만 보임(FrontSide, 앞면 = 안쪽): 칸이 좁아 카메라가 벽 밖에 있어도 벽 너머로 캐릭터가 보이게 */}
           <mesh position={[0, h / 2, 0.01]}>
             <planeGeometry args={[len, h - 0.2]} />
-            <meshStandardMaterial map={cage} transparent alphaTest={0.4} side={THREE.DoubleSide} metalness={0.5} roughness={0.4} />
+            <meshStandardMaterial map={planks} side={THREE.FrontSide} roughness={0.85} />
           </mesh>
+          {/* 허리 높이 나무 손잡이 띠 */}
+          <Box p={[0, 1.0, 0.05]} s={[len - 0.1, 0.1, 0.08]} c="#6b4423" />
         </group>
       ))}
       {[-1, 1].map((s) => (
         <group key={s}>
-          <Box p={[s * (w / 2 - 0.05), h / 2, d / 2]} s={[0.12, h, 0.12]} m={BRASS} />
+          <Box p={[s * (w / 2 - 0.05), h / 2, d / 2]} s={[0.12, h, 0.12]} c="#5a3a1e" />
           {/* 접이식 철문 한 짝: 바깥 기둥에 붙어 가운데로 늘어남 (scale.x) */}
           <group ref={s < 0 ? gateL : gateR} position={[s * (w / 2 - 0.1), 0, d / 2 - 0.03]} scale={[0.12, 1, 1]}>
             <mesh position={[-s * (w / 4 - 0.05), h / 2 - 0.1, 0]}>
@@ -1157,8 +1223,8 @@ export function JmElevator({ item }) {
           </group>
         </group>
       ))}
-      <Box p={[0, h + 0.05, d / 2]} s={[w + 0.2, 0.15, 0.15]} m={BRASS} />
-      {/* (11/25) 층 표시를 크게: 문 위 이 칸의 층 + 칸 안 뒷벽 큰 숫자판(고른 층, 레버를 잡으면 빨갛게) */}
+      <Box p={[0, h + 0.05, d / 2]} s={[w + 0.2, 0.15, 0.15]} c="#5a3a1e" />
+      {/* 층 표시: 문 위 이 칸의 층 + 칸 안 뒷벽 큰 숫자판(가는 층, 출발하면 빨갛게) */}
       <mesh position={[0, h + 0.6, d / 2 + 0.06]}>
         <planeGeometry args={[1.3, 0.8]} />
         <GlowMaterial glow={0.9} map={floorTexture(here?.key ?? '1', false)} side={THREE.DoubleSide} />
@@ -1166,62 +1232,82 @@ export function JmElevator({ item }) {
       <Box p={[0, h + 0.6, d / 2 + 0.02]} s={[1.45, 0.95, 0.04]} m={BRASS} />
       <mesh position={[0, h - 0.75, -d / 2 + 0.08]}>
         <planeGeometry args={[1.1, 0.75]} />
-        <GlowMaterial glow={1.0} map={floorTexture(target?.key ?? '1', grab && sel !== meIndex)} />
+        <GlowMaterial glow={1.0} map={floorTexture(target?.key ?? '1', riding)} />
       </mesh>
       <Box p={[0, h - 0.75, -d / 2 + 0.05]} s={[1.25, 0.9, 0.04]} m={BRASS} />
-      {/* 레버: 오른쪽 안 벽, 세로 홈 눈금판 — 손잡이가 위아래로 미끄러짐 (아래 = 낮은 층, 위 = 높은 층) */}
-      <group position={[w / 2 - 0.12, 0, 0.15]} rotation={[0, -Math.PI / 2, 0]}>
-        <Box p={[0, LEVER_Y0 + LEVER_LEN / 2, -0.02]} s={[0.7, LEVER_LEN + 0.35, 0.04]} c="#3a2a1c" />
-        <Box p={[0, LEVER_Y0 + LEVER_LEN / 2, 0.005]} s={[0.07, LEVER_LEN, 0.02]} c="#0d0a08" />
-        {E.stops.map((s, i) => (
-          <group key={s.key} position={[0, slotY(i), 0.01]}>
-            <Box p={[0.12, 0, 0]} s={[0.1, 0.025, 0.02]} m={i === (grab ? sel : meIndex) ? LANTERN_RED : BRASS} />
-            <mesh position={[-0.22, 0, 0.005]}>
-              <planeGeometry args={[0.24, 0.17]} />
-              <GlowMaterial glow={0.8} map={floorTexture(s.key, i === (grab ? sel : meIndex))} />
+      {/* 레버(영화 클로즈업): 오른쪽 안 벽 붉은 옻칠 판 위 반원 청동 판 — 둥근 홈을 따라 짧은 놋쇠 팔이 돌고 끝에 나무 원통 손잡이.
+          위로 올리면 위층, 내리면 아래층. 반원 바깥 둘레에 층 글자판 */}
+      <group position={[w / 2 - 0.12, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <Box p={[LEVER_PIVOT[0] + 0.15, LEVER_PIVOT[1], -0.01]} s={[1.3, 1.5, 0.03]} c="#7a2416" />
+        <group position={[LEVER_PIVOT[0], LEVER_PIVOT[1], 0.02]}>
+          {E.stops.map((s, i) => {
+            const a = leverAngle(i)
+            return (
+              <mesh key={s.key} position={[Math.cos(a) * 0.8, Math.sin(a) * 0.8, 0.01]}>
+                <planeGeometry args={[0.22, 0.15]} />
+                <GlowMaterial glow={0.8} map={floorTexture(s.key, i === sel)} />
+              </mesh>
+            )
+          })}
+          {/* 반원 청동 판 (문 쪽으로 볼록) + 안쪽 둥근 홈 + 구멍 3개 */}
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.02]} material={LEVER_BRONZE}>
+            <cylinderGeometry args={[0.62, 0.62, 0.05, 24, 1, false, 0, Math.PI]} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.05]} material={LEVER_HOLE}>
+            <cylinderGeometry args={[0.42, 0.42, 0.02, 24, 1, false, 0, Math.PI]} />
+          </mesh>
+          {[-0.75, 0, 0.75].map((a) => (
+            <Ball key={a} p={[Math.cos(a) * 0.53, Math.sin(a) * 0.53, 0.05]} rad={0.035} m={LEVER_HOLE} />
+          ))}
+          <Box p={[-0.04, 0, 0.03]} s={[0.12, 1.3, 0.08]} m={LEVER_BRONZE} />
+          <Ball p={[0, 0, 0.07]} rad={0.06} m={BRASS} />
+          <group ref={lever} rotation={[0, 0, leverAngle(meIndex)]}>
+            {/* 놋쇠 팔 */}
+            <Box p={[LEVER_LEN / 2, 0, 0.09]} s={[LEVER_LEN, 0.07, 0.03]} m={BRASS} />
+            {/* 나무 원통 손잡이 (팔 끝, 팔 방향으로 누운 원통 + 끝 구멍) */}
+            <mesh position={[LEVER_LEN + 0.06, 0, 0.13]} rotation={[0, 0, -Math.PI / 2]} material={LEVER_WOOD}>
+              <cylinderGeometry args={[0.075, 0.085, 0.24, 14]} />
             </mesh>
+            <Ball p={[LEVER_LEN + 0.19, 0, 0.13]} rad={0.025} m={LEVER_HOLE} />
           </group>
-        ))}
-        <group ref={lever} position={[0, slotY(meIndex), 0]}>
-          <Box p={[0, 0, 0.08]} s={[0.05, 0.05, 0.16]} m={BRASS} />
-          <Ball p={[0, 0, 0.18]} rad={0.07} c={grab ? '#c0392b' : '#1a1210'} />
         </group>
       </group>
       {near && (
         <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, width: size.width, height: size.height, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 24, boxSizing: 'border-box' }}>
-            <div style={{ width: 230, padding: '12px 14px', borderRadius: 14, background: 'rgba(24,14,8,0.86)', border: '2px solid #b8913c', color: '#fff', fontSize: 14, lineHeight: 1.5 }}>
+          {/* 왼쪽 조작키 안내 아래에 둠 (오른쪽 아래는 미니맵이 가림) */}
+          <div style={{ position: 'absolute', left: 0, top: 0, width: size.width, height: size.height, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '210px 0 0 16px', boxSizing: 'border-box', pointerEvents: 'none' }}>
+            <div style={{ width: 230, padding: '12px 14px', borderRadius: 14, background: 'rgba(24,14,8,0.86)', border: '2px solid #b8913c', color: '#fff', fontSize: 14, lineHeight: 1.5, pointerEvents: 'auto' }}>
               <div style={{ fontWeight: 800, fontSize: 15, color: '#f2c94c', marginBottom: 6 }}>{E.kind === 'guest' ? '손님용 엘리베이터' : '직원용 엘리베이터'}</div>
-              {/* 층 목록: 위층이 위 */}
+              {/* 층 목록: 위층이 위. 누르면 바로 출발 */}
               <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: 3, marginBottom: 8 }}>
                 {E.stops.map((s, i) => {
-                  const isSel = i === (grab ? sel : meIndex)
                   const isHere = i === meIndex
+                  const isSel = riding ? i === sel : isHere
                   return (
-                    <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 8px', borderRadius: 8, background: isSel ? (grab && !isHere ? '#c0392b' : '#b8913c') : 'rgba(255,255,255,0.06)', fontWeight: isSel ? 800 : 500 }}>
-                      <span style={{ width: 30, fontSize: 17, fontWeight: 900 }}>{s.key === 'B' ? 'B1' : `${s.key}F`}</span>
+                    <button
+                      key={s.key}
+                      type="button"
+                      disabled={riding || isHere}
+                      onClick={(e) => {
+                        e.currentTarget.blur()
+                        go(i)
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, border: 'none', textAlign: 'left', color: '#fff', cursor: riding || isHere ? 'default' : 'pointer', background: isSel ? (riding ? '#a24a36' : '#b8913c') : 'rgba(255,255,255,0.08)', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: isSel ? 800 : 500 }}
+                    >
+                      {kbd(s.key)}
+                      <span style={{ width: 28, fontSize: 16, fontWeight: 900 }}>{floorName(s.key)}</span>
                       <span style={{ fontSize: 12, flex: 1 }}>{s.label}</span>
                       {isHere && <span style={{ fontSize: 11, opacity: 0.85 }}>지금</span>}
-                    </div>
+                    </button>
                   )
                 })}
               </div>
               {riding ? (
                 <div style={{ fontSize: 20, fontWeight: 900, color: '#f2c94c', textAlign: 'center' }}>
-                  {rideIdx == null ? '문이 닫혀요…' : `${E.stops.findIndex((x) => x.key === target?.key) > meIndex ? '▲' : '▼'} ${floorName(E.stops[rideIdx].key)}`}
-                </div>
-              ) : grab ? (
-                <div style={{ fontSize: 13 }}>
-                  <div>{kbd('W')} {kbd('↑')} 레버 올리기 (위층)</div>
-                  <div>{kbd('S')} {kbd('↓')} 레버 내리기 (아래층)</div>
-                  <div>{kbd('E')} {sel === meIndex ? '레버 놓기' : <b style={{ color: '#ffb3a7' }}>출발!</b>} · {kbd('Esc')} 놓기</div>
+                  {rideIdx == null ? '문이 닫혀요…' : `${sel > meIndex ? '▲' : '▼'} ${floorName(E.stops[rideIdx].key)}`}
                 </div>
               ) : (
-                <div style={{ fontSize: 13 }}>
-                  <div>① {kbd('E')} 오른쪽 벽 레버 잡기</div>
-                  <div>② {kbd('W')}/{kbd('S')} 레버를 위아래로 층 고르기</div>
-                  <div>③ {kbd('E')} 출발</div>
-                </div>
+                <div style={{ fontSize: 13 }}>숫자 키 {kbd('1')}~{kbd(String(E.stops[n - 1].key))} 또는 층을 누르면 바로 출발해요</div>
               )}
             </div>
           </div>
@@ -1432,13 +1518,11 @@ export function JmSeaTrain({ item }) {
         <group key={e} position={[0, 0, e * (len / 2)]}>
           {e === head ? (
             <group>
-              <mesh position={[0, fl + lowerH / 2, e * 0.25]} scale={[w / 2, lowerH / 2, 0.5]}>
+              <mesh position={[0, fl + lowerH / 2, e * 0.25]} scale={[w / 2, lowerH / 2, 0.5]} material={TRAIN_RED}>
                 <cylinderGeometry args={[1, 1, 2, 20, 1, false, e > 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI]} />
-                <primitive object={TRAIN_RED} attach="material" />
               </mesh>
-              <mesh position={[0, fl + lowerH + 0.65, e * 0.25]} scale={[w / 2, 0.65, 0.5]}>
+              <mesh position={[0, fl + lowerH + 0.65, e * 0.25]} scale={[w / 2, 0.65, 0.5]} material={TRAIN_CREAM}>
                 <cylinderGeometry args={[1, 1, 2, 20, 1, false, e > 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI]} />
-                <primitive object={TRAIN_CREAM} attach="material" />
               </mesh>
               {[-0.55, 0.55].map((x) => (
                 <mesh key={x} position={[x, fl + lowerH + 0.65, e * 0.72]} rotation={[0, e > 0 ? 0 : Math.PI, 0]}>
@@ -1563,7 +1647,7 @@ export function JmShed({ item }) {
         <Box key={s} p={[s * w * 0.3, h * 0.45, d / 2 + 0.02]} s={[0.7, 0.6, 0.05]} c="#e8dcc0" />
       ))}
       <mesh geometry={roof} position={[0, h * 0.66, 0]}>
-        <meshStandardMaterial color="#b8352a" flatShading side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#9e4634" flatShading side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -1681,7 +1765,7 @@ const HERB_COLS = ['#7a9a3a', '#b0507a', '#6aa04a']
 const KETTLE = mat('#d9b23a', { roughness: 0.35, metalness: 0.4 })
 function futonTexture() {
   return canvasTexture('jmspirit:futon', 256, 128, (ctx, w, h) => {
-    ctx.fillStyle = '#c0392b'
+    ctx.fillStyle = '#a24a36'
     ctx.fillRect(0, 0, w, h)
     for (let i = 0; i < 14; i++) {
       ctx.fillStyle = i % 2 ? '#f2c94c' : '#f5e6c8'
@@ -1692,6 +1776,28 @@ function futonTexture() {
         ctx.ellipse(x + Math.cos((k / 5) * Math.PI * 2) * 9, y + Math.sin((k / 5) * Math.PI * 2) * 9, 7, 4, (k / 5) * Math.PI * 2, 0, Math.PI * 2)
         ctx.fill()
       }
+    }
+  })
+}
+// 벽 달력 (빈 흰 판 → 붉은 달 + 날짜 칸)
+function boilerCalendarTexture() {
+  return canvasTexture('jmspirit:calendar', 96, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#f2ead2'
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = '#9e4634'
+    ctx.fillRect(0, 0, w, 34)
+    ctx.fillStyle = '#f7efe0'
+    ctx.font = `bold 24px ${JP_FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('十一月', w / 2, 18)
+    ctx.fillStyle = '#3a2a1c'
+    ctx.font = '11px sans-serif'
+    for (let d = 0; d < 30; d++) {
+      const c = (d + 3) % 7
+      const r = Math.floor((d + 3) / 7)
+      ctx.fillStyle = c === 0 ? '#9e4634' : '#3a2a1c'
+      ctx.fillText(String(d + 1), 8 + c * 13.3, 46 + r * 16)
     }
   })
 }
@@ -1790,7 +1896,7 @@ function JmSootSprites({ coal, mouth }) {
       if (!g) continue
       const h = homes[i]
       const local = k - i * SOOT_LAG
-      let x = h.x, z = h.z, y = h.s, face = Math.atan2(h.x - coal[0], h.z - coal[1]) + Math.sin(t * 0.7 + h.ph) * 0.4, carry = false, sq = 1 + Math.sin(t * 4 + h.ph) * 0.06
+      let x = h.x, z = h.z, y = h.s * 1.35, face = Math.atan2(h.x - coal[0], h.z - coal[1]) + Math.sin(t * 0.7 + h.ph) * 0.4, carry = false, sq = 1 + Math.sin(t * 4 + h.ph) * 0.06
       if (k >= 0 && local > 0 && local < total) {
         const tx = mouth[0] + (srand(i + 340) - 0.5) * 0.5
         const tz = mouth[1] + (srand(i + 350) - 0.5) * 0.9
@@ -1811,7 +1917,7 @@ function JmSootSprites({ coal, mouth }) {
         x = h.x + (tx - h.x) * e
         z = h.z + (tz - h.z) * e
         const hop = Math.abs(Math.sin(local * Math.PI * 3.2))
-        y = h.s + hop * 0.55 // 석탄 더미(높이 약 0.5m)를 넘어가게
+        y = h.s * 1.35 + hop * 0.55 // 석탄 더미(높이 약 0.5m)를 넘어가게
         sq = 1 + (1 - hop) * 0.18 // 땅에 닿을 때 납작
       }
       g.position.set(x, y, z)
@@ -1841,6 +1947,10 @@ function JmSootSprites({ coal, mouth }) {
       {homes.map((h, i) => (
         <group key={i} ref={(el) => (bodies.current[i] = el)} onClick={poke} onPointerOver={hover(true)} onPointerOut={hover(false)}>
           <mesh geometry={geo} material={SOOT} userData={{ noMerge: true }} />
+          {/* (영화 장면) 가는 막대 다리 */}
+          {[-1, 1].map((sx) => (
+            <mesh key={`leg${sx}`} position={[sx * 0.4, -0.98, 0.1]} rotation={[0, 0, sx * 0.25]} scale={[0.06, 0.7, 0.06]} geometry={GEO.box} material={SOOT} userData={{ noMerge: true }} />
+          ))}
           {[-1, 1].map((sx) => (
             <group key={sx} position={[sx * 0.38, 0.22, 1.0]}>
               <mesh scale={0.34} material={SOOT_EYE} userData={{ noMerge: true }}>
@@ -1858,55 +1968,356 @@ function JmSootSprites({ coal, mouth }) {
     </group>
   )
 }
+// (11/26 지민이 보낸 영화 장면 12장) 보일러실 다시 그림
+//  화덕: 리벳 박힌 구리색 둥근 덩어리 여러 개 + 계기판(관 줄기) + 작은 둥근 창 + 바닥 높이 둥근 불구멍 + 꼭대기 불길
+//  바닥: 어두운 흙바닥(주황 티끌) / 서랍장 앞 반들거리는 마루 단, 단 아래 돌 띠에 까망이 아치 구멍
+//  서랍장: 큰 나무 서랍 + 반달 손잡이 홈, 맨 위 선반에 붉은 유리 항아리 줄
+//  작업대: 미장 둥근 끝 + 큰 쇠 바퀴 + 노란 주전자 + 찻잔 + 지팡이 + 「整理整頓」 세로 판, 천장에서 내려온 끈과 붉은 손잡이
+//  화덕 앞 미장 아치, 천장 환풍기, 들어오는 쪽: 세로 보일러 기둥(밸브 바퀴·계기판)·세면대·거울·수건·양동이, 깊은 미장 문틀
+const BOIL_COPPER = mat('#a9572f', { roughness: 0.5, metalness: 0.35 })
+const BOIL_COPPER_DK = mat('#6e331c', { roughness: 0.6, metalness: 0.3 })
+const BOIL_PLASTER = mat('#d4a877', { roughness: 0.95 })
+// 불꽃은 빛을 받지 않는 재질 (주황 방 조명을 받으면 허옇게 바래 보였음)
+const BOIL_FLAME_IN = new THREE.MeshBasicMaterial({ color: '#ffd24a' })
+const BOIL_FLAME = new THREE.MeshBasicMaterial({ color: '#ff6414', transparent: true, opacity: 0.9, depthWrite: false })
+const BOIL_RED_JAR = mat('#9a2a18', { emissive: '#5a1006', emissiveIntensity: 0.7, roughness: 0.2, metalness: 0.1 })
+const BOIL_HOLE = mat('#120d0a')
+function earthFloorTexture() {
+  return canvasTexture('jmspirit:earthfloor2', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#3a3029'
+    ctx.fillRect(0, 0, w, h)
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `rgba(${20 + srand(i) * 40},${16 + srand(i + 1) * 30},${12 + srand(i + 2) * 20},0.35)`
+      ctx.fillRect(srand(i + 3) * w, srand(i + 4) * h, 20 + srand(i + 5) * 70, 3 + srand(i + 6) * 6)
+    }
+    for (let i = 0; i < 26; i++) {
+      ctx.fillStyle = i % 3 ? 'rgba(170,96,44,0.6)' : 'rgba(210,130,60,0.7)'
+      ctx.beginPath()
+      ctx.arc(srand(i + 100) * w, srand(i + 200) * h, 0.8 + srand(i + 300) * 1.0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  })
+}
+function filmDrawerTexture() {
+  return canvasTexture('jmspirit:filmdrawers2', 512, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#4a2c18'
+    ctx.fillRect(0, 0, w, h)
+    const cols = 4
+    const rows = 4
+    const cw = w / cols
+    const rh = h / rows
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = c * cw
+        const y = r * rh
+        const t = 0.88 + srand(r * 5 + c) * 0.24
+        ctx.fillStyle = `rgb(${Math.round(128 * t)},${Math.round(82 * t)},${Math.round(46 * t)})`
+        ctx.fillRect(x + 4, y + 4, cw - 8, rh - 8)
+        ctx.strokeStyle = 'rgba(60,32,16,0.35)'
+        ctx.lineWidth = 1
+        for (let k = 0; k < 5; k++) {
+          ctx.beginPath()
+          ctx.moveTo(x + 8, y + 18 + k * 21 + srand(r + c + k) * 6)
+          ctx.bezierCurveTo(x + cw * 0.4, y + 12 + k * 21, x + cw * 0.6, y + 26 + k * 21, x + cw - 8, y + 18 + k * 21)
+          ctx.stroke()
+        }
+        // 반달 손잡이 홈 (위 가운데)
+        ctx.fillStyle = '#1e120a'
+        ctx.beginPath()
+        ctx.ellipse(x + cw / 2, y + 10, cw * 0.14, 9, 0, 0, Math.PI)
+        ctx.fill()
+      }
+    }
+    // 굵은 세로·가로 나무 틀 (두 칸마다)
+    ctx.fillStyle = '#6a4024'
+    for (let c = 0; c <= cols; c += 2) ctx.fillRect(c * cw - 5, 0, 10, h)
+    ctx.fillRect(0, 0, w, 6)
+  })
+}
+function stagePlankTexture() {
+  return canvasTexture('jmspirit:stageplank', 256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#9a6232'
+    ctx.fillRect(0, 0, w, h)
+    for (let r = 0; r < 4; r++) {
+      const y = (r * h) / 4
+      ctx.fillStyle = `rgba(255,190,110,${0.08 + srand(r + 60) * 0.1})`
+      ctx.fillRect(0, y + 3, w, h / 4 - 6)
+      ctx.fillStyle = 'rgba(40,20,8,0.8)'
+      ctx.fillRect(0, y, w, 2)
+      const off = srand(r + 70) * w
+      ctx.fillRect(off, y, 2, h / 4)
+    }
+  })
+}
+function glowTexture() {
+  return canvasTexture('jmspirit:fireglow', 128, 128, (ctx, w, h) => {
+    const g = ctx.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2)
+    g.addColorStop(0, 'rgba(255,170,70,0.85)')
+    g.addColorStop(0.5, 'rgba(255,120,40,0.3)')
+    g.addColorStop(1, 'rgba(255,100,30,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w, h)
+  })
+}
+// 둥근 덩어리 겉면 위 한 점(앞쪽 반구, 각 a는 +x에서 z쪽으로)과 바깥 방향
+function onBlob(b, a, lat, out = 1.0) {
+  const x = b.c[0] + b.r[0] * Math.cos(lat) * Math.cos(a) * out
+  const y = b.c[1] + b.r[1] * Math.sin(lat) * out
+  const z = b.c[2] + b.r[2] * Math.cos(lat) * Math.sin(a) * out
+  const n = new THREE.Vector3((x - b.c[0]) / (b.r[0] * b.r[0]), (y - b.c[1]) / (b.r[1] * b.r[1]), (z - b.c[2]) / (b.r[2] * b.r[2])).normalize()
+  return { p: [x, y, z], yaw: Math.atan2(n.x, n.z), pitch: Math.asin(n.y) }
+}
+function Facing({ at, children }) {
+  return (
+    <group position={at.p} rotation={[0, at.yaw, 0]}>
+      <group rotation={[-at.pitch, 0, 0]}>{children}</group>
+    </group>
+  )
+}
+function Gauge({ r = 0.3 }) {
+  return (
+    <group>
+      <mesh position={[0, 0, 0.085]}>
+        <circleGeometry args={[r, 24]} />
+        <meshStandardMaterial color="#efe4c8" />
+      </mesh>
+      <mesh position={[0, 0, 0.03]} rotation={[Math.PI / 2, 0, 0]} material={BRASS}>
+        <cylinderGeometry args={[r + 0.06, r + 0.06, 0.08, 24]} />
+      </mesh>
+      <mesh position={[0, 0, 0.08]}>
+        <ringGeometry args={[r, r + 0.06, 24]} />
+        <primitive object={BRASS} attach="material" />
+      </mesh>
+      <Box p={[0.06, 0.1, 0.095]} s={[0.025, r * 0.75, 0.01]} c="#1a1210" r={[0, 0, -0.5]} />
+      <Cyl p={[0, -r - 0.25, 0.05]} rad={0.035} h={0.5} m={BOIL_COPPER_DK} />
+    </group>
+  )
+}
+function Flames({ spots }) {
+  const refs = useRef([])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    refs.current.forEach((m, i) => {
+      if (!m) return
+      const k = 1 + Math.sin(t * 9 + i * 2.1) * 0.18 + Math.sin(t * 23 + i) * 0.08
+      m.scale.set(spots[i].s * (1.1 - k * 0.1), spots[i].s * 1.6 * k, spots[i].s * (1.1 - k * 0.1))
+      const r = spots[i].r ?? [0, 0, 0]
+      m.rotation.set(r[0] + Math.sin(t * 3.1 + i) * 0.12, 0, r[2] + Math.sin(t * 2.3 + i * 1.7) * 0.15)
+    })
+  })
+  // 바깥 주황 불꽃 + 안쪽 노란 불꽃 (같이 일렁임)
+  return spots.map((f, i) => (
+    <group key={i} ref={(el) => (refs.current[i] = el)} position={f.p} rotation={f.r ?? [0, 0, 0]} userData={{ noMerge: true }}>
+      {/* 물방울 모양: 둥근 밑 + 위로 길게 빠지는 끝 (바깥 주황 / 안 노랑) */}
+      <mesh position={[0, 0.35, 0]} scale={[0.5, 0.45, 0.5]} geometry={GEO.sphere} material={BOIL_FLAME} userData={{ noMerge: true }} />
+      <mesh position={[0, 1.05, 0]} scale={[0.5, 1.2, 0.5]} geometry={GEO.cone} material={BOIL_FLAME} userData={{ noMerge: true }} />
+      <mesh position={[0, 0.38, 0]} scale={[0.3, 0.3, 0.3]} geometry={GEO.sphere} material={BOIL_FLAME_IN} userData={{ noMerge: true }} />
+      <mesh position={[0, 0.85, 0]} scale={[0.3, 0.75, 0.3]} geometry={GEO.cone} material={BOIL_FLAME_IN} userData={{ noMerge: true }} />
+    </group>
+  ))
+}
+function CeilingFan({ p }) {
+  const blades = useRef(null)
+  useFrame((_, dt) => {
+    if (blades.current) blades.current.rotation.y += dt * 2.2
+  })
+  return (
+    <group position={p}>
+      {[[0, 0.62, 1.4, 0.16], [0, -0.62, 1.4, 0.16], [0.62, 0, 0.16, 1.4], [-0.62, 0, 0.16, 1.4]].map(([x, z, sx, sz], i) => (
+        <Box key={i} p={[x, 0, z]} s={[sx, 0.16, sz]} c="#9a9488" />
+      ))}
+      {range(5).map((i) => (
+        <group key={i}>
+          <Box p={[-0.45 + i * 0.225, -0.09, 0]} s={[0.015, 0.015, 1.1]} m={IRON} r={[0, 0.5, 0]} />
+          <Box p={[0, -0.09, -0.45 + i * 0.225]} s={[1.1, 0.015, 0.015]} m={IRON} r={[0, 0.5, 0]} />
+        </group>
+      ))}
+      <group ref={blades} position={[0, 0.02, 0]} userData={{ noMerge: true }}>
+        {range(4).map((i) => (
+          <Box key={i} p={[Math.cos((i * Math.PI) / 2) * 0.28, 0, Math.sin((i * Math.PI) / 2) * 0.28]} s={[0.42, 0.02, 0.2]} r={[0.3, -(i * Math.PI) / 2, 0]} c="#3a3632" />
+        ))}
+        <Cyl p={[0, 0, 0]} rad={0.08} h={0.08} m={IRON} />
+      </group>
+    </group>
+  )
+}
+function JmBoilerFurnace() {
+  // 가운데 기준, 앞(+x) = 방 쪽. 충돌 상자 3×4 안에 들어가게
+  const blobs = useMemo(() => [
+    { c: [0.05, 1.3, 0.15], r: [1.3, 1.2, 1.8] },
+    { c: [-0.25, 2.95, -0.1], r: [1.4, 1.35, 1.9] },
+    { c: [-0.5, 4.4, -0.35], r: [1.0, 0.9, 1.3] },
+    { c: [-0.4, 2.3, 1.55], r: [0.85, 1.0, 0.6] },
+    { c: [-0.4, 2.6, -1.6], r: [0.8, 0.9, 0.5] },
+  ], [])
+  const rivets = useMemo(() => {
+    const out = []
+    blobs.slice(0, 3).forEach((b) => {
+      for (const lat of [-0.35, 0.05, 0.45]) {
+        for (let a = -1.4; a <= 1.4; a += 0.16) out.push({ p: onBlob(b, a, lat, 1.01).p, s: [0.035, 0.035, 0.035] })
+      }
+      for (let lat = -0.6; lat <= 0.9; lat += 0.12) out.push({ p: onBlob(b, 0.0, lat, 1.01).p, s: [0.035, 0.035, 0.035] })
+    })
+    return out
+  }, [blobs])
+  const ports = useMemo(() => [-0.55, -0.18, 0.2, 0.58].map((a) => onBlob(blobs[2], a, 0.3, 1.0)), [blobs])
+  const gauges = useMemo(() => [onBlob(blobs[1], -0.42, 0.28, 1.0), onBlob(blobs[1], 0.5, 0.22, 1.0)], [blobs])
+  const knobs = useMemo(() => [-0.12, 0.12].map((a) => onBlob(blobs[0], a, 0.5, 1.0)), [blobs])
+  const flames = useMemo(() => [
+    { p: [-0.6, 5.05, 0.15], s: 0.55 },
+    { p: [-0.2, 4.9, -0.95], s: 0.42, r: [-0.3, 0, 0] },
+    { p: [-0.55, 3.0, 2.0], s: 0.42, r: [0.7, 0, 0] },
+    { p: [0.55, 3.9, 0.95], s: 0.32, r: [0.4, 0, -0.5] },
+    { p: [-0.6, 3.35, -2.0], s: 0.36, r: [-0.7, 0, 0] },
+  ], [])
+  return (
+    <group>
+      <Box p={[0, 0.15, 0]} s={[3.1, 0.3, 4.0]} c="#3e241a" />
+      {blobs.map((b, i) => (
+        <mesh key={i} position={b.c} scale={b.r} geometry={GEO.sphere} material={i > 2 ? BOIL_COPPER_DK : BOIL_COPPER} />
+      ))}
+      <Instances geometry={GEO.sphere} material={BOIL_COPPER_DK} items={rivets} />
+      {ports.map((at, i) => (
+        <Facing key={i} at={at}>
+          <mesh position={[0, 0, 0.02]} scale={[0.11, 0.15, 1]}>
+            <circleGeometry args={[1, 16]} />
+            <meshStandardMaterial color="#d9733a" emissive="#ab6a4c" emissiveIntensity={0.6} />
+          </mesh>
+          <mesh scale={[0.15, 0.19, 0.05]} geometry={GEO.sphere} material={BOIL_COPPER_DK} />
+        </Facing>
+      ))}
+      {gauges.map((at, i) => (
+        <Facing key={i} at={at}>
+          <Gauge r={i ? 0.24 : 0.3} />
+        </Facing>
+      ))}
+      {knobs.map((at, i) => (
+        <Facing key={i} at={at}>
+          <mesh scale={[0.1, 0.1, 0.06]} geometry={GEO.sphere} material={IRON} />
+        </Facing>
+      ))}
+      {/* 바닥 높이 둥근 불구멍 (까망이가 석탄을 던져 넣는 곳) */}
+      <group position={[1.32, 0.62, 0.3]}>
+        <Cyl p={[0, 0, 0]} rad={0.6} h={0.5} m={BOIL_COPPER} r={[0, 0, Math.PI / 2]} />
+        <mesh position={[0.26, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <ringGeometry args={[0.42, 0.6, 24]} />
+          <primitive object={BOIL_COPPER_DK} attach="material" />
+        </mesh>
+        <mesh position={[0.25, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <circleGeometry args={[0.42, 24]} />
+          <primitive object={FIRE} attach="material" />
+        </mesh>
+        {[-0.18, 0, 0.18].map((y) => (
+          <Box key={y} p={[0.24, y, 0]} s={[0.02, 0.05, 0.7]} c="#ffd27a" />
+        ))}
+      </group>
+      <Flames spots={flames} />
+    </group>
+  )
+}
 export function JmBoilerBasement({ item }) {
   const [w, h, d] = item.size
   const B = item.boiler
-  const drawers = useMemo(() => drawerTexture(), [])
-  const futon = useMemo(() => futonTexture(), [])
   const xL = -w / 2 + 0.05 // 서쪽 벽
   const zN = -d / 2 + 0.05 // 북쪽 벽
   const room = B.stairX // 보일러실 동쪽 끝 (계단 쪽 칸막이)
-  const coal = useMemo(() => range(60).map((i) => {
-    const pile = i < 34
+  const S = B.stage ?? { x0: B.deck[0] - 1.5, x1: B.deck[0] + 1.5, z0: zN, z1: B.deck[1] + 0.8, h: 0.4 }
+  const [fx, fz] = B.furnace
+  const [px, pz] = B.platform
+  const shelfY = h - 1.15
+  const tex = useMemo(() => {
+    const drawers = filmDrawerTexture()
+    return {
+      earth: tiled(earthFloorTexture(), w / 3, d / 3),
+      stage: tiled(stagePlankTexture(), (S.x1 - S.x0) / 3, (S.z1 - S.z0) / 1.5),
+      drawerN: tiled(drawers, (room - xL) / 2.4, (shelfY - S.h) / 2.2),
+      drawerW: tiled(drawers, (fz - 2.6 - zN) / 2.4, (shelfY - S.h) / 2.2),
+      futon: futonTexture(),
+      calendar: boilerCalendarTexture(),
+      glow: glowTexture(),
+      sign: getJpVerticalTexture('整理整頓', '#3a2216', '#9a7a42', 0.28, '#3a2216'),
+    }
+  }, [w, d, room, xL, zN, fz, shelfY, S.x0, S.x1, S.z0, S.z1, S.h])
+  const coal = useMemo(() => range(48).map((i) => {
+    const pile = i < 36
     const [cx, cz] = B.coal
     return pile
       ? { p: [cx + (srand(i) - 0.5) * 1.4, 0.12 + srand(i + 40) * 0.35, cz + (srand(i + 80) - 0.5) * 1.2], s: [0.22, 0.18, 0.22] }
-      : { p: [B.furnace[0] + 2 + srand(i) * 7, 0.08, B.furnace[1] + (srand(i + 9) - 0.5) * 4], s: [0.14, 0.12, 0.14] }
-  }), [B])
-  const [fx, fz] = B.furnace
-  const [px, pz] = B.platform
+      : { p: [fx + 1.9 + srand(i) * 1.8, 0.06, fz + 0.3 + (srand(i + 9) - 0.5) * 2], s: [0.1, 0.08, 0.1] }
+  }), [B, fx, fz])
+  const jars = useMemo(() => {
+    const out = []
+    for (let x = xL + 0.5; x < room - 0.3; x += 0.62) out.push({ p: [x, shelfY + 0.38, zN + 0.3], s: [0.24, 0.3, 0.22] })
+    return out
+  }, [xL, room, zN, shelfY])
+  const holes = useMemo(() => {
+    const out = []
+    for (let x = S.x0 + 0.5; x < S.x1 - 0.3; x += 0.85) out.push(x)
+    return out
+  }, [S.x0, S.x1])
+  const cols = useMemo(() => [-6.4, -4.3, -2.2, -0.1].map((x) => [x, B.pipes.z]), [B.pipes.z])
+  const sink = [room - 0.38, 5.9]
   return (
     <NearOnly radius={42}>
     <group>
-      {/* 바닥 (판자) */}
-      <Box p={[0, 0.03, 0]} s={[w, 0.06, d]} c="#6b4a30" />
-      {/* 서랍장 벽 두 면 (북쪽 전체, 서쪽은 화덕 뒤까지) */}
-      <mesh position={[(xL + room) / 2, h / 2, zN + 0.02]}>
-        <planeGeometry args={[room - xL, h - 0.2]} />
-        <primitive object={texMat(tiled(drawers, (room - xL) / 6, 1.2), { emissive: '#ffffff', emissiveIntensity: 0.1 })} attach="material" />
+      {/* 흙바닥 */}
+      {/* 바닥 0.15: 섬 밑 바다(jm_water JmOcean, 깊이를 앞으로 당긴 재질)가 0.06 바닥을 뚫고 보였음 */}
+      <mesh position={[0, 0.151, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[w, d]} />
+        <meshStandardMaterial map={tex.earth} roughness={1} />
       </mesh>
-      <mesh position={[xL + 0.02, h / 2, (zN + fz - 2.2) / 2]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[fz - 2.2 - zN, h - 0.2]} />
-        <primitive object={texMat(tiled(drawers, (fz - 2.2 - zN) / 6, 1.2), { emissive: '#ffffff', emissiveIntensity: 0.1 })} attach="material" />
-      </mesh>
-      {/* 서랍장 아래 작은 어두운 구멍 + 앞 낮은 마루, 작은 상, 방석 */}
-      <Box p={[B.hole[0], 0.45, zN + 0.03]} s={[1.3, 0.9, 0.02]} c="#0b0806" />
-      <group position={[B.deck[0], 0, B.deck[1]]}>
-        <Box p={[0, 0.2, 0]} s={[3, 0.4, 1.6]} c="#8a6a48" />
-        <Box p={[0.6, 0.55, 0.1]} s={[0.9, 0.08, 0.6]} c="#3a2a1c" />
-        {[-1, 1].map((sx) => [-1, 1].map((sz) => <Box key={`${sx}${sz}`} p={[0.6 + sx * 0.38, 0.47, 0.1 + sz * 0.24]} s={[0.05, 0.14, 0.05]} c="#3a2a1c" />))}
-        <Box p={[-0.6, 0.45, 0.2]} s={[0.8, 0.1, 0.8]} c="#6a2a6a" />
+      <Box p={[0, 0.075, 0]} s={[w, 0.15, d]} c="#2a221d" />
+      {/* 마루 단: 반들거리는 널 + 앞 가장자리 띠 + 아래 돌 띠의 까망이 아치 구멍 */}
+      <group>
+        <mesh position={[(S.x0 + S.x1) / 2, S.h + 0.005, (S.z0 + S.z1) / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[S.x1 - S.x0, S.z1 - S.z0]} />
+          <meshStandardMaterial map={tex.stage} roughness={0.35} metalness={0.05} />
+        </mesh>
+        <Box p={[(S.x0 + S.x1) / 2, S.h / 2, (S.z0 + S.z1) / 2]} s={[S.x1 - S.x0, S.h, S.z1 - S.z0]} c="#3b322b" />
+        <Box p={[(S.x0 + S.x1) / 2, S.h - 0.04, S.z1 + 0.02]} s={[S.x1 - S.x0 + 0.04, 0.1, 0.08]} c="#7a4a26" />
+        <Box p={[S.x0 - 0.02, S.h - 0.04, (S.z0 + S.z1) / 2]} s={[0.08, 0.1, S.z1 - S.z0]} c="#7a4a26" />
+        {holes.map((x) => (
+          <group key={x} position={[x, 0, S.z1 + 0.012]}>
+            <Box p={[0, 0.1, 0]} s={[0.26, 0.2, 0.01]} m={BOIL_HOLE} />
+            <mesh position={[0, 0.2, 0]}>
+              <circleGeometry args={[0.13, 12, 0, Math.PI]} />
+              <primitive object={BOIL_HOLE} attach="material" />
+            </mesh>
+          </group>
+        ))}
       </group>
-      {/* 높은 작업대: 나무 상자 + 앞 큰 쇠 바퀴 + 위 방석·주전자 + 옆 사다리, 앞 나무 상자 속 유리 항아리 3개 */}
+      {/* 서랍장 벽 (단 위 ~ 선반), 맨 위 선반 + 붉은 유리 항아리 줄 */}
+      <mesh position={[(xL + room) / 2, (S.h + shelfY) / 2, zN + 0.02]}>
+        <planeGeometry args={[room - xL, shelfY - S.h]} />
+        <meshStandardMaterial map={tex.drawerN} roughness={0.8} />
+      </mesh>
+      <mesh position={[xL + 0.02, (S.h + shelfY) / 2, (zN + fz - 2.6) / 2]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[fz - 2.6 - zN, shelfY - S.h]} />
+        <meshStandardMaterial map={tex.drawerW} roughness={0.8} />
+      </mesh>
+      <Box p={[(xL + room) / 2, (shelfY + h) / 2, zN + 0.04]} s={[room - xL, h - shelfY, 0.04]} c="#2a1810" />
+      <Box p={[(xL + room) / 2, shelfY, zN + 0.3]} s={[room - xL, 0.08, 0.6]} c="#6a4024" />
+      <Instances geometry={GEO.sphere} material={BOIL_RED_JAR} items={jars} />
+      {/* 서랍 아래 작은 어두운 구멍(미닫이) + 단 위 낮은 상·방석 */}
+      <Box p={[B.hole[0], S.h + 0.45, zN + 0.03]} s={[1.3, 0.9, 0.02]} c="#0b0806" />
+      <Box p={[B.hole[0] + 0.85, S.h + 0.45, zN + 0.06]} s={[0.7, 0.9, 0.04]} c="#7a4a2a" />
+      <group position={[B.deck[0], S.h, B.deck[1] + 0.1]}>
+        <Box p={[0.6, 0.15, 0.1]} s={[0.9, 0.06, 0.55]} c="#3a2a1c" />
+        {[-1, 1].map((sx) => [-1, 1].map((sz) => <Box key={`${sx}${sz}`} p={[0.6 + sx * 0.38, 0.06, 0.1 + sz * 0.22]} s={[0.05, 0.12, 0.05]} c="#3a2a1c" />))}
+        <Box p={[-0.5, 0.05, 0.15]} s={[0.75, 0.1, 0.75]} c="#4a5a8a" />
+      </group>
+      {/* 작업대: 미장 둥근 끝 + 나무 상자 + 큰 쇠 바퀴 + 방석·주전자·찻잔 + 「整理整頓」 세로 판, 앞 나무 상자 속 유리 항아리 3개 */}
       <group position={[px, 0, pz]}>
         <Box p={[0, 1.1, 0]} s={[3.2, 2.2, 1.6]} c="#7a3a26" />
         {range(9).map((i) => (
           <Box key={i} p={[-1.5 + i * 0.375, 1.1, 0.81]} s={[0.03, 2.1, 0.02]} c="#5a2a1a" />
         ))}
-        <Box p={[0, 2.25, 0]} s={[3.4, 0.1, 1.8]} c="#5a2a1a" />
-        <ValveWheel p={[0.9, 1.3, 0.9]} r={0.55} />
-        <Box p={[-0.5, 2.4, -0.1]} s={[1.8, 0.2, 1.2]} c="#6a2a6a" />
-        <group position={[1.2, 2.3, 0.2]}>
+        <Box p={[0.15, 2.25, 0]} s={[3.1, 0.1, 1.8]} c="#5a2a1a" />
+        <Box p={[-1.62, 1.05, 0]} s={[0.5, 2.1, 1.75]} m={BOIL_PLASTER} />
+        <Cyl p={[-1.62, 2.1, 0]} rad={0.25} h={1.75} m={BOIL_PLASTER} r={[Math.PI / 2, 0, 0]} />
+        <ValveWheel p={[0.9, 1.3, 0.9]} r={0.6} />
+        <Box p={[-0.3, 2.4, -0.1]} s={[1.6, 0.2, 1.2]} c="#5a3a7a" />
+        <group position={[1.15, 2.3, 0.2]}>
           <mesh position={[0, 0.25, 0]} scale={[0.3, 0.25, 0.3]} material={KETTLE}>
             <sphereGeometry args={[1, 14, 10]} />
           </mesh>
@@ -1916,19 +2327,25 @@ export function JmBoilerBasement({ item }) {
             <primitive object={KETTLE} attach="material" />
           </mesh>
         </group>
-        {/* 사다리 */}
-        {[-0.25, 0.25].map((dz) => (
-          <Box key={dz} p={[1.85, 1.15, 0.3 + dz]} s={[0.06, 2.3, 0.06]} c="#8a6a48" r={[0, 0, -0.12]} />
-        ))}
-        {range(6).map((i) => (
-          <Box key={i} p={[1.8 + i * 0.045, 0.3 + i * 0.38, 0.3]} s={[0.05, 0.05, 0.56]} c="#8a6a48" />
-        ))}
+        <mesh position={[-1.25, 2.3, 0.25]}>
+          <cylinderGeometry args={[0.14, 0.08, 0.16, 12]} />
+          <meshStandardMaterial color="#cfe0b0" />
+        </mesh>
+        <Cyl p={[-0.9, 1.25, 0.95]} rad={0.035} h={2.4} c="#7a4a26" r={[0.12, 0, 0.18]} />
+        <Box p={[1.63, 1.1, 0]} s={[0.08, 2.1, 1.5]} c="#2e1a10" />
+        <mesh position={[1.68, 1.15, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[0.5, 1.8]} />
+          <meshStandardMaterial map={tex.sign} />
+        </mesh>
       </group>
+      {/* 천장에서 내려온 끈 + 붉은 손잡이 */}
+      <Cyl p={[px + 0.3, (h + 3.2) / 2, pz + 0.5]} rad={0.012} h={h - 3.2} c="#5a4a9a" />
+      <Box p={[px + 0.3, 3.05, pz + 0.5]} s={[0.06, 0.3, 0.06]} c="#a95753" />
       <group position={[B.jars[0], 0, B.jars[1]]}>
         <Box p={[0, 0.15, 0]} s={[3.2, 0.3, 0.8]} c="#8a6a48" />
         {[-1, 0, 1].map((i) => (
           <group key={i} position={[i * 0.95, 0.3, 0]}>
-            <mesh position={[0, 0.5, 0]} scale={[0.32, 0.5, 0.32]}>
+            <mesh position={[0, 0.35, 0]} scale={[0.3, 0.3, 0.3]}>
               <sphereGeometry args={[1, 14, 10]} />
               <meshStandardMaterial color={HERB_COLS[i + 1]} roughness={0.9} />
             </mesh>
@@ -1939,61 +2356,76 @@ export function JmBoilerBasement({ item }) {
           </group>
         ))}
       </group>
-      {/* 화덕: 둥근 큰 보일러 + 계기판 + 바닥 높이 불구멍 + 석탄 더미·흩어진 석탄 */}
+      {/* 화덕 + 앞 미장 아치 + 바닥 불빛 + 굴뚝 관 */}
       <group position={[fx, 0, fz]}>
-        <Box p={[0, 2, 0]} s={[3, 4, 4]} c="#6a3a28" />
-        <mesh position={[0, 4, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1, 1, 1]}>
-          <cylinderGeometry args={[1.5, 1.5, 3, 20]} />
-          <meshStandardMaterial color="#5a3424" roughness={0.6} metalness={0.3} />
-        </mesh>
-        {[[-0.8, 3.2], [0.7, 3.4], [0, 2.4]].map(([z, y], i) => (
-          <group key={i} position={[1.52, y, z]} rotation={[0, Math.PI / 2, 0]}>
-            <mesh>
-              <circleGeometry args={[0.28, 20]} />
-              <meshStandardMaterial color="#f2ead2" />
-            </mesh>
-            <mesh position={[0, 0, -0.01]}>
-              <ringGeometry args={[0.28, 0.36, 20]} />
-              <meshStandardMaterial color="#b8913c" metalness={0.5} />
-            </mesh>
-            <Box p={[0.06, 0.06, 0.01]} s={[0.02, 0.2, 0.01]} c="#1a1210" r={[0, 0, -0.7]} />
-          </group>
-        ))}
-        <Box p={[1.51, 0.5, 0.3]} s={[0.04, 0.8, 1.2]} c="#120c08" />
-        <mesh position={[1.54, 0.45, 0.3]} rotation={[0, Math.PI / 2, 0]}>
-          <planeGeometry args={[1.0, 0.6]} />
-          <primitive object={FIRE} attach="material" />
-        </mesh>
+        <JmBoilerFurnace />
         {[-1.2, 0, 1.2].map((z) => (
-          <Cyl key={z} p={[-0.6, (5.5 + h) / 2, z]} rad={0.3} h={h - 5.5} m={IRON} />
+          <Cyl key={z} p={[-0.6, (5.3 + h) / 2, z]} rad={0.28} h={h - 5.3} m={BOIL_COPPER_DK} />
         ))}
       </group>
+      <mesh position={[fx + 2.2, 0.16, fz + 0.3]} rotation={[-Math.PI / 2, 0, 0]} userData={{ noMerge: true }}>
+        <planeGeometry args={[3.2, 3.2]} />
+        <meshBasicMaterial map={tex.glow} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {B.piers && (() => {
+        const [[ax, az], [, bz]] = B.piers
+        const ph = 5.2
+        return (
+          <group>
+            {B.piers.map(([x, z]) => (
+              <Box key={z} p={[x, ph / 2, z]} s={[0.7, ph, 0.9]} m={BOIL_PLASTER} />
+            ))}
+            <Box p={[ax, ph + 0.3, (az + bz) / 2]} s={[0.7, 0.6, bz - az + 0.9]} m={BOIL_PLASTER} />
+            {[az + 0.45, bz - 0.45].map((z, i) => (
+              <Cyl key={z} p={[ax, ph - 0.05, z + (i ? -0.25 : 0.25)]} rad={0.4} h={0.7} m={BOIL_PLASTER} r={[0, 0, Math.PI / 2]} />
+            ))}
+          </group>
+        )
+      })()}
       <Instances geometry={GEO.rock} material={mat('#1c1a18', { flat: true })} items={coal} />
       <JmSootSprites coal={B.coal} mouth={[fx + 1.95, fz + 0.3]} />
-      {/* 들어오는 길: 남쪽 벽 굵은 관 + 밸브 바퀴, 작은 세면대 */}
-      {[0.4, 1.4].map((y) => (
-        <Cyl key={y} p={[(B.pipes.x0 + B.pipes.x1) / 2, y, B.pipes.z]} rad={0.35} h={B.pipes.x1 - B.pipes.x0} m={IRON} r={[0, 0, Math.PI / 2]} />
+      {/* 들어오는 쪽 남쪽 벽: 세로 보일러 기둥(밸브 바퀴·계기판) + 위 가로 관 */}
+      {cols.map(([x, z], i) => (
+        <group key={x} position={[x, 0, z]}>
+          <Cyl p={[0, 1.7, 0]} rad={0.45} h={3.4} m={BOIL_COPPER_DK} />
+          <Cyl p={[0, 3.45, 0]} rad={0.3} h={0.3} m={BOIL_COPPER_DK} />
+          <Cyl p={[0, 0.15, 0]} rad={0.52} h={0.3} m={IRON} />
+          <ValveWheel p={[0, 1.3, -0.55]} r={0.38} />
+          <group position={[0.1, 2.5, -0.47]} rotation={[0, Math.PI, 0]}>
+            <Gauge r={0.22} />
+          </group>
+          {i % 2 === 0 && <Cyl p={[0, (3.6 + h) / 2, 0.1]} rad={0.14} h={h - 3.6} m={IRON} />}
+        </group>
       ))}
-      {[-4, -1, 2].map((dx) => (
-        <ValveWheel key={dx} p={[(B.pipes.x0 + B.pipes.x1) / 2 + dx, 1.9, B.pipes.z - 0.4]} r={0.35} />
-      ))}
-      {[-3, 1].map((dx, i) => (
-        <mesh key={dx} position={[(B.pipes.x0 + B.pipes.x1) / 2 + dx, 2.6 + i * 0.4, B.pipes.z - 0.3]} scale={[0.6, 0.4, 0.4]}>
-          <sphereGeometry args={[1, 8, 6]} />
-          <meshStandardMaterial color="#ffffff" transparent opacity={0.25} />
+      <Cyl p={[(cols[0][0] + cols[3][0]) / 2, 3.75, B.pipes.z + 0.15]} rad={0.2} h={cols[3][0] - cols[0][0] + 0.6} m={IRON} r={[0, 0, Math.PI / 2]} />
+      {/* 세면대 + 거울 + 줄에 걸린 수건 + 양동이 (칸막이 벽 쪽) */}
+      <group position={[sink[0], 0, sink[1]]}>
+        <Box p={[0, 0.85, 0]} s={[0.45, 0.16, 0.6]} c="#c9c4b8" />
+        <Box p={[0.06, 0.8, 0]} s={[0.33, 0.1, 0.46]} c="#9d978c" />
+        <Cyl p={[0.05, 0.42, 0]} rad={0.05} h={0.8} c="#8a847a" />
+        <Box p={[0.18, 1.12, 0]} s={[0.05, 0.4, 0.05]} m={BRASS} />
+        <mesh position={[0.24, 1.75, 0]} rotation={[0, -Math.PI / 2, 0]}>
+          <planeGeometry args={[0.45, 0.55]} />
+          <meshStandardMaterial color="#8fa0a4" metalness={0.8} roughness={0.15} />
         </mesh>
-      ))}
-      <group position={[B.sink[0], 0, B.sink[1]]}>
-        <Box p={[0, 0.85, 0]} s={[0.6, 0.15, 0.4]} c="#d6d1c6" />
-        <Cyl p={[0, 0.4, 0]} rad={0.05} h={0.8} c="#9d978c" />
-        <Box p={[0, 1.2, -0.15]} s={[0.05, 0.4, 0.05]} m={BRASS} />
+      </group>
+      <Cyl p={[room - 0.12, 2.35, 2.6]} rad={0.008} h={1.6} c="#2a2a2a" r={[Math.PI / 2, 0, 0]} />
+      <group position={[room - 0.14, 2.35, 2.4]}>
+        <Box p={[0, -0.32, 0]} s={[0.03, 0.62, 0.42]} c="#e8e2d2" />
+        <Box p={[0, -0.02, 0]} s={[0.05, 0.03, 0.46]} c="#5a5a5a" />
+      </group>
+      <group position={[room - 1.0, 0, 6.25]}>
+        <mesh position={[0, 0.22, 0]}>
+          <cylinderGeometry args={[0.2, 0.16, 0.44, 14, 1, true]} />
+          <meshStandardMaterial color="#9a9a96" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+        </mesh>
       </group>
       {/* 꽃무늬 이불 더미 + 작은 서랍장 + 달력 */}
       <group position={[B.futon[0], 0, B.futon[1]]}>
         {[0, 1, 2].map((i) => (
           <mesh key={i} position={[0, 0.12 + i * 0.18, 0]} scale={[1, 0.09, 0.7]}>
             <boxGeometry args={[2 - i * 0.1, 2, 2 - i * 0.1]} />
-            <meshStandardMaterial map={futon} />
+            <meshStandardMaterial map={tex.futon} />
           </mesh>
         ))}
       </group>
@@ -2002,12 +2434,12 @@ export function JmBoilerBasement({ item }) {
         {[0.3, 0.65, 0.95].map((y) => (
           <Box key={y} p={[0, y, 0.31]} s={[1.0, 0.02, 0.02]} c="#3a2a1c" />
         ))}
-        {[0, 1].map((i) => (
-          <Cyl key={i} p={[-0.3 + i * 0.25, 1.25, 0]} rad={0.06} h={0.3} c="#e8dcc0" />
-        ))}
       </group>
-      <Box p={[room - 0.15, 1.7, B.chest[1] + 1.4]} s={[0.02, 0.5, 0.4]} c="#f2ead2" />
-      {/* 계단 쪽 나무 칸막이 + 작은 미닫이문 (반쯤 열림) */}
+      <mesh position={[room - 0.14, 1.75, B.chest[1] + 1.4]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[0.42, 0.56]} />
+        <meshStandardMaterial map={tex.calendar} />
+      </mesh>
+      {/* 계단 쪽 나무 칸막이 + 깊은 미장 문틀 (영화 속 들어오는 문) */}
       {B.part && (() => {
         const [a, b] = B.part.door
         return (
@@ -2015,26 +2447,22 @@ export function JmBoilerBasement({ item }) {
             <Box p={[B.part.x, h / 2, (zN + a) / 2]} s={[0.25, h, a - zN]} c="#6b4630" />
             <Box p={[B.part.x, h / 2, (b + d / 2) / 2]} s={[0.25, h, d / 2 - b]} c="#6b4630" />
             <Box p={[B.part.x, (B.part.h + h) / 2, (a + b) / 2]} s={[0.25, h - B.part.h, b - a]} c="#6b4630" />
-            {/* 열린 미닫이 판 (옆으로 밀려 있음) + 나무 문틀 */}
-            <Box p={[B.part.x + 0.18, B.part.h / 2, a - (b - a) / 2 + 0.05]} s={[0.06, B.part.h, b - a]} c="#8a6a48" />
-            {range(3).map((i) => (
-              <Box key={i} p={[B.part.x + 0.22, 0.4 + i * 0.6, a - (b - a) / 2 + 0.05]} s={[0.02, 0.04, b - a - 0.1]} c="#5a3d2a" />
-            ))}
-            <Box p={[B.part.x, B.part.h + 0.06, (a + b) / 2]} s={[0.35, 0.12, b - a + 0.3]} c="#3a2a1c" />
             {[a, b].map((z) => (
-              <Box key={z} p={[B.part.x, B.part.h / 2, z]} s={[0.35, B.part.h, 0.1]} c="#3a2a1c" />
+              <Box key={z} p={[B.part.x, (B.part.h + 0.25) / 2, z]} s={[0.75, B.part.h + 0.25, 0.12]} m={BOIL_PLASTER} />
             ))}
+            <Box p={[B.part.x, B.part.h + 0.13, (a + b) / 2]} s={[0.75, 0.26, b - a + 0.12]} m={BOIL_PLASTER} />
           </group>
         )
       })()}
-      {/* 천장 관 + 매달린 등 */}
+      {/* 천장 관 + 환풍기 + 매달린 알전구 */}
       {[-d / 4, d / 4].map((z) => (
-        <Cyl key={z} p={[(xL + room) / 2, h - 0.6, z]} rad={0.2} h={room - xL} m={IRON} r={[0, 0, Math.PI / 2]} />
+        <Cyl key={z} p={[(xL + room) / 2, h - 0.5, z]} rad={0.18} h={room - xL} m={IRON} r={[0, 0, Math.PI / 2]} />
       ))}
-      {[-4, 1].map((x) => (
-        <group key={x} position={[x, h - 1.6, 0]}>
-          <Cyl p={[0, 0.6, 0]} rad={0.02} h={1} m={IRON} />
-          <Ball p={[0, 0, 0]} rad={0.2} m={LANTERN_WHITE} />
+      <CeilingFan p={[px - 0.5, h - 0.1, 1.6]} />
+      {[[-4, 0], [1, -1.5]].map(([x, z]) => (
+        <group key={x} position={[x, h - 1.8, z]}>
+          <Cyl p={[0, 0.9, 0]} rad={0.01} h={1.6} c="#1a1a1a" />
+          <mesh scale={[0.1, 0.13, 0.1]} geometry={GEO.sphere} material={LANTERN_WHITE} />
         </group>
       ))}
     </group>
@@ -2055,6 +2483,36 @@ export function JmBasementDoor({ item }) {
       <Box p={[x, h / 2, (dz + dw / 2 + d / 2) / 2]} s={[0.25, h, d / 2 - dz - dw / 2]} c="#5a3d2a" />
       <Box p={[x, (dh + h) / 2, dz]} s={[0.25, h - dh, dw]} c="#5a3d2a" />
       <Box p={[0, h / 2, -d / 2]} s={[w, h, 0.25]} c="#5a3d2a" />
+      {/* (11/26 여관 점검) 로비 쪽 두 면이 7m 높이 밋밋한 갈색 판이었음 → 아래 징두리 판 + 세로 살 + 가로 띠 + 붉은 모서리 기둥 */}
+      {(() => {
+        const out = 0.14
+        const bat = []
+        const skip = (z) => Math.abs(z - dz) < dw / 2 + 0.25
+        for (let z = -d / 2 + 0.6; z < d / 2 - 0.3; z += 1.0) if (!skip(z)) bat.push([x - out, z, 'w'])
+        for (let xx = -w / 2 + 0.6; xx < w / 2 - 0.3; xx += 1.0) bat.push([xx, -d / 2 - out, 'n'])
+        const lowW = [[-d / 2, dz - dw / 2], [dz + dw / 2, d / 2]].filter(([a, b]) => b - a > 0.1)
+        return (
+          <group>
+            {lowW.map(([a, b]) => (
+              <Box key={a} p={[x - 0.15, 0.5, (a + b) / 2]} s={[0.04, 1.0, b - a]} c="#3e2819" />
+            ))}
+            <Box p={[0, 0.5, -d / 2 - 0.15]} s={[w, 1.0, 0.04]} c="#3e2819" />
+            {bat.map(([bx, bz, f]) => (
+              <Box key={`${f}${bx}${bz}`} p={[bx, h / 2, bz]} s={f === 'w' ? [0.04, h, 0.08] : [0.08, h, 0.04]} c="#2e1d12" />
+            ))}
+            {[1.0, h - 0.35].map((y) => (
+              <group key={y}>
+                {lowW.map(([a, b]) => (y > dh ? null : <Box key={a} p={[x - 0.18, y, (a + b) / 2]} s={[0.06, 0.1, b - a]} c="#22150d" />))}
+                {y > dh && <Box p={[x - 0.18, y, 0]} s={[0.06, 0.12, d]} c="#22150d" />}
+                <Box p={[0, y, -d / 2 - 0.18]} s={[w, y > dh ? 0.12 : 0.1, 0.06]} c="#22150d" />
+              </group>
+            ))}
+            {[[x, -d / 2], [x, d / 2 - 0.15]].map(([cx, cz]) => (
+              <Box key={cz} p={[cx - 0.05, h / 2, cz]} s={[0.32, h, 0.32]} c="#9e4634" />
+            ))}
+          </group>
+        )
+      })()}
       {item.well && (
         <group>
           {/* 계단실: 두 계단 사이 판자 칸막이, 쉼터 뒤 벽, 1층 바닥 끝 나무 난간 */}
@@ -2114,7 +2572,10 @@ export function JmChimney({ item }) {
 //   공용 카메라는 플레이 시작 때 한 번만 camera-blocker를 모으므로, 늦게 그려진 막이는 스스로 controls.colliderMeshes에 넣고 빠짐
 export function JmCollider({ item }) {
   const [w, h, d] = item.size
-  const block = item.camera ?? (h >= 1.8 && Math.max(w, d) >= 1.5 && !/_rail|_pier|_pillar|_post/.test(item.id))
+  // (11/26) 층 사이 바닥판·지붕판(_slab)도 막이로: 얇아서(0.3m) 높이 조건에 안 걸려, 여러 층 건물(온천장) 안에서
+  //   카메라가 천장을 뚫고 위층 바닥 속으로 들어가 화면이 갈색으로 가리던 문제. 좁은 띠(폭 1.5m 미만)는 그대로 둠
+  const slab = /_slab/.test(item.id) && Math.min(w, d) >= 1.5
+  const block = item.camera ?? (slab || (h >= 1.8 && Math.max(w, d) >= 1.5 && !/_rail|_pier|_pillar|_post/.test(item.id)))
   const ref = useRef(null)
   const controls = useThree((s) => s.controls)
   useEffect(() => {
@@ -2140,10 +2601,10 @@ export function JmRedLanternTower() {
       <Box p={[0, 0.5, 0]} s={[1.0, 0.2, 1.0]} m={STONE} />
       <mesh position={[0, 1.55, 0]}>
         <cylinderGeometry args={[0.24, 0.42, 1.9, 4, 1, false, Math.PI / 4]} />
-        <meshStandardMaterial color="#c2352a" roughness={0.7} flatShading />
+        <meshStandardMaterial color="#a44c38" roughness={0.7} flatShading />
       </mesh>
       <Box p={[0, 2.55, 0]} s={[0.95, 0.12, 0.95]} c="#8a241c" />
-      <Box p={[0, 3.0, 0]} s={[0.8, 0.8, 0.8]} c="#c2352a" />
+      <Box p={[0, 3.0, 0]} s={[0.8, 0.8, 0.8]} c="#a44c38" />
       {[0, 1, 2, 3].map((k) => (
         <group key={k} rotation={[0, (k * Math.PI) / 2, 0]}>
           <mesh position={[0, 3.0, 0.41]}>
@@ -2406,7 +2867,7 @@ export function JmAlleyArch({ item }) {
   const spring = 3.0 // 아치가 휘기 시작하는 높이
   const r = span / 2 // 안쪽 반지름
   const band = 0.95 // 문틀 띠 폭
-  const color = item.color ?? '#c9573a'
+  const color = item.color ?? '#b1705f'
   const ratio = r / (r + band)
   const tex = archBandTexture(item.title ?? '', color, ratio)
   const geo = useMemo(() => {

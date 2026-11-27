@@ -36,15 +36,21 @@ export default function SeasonalWeather({ playerRef }) {
   const weather = WEATHER[season]
   return (
     <>
-      <CoverMap playerRef={playerRef} />
+      <CoverMap playerRef={playerRef} active={Boolean(weather) || season === 'winter'} />
       <SnowLayer winter={season === 'winter'} />
       {weather && <FallingParticles key={season} weather={weather} playerRef={playerRef} />}
     </>
   )
 }
 
+// 작은 메시인지 (모양 크기 × 실제 배율). 여러 개를 한 번에 그리는 InstancedMesh(나무 등)는 그대로 둠
+function isSmall(o) {
+  if (!o.isMesh || o.isInstancedMesh || !o.geometry) return false
+  if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere()
+  return o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() < 0.8
+}
 // 위에서 내려다본 높이 지도 찍기 (깊이를 RGBA에 담아요)
-function CoverMap({ playerRef }) {
+function CoverMap({ playerRef, active }) {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
   const { target, camera, depthMat } = useMemo(() => {
@@ -65,13 +71,18 @@ function CoverMap({ playerRef }) {
     }
   }, [target, depthMat])
   const last = useRef({ t: -10, x: 1e9, z: 1e9 })
+  // 찍을 때 숨길 것(하늘·입자·투명) 목록은 장면 전체를 훑어야 해서 비싸요 → 12초마다만 새로 모아요
+  const skipList = useRef({ t: -100, list: [] })
 
   useFrame(({ clock }) => {
+    // 날씨(눈·꽃잎·낙엽)가 없고 눈도 안 쌓였으면 높이 지도가 필요 없어요
+    if (!active && snowAmount <= 0) return
     const p = playerRef.current?.currPos
     if (!p) return
     const L = last.current
     const moved = Math.hypot(p.x - L.x, p.z - L.z)
-    if (clock.elapsedTime - L.t < 1 && moved < 8) return
+    // 지도는 64m 크기라 14m 안쪽으로 움직일 땐 2.5초마다만 다시 찍어도 충분해요 (장면 전체를 한 번 더 그리는 일이라 자주 하면 끊겨요)
+    if (clock.elapsedTime - L.t < 2.5 && moved < 14) return
     L.t = clock.elapsedTime
     // 높이 지도 칸에 맞춰 중심을 끊어서(떨림 방지) 옮겨요
     const cell = COVER.size / COVER.res
@@ -83,20 +94,27 @@ function CoverMap({ playerRef }) {
     camera.lookAt(cx, 0, cz)
     camera.updateMatrixWorld()
     // 하늘·구름·날리는 입자·투명한 것은 빼고 찍어요 (그게 "지붕"이 되면 안 되니까)
+    const S = skipList.current
+    if (clock.elapsedTime - S.t > 12) {
+      S.t = clock.elapsedTime
+      S.list.length = 0
+      scene.traverse((o) => {
+        const m = o.material
+        const skip =
+          o.isPoints ||
+          o.isSprite ||
+          o.isLine ||
+          (m && !Array.isArray(m) && (m.isShaderMaterial || m.fog === false || (m.transparent && m.opacity < 0.95) || m.colorWrite === false)) ||
+          isSmall(o) // (11/26 지민) 지붕 노릇을 못 하는 작은 소품(반지름 0.8m 미만)은 빼서 그리기 호출을 줄임
+        if (skip) S.list.push(o)
+      })
+    }
     const hidden = []
-    scene.traverse((o) => {
-      if (!o.visible) return
-      const m = o.material
-      const skip =
-        o.isPoints ||
-        o.isSprite ||
-        o.isLine ||
-        (m && !Array.isArray(m) && (m.isShaderMaterial || m.fog === false || (m.transparent && m.opacity < 0.95) || m.colorWrite === false))
-      if (skip) {
-        o.visible = false
-        hidden.push(o)
-      }
-    })
+    for (const o of S.list) {
+      if (!o.visible) continue
+      o.visible = false
+      hidden.push(o)
+    }
     const prevTarget = gl.getRenderTarget()
     const prevOverride = scene.overrideMaterial
     const prevBg = scene.background
@@ -259,7 +277,7 @@ function SnowLayer({ winter }) {
     // 겨울엔 약 2분 30초에 걸쳐 쌓이고, 다른 계절엔 1분쯤에 녹아요
     snowAmount = winter ? Math.min(0.85, snowAmount + dt / 150) : Math.max(0, snowAmount - dt / 60)
     uniforms.snowAmount.value = snowAmount
-    if (snowAmount <= 0 || clock.elapsedTime - lastScan.current < 3) return
+    if (snowAmount <= 0 || clock.elapsedTime - lastScan.current < 8) return // 장면 전체를 훑으니 8초마다만
     lastScan.current = clock.elapsedTime
     scene.traverse((o) => {
       if (!o.isMesh) return

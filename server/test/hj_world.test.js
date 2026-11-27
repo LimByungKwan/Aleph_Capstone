@@ -66,4 +66,42 @@ describe('경복궁·경성 멀티 동기화', () => {
     assert.equal(sent.at(-1).msg.c, 123)
     assert.ok(Number.isFinite(sent.at(-1).msg.now))
   })
+
+  test('끄는 인력거: 부탁 → 수락 → 상태 알림, 끝내기, 나가면 정리', () => {
+    const { world, sent, broadcasts } = setup()
+    world.handle('wsA', { id: 'a' }, { t: 'hj.pull', act: 'ask', rk: 'HJ/gs_pull_1', to: 'b' })
+    assert.deepEqual(broadcasts.at(-1).msg, { t: 'hj.pull', act: 'ask', rk: 'HJ/gs_pull_1', to: 'b', from: 'a' })
+    world.handle('wsB', { id: 'b' }, { t: 'hj.pull', act: 'accept', rk: 'HJ/gs_pull_1', passenger: 'a' })
+    assert.deepEqual(broadcasts.at(-1).msg, { t: 'hj.pull', act: 'state', rk: 'HJ/gs_pull_1', puller: 'b', passenger: 'a' })
+    // 이미 누가 끌고 있으면 다른 수락은 무시
+    const n = broadcasts.length
+    world.handle('wsC', { id: 'c' }, { t: 'hj.pull', act: 'accept', rk: 'HJ/gs_pull_1', passenger: 'a' })
+    assert.equal(broadcasts.length, n)
+    world.welcome('wsD')
+    assert.deepEqual(sent.at(-1).msg.pulls, { 'HJ/gs_pull_1': { puller: 'b', passenger: 'a' } })
+    // 상관없는 사람은 끝낼 수 없어요
+    world.handle('wsC', { id: 'c' }, { t: 'hj.pull', act: 'end', rk: 'HJ/gs_pull_1' })
+    assert.equal(broadcasts.length, n)
+    world.disconnect({ id: 'b' })
+    assert.deepEqual(broadcasts.at(-1).msg, { t: 'hj.pull', act: 'end', rk: 'HJ/gs_pull_1' })
+  })
+
+  test('광복 프로젝트: 발파하면 모두에게 철거 시각, 그동안 다시 발파는 무시', () => {
+    let t = 1000
+    const broadcasts = []
+    const sent = []
+    const world = createHjWorld({ send: (ws, msg) => sent.push(msg), broadcast: (msg) => broadcasts.push(msg), now: () => t })
+    world.handle('wsA', { id: 'a' }, { t: 'hj.gov', act: 'blast' })
+    assert.equal(broadcasts.at(-1).t, 'hj.gov')
+    assert.equal(broadcasts.at(-1).by, 'a')
+    const until = broadcasts.at(-1).until
+    assert.ok(until > t)
+    world.handle('wsB', { id: 'b' }, { t: 'hj.gov', act: 'blast' })
+    assert.equal(broadcasts.length, 1)
+    world.welcome('wsC')
+    assert.equal(sent.at(-1).govUntil, until)
+    t = until + 1
+    world.handle('wsB', { id: 'b' }, { t: 'hj.gov', act: 'blast' })
+    assert.equal(broadcasts.length, 2)
+  })
 })

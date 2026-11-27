@@ -1,3 +1,4 @@
+import NearOnly from './HjNearOnly.jsx' // 실내는 가까이 있을 때만 그려요 (성능)
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { Box, GEO, Instances, mat, texMat } from '../kit.jsx'
@@ -37,6 +38,7 @@ const PARTS = mat('#ffffff', { roughness: 0.88 })
 const GEO_COL = new THREE.CylinderGeometry(1, 1, 1, 12)
 export const GEO_COL12 = GEO_COL
 export const GEO_HEX = new THREE.CylinderGeometry(1, 1, 1, 6)
+const GEO_RAFTER = new THREE.CylinderGeometry(1, 1, 1, 6) // 서까래·연꽃 마구리 (8각보다 삼각형이 적어요)
 
 // 색 묶음: 단청 칠한 궁궐(PAINT) · 칠하지 않은 나무색 백골집(WOOD, 건청궁 같은 사대부집 양식)
 const PAINT = { col: RED, frame: RED, b1: GREEN_LIGHT, b2: GREEN, b3: BLUE, tip: VERMILION, soffit: GREEN, r1: GREEN, r2: GREEN_LIGHT, r3: '#24503f', r4: '#2b5d4a' }
@@ -287,7 +289,10 @@ export function HanokRoof({ width: W, depth: D, rise, type = 'hipgable', y = 0, 
       {/* 처마 안쪽 (초록 단청 반자) */}
       <Box p={[0, -0.1, 0]} s={[W * 0.95, 0.06, D * 0.9]} c={pal.soffit} />
       <Instances geometry={GEO.box} material={PARTS} items={boxes} />
-      <Instances geometry={GEO.cyl8} material={PARTS} items={rafters} />
+      {/* 서까래 끝: 멀리서는 안 보여서 가까이(60m)일 때만 그려요 (전각마다 수백 개라 성능에 큼) */}
+      <NearOnly radius={60}>
+        <Instances geometry={GEO_RAFTER} material={PARTS} items={rafters} />
+      </NearOnly>
       {gable &&
         [-1, 1].map((s) => (
           <mesh key={s} geometry={gable} position={[s * (gableX + 0.02), 0, 0]} rotation-y={Math.PI / 2} material={mat('#7e3b2e', { double: true })} />
@@ -615,7 +620,11 @@ export function HanokHall({
       )}
       <Instances geometry={GEO_COL} material={PARTS} items={parts.cols} />
       <Instances geometry={GEO.box} material={PARTS} items={parts.box} />
-      {mode === 'interior' && <HjPalaceInterior timber={TIMBER} />}
+      {mode === 'interior' && (
+        <NearOnly radius={40}>
+          <HjPalaceInterior timber={TIMBER} />
+        </NearOnly>
+      )}
       <Instances geometry={GEO.box} material={plain ? latticeMat(lattice, '#5e4030', '#6b4a32') : latticeMat(lattice, latticeBar, latticeBar ? '#6b3326' : undefined)} items={parts.lattice} />
       <Instances geometry={GEO.box} material={transomMat()} items={parts.transom} />
       <Instances geometry={GEO.box} material={wallMat('sagwae')} items={parts.stone} />
@@ -652,7 +661,11 @@ export function HanokHall({
         </>
       )}
       {plaque}
-      {enterable && mode === 'closed' && <HallInside W2={W2} D2={D2} y0={y0} height={height} plain={plain} furnish={furnish} doorW={(2 * W2) / nb} />}
+      {enterable && mode === 'closed' && (
+        <NearOnly radius={30}>
+          <HallInside W2={W2} D2={D2} y0={y0} height={height} plain={plain} furnish={furnish} doorW={(2 * W2) / nb} />
+        </NearOnly>
+      )}
     </group>
   )
 }

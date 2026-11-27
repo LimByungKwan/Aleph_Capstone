@@ -90,6 +90,42 @@ async function join(opts = {}) {
   return c
 }
 
+describe('배포 설정(allowGuests: false): 로그인한 계정만 접속', () => {
+  let srv
+  let rt
+  let wsUrl
+  before(async () => {
+    srv = createServer()
+    rt = attachRealtime(srv, { supabase: { anon: fakeClient, asUser: fakeClient }, allowedOrigins: [ORIGIN], options: { allowGuests: false } })
+    srv.listen(0)
+    await new Promise((r) => srv.once('listening', r))
+    wsUrl = `ws://127.0.0.1:${srv.address().port}${REALTIME_PATH}`
+  })
+  after(() => {
+    rt.close()
+    srv.close()
+  })
+  const hello = async (token) => {
+    const ws = new WebSocket(wsUrl, { origin: ORIGIN })
+    const closed = new Promise((resolve) => ws.once('close', (code) => resolve(code)))
+    const welcome = new Promise((resolve) => ws.on('message', (raw) => JSON.parse(raw.toString()).t === 'welcome' && resolve(true)))
+    await new Promise((r) => ws.once('open', r))
+    ws.send(JSON.stringify({ t: 'hello', ...(token && { token }) }))
+    return { ws, closed, welcome }
+  }
+
+  test('토큰 없음·잘못된 토큰은 4005로 끊고 아무도 안 들어옴, 로그인한 계정은 들어옴', async () => {
+    assert.equal(await (await hello()).closed, 4005)
+    assert.equal(await (await hello('expired-token')).closed, 4005)
+    assert.equal(rt.count(), 0)
+    const user = await hello(GOOD)
+    assert.equal(await user.welcome, true)
+    assert.equal(rt.count(), 1)
+    user.ws.close()
+    await user.closed
+  })
+})
+
 describe('멀티 접속', () => {
   test('두 사람: 서로 보이고, 이름은 토큰으로 서버가 정함, 움직임이 전달됨, 나가면 사라짐', async () => {
     const a = await join({ token: GOOD, characterId: 'female' })
@@ -233,6 +269,21 @@ describe('멀티 접속', () => {
     a.ws.close()
     b.ws.close()
     await Promise.all([a.closed, b.closed])
+  })
+
+  test('말풍선 채팅은 로그인한 계정만: 손님은 chat.denied를 받고 아무에게도 안 감, 관리자는 됨', async () => {
+    const guest = await join()
+    const user = await join({ token: GOOD })
+    const admin = await join({ token: ADMIN })
+    guest.send({ t: 'chat', text: '손님이에요' })
+    assert.deepEqual(await guest.next('chat.denied'), { t: 'chat.denied', reason: 'login' })
+    admin.send({ t: 'chat', text: '관리자예요' })
+    assert.equal((await user.next('chat')).name, '관리자')
+    await new Promise((r) => setTimeout(r, 100))
+    assert.equal(user.inbox.filter((m) => m.t === 'chat' && m.text === '손님이에요').length, 0)
+    assert.equal(guest.inbox.filter((m) => m.t === 'chat' && m.text === '손님이에요').length, 0)
+    for (const p of [guest, user, admin]) p.ws.close()
+    await Promise.all([guest.closed, user.closed, admin.closed])
   })
 
   test('관리자 시간대·계절: 관리자만 바꿀 수 있고 모두에게, 나중에 들어온 사람도 같은 값', async () => {

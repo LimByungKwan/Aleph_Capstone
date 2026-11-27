@@ -1,3 +1,4 @@
+import NearOnly from './HjNearOnly.jsx'
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -49,9 +50,12 @@ export default function HjSeoulStation({ item }) {
   return (
     <group scale={[sw / w, sh / STATION.h, sd / d]}>
       <Shell title={item.title} />
-      <Hall />
-      <WaitingRoom />
-      <VipRoom />
+      {/* 실내는 가까이 있을 때만 그려요 (성능) */}
+      <NearOnly radius={45}>
+        <Hall />
+        <WaitingRoom />
+        <VipRoom />
+      </NearOnly>
     </group>
   )
 }

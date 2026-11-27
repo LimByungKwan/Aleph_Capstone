@@ -80,7 +80,7 @@ export function JmHokora() {
         <coneGeometry args={[0.6, 0.4, 4]} />
         <meshStandardMaterial color={season === 'winter' ? SNOW : '#33373d'} flatShading />
       </mesh>
-      <Box p={[0, 0.85, 0.26]} s={[0.3, 0.4, 0.02]} c="#c8452f" />
+      <Box p={[0, 0.85, 0.26]} s={[0.3, 0.4, 0.02]} c="#a9543a" />
     </group>
   )
 }
@@ -144,7 +144,7 @@ export function JmCourtLines({ item }) {
       {[-1, 1].map((s) => (
         <mesh key={s} position={[s * (w / 2 - 0.25), y + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[3.6, 3]} />
-          <meshStandardMaterial color="#c2410c" transparent opacity={0.45} />
+          <meshStandardMaterial color="#a8532e" transparent opacity={0.45} />
         </mesh>
       ))}
     </group>
@@ -215,7 +215,7 @@ export function JmTeruTeru({ item }) {
 const FLOWERS = {
   spring: ['#f9a8d4', '#fde68a', '#ffffff'],
   summer: ['#60a5fa', '#c084fc', '#f472b6'],
-  autumn: ['#f59e0b', '#ef4444', '#a855f7'], // 코스모스·국화
+  autumn: ['#f59e0b', '#d27171', '#a855f7'], // 코스모스·국화
   winter: [SNOW, '#e5e7eb'],
 }
 export function JmFlowerBed({ item }) {
@@ -294,7 +294,7 @@ export function JmChozuya({ item }) {
   return (
     <group>
       {[-1, 1].map((sx) =>
-        [-1, 1].map((sz) => <Cyl key={`${sx}${sz}`} p={[(sx * (w - 0.2)) / 2, h / 2, (sz * (d - 0.2)) / 2]} r1={0.08} h={h} c="#c8452f" />),
+        [-1, 1].map((sz) => <Cyl key={`${sx}${sz}`} p={[(sx * (w - 0.2)) / 2, h / 2, (sz * (d - 0.2)) / 2]} r1={0.08} h={h} c="#a9543a" />),
       )}
       <Box p={[0, h + 0.1, 0]} s={[w + 0.6, 0.2, d + 0.6]} c={season === 'winter' ? SNOW : '#33373d'} />
       <Box p={[0, 0.4, 0]} s={[w * 0.6, 0.8, d * 0.5]} c="#9a958c" />

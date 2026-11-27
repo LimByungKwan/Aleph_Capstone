@@ -6,6 +6,10 @@ import { useGameStore } from '../../store/gameStore.js'
 import { usePalaceSeatStore } from './palaceSeating.js'
 import HallDoorColliders from './HallDoorColliders.jsx'
 import HjModernSeoul from '../../game/Map/styles/hj/HjModernSeoul.jsx' // 시간 열차 도착지 (2026 현대 서울)
+import { ThemeParkColliders } from '../../game/Map/styles/hj/HjThemePark.jsx' // 해월 드림파크 충돌
+import HjSeaTransfer, { SeaTransferColliders } from '../../game/Map/styles/hj/HjSeaTransfer.jsx' // 바다 환승역 (애니메이션 구역행)
+import { GovProjectScene } from './GovProject.jsx' // 광복 프로젝트 (조선총독부 철거)
+import { TicketKiosks } from './TicketBooth.jsx' // 매표소
 import IndoorView from './IndoorView.jsx'
 import PresenceKeepAlive from './PresenceKeepAlive.jsx'
 import './hjSync.js' // 경복궁·경성 멀티 동기화 (문·앉기·탈것·시계)
@@ -112,6 +116,11 @@ export default function PalaceTourPresence({ playerRef }) {
     <>
       <HallDoorColliders />
       <HjModernSeoul />
+      <ThemeParkColliders />
+      <HjSeaTransfer />
+      <SeaTransferColliders />
+      <GovProjectScene />
+      <TicketKiosks />
       <IndoorView playerRef={playerRef} />
       <PresenceKeepAlive playerRef={playerRef} />
     </>
