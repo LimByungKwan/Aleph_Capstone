@@ -19,7 +19,8 @@ import '../movieZone/ui-components.css'
 import './auth.css'
 
 // [지민] 회원가입 · 로그인 화면
-// 처음엔 로그인 없이 맵을 둘러보고, 스탬프를 받으려 하거나 오른쪽 위 '로그인'을 누르면 맵 위에 창으로 뜸 (LoginModal)
+// 11/27부터: 손님 없음 — 서버 모드에선 로그인해야 맵에 들어감 (LoginGate가 맵 대신 이 화면을 보여 줌)
+//   회원가입은 가입 코드가 있어야 함. 맵 안에서는 다시 로그인이 필요할 때만 창으로 뜸 (LoginModal)
 // 맵 위에 떠 있어도 입력칸에 친 W·A·S·D·E가 캐릭터 조작으로 새지 않게 키 이벤트를 창 안에서 멈춤
 export default function LoginPage({ title = '', reason = '', onClose = null }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
@@ -61,15 +62,15 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
     <div className="ui-page auth-page">
       <main className="auth-card ui-card">
         {onClose && (
-          <button type="button" className="auth-close" aria-label="닫고 계속 둘러보기" onClick={onClose}>
+          <button type="button" className="auth-close" aria-label="닫기" onClick={onClose}>
             ×
           </button>
         )}
         <p className="auth-brand">SceneWalk AI</p>
         {/* 제목: 왜 창이 떴는지(스탬프 찍기 등)를 먼저 말함. 회원가입으로 바꾸면 가입용 문장 */}
-        <h1 className="auth-title">{isSignup ? '회원가입하고 스탬프를 모아요' : title || '로그인하고 스탬프를 모아요'}</h1>
+        <h1 className="auth-title">{isSignup ? '회원가입하고 시작해요' : title || '로그인하고 들어가요'}</h1>
         <p className="ui-sub">
-          {isSignup ? '안내받은 가입 코드와 이메일·비밀번호로 시작할 수 있어요.' : reason || '로그인 없이도 골목은 둘러볼 수 있어요. 스탬프를 찍을 때만 로그인이 필요해요.'}
+          {isSignup ? '안내받은 가입 코드와 이메일·비밀번호로 가입할 수 있어요.' : reason || 'SceneWalk는 회원만 이용할 수 있어요. 처음이라면 안내받은 가입 코드로 회원가입해 주세요.'}
         </p>
 
         <form onSubmit={submit} noValidate>
@@ -138,12 +139,19 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
         </button>
         {onClose && (
           <button type="button" className="auth-switch" onClick={onClose}>
-            로그인 없이 계속 둘러보기
+            닫기
           </button>
         )}
       </main>
     </div>
   )
+}
+
+// [지민] 로그인 전 첫 화면 (App.jsx가 맵 대신 보여 줌). 닫기 버튼 없음
+//   다른 기기 로그인으로 끊겨서 돌아온 경우 등은 그 이유(loginPrompt)를 제목·설명으로 보여 줌
+export function LoginGate() {
+  const prompt = useSessionStore((s) => s.loginPrompt)
+  return <LoginPage title={prompt?.title} reason={prompt?.reason} />
 }
 
 // 맵 위에 뜨는 로그인 창 (openLogin()으로 열림) + 관리자 2단계 인증 코드 창 (App.jsx가 이 컴포넌트 하나만 붙임)
