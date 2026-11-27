@@ -74,11 +74,11 @@ export function HjModernBuilding({ item }) {
       {Array.from({ length: floors - 1 }, (_, i) => (
         <Box key={i} p={[0, (i + 1) * 3.3, d / 2 + 0.05]} s={[w + 0.1, 0.18, 0.14]} c={trim} />
       ))}
-      <Box p={[0, h - 0.2, 0]} s={[w + 0.4, 0.4, d + 0.4]} c={trim} />
+      <Box p={[0, h - 0.192, 0]} s={[w + 0.4, 0.416, d + 0.4]} c={trim} />
       <Box p={[0, h + 0.35, d / 2 - 0.1]} s={[w + 0.1, 0.7, 0.25]} c={wall} />
       {/* 모서리 돌기둥 (벽돌 건물은 흰 돌 모서리) */}
       {[-1, 1].map((s) => (
-        <Box key={s} p={[s * (w / 2 - 0.15), h / 2, d / 2 - 0.1]} s={[0.35, h, 0.35]} c={trim} />
+        <Box key={s} p={[s * (w / 2 - 0.15), (h - 0.016) / 2, d / 2 - 0.1]} s={[0.35, h - 0.016, 0.35]} c={trim} />
       ))}
       <Instances geometry={GEO.box} material={WINDOW_LIT} items={windows.lit} />
       <Instances geometry={GEO.box} material={WINDOW_DARK} items={windows.dark} />

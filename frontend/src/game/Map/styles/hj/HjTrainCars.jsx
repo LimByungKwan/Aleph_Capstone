@@ -314,8 +314,8 @@ function LoungeCar() {
     <group>
       <CarShell z={LOUNGE_Z} inside={WOOD_LIGHT} upper={WOOD} roofInside="#d9b88a" windowsEvery={2.6} />
       {/* 무늬 바닥 (가운데 양탄자) */}
-      <Box p={[0, FLOOR + 0.006, LOUNGE_Z]} s={[1.4, 0.012, CAR_L - 1.2]} c="#6a3a2e" />
-      <Box p={[0, FLOOR + 0.008, LOUNGE_Z]} s={[1.1, 0.012, CAR_L - 1.6]} c="#8f5a3e" />
+      <Box p={[0, FLOOR + 0.008, LOUNGE_Z]} s={[1.4, 0.016, CAR_L - 1.2]} c="#6a3a2e" />
+      <Box p={[0, FLOOR + 0.024, LOUNGE_Z]} s={[1.1, 0.016, CAR_L - 1.6]} c="#8f5a3e" />
       {/* 우물 천장 + 스테인드글라스 */}
       <Instances geometry={GEO.box} material={mat('#8a6440')} items={coffers} />
       {[-3.6, -1.2, 1.2, 3.6].map((dz) => (

@@ -14,10 +14,10 @@
     {"id": "hj_border_w", "position": [-40.32, 0], "size": [0.55, 0.2, 200.09], "color": "#ffa45c"},
     {"id": "hj_border_e", "position": [40.32, 0], "size": [0.55, 0.2, 200.09], "color": "#ffa45c"},
     {"id": "gs_north_ground", "style": "grass", "position": [1, 135.5], "size": [92, 0.05, 61], "opensBoundary": true},
-    {"id": "palace_north_walk", "style": "stone", "position": [0, -96.25], "size": [79, 0.115, 2.9]},
+    {"id": "palace_north_walk", "style": "stone", "position": [0, -96.25], "size": [79, 0.099, 2.9]},
     {"id": "palace_west_walk", "style": "stone", "position": [-38.8, -40], "size": [2.4, 0.121, 114]},
     {"id": "palace_east_walk", "style": "stone", "position": [38.8, -40], "size": [2.4, 0.123, 114]},
-    {"id": "palace_south_walk", "style": "stone", "position": [0, 13.5], "size": [79, 0.127, 2]},
+    {"id": "palace_south_walk", "style": "stone", "position": [0, 13.5], "size": [79, 0.143, 2]},
     {"id": "gs_clock_plaza", "style": "tile", "position": [0, 84.6], "size": [28, 0.12, 14.8], "rotationDeg": 0},
     {"id": "gs_street", "style": "stone", "position": [4.5, 97], "size": [65, 0.1, 7], "rotationDeg": 0},
     {"id": "gs_walk_s", "style": "brick", "position": [4.5, 92.8], "size": [65, 0.18, 1.4], "rotationDeg": 0},
@@ -27,7 +27,7 @@
     {"id": "gs_park_path_ew", "style": "tile", "position": [0, 121], "size": [60, 0.11, 3], "rotationDeg": 0},
     {"id": "gs_park_walk_w", "style": "brick", "position": [-30.2, 121], "size": [1.6, 0.16, 38], "rotationDeg": 0},
     {"id": "gs_park_walk_e", "style": "brick", "position": [30.2, 121], "size": [1.6, 0.16, 38], "rotationDeg": 0},
-    {"id": "gs_gov_plaza", "style": "tile", "position": [0, 141.5], "size": [22, 0.12, 5], "rotationDeg": 0}
+    {"id": "gs_gov_plaza", "style": "tile", "position": [0, 141.5], "size": [22, 0.104, 5], "rotationDeg": 0}
   ],
   "markings": [],
   "buildings": [],
