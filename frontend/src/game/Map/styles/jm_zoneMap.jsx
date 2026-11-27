@@ -31,7 +31,7 @@ const ORIGIN_Z = -85 // 구역 origin z (구역 좌표 → 월드: z - 85)
 const w2 = ([x, z]) => [x, z + ORIGIN_Z]
 
 // 실제로 가 볼 수 있는 곳 (현지 성지·가게) 조사 기록. (11/27) 구역 지도 창은 「바로가기」만 두기로 해서 지금 화면에서는 안 씀 — 가게 쪽 실제 장소를 다시 보여 줄 때 씀
-// query는 구글 지도 검색어 그대로. 11/27 조사 결과로 채움
+// query는 구글 지도 검색어 그대로. 11/27 조사 결과로 채움 (가게 6곳은 places.json 설명에도 같은 내용을 적어 둠 — 바꿀 땐 둘 다)
 // kind: 'shop' = 실제로 그 메뉴·체험을 하는 가게 / 'spot' = 가게는 없고 근처 성지·명소로 안내
 // ⚠ 작품 공식 콜라보 가게는 하나도 없음 (팬·관광 매체가 꼽는 모델지 기준). 기간 한정 팝업은 넣지 않음
 export const JM_REAL_PLACES = {
@@ -43,10 +43,10 @@ export const JM_REAL_PLACES = {
   spot_jm_onsen: { kind: 'spot', name: '에도도쿄 건축물원 고다카라유 (도쿄 고가네이)', query: '江戸東京たてもの園' },
   spot_jm_hill: { kind: 'spot', name: '아마미야 신사 (구마모토 사가라무라)', query: '雨宮神社 相良村' },
   // 가게
-  shop_jm_donguri: { kind: 'shop', name: '도토리숲 잠실 롯데월드몰점 (지브리 굿즈점)', query: '도토리숲 롯데월드몰' },
+  shop_jm_donguri: { kind: 'shop', name: '시로히게 슈크림 공방 (도쿄 세타가야, 토토로 슈크림)', query: '白髭のシュークリーム工房' },
   shop_jm_kumihimo: { kind: 'shop', name: '히다후루카와 사쿠라 물산관 (쿠미히모 체험)', query: '飛騨古川さくら物産館' },
   shop_jm_manju: { kind: 'shop', name: '가스리야 본점 (도고온천 만주)', query: '絣屋 道後' },
-  shop_jm_fuji: { kind: 'spot', name: '가메이도텐진샤 등꽃 (도쿄) — 실제 찻집은 없음', query: '亀戸天神社' },
+  shop_jm_fuji: { kind: 'shop', name: '후나바시야 가메이도텐진 앞 본점 (등꽃 명소 앞 칡떡 찻집)', query: '船橋屋 亀戸天神前本店' },
   shop_jm_sakura: { kind: 'spot', name: '시라타니운스이쿄 (야쿠시마) — 실제 찻집은 없음', query: '白谷雲水峡' },
   shop_jm_antique: { kind: 'spot', name: '히토요시역 (나츠메 성지 마을) — 상설 가게는 없음', query: '人吉駅' },
 }
