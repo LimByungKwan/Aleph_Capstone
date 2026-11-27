@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useGameStore } from '../../store/gameStore.js'
 import { useTutorial } from '../../store/tutorialStore.js'
-import { isMuted } from '../sound/sound.js'
 import { playerPose } from '../../store/playerPose.js'
 import { inKpopZone } from './KpopGuide.jsx'
 import { KEY_HINTS_BOTTOM } from './KeyHints.jsx'
@@ -9,9 +8,7 @@ import { useIsTouch } from '../mobile/MobileControls.jsx'
 
 // K-POP 구역 첫 진입 30초 소개 컷신: SUNGRAY 멤버 윤슬(YUNSEUL)이 직접 나와 발랄하게 소개. 담당: 성근(SG)
 // - 그림: 코드로 그린 SVG + CSS 애니메이션 (장면마다 천천히 확대·이동, 아래 자막). 그림 파일 없음
-// - 목소리: 브라우저 내장 speechSynthesis. 사람 같은 신경망 음성(Edge SunHi Natural, Chrome Google 한국의)을 먼저 고름
-//   기기에 한국어 음성이 없거나 소리를 끈 상태(🔇)면 자막만으로 같은 시간에 넘어감
-// - 장면은 "최소 시간이 지났고 대사가 끝났을 때" 넘어감 (목소리마다 말 속도가 달라서). 대사가 길어도 +5초에서 넘어감
+// - 목소리 없이 자막만. 장면마다 정해진 시간(dur)이 지나면 넘어감
 // - 처음 한 번만(localStorage). 튜토리얼이 끝난 뒤, 구역 안에 들어오면 재생 → 끝나면 KpopGuide 안내 띠가 이어서 뜸
 // - 패널로 열어 캐릭터 이동을 잠금. 건너뛰기 버튼·ESC(공용 InteractionKeys)로 닫힘
 // - 다시 보기(시연용): 주소 뒤에 ?kpopIntro, 또는 콘솔 window.__sgIntro()
@@ -19,15 +16,15 @@ import { useIsTouch } from '../mobile/MobileControls.jsx'
 export const INTRO_PANEL = 'sg_intro'
 const KEY = 'scenewalk.sg.kpopIntro'
 
-// say: 목소리로 읽는 대사 / lines: 자막 줄 / idol: 윤슬이 서는 자리 [x, 발 y, 크기]
+// lines: 자막 줄 / idol: 윤슬이 서는 자리 [x, 발 y, 크기]
 const SCENES = [
-  { id: 'title', dur: 4, idol: [800, 660, 1.35], say: '안녕~! 나는 SUNGRAY의 윤슬이야! 만나서 반가워!', lines: ['안녕~! 나는 SUNGRAY의 윤슬이야!', '만나서 반가워!'] },
-  { id: 'dome', dur: 6, idol: [1330, 820, 1.5], say: '여기는 바다 옆 K-POP 돔! 밤이 되면, 서치라이트랑 폭죽이 팡팡 터져.', lines: ['여기는 바다 옆 K-POP 돔!', '밤이 되면 서치라이트랑 폭죽이 팡팡 터져'] },
-  { id: 'audition', dur: 6, idol: [300, 820, 1.5], say: '무대 옆 오디션장에서, 노래로 도전해 봐. 심사위원 쌤들이 기다리고 있어!', lines: ['무대 옆 오디션장에서 노래로 도전해 봐', '심사위원 쌤들이 기다리고 있어!'] },
-  { id: 'fans', dur: 6, idol: [1380, 820, 1.45], say: '응원봉 흔들고, 포장마차 거리에서 맛있는 것도 먹고!', lines: ['응원봉 흔들고,', '포장마차 거리에서 맛있는 것도 먹고!'] },
-  { id: 'finale', dur: 5, idol: [300, 820, 1.5], say: '그럼, K-POP 스테이지에서 같이 놀자! 윤슬이었어, 안녕!', lines: ['그럼, K-POP 스테이지에서 같이 놀자!', '윤슬이었어~ 안녕! 👋'] },
+  { id: 'title', dur: 4, idol: [800, 660, 1.35], lines: ['안녕~! 나는 SUNGRAY의 윤슬이야!', '만나서 반가워!'] },
+  { id: 'dome', dur: 6, idol: [1330, 820, 1.5], lines: ['여기는 바다 옆 K-POP 돔!', '밤이 되면 서치라이트랑 폭죽이 팡팡 터져'] },
+  { id: 'audition', dur: 6, idol: [300, 820, 1.5], lines: ['무대 옆 오디션장에서 노래로 도전해 봐', '심사위원 쌤들이 기다리고 있어!'] },
+  { id: 'fans', dur: 6, idol: [1380, 820, 1.45], lines: ['응원봉 흔들고,', '포장마차 거리에서 맛있는 것도 먹고!'] },
+  { id: 'finale', dur: 5, idol: [300, 820, 1.5], lines: ['그럼, K-POP 스테이지에서 같이 놀자!', '윤슬이었어~ 안녕! 👋'] },
+  { id: 'bye', dur: 4, idol: [800, 760, 1.6], smile: true, lines: ['그럼 잘 즐기길 바래~', '안녕~ 💕'] },
 ]
-const EXTRA_WAIT = 5 // 대사가 dur보다 길 때 기다려 주는 최대 초
 
 function readSeen() {
   try {
@@ -41,38 +38,6 @@ function saveSeen() {
     localStorage.setItem(KEY, 'seen')
   } catch {
     // 저장이 막힌 브라우저면 이번 접속에서만 기억
-  }
-}
-
-// 사람다운 한국어 목소리 고르기: 신경망(Natural·Neural) → Online → Google → 아무 한국어. 없으면 null
-function pickVoice() {
-  if (!('speechSynthesis' in window)) return null
-  const ko = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('ko'))
-  return ko.find((v) => /natural|neural/i.test(v.name)) ?? ko.find((v) => /online/i.test(v.name)) ?? ko.find((v) => /google/i.test(v.name)) ?? ko[0] ?? null
-}
-
-/** 대사 읽기. 읽을 수 없으면 바로 onEnd. 돌려준 함수로 중단 */
-function speak(text, { onStart, onEnd }) {
-  const voice = isMuted() ? null : pickVoice()
-  if (!voice) {
-    onEnd()
-    return () => {}
-  }
-  const u = new SpeechSynthesisUtterance(text)
-  u.voice = voice
-  u.lang = voice.lang
-  // 신경망 음성은 원래 억양이 자연스러워 거의 그대로, 기계음 목소리만 조금 밝게
-  const natural = /natural|neural|online|google/i.test(voice.name)
-  u.rate = natural ? 1.05 : 1.1
-  u.pitch = natural ? 1.1 : 1.3
-  u.onstart = onStart
-  u.onend = onEnd
-  u.onerror = onEnd
-  window.speechSynthesis.cancel()
-  window.speechSynthesis.speak(u)
-  return () => {
-    u.onend = u.onerror = null
-    window.speechSynthesis.cancel()
   }
 }
 
@@ -98,11 +63,6 @@ export default function KpopIntro() {
     }, 500)
     return () => clearInterval(timer)
   }, [seen, tutorialOff])
-
-  // getVoices()는 처음엔 비어 있다가 늦게 채워짐 → 미리 한 번 불러 둠
-  useEffect(() => {
-    window.speechSynthesis?.getVoices()
-  }, [])
 
   // 시연용 다시 보기: 콘솔 window.__sgIntro(), 또는 주소 뒤에 ?kpopIntro (배포본에서도 동작)
   // 주소로 열면 캐릭터가 맵에 나타난 뒤(playerPose.ready) 한 번 재생
@@ -139,29 +99,14 @@ const closeIntro = () => useGameStore.getState().close() // 모듈에 둬서 Int
 
 function Intro({ onDone }) {
   const [index, setIndex] = useState(0)
-  const [talking, setTalking] = useState(false)
-  const [spoken, setSpoken] = useState(false)
-  const [minDone, setMinDone] = useState(false)
   const scene = SCENES[index]
   const last = index + 1 >= SCENES.length
 
-  // 장면이 바뀌면: 대사 읽기 + 최소 시간 타이머 + 최대 대기 타이머
+  // 장면마다 dur초 뒤 다음 장면, 마지막이면 닫기
   useEffect(() => {
-    setSpoken(false)
-    setMinDone(false)
-    const stop = speak(scene.say, { onStart: () => setTalking(true), onEnd: () => (setTalking(false), setSpoken(true)) })
-    const min = setTimeout(() => setMinDone(true), scene.dur * 1000)
-    const max = setTimeout(() => (setTalking(false), setSpoken(true), setMinDone(true)), (scene.dur + EXTRA_WAIT) * 1000)
-    return () => {
-      stop()
-      clearTimeout(min)
-      clearTimeout(max)
-    }
-  }, [scene])
-
-  useEffect(() => {
-    if (spoken && minDone) last ? onDone() : setIndex((i) => i + 1)
-  }, [spoken, minDone, last, onDone])
+    const timer = setTimeout(() => (last ? onDone() : setIndex((i) => i + 1)), scene.dur * 1000)
+    return () => clearTimeout(timer)
+  }, [scene, last, onDone])
 
   const Art = ART[scene.id]
   const [ix, iy, is] = scene.idol
@@ -173,7 +118,7 @@ function Intro({ onDone }) {
           <svg viewBox="0 0 1600 900" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <Defs />
             <Art />
-            <Yunseul x={ix} y={iy} s={is} talking={talking} />
+            <Yunseul x={ix} y={iy} s={is} smile={scene.smile} />
           </svg>
         </div>
         <p key={`t-${scene.id}`} className="kpi-sub">
@@ -195,8 +140,8 @@ function Intro({ onDone }) {
 
 // ── 윤슬 (SUNGRAY 멤버, 가상 아이돌) ──────────────────
 // 이름처럼 "햇빛에 반짝이는 물결" 색 머리(하늘→분홍), 별 머리핀, 마이크. 발이 (0,0), 키 약 340
-// 말하는 동안 입이 뻐끔, 평소엔 눈 깜빡임 + 통통 + 손 흔들기
-function Yunseul({ x, y, s, talking }) {
+// 눈 깜빡임 + 통통 + 손 흔들기
+function Yunseul({ x, y, s, smile }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
       <g className="kpi-hop">
@@ -229,6 +174,10 @@ function Yunseul({ x, y, s, talking }) {
         <circle cx="0" cy="-206" r="72" fill="#ffe1cc" />
         <path d="M-74 -214 Q-70 -292 0 -290 Q70 -292 74 -214 Q58 -250 30 -252 Q14 -232 0 -250 Q-14 -232 -30 -252 Q-58 -250 -74 -214 Z" fill="url(#kpi-hair)" />
         <polygon points="52,-262 58,-248 73,-247 61,-238 66,-224 52,-232 38,-224 43,-238 31,-247 46,-248" fill="#ffd166" stroke="#fff" strokeWidth="2" />
+        {smile ? (
+          // 눈웃음 ^^
+          <path d="M-37 -196 Q-25 -216 -13 -196 M13 -196 Q25 -216 37 -196" stroke="#3b2a5a" strokeWidth="6" fill="none" strokeLinecap="round" />
+        ) : (
         <g className="kpi-center kpi-blink">
           <ellipse cx="-25" cy="-200" rx="11" ry="16" fill="#3b2a5a" />
           <ellipse cx="25" cy="-200" rx="11" ry="16" fill="#3b2a5a" />
@@ -237,10 +186,11 @@ function Yunseul({ x, y, s, talking }) {
           <circle cx="-28" cy="-193" r="2" fill="#7dd3fc" />
           <circle cx="22" cy="-193" r="2" fill="#7dd3fc" />
         </g>
+        )}
         <ellipse cx="-42" cy="-176" rx="12" ry="6" fill="#ff9db5" opacity="0.7" />
         <ellipse cx="42" cy="-176" rx="12" ry="6" fill="#ff9db5" opacity="0.7" />
-        {talking ? (
-          <ellipse className="kpi-center kpi-talk" cx="0" cy="-168" rx="9" ry="8" fill="#a5475f" />
+        {smile ? (
+          <path d="M-16 -174 Q0 -150 16 -174 Z" fill="#a5475f" stroke="#a5475f" strokeWidth="3" strokeLinejoin="round" />
         ) : (
           <path d="M-10 -172 Q0 -162 10 -172" stroke="#a5475f" strokeWidth="3.5" fill="none" strokeLinecap="round" />
         )}
@@ -510,7 +460,7 @@ function FinaleArt() {
   )
 }
 
-const ART = { title: TitleArt, dome: DomeArt, audition: AuditionArt, fans: FansArt, finale: FinaleArt }
+const ART = { bye: TitleArt, title: TitleArt, dome: DomeArt, audition: AuditionArt, fans: FansArt, finale: FinaleArt }
 
 // ── 스타일 ───────────────────────────────────────
 const overlay = { position: 'fixed', inset: 0, zIndex: 16777280, // 3D 이름표(drei Html z-index 최대 16777271)보다 위
@@ -529,10 +479,8 @@ const CSS = `
 .kpi-hop { animation: kpi-bob 1.2s ease-in-out infinite; }
 .kpi-hi { animation: kpi-hi .9s ease-in-out infinite; }
 .kpi-blink { animation: kpi-blink 3.6s infinite; }
-.kpi-talk { animation: kpi-talk .22s ease-in-out infinite alternate; }
 @keyframes kpi-hi { 0%, 100% { transform: rotate(-8deg) } 50% { transform: rotate(28deg) } }
 @keyframes kpi-blink { 0%, 94%, 100% { transform: scaleY(1) } 97% { transform: scaleY(.1) } }
-@keyframes kpi-talk { from { transform: scaleY(.35) } to { transform: scaleY(1) } }
 .kpi-pivot { transform-box: fill-box; transform-origin: 50% 100%; }
 .kpi-center { transform-box: fill-box; transform-origin: center; }
 .kpi-float { animation: kpi-float 3s ease-out infinite both; }
