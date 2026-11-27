@@ -13,7 +13,8 @@ import { remoteVehicle, sharedSeconds, useRemoteSeats } from '../../../component
 import { sendHj } from '../../multiplayer/realtimeStore.js'
 import { GYEONGSEONG_ARRIVE } from '../../../components/movieZone/timeTravel.js'
 import { registerVehicle, updateVehicleWorld, vehicles } from '../../../components/movieZone/rideSeats.js'
-import { registerWarpSpot, usePalaceSeatStore } from '../../../components/movieZone/palaceSeating.js'
+import { registerWarpSpot, requestPalaceWarp, usePalaceSeatStore } from '../../../components/movieZone/palaceSeating.js'
+import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { SeaRideView } from './jm_seaRide.jsx'
 import { findPlayer } from '../../Player/findPlayer.js'
 import { PRICE as TICKET_PRICE, RIDES as TICKET_RIDES, useSeaTicket } from './jm_seaTicket.js'
@@ -618,7 +619,7 @@ function SeaTrainRun({ item, path, runs }) {
     }
   }, [ride])
   // 매 프레임 새로 만들지 않고 다시 쓰는 것들 (11/27 최적화: 쓰레기 수거 때 끊김 줄이기)
-  const tmp = useMemo(() => ({ o: {}, v: new THREE.Vector3(), w: new THREE.Vector3(), remote: new Set(), real: null, realAt: -1, hid: false, idleDone: false, out: {}, p: [0, 0, 0], sentAt: 0, stExit: null, prompt: '' }), [])
+  const tmp = useMemo(() => ({ o: {}, v: new THREE.Vector3(), w: new THREE.Vector3(), remote: new Set(), real: null, realAt: -1, hid: false, idleDone: false, out: {}, p: [0, 0, 0], sentAt: 0, stExit: null, prompt: '', wasOn: false, kick: false, warned: false }), [])
   // 진짜 경복궁 기차를 내가 숨긴 채 사라지면(저장·구역 이동) 되돌려 놓기
   useEffect(() => () => {
     if (tmp.hid && tmp.real) tmp.real.visible = true
@@ -627,7 +628,21 @@ function SeaTrainRun({ item, path, runs }) {
   useFrame(({ scene }, dt) => {
     const S = sharedSeconds()
     const seated = usePalaceSeatStore.getState().seated
-    const onTram = Boolean(seated?.vehicle && carVehicles.includes(seated.vehicle))
+    const sat = Boolean(seated?.vehicle && carVehicles.includes(seated.vehicle))
+    // (11/27) 남이 부른 전차에 앉아도 회수권 검사: 막 앉은 순간 표가 없으면 코인으로 바로 사고, 코인도 모자라면 승강장에 내려 줌
+    if (sat && !tmp.wasOn) {
+      const tk = useSeaTicket.getState()
+      if (!tk.valid()) {
+        tk.finishIfFull()
+        if (!tk.buy()) {
+          tmp.kick = true
+          useUiStore.getState().toast?.(`🎫 회수권이 필요해요 · 발매기에서 코인 ${TICKET_PRICE}개로 사요`, 'warn')
+        }
+      }
+    }
+    if (!sat) tmp.kick = false
+    tmp.wasOn = sat
+    const onTram = sat && !tmp.kick
     const onCopy = seated?.vehicle === copyVehicle
     const mine = onTram || onCopy
     const L = path.sStation
@@ -720,6 +735,7 @@ function SeaTrainRun({ item, path, runs }) {
       case 'waiting':
         ride.s = L
         stopped = true
+        tmp.warned = false
         if (onTram) {
           Object.assign(ride, planRun(S), { phase: 'hold' })
           ride.curve = runCurve(L - path.sJoin, ride.runD, SEA_APPROACH_V)
@@ -733,12 +749,19 @@ function SeaTrainRun({ item, path, runs }) {
       case 'hold':
         ride.s = L
         stopped = S < ride.runFrom - DOOR_CLOSE
+        // (11/27) 앉지 않고 차 안에 서 있으면: 문이 닫히기 직전에 승강장으로 내려 줌 (닫힌 뒤엔 바닥 충돌이 없어져 바다로 떨어졌음)
+        if (inside && !onTram && !tmp.warned && S >= ride.runFrom - DOOR_CLOSE - 0.6) {
+          tmp.warned = true
+          requestPalaceWarp([CALL.position[0], CALL.position[1] + 0.3, CALL.position[2]])
+          useUiStore.getState().toast?.('🚃 자리에 앉아야 출발해요 · 승강장으로 내려 드렸어요', 'info')
+        }
         if (!onTram && !remoteOnMine && stopped) {
           // 출발 전에 내림 → 다시 기다림
           ride.phase = 'waiting'
           ride.waitUntil = S + WAIT_MAX
         } else if (S >= ride.runFrom) {
           ride.phase = 'run'
+          tmp.warned = false
           if (onTram) useSeaTicket.getState().punch() // 출발할 때 차장 검표: 회수권 한 칸
         }
         break
@@ -788,7 +811,7 @@ function SeaTrainRun({ item, path, runs }) {
     }
     if (ride.phase === 'idle' || ride.phase === 'coming') ride.form = 'tram'
     // 그래도 운행이 끝났는데(idle) 좌석에 남아 있으면 → 전차는 湯灯駅 승강장, 경복궁 기차 모양은 그 자리 승강장 쪽에 내려 줌
-    const tramForceExit = ride.phase === 'idle' && onTram ? CALL.position : null
+    const tramForceExit = tmp.kick ? (seated?.vehicle?.exit ? [...seated.vehicle.exit] : CALL.position) : ride.phase === 'idle' && onTram ? CALL.position : null
     if (ride.phase === 'idle' && onCopy) copyForceExit = tmp.stExit ?? GYEONGSEONG_ARRIVE
     if (ride.phase === 'idle' && !onCopy) {
       ride.called = false
