@@ -136,7 +136,7 @@ function MuralCamera({ anchor, targets }) {
       } else {
         if (wave.current?.request !== request) {
           const model = player.current?.getObjectByName('player-character-model')
-          wave.current = prepareWave(request, model, WAVE_FRAMES[character.id], clock.elapsedTime)
+          wave.current = prepareWave(request, model, WAVE_FRAMES[character.waveRig ?? character.id], clock.elapsedTime)
         }
         const pose = wave.current
         const elapsed = clock.elapsedTime - pose.started

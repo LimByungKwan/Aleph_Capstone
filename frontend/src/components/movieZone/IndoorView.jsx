@@ -35,8 +35,10 @@ export default function IndoorView({ playerRef }) {
     const { x, y, z } = player.body.translation()
     const seated = Boolean(usePalaceSeatStore.getState().seated)
     const area = indoorAt(x, y - FEET_OFFSET, z)
+    // 인력거에 타면 1인칭 (내리면 다시 3인칭) — 인력거꾼 뒷모습과 거리를 손님 눈높이로 봐요
+    const onRickshaw = /인력거/.test(usePalaceSeatStore.getState().seated?.vehicle?.label ?? '')
     // 모드: fp(1인칭) · seat(앉은 모습 보기) · null(바깥, 원래대로)
-    const mode = area ? (seated ? 'seat' : 'fp') : null
+    const mode = onRickshaw ? 'fp' : area ? (seated ? 'seat' : 'fp') : null
     if (!playerObject.current) playerObject.current = scene.getObjectByName('player') ?? null
     if (mode === inside.current) return
     if (!inside.current) savedDistance.current = Math.max(3, controls.distance)

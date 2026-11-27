@@ -43,6 +43,16 @@ export const HJ_AREAS = [
     arrive: () => zoneToWorld(0, 16.8 + GS_SHIFT),
   },
   {
+    id: 'park',
+    emoji: '🎡',
+    name: '해월 드림파크',
+    eyebrow: 'Dream Park · 놀이공원',
+    tagline: '관람차·회전목마·회전그네, 열기구와 사파리 지프를 E로 타 보세요',
+    // 경복궁 동쪽 빈 땅 (월드 x 42~130, z 42~250 = 구역 기준 z -103~105)
+    box: [42, 130, -103, 105],
+    arrive: () => zoneToWorld(57, -91.5),
+  },
+  {
     id: 'seoul',
     emoji: '🏙️',
     name: '2026 현대 서울',

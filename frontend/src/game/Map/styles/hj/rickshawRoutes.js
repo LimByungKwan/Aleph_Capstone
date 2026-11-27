@@ -20,6 +20,9 @@ export const NODES = {
   avenue: { pos: [-2.6, 246.6], name: '총독부 대로 입구' },
   gov: { pos: [-2.6, 282.5], name: '조선총독부' },
   plaza: { pos: [8.6, 235.5], name: '시계탑 광장' },
+  // 북악산 고갯길: 숙정문 가운데 무지개문(x 2.4~6.6)으로만 지나가요 (옆 돌기둥·벽을 뚫지 않게)
+  passN: { pos: [4.5, 219], name: '고갯길 북쪽 (경성 쪽)' },
+  passS: { pos: [4.5, 165], name: '고갯길 남쪽 (궁궐 쪽)' },
   // 궁궐 둘레
   palaceBack: { pos: [8.6, 160.6], name: '궁궐 뒤 길' },
   sinmu: { pos: [0, 160.4], name: '신무문 (경복궁 뒷문)' },
@@ -41,7 +44,9 @@ const EDGES = [
   ['cross', 'east'],
   ['cross', 'avenue'],
   ['avenue', 'gov'],
-  ['plaza', 'palaceBack'],
+  ['plaza', 'passN'],
+  ['passN', 'passS'],
+  ['passS', 'palaceBack'],
   ['palaceBack', 'sinmu'],
   ['palaceBack', 'palaceNE'],
   ['palaceNE', 'palaceSE'],

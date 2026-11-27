@@ -1,4 +1,6 @@
 [
   { "id": "male", "name": "남자 캐릭터", "model": "models/characters/male.glb", "height": 1.72, "gaitSpeed": { "Walk": 1.49, "Run": 3.91 } },
-  { "id": "female", "name": "여자 캐릭터", "model": "models/characters/female.glb", "height": 1.66, "gaitSpeed": { "Walk": 1.42, "Run": 3.72 } }
+  { "id": "female", "name": "여자 캐릭터", "model": "models/characters/female.glb", "height": 1.66, "gaitSpeed": { "Walk": 1.42, "Run": 3.72 } },
+  { "id": "male2", "waveRig": "male", "name": "남자캐릭터2", "model": "models/characters/male2.glb", "height": 1.72, "gaitSpeed": { "Walk": 1.49, "Run": 3.91 } },
+  { "id": "female2", "waveRig": "female", "name": "여자캐릭터2", "model": "models/characters/female2.glb", "height": 1.66, "gaitSpeed": { "Walk": 1.42, "Run": 3.72 } }
 ]

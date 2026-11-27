@@ -6,6 +6,8 @@ import { useTimeTravel } from './timeTravel.js'
 const TEXT = {
   toSeoul: { from: '1930', to: '2026', title: '북악산 터널을 지나는 중…', sub: '시간 열차가 현대 서울로 달려가요' },
   toGyeongseong: { from: '2026', to: '1930', title: '시간 터널을 거슬러 가는 중…', sub: '시간 열차가 1930 경성역으로 돌아가요' },
+  toAnime: { from: '경성', to: '애니', title: '🌊 바다 위를 달리는 중…', sub: '환승 열차가 바다를 건너 애니메이션 구역으로 가요' },
+  fromAnime: { from: '애니', to: '경성', title: '🌊 바다를 건너 돌아가는 중…', sub: '경성 바다 환승역으로 돌아가요' },
 }
 
 export default function TimeTunnel() {

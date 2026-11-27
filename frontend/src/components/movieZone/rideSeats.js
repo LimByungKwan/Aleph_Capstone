@@ -47,9 +47,25 @@ export function updateVehicleWorld(vehicle, object, localSeats, exitLocal) {
   })
   tmp.set(exitLocal[0], exitLocal[1], exitLocal[2])
   object.localToWorld(tmp)
-  vehicle.exit = [tmp.x, tmp.y, tmp.z]
-  const inv = object.matrixWorld.clone().invert()
-  vehicle.toLocal = (x, y, z) => tmp.set(x, y, z).applyMatrix4(inv)
+  // 매 프레임 새 배열·행렬·함수를 만들면 메모리 청소(GC) 때 화면이 끊겨요 → 한 번 만들어 두고 값만 바꿔요
+  if (!vehicle.exit) vehicle.exit = [0, 0, 0]
+  vehicle.exit[0] = tmp.x
+  vehicle.exit[1] = tmp.y
+  vehicle.exit[2] = tmp.z
+  if (!vehicle._inv) {
+    vehicle._inv = new THREE.Matrix4()
+    vehicle.toLocal = (x, y, z) => tmp.set(x, y, z).applyMatrix4(vehicle._inv)
+  }
+  vehicle._inv.copy(object.matrixWorld).invert()
+}
+
+/** 좌석 id('차량id/좌석id', hj.sit으로 받은 값)로 지금 이 화면의 좌석 찾기 — 다른 사람을 그 자리에 앉혀 그릴 때 써요 */
+export function findSeatById(seatId) {
+  if (!seatId) return null
+  for (const vehicle of vehicles.values()) {
+    for (const seat of vehicle.seats) if (seat.id === seatId) return seat
+  }
+  return null
 }
 
 // 플레이어 근처에서 탈 수 있는(정차한) 차량 찾기

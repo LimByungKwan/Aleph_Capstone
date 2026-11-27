@@ -6,6 +6,8 @@ import { GWANGHWAMUN, GYEONGHOERU, GYEONGHOERU_DECK_Y, HALLS, HYANGWON, HYANGWON
 import { registerPalaceSeat, registerWarpSpot } from './palaceSeating.js'
 import { useHallDoors } from './hjSync.js'
 import { GS_SHIFT, zoneToWorld } from './hjAreas.js'
+import { BUGAK_TOP } from '../../game/Map/styles/hj/HjBugaksan.jsx'
+import { BALLOON_PAD, ENTRANCE, RIDES, SAFARI_BOARD, parkToWorld } from '../../game/Map/styles/hj/themeParkLayout.js'
 
 // [3. 개발 > 프론트엔드] 경복궁 관람 안내판 (혜진 영화·드라마 구역)
 // 광화문 앞 안내판을 누르면 목록이 뜨고, 고른 전각 앞으로 바로 옮겨 줘요 (PalaceGuideMenu.jsx).
@@ -44,8 +46,8 @@ if (palace) {
   const palaceGate = palaceToWorld(0, GWANGHWAMUN.az + 2.8)
   registerWarpSpot({ id: 'seoul_palace_enter', position: plazaGate, radius: 2.2,
     prompt: '광화문으로 경복궁 입장', warpTo: palaceGate })
-  registerWarpSpot({ id: 'seoul_palace_return', position: palaceGate, radius: 2.2,
-    prompt: '광화문광장으로 돌아가기', warpTo: plazaGate })
+  // (경복궁 광화문 안쪽의 "광화문광장으로 돌아가기"는 1930 궁궐에서 갑자기 2026 서울로 가 버려 헷갈려서 뺐어요.
+  //  현대 서울로는 경성역 시간 열차로 가요)
   const floor1 = 0.17 + HYANGWON.base + 1.0 // 캐릭터 몸통 높이
   const floor2 = 0.17 + HYANGWON_Y1 + 1.0
   const at = (lx, lz, y) => palaceToWorld(HYANGWON.ax + lx, HYANGWON.az + lz, y)
@@ -84,6 +86,8 @@ const gs = (lx, lz) => zoneToWorld(lx, lz)
 export const GYEONGSEONG_STOPS = palace
   ? [
       { id: 'gs_pass', name: '북악산 고갯길 · 숙정문', note: '성곽과 바위산 사이 돌길', pos: zoneToWorld(4.5, 20) },
+      // 북악산은 구역 기준 z 17.4에 놓여 있어요 (hj_drama.json bugaksan)
+      { id: 'bugak_top', name: '북악산 정상 전망대', note: '등산로 꼭대기 · 팔각정 · 망원경', pos: zoneToWorld(BUGAK_TOP.x - 2.5, 17.4 + BUGAK_TOP.z - 3.2, BUGAK_TOP.y + 1.1) },
       { id: 'gs_clock', name: '시계탑 광장', note: '경성거리 입구 · 꽃밭과 벤치', pos: gs(0, 16.8) },
       { id: 'gs_station', name: '경성역 앞', note: '전차 정류장 · 돔 지붕 역사', pos: gs(-25.4, 35) },
       { id: 'gs_platform', name: '기차 승강장', note: '증기기관차 타는 곳', pos: gs(-40.1, 40) },
@@ -94,10 +98,22 @@ export const GYEONGSEONG_STOPS = palace
     ]
   : []
 
+// 해월 드림파크 (경복궁 동쪽 놀이공원)
+const pk = (px, pz) => parkToWorld(px, pz, 1.4)
+export const PARK_STOPS = [
+  { id: 'pk_gate', name: '드림파크 입구', note: '매표소·꽃밭·주차장', pos: pk(ENTRANCE.gateX + 4, ENTRANCE.gateZ) },
+  { id: 'pk_wheel', name: '관람차', note: '곤돌라 12개가 천천히 돌아요', pos: pk(RIDES.wheel.x + 9, RIDES.wheel.z - 12) },
+  { id: 'pk_carousel', name: '회전목마', note: '줄무늬 천막 · 오르내리는 목마', pos: pk(RIDES.carousel.x, RIDES.carousel.z - 9) },
+  { id: 'pk_swing', name: '회전그네', note: '돌면 의자가 바깥으로 날아올라요', pos: pk(RIDES.swing.x + 12, RIDES.swing.z + 10) },
+  { id: 'pk_balloon', name: '열기구 마당', note: '내려앉으면 E로 타기', pos: pk(BALLOON_PAD.x + 4, BALLOON_PAD.z - 3) },
+  { id: 'pk_safari', name: '사파리 정류장', note: '지프가 서면 E로 타기', pos: pk(SAFARI_BOARD.x, SAFARI_BOARD.z - 1.5) },
+]
+
 // 안내판 위쪽 탭: 구역마다 갈 곳 목록
 export const GUIDE_AREAS = [
   { id: 'palace', name: '🏯 경복궁', stops: GUIDE_STOPS },
   { id: 'gyeongseong', name: '🚃 경성거리', stops: GYEONGSEONG_STOPS },
+  { id: 'park', name: '🎡 드림파크', stops: PARK_STOPS },
 ]
 
 // ── 전각 문 열고 닫기 ─────────────────────────────

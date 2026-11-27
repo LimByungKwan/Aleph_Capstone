@@ -11,9 +11,9 @@ export const useSgAudition = create((set) => ({
 export const AUDITION_PANEL = 'sg_audition'
 export const AUDITION_SONG = 'sungray-01' // 서버 허용 목록과 같은 id (ai/app/audition.py)
 
-// 심사위원 3명. model을 다른 GLB 경로로 바꾸면 그 모델로 앉음 (Sit 동작이 있어야 함)
+// 심사위원은 착석 모델 또는 Sit 클립의 마지막 자세를 사용한다.
 export const JUDGES = [
-  { role: '프로듀서', model: 'models/characters/male.glb', color: '#ffd166' },
-  { role: '보컬 트레이너', model: 'models/characters/female.glb', color: '#ff7ab6' },
-  { role: '안무가', model: 'models/characters/male.glb', color: '#7ee0d0' },
+  { role: '프로듀서', model: 'models/characters/producer.glb', color: '#ffd166' },
+  { role: '보컬 트레이너', model: 'models/characters/vocal-trainer.glb', color: '#ff7ab6' },
+  { role: '안무가', model: 'models/characters/choreographer.glb', color: '#7ee0d0' },
 ]

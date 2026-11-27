@@ -3,10 +3,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { AnimationMixer, Box3, Vector3 } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
+import { createWavePose } from '../src/game/Player/wavePose.js'
 
 globalThis.ProgressEvent ??= class ProgressEvent { constructor(type, init) { Object.assign(this, { type }, init) } }
 
-for (const gender of ['male', 'female', 'lumi']) {
+for (const gender of ['male', 'female', 'male2', 'female2', 'lumi']) {
   test(`${gender}: all animated skin weights are normalized and sampled poses stay grounded and finite`, async () => {
     const buffer = readFileSync(new URL(`../public/models/characters/${gender}.glb`, import.meta.url))
     const jsonSize = buffer.readUInt32LE(12)
@@ -18,7 +20,8 @@ for (const gender of ['male', 'female', 'lumi']) {
     delete gltf.textures
     delete gltf.materials
     for (const mesh of gltf.meshes) for (const primitive of mesh.primitives) delete primitive.material
-    const { scene, animations } = await new GLTFLoader().parseAsync(JSON.stringify(gltf), '')
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
+    const { scene, animations } = await loader.parseAsync(JSON.stringify(gltf), '')
     const meshes = []
     scene.traverse(object => { if (object.isSkinnedMesh) meshes.push(object) })
     assert.ok(meshes.length > 0)
@@ -35,6 +38,35 @@ for (const gender of ['male', 'female', 'lumi']) {
     }
     const expected = { Idle: 6, Walk: 1, Run: .7, Jump: 1, Greeting: 157 / 30 }
     const mixer = new AnimationMixer(scene)
+    if (gender === 'female2') {
+      const idle = mixer.clipAction(animations.find(clip => clip.name === 'Idle')).play()
+      mixer.setTime(.5)
+      const wave = createWavePose(scene, gender)
+      const [body] = meshes
+      const position = body.geometry.getAttribute('position')
+      const skirt = []
+      const point = new Vector3()
+      scene.updateMatrixWorld(true)
+      body.skeleton.update()
+      for (let i = 0; i < position.count; i++) {
+        // Bind pose has a clear gap between the skirt and the lowered hands.
+        if (Math.abs(position.getX(i)) < .25 && position.getY(i) >= .62 && position.getY(i) < .95) {
+          skirt.push([i, body.getVertexPosition(i, new Vector3())])
+        }
+      }
+      assert.ok(skirt.length > 1000)
+      const hand = scene.getObjectByName('RightHand')
+      const lowered = hand.getWorldPosition(new Vector3())
+      wave.apply(.5, 1)
+      scene.updateMatrixWorld(true)
+      body.skeleton.update()
+      assert.ok(hand.getWorldPosition(point).y - lowered.y > .2)
+      for (const [i, rest] of skirt) {
+        assert.ok(body.getVertexPosition(i, point).distanceTo(rest) < .001, `Skirt vertex ${i} moved with the arm`)
+      }
+      wave.reset()
+      idle.stop()
+    }
     const box = new Box3(), total = new Box3(), size = new Vector3()
     for (const clip of animations) {
       assert.ok(clip.name === 'Sit' ? clip.duration > .5 && clip.duration < 6 : Math.abs(clip.duration - expected[clip.name]) < .04, `${clip.name} duration ${clip.duration}`)
