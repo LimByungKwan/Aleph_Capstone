@@ -2,14 +2,18 @@
 // 참고: 해안 레일바이크(지붕 달린 4바퀴 바이크, 철길 옆 소나무 줄·노란 울타리, 무지개 조명 터널)
 //
 // jmRailTrack      철길 그림 (자갈 + 침목 + 레일). item.track = { points: [[x, z], ...], closed }
-// jmRailBike       E로 타서 W/S로 직접 모는 레일바이크 (철길 순환선 위). 내 화면에서만 움직임(다른 사람에게는 내 캐릭터만 보임)
+// jmRailBike       E로 타서 W/S로 직접 모는 레일바이크 (철길 순환선 위)
+//                  멀티: 타는 동안 바이크 위치·방향을 hj.veh로, 앉은 좌석을 hj.sit으로 보냄(혜진 님 hjSync 형식 그대로)
+//                  → 다른 화면은 그 사람 바이크를 그리고(RemoteRailBike), 좌석을 rideSeats에 올려 두면
+//                    공용 RemotePlayer가 그 사람 캐릭터를 바이크 좌석에 앉은 자세로 붙여 그림 (공용 파일·서버는 안 고침)
+//                  바이크는 한 사람에 한 대씩(각자 화면의 역에 자기 바이크가 있음)
 // jmRailBikeParked 역 옆 대기선에 세워 둔 바이크들 (그림만)
 // jmRailTunnel     풀 언덕 속 무지개 터널 (로컬 x = 철길 방향). 걷기 막는 판정은 JSON jmCollider
 // jmRailStation    작은 시골역 승강장 + 지붕 + 역 이름판 + 매표소 (앞 +z = 철길 쪽). 걷는 바닥은 JSON jmCollider
 // jmRailFence      철길 옆 노란 울타리 (item.points 를 잇는 선)
 //
 // 점 좌표는 모두 item.position 기준 (생성기는 position [0, 0] + 구역 좌표로 씀)
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -19,6 +23,23 @@ import { canvasTexture } from './jm_landmarks.jsx'
 import { useGameStore } from '../../../store/gameStore.js'
 import { requestPalaceWarp } from '../../../components/movieZone/palaceSeating.js'
 import { useJmActivity } from './jm_activityStore.js'
+import { sendHj, useRealtimeStore } from '../../multiplayer/realtimeStore.js'
+import { remoteVehicle, sendVehicle } from '../../../components/movieZone/hjSync.js'
+import { registerVehicle } from '../../../components/movieZone/rideSeats.js'
+
+// ── 멀티 동기화 (hj.veh / hj.sit) ─────────────────────────────
+// 탈것 id = 'jmrail.<사람 id>', 좌석 id = 'jmrail.<사람 id>/seat' (서버 hj_world.js ID 규칙: 영문·숫자·_/.:- 48자 이하)
+const RIDE_PREFIX = 'jmrail.'
+const SEAT_BODY = 0.91 // 좌판 위 몸통 높이 (rideSeats STANDING_OFFSET·hjSync STAND_TO_BODY와 같은 값)
+const selfRideId = () => {
+  const id = useRealtimeStore.getState().selfId
+  return id ? `${RIDE_PREFIX}${id}` : null
+}
+function sendRideSit(yaw) {
+  const id = selfRideId()
+  if (id) sendHj({ t: 'hj.sit', seat: `${id}/seat`, h: SEAT_BODY, r: Math.round(yaw * 1000) / 1000 })
+}
+const sendRideStand = () => sendHj({ t: 'hj.sit', seat: null })
 
 const range = (n) => Array.from({ length: n }, (_, i) => i)
 const GAUGE = 1.0 // 레일 사이 (바이크 바퀴 사이와 같게)
@@ -263,6 +284,7 @@ function JmRailBike({ item }) {
     const controls = getState().controls
     state.cam = controls?.distance ?? null
     if (controls?.dollyTo) controls.dollyTo(4.4, true)
+    sendRideSit(bike.current?.rotation.y ?? 0) // 다른 화면: 이 바이크 좌석에 앉은 자세로
   }
 
   function restoreModel() {
@@ -283,6 +305,7 @@ function JmRailBike({ item }) {
     state.v = 0
     keys.current.clear()
     useJmActivity.getState().setRail({ speed: 0, lap: false })
+    sendRideStand()
     // 바이크 오른쪽(로컬 -x = 순환선 안쪽, 역에서는 승강장 쪽) 1.6m에 내려 줌 — 터널 안이어도 벽(철길에서 2.1m) 안쪽
     //   승강장(높이 0.25) 위일 수 있어서 조금 높게 놓고 떨어지게
     place()
@@ -356,12 +379,24 @@ function JmRailBike({ item }) {
       const rail = useJmActivity.getState().rail
       if (rail.active === item.id) {
         useJmActivity.getState().setRail({ active: null, near: null })
+        sendRideStand()
         const game = useGameStore.getState()
         if (game.openPanel?.placeId === item.id) game.close()
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
+  )
+
+  // 다시 접속하면(서버 재시작·와이파이) 서버의 앉은 자리 기억이 비워짐 → 타는 중이면 다시 알림
+  useEffect(
+    () =>
+      useRealtimeStore.subscribe((s, prev) => {
+        if (s.status === 'online' && (prev.status !== 'online' || s.selfId !== prev.selfId) && useJmActivity.getState().rail.active === item.id) {
+          sendRideSit(bike.current?.rotation.y ?? 0)
+        }
+      }),
+    [item.id],
   )
 
   useFrame(({ clock }, rawDt) => {
@@ -419,6 +454,12 @@ function JmRailBike({ item }) {
     }
 
     if (riding) {
+      // 다른 화면에 내 바이크 위치·방향 (sendVehicle이 0.1초 간격으로만 실제로 보냄 — 서 있어도 계속 보내야 안 사라짐)
+      const rideId = selfRideId()
+      if (rideId) {
+        g.getWorldPosition(tmp.p)
+        sendVehicle(rideId, [tmp.p.x, tmp.p.y, tmp.p.z], g.rotation.y)
+      }
       // 캐릭터 몸(물리)을 바이크 자리에 붙잡아 둠 (엘리베이터와 같은 방식)
       g.localToWorld(tmp.me.set(SEAT_LOCAL[0], 0, SEAT_LOCAL[2]))
       requestPalaceWarp([tmp.me.x, tmp.me.y + 1.05, tmp.me.z])
@@ -473,7 +514,79 @@ function JmRailBike({ item }) {
         <BikeMesh variant={0} number={item.number ?? 7} wheelRef={wheels} />
       </group>
       <RailHud bikeId={item.id} />
+      <RemoteRailBikes />
     </>
+  )
+}
+
+// ── 다른 사람이 타고 있는 레일바이크 ─────────────────────────
+// 0.3초마다 "지금 hj.veh를 보내고 있는 사람" 목록을 다시 보고, 사람마다 바이크 한 대씩
+function RemoteRailBikes() {
+  const [ids, setIds] = useState([])
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const peers = useRealtimeStore.getState().peers
+      const next = Object.keys(peers)
+        .filter((id) => remoteVehicle(`${RIDE_PREFIX}${id}`))
+        .sort()
+      setIds((prev) => (prev.join('|') === next.join('|') ? prev : next))
+    }, 300)
+    return () => clearInterval(timer)
+  }, [])
+  return ids.map((id, i) => <RemoteRailBike key={id} peerId={id} variant={2 + (i % 3)} />)
+}
+
+const remoteTmp = new THREE.Vector3()
+function RemoteRailBike({ peerId, variant }) {
+  const group = useRef(null)
+  const placed = useRef(false)
+  // 좌석을 rideSeats에 올려 둠: RemotePlayer가 hj.sit의 좌석 id로 찾아 그 사람을 여기 앉혀 그림
+  //   stopped:false·toLocal 없음 → 혜진 님 "타기(E)"·운전 구역 충돌 검사는 이 바이크를 건너뜀
+  const vehicle = useMemo(
+    () => ({
+      id: `${RIDE_PREFIX}${peerId}`,
+      label: '레일바이크',
+      stopped: false,
+      seats: [{ id: `${RIDE_PREFIX}${peerId}/seat`, label: '레일바이크', position: [0, 0, 0], surfaceY: 0, yaw: 0, taken: true }],
+    }),
+    [peerId],
+  )
+  useEffect(() => registerVehicle(vehicle), [vehicle])
+  useFrame((_, rawDt) => {
+    const g = group.current
+    if (!g?.parent) return
+    const v = remoteVehicle(vehicle.id)
+    if (!v) {
+      g.visible = false
+      return
+    }
+    g.visible = true
+    remoteTmp.set(v.p[0], v.p[1], v.p[2])
+    g.parent.worldToLocal(remoteTmp)
+    // 0.1초마다 오는 위치 사이를 부드럽게 따라감 (멀리 튀면 바로 옮김)
+    if (!placed.current || g.position.distanceTo(remoteTmp) > 6) {
+      g.position.copy(remoteTmp)
+      g.rotation.y = v.r
+      placed.current = true
+    } else {
+      const k = 1 - Math.exp(-12 * Math.min(rawDt, 0.1))
+      g.position.lerp(remoteTmp, k)
+      const d = Math.atan2(Math.sin(v.r - g.rotation.y), Math.cos(v.r - g.rotation.y))
+      g.rotation.y += d * k
+    }
+    g.updateMatrixWorld()
+    const seat = vehicle.seats[0]
+    g.localToWorld(remoteTmp.set(...SEAT_LOCAL))
+    seat.surfaceY = remoteTmp.y
+    seat.position[0] = remoteTmp.x
+    seat.position[1] = remoteTmp.y + SEAT_BODY
+    seat.position[2] = remoteTmp.z
+    seat.yaw = g.rotation.y
+  })
+  return (
+    <group ref={group} visible={false}>
+      <BikeMesh variant={variant} number={20 + variant} />
+    </group>
   )
 }
 

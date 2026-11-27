@@ -2185,6 +2185,7 @@ function YuBanquetRooms({ W, D, Y }) {
     return { trays: tr, cushions: out(cushions), dishes: out(dishes), lanterns: out(lanterns), cords: out(cords), guest: { tables: out(guest.tables), futons: out(guest.futons), lamps: out(guest.lamps) }, legs: tr.map((t) => ({ p: [t.p[0], t.p[1] - 0.1, t.p[2]], s: [1.3, 0.12, 0.5] })) }
   }, [lv, rooms, iz, Y.guest])
   const tatami = useMemo(() => tatamiTexture(), [])
+  const shaftHole = Y.guest?.shaft ? [[Y.guest.x - Y.guest.shaft + 0.1, Y.guest.z - Y.guest.shaft + 0.1, Y.guest.x + Y.guest.shaft - 0.1, Y.guest.z + Y.guest.shaft - 0.1]] : []
   return (
     <group>
       <Instances geometry={GEO.box} material={mat('#5a1e14', { roughness: 0.5 })} items={rows.trays} />
@@ -2207,10 +2208,13 @@ function YuBanquetRooms({ W, D, Y }) {
               const depth = Math.abs(outer - band.z)
               return (
                 <group key={j}>
-                  <mesh position={[(band.x0 + band.x1) / 2, y + 0.015, zc]} rotation={[-Math.PI / 2, 0, 0]}>
-                    <planeGeometry args={[band.x1 - band.x0, depth]} />
-                    <primitive object={texMat(tiled(tatami, (band.x1 - band.x0) / 1.8, depth / 0.9))} attach="material" />
-                  </mesh>
+                  {/* (11/27) 손님용 엘리베이터 칸이 실제로 오르내림 → 승강로 자리(바닥판 구멍과 같은 크기)는 다다미를 비움 */}
+                  {rectHoles([band.x0, Math.min(band.z, outer), band.x1, Math.max(band.z, outer)], shaftHole).map(([x0, z0, x1, z1], m) => (
+                    <mesh key={m} position={[(x0 + x1) / 2, y + 0.015, (z0 + z1) / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+                      <planeGeometry args={[x1 - x0, z1 - z0]} />
+                      <primitive object={texMat(tiled(tatami, (x1 - x0) / 1.8, (z1 - z0) / 0.9))} attach="material" />
+                    </mesh>
+                  ))}
                   {/* 회랑 쪽 면(현판 포함) + 방 안쪽 면 */}
                   <FusumaRow band={band} y={y} h={h} doorW={rooms.doorW} face={-sign} k={k} solid />
                   <FusumaRow band={band} y={y} h={h} doorW={rooms.doorW} face={sign} k={k + 1} />
