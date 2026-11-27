@@ -1461,30 +1461,36 @@ function ValveWheel({ p, r = 0.5, rot = [0, 0, 0] }) {
 }
 // ── 계단 난간 (11/26 지민 요청) — 계단 옆 나무 기둥 + 경사 손잡이 + 가운데 가로대 ──
 // 소품 기준: 로컬 +z가 올라가는 쪽, z -L/2(높이 0) → +L/2(높이 rise). 충돌 벽은 생성기에서 collider로 따로
-const RAIL_WOOD = mat('#6b4428', { roughness: 0.8 })
-const RAIL_CAP = mat('#4a2e1c', { roughness: 0.7 })
+// (11/27 지민 결정: 난간 가안) 붉은 칠 여관 난간 — 주홍 기둥 + 위(굵게)·아래 두 줄 손잡이 + 두 기둥마다 금 공 장식 (1층 홀·다리 난간과 같은 결)
+const RAIL_RED = mat('#a9543a', { roughness: 0.6 })
+const RAIL_DARK = mat('#7d3d2a', { roughness: 0.7 })
+const RAIL_GOLD = mat('#c9a24a', { metalness: 0.45, roughness: 0.4 })
 export function JmStairRail({ item }) {
   const L = item.size[2]
   const rise = item.rail?.rise ?? 0
   const H = 0.95
   const parts = useMemo(() => {
-    const n = Math.max(2, Math.round(L / 1.6) + 1)
-    const posts = range(n).map((i) => {
+    const n = Math.max(2, Math.round(L / 1.2) + 1)
+    const posts = []
+    const balls = []
+    range(n).forEach((i) => {
       const t = i / (n - 1)
       const z = -L / 2 + 0.08 + t * (L - 0.16)
       const y0 = rise * t
-      return { p: [0, y0 + H / 2, z], s: [0.12, H, 0.12] }
+      posts.push({ p: [0, y0 + H / 2, z], s: [0.13, H, 0.13] })
+      if (i % 2 === 0 || i === n - 1) balls.push({ p: [0, y0 + H + 0.1, z], s: [0.09, 0.09, 0.09] })
     })
     const slope = Math.atan2(rise, L)
     const len = Math.hypot(L, rise)
-    return { posts, slope, len }
+    return { posts, balls, slope, len }
   }, [L, rise])
   return (
     <group>
-      <Instances geometry={GEO.box} material={RAIL_WOOD} items={parts.posts} />
-      {/* 손잡이 + 가운데 가로대 (경사 따라) */}
-      <Box p={[0, rise / 2 + H, 0]} s={[0.16, 0.08, parts.len + 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_CAP} />
-      <Box p={[0, rise / 2 + H * 0.5, 0]} s={[0.06, 0.06, parts.len - 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_WOOD} />
+      <Instances geometry={GEO.box} material={RAIL_RED} items={parts.posts} />
+      <Instances geometry={GEO.sphere} material={RAIL_GOLD} items={parts.balls} />
+      {/* 위 손잡이(굵게) + 아래 가로대 (경사 따라) */}
+      <Box p={[0, rise / 2 + H, 0]} s={[0.18, 0.1, parts.len + 0.12]} r={[-parts.slope, 0, 0]} m={RAIL_RED} />
+      <Box p={[0, rise / 2 + H * 0.45, 0]} s={[0.08, 0.07, parts.len - 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_DARK} />
     </group>
   )
 }

@@ -17,3 +17,9 @@ export function jmLiftMoveSec(levels, from, to) {
 export function jmLiftTripSec(levels, from, to) {
   return 2 * JM_LIFT.door + 2 * JM_LIFT.pause + jmLiftMoveSec(levels, from, to)
 }
+
+/** (11/27 코드 리뷰) 서버가 받아 주는 엘리베이터와 층마다 칸 바닥 높이(m, 1층 = 0) — 화면이 보내는 levels는 믿지 않음
+ *  여관을 3층(로비·연회장·집무실)으로 바꿈: gen-jm-kyoto.mjs YU_LV[0..2] - YU_LV[0]. 맵의 소품 id는 구역 이름이 붙음(JM/) */
+export const JM_LIFT_LEVELS = {
+  'JM/jm_gelev': [0, 7, 11.8],
+}

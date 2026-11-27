@@ -17,7 +17,7 @@ const STONES = ['#8f8a80', '#a39d92', '#7d786f', '#99938a', '#86817a'].map((c) =
 const MOSS = mat('#5d6b3f', { flat: true, roughness: 1 })
 const ROCK = mat('#7a756c', { flat: true, roughness: 1 })
 const WOOD_TREAD = mat('#7a5236', { roughness: 0.8 })
-const WOOD_RISER = mat('#3a2a20', { roughness: 0.9 })
+const WOOD_RISER = mat('#5a3826', { roughness: 0.9 }) // (11/27) 너무 검어서 밑 덩어리가 구멍처럼 보였음 → 짙은 밤색
 const VERMILION = mat('#a9543a', { roughness: 0.7 })
 const GRAVEL = mat('#d8d2c4', { roughness: 1 })
 const GARDEN_STONE = mat('#7f7a70', { flat: true, roughness: 0.95 })
@@ -120,6 +120,20 @@ function RedWood({ steps, w, depth, ah }) {
           ))}
         </group>
       ))}
+      {/* (11/27 지민 제보: 계단 뒷면이 짙은 덩어리로만 보임) 맨 위 칸 뒷면을 주홍 판 + 나무 띠·기둥으로 마감 */}
+      {(() => {
+        const last = steps[steps.length - 1]
+        if (!last) return null
+        const zb = last.z + depth / 2 + 0.04
+        const hgt = last.top - ah
+        return (
+          <group>
+            <Box p={[0, ah + hgt / 2, zb]} s={[w + 0.22, hgt, 0.06]} m={VERMILION} />
+            {[0.12, hgt - 0.1].map((yy) => <Box key={yy} p={[0, ah + yy, zb + 0.04]} s={[w + 0.24, 0.14, 0.05]} m={WOOD_TREAD} />)}
+            {[-1, 0, 1].map((k) => <Box key={k} p={[k * (w / 2 + 0.05), ah + hgt / 2, zb + 0.04]} s={[0.12, hgt, 0.06]} m={WOOD_TREAD} />)}
+          </group>
+        )
+      })()}
     </group>
   )
 }

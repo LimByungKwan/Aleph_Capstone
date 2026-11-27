@@ -10,6 +10,7 @@ import { BRASS, cageTexture, elevPlankTexture, floorTexture, LEVER_BRONZE, LEVER
 import { useGameStore } from '../../../store/gameStore.js'
 import { onJmMessage, sendJm, useRealtimeStore } from '../../multiplayer/realtimeStore.js'
 import { JM_LIFT, jmLiftMoveSec } from '@shared/jm_liftTiming.js'
+import { JmBanquetDoors } from './jm_banquet.jsx'
 
 // ── (11/27) 유야(온천장) 손님용 엘리베이터: 칸 하나가 실제로 오르내림 ─────────────
 // 병관님 전망대 엘리베이터(Map/Terrain.jsx Elevator)와 같은 방식:
@@ -39,7 +40,13 @@ const doorAmount = (s, level) => (s.at === level && s.phase !== 'moving' ? s.doo
 const LIFTS = layout.props.filter((item) => item.style === 'jmElevator' && item.elevator?.stops?.length > 1)
 
 export function JmGuestLifts({ playerRef }) {
-  return LIFTS.map((item) => <GuestLift key={item.id} item={item} playerRef={playerRef} />)
+  return (
+    <>
+      {LIFTS.map((item) => <GuestLift key={item.id} item={item} playerRef={playerRef} />)}
+      {/* (11/27) 같은 여관 2층 연회장 미닫이도 물리 안에서 그림 (Scene.jsx는 안 고치려고 여기서 같이) */}
+      <JmBanquetDoors playerRef={playerRef} />
+    </>
+  )
 }
 
 function GuestLift({ item, playerRef }) {
@@ -87,7 +94,16 @@ function GuestLift({ item, playerRef }) {
     const s = state.current
     if (to < 0 || to >= n) return
     if (useRealtimeStore.getState().status === 'online') {
-      sendJm({ t: 'jm.lift.go', id: item.id, to, levels })
+      sendJm({ t: 'jm.lift.go', id: item.id, to })
+      // (11/27 코드 리뷰) 서버가 거절하거나 옛 버전이면 아무 일도 안 일어나던 문제 → 1.2초 안에 운행 신호가 없으면 이 화면에서 움직임
+      const sentAt = performance.now()
+      setTimeout(() => {
+        const st = state.current
+        if (st.tripAt != null && st.tripAt >= sentAt) return
+        if (st.trip) {
+          if (st.trip.to !== to) st.pending = to
+        } else if (to !== st.at) st.trip = { from: st.at, to, start: performance.now() }
+      }, 1200)
       return
     }
     if (s.trip) {
@@ -107,7 +123,12 @@ function GuestLift({ item, playerRef }) {
         const s = state.current
         const valid = (i) => Number.isInteger(i) && i >= 0 && i < n
         if (msg.t === 'jm.lift.trip' && valid(msg.from) && valid(msg.to)) {
-          s.trip = { from: msg.from, to: msg.to, start: performance.now() - (Number(msg.elapsed) || 0) }
+          // (11/27 코드 리뷰) 서버가 아는 층(from)과 이 화면의 칸 층이 다르면(서버 재시작·혼자 모드로 옮긴 뒤) 닫힘 단계에서 칸이 순간 이동해
+          //   탄 사람이 떨어졌음 → 출발 층은 이 화면의 칸 층으로 두고 도착 층만 서버를 따름
+          const from = s.trip ? s.trip.from : s.at
+          s.tripAt = performance.now()
+          if (from === msg.to && !s.trip) return // 이 화면은 이미 그 층 → 움직일 것 없음
+          s.trip = { from, to: msg.to, start: performance.now() - (from === msg.from ? Number(msg.elapsed) || 0 : 0) }
           s.pending = null
         } else if (msg.t === 'jm.lift.state' && valid(msg.at)) {
           s.pending = null
@@ -229,9 +250,17 @@ function GuestLift({ item, playerRef }) {
       const camMode = onLift ? (s.trip && s.phase !== 'opening' ? 'ride' : 'in') : null
       if (camMode !== s.camMode) {
         if (camMode) {
+          // (11/27 지민 제보: 내린 뒤에도 카메라가 1m에 붙어 있어 캐릭터가 돌면 얼굴이 화면 가득) 타기 전 거리·각도를 기억
+          if (!s.camMode) s.camSaved = { dist: controls.getSpherical(new THREE.Spherical()).radius, polar: controls.polarAngle, min: controls.minDistance }
           controls.minDistance = Math.min(controls.minDistance, 1)
           controls.rotateTo(yaw, 1.05, true)
           controls.dollyTo(camMode === 'ride' ? 1 : 2.6, true)
+        } else if (s.camSaved) {
+          // 칸에서 나오면 타기 전 거리(최소 3m)·높이로 되돌림 — 공용 FollowCamera는 줄어든 거리를 사용자가 고른 거리로 기억해 버림
+          controls.minDistance = s.camSaved.min ?? 3 // 줌 한계도 타기 전 값으로 (코드 리뷰)
+          controls.dollyTo(Math.max(controls.minDistance, s.camSaved.dist), true)
+          controls.rotatePolarTo(Math.min(s.camSaved.polar, 1.4), true)
+          s.camSaved = null
         }
         s.camMode = camMode
       }
