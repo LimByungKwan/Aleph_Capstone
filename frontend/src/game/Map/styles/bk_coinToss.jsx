@@ -316,7 +316,7 @@ function CoinHud({ open, charge, release, cancelCharge }) {
       <div style={{ ...hudWrap, width: size.width, height: size.height }}>
         {showHint && (
           <button type="button" style={chip} onClick={open}>
-            <kbd style={kbd}>E</kbd> 분수에 동전 던지기 (소원 빌기) {done && '· 완료 ✓'}
+            <kbd style={kbd}>E</kbd> 소원 동전 넣기 {done && '· 완료 ✓'}
           </button>
         )}
         {c.active && (

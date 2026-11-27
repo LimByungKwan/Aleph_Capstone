@@ -228,8 +228,7 @@ export function Fountain({ item }) {
       <Cyl p={[0, 2.05, 0]} rad={0.16} h={0.55} c="#ece6dd" />
       <Instances geometry={GEO.ico} material={TINTABLE} items={flowers} />
       <FountainWater radius={radius} />
-      {/* 분수 동전 던지기 체험 (bk_coinToss.jsx) */}
-      <FountainCoinToss item={item} />
+      {item.coinToss && <FountainCoinToss item={item} />}
     </group>
   )
 }

@@ -26,10 +26,10 @@ const FOV_WIDE = 50
 const FOV_TELE = 10
 const PITCH_MIN = -0.6
 const PITCH_MAX = 0.25
-// 망원경을 보는 동안 맵 이름표(촬영지·카페 등, PlaceMarkers.jsx)를 숨김 — 공용 파일은 고치지 않고 이름표 층에 표시만 붙임
+// 망원경을 보는 동안 맵 이름표와 영화·드라마 구역의 이동 버튼을 숨김
 // (혜진 님 궁궐 실내와 같은 방식: labelLayer에 data 속성을 켜고 끔)
 const HIDE_LABELS = 'data-bk-telescope'
-const HIDE_LABELS_CSS = `[${HIDE_LABELS}] .map-place-label { display: none !important; }`
+const HIDE_LABELS_CSS = `[${HIDE_LABELS}] :is(.map-place-label, .hj-story-cue) { display: none !important; }`
 const YAW_RANGE = 1.4 // 망원경 정면에서 좌우로 돌 수 있는 한도(라디안, 약 80°) — 타워 안쪽 기둥을 보지 않게
 const SPOT_GOAL = 5
 const SPOT_KEY = 'scenewalk.telescope'
