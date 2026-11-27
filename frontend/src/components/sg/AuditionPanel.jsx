@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore.js'
-import { AUDITION_PANEL, AUDITION_SONG, useSgAudition } from '../../game/Map/styles/sg_auditionStore.js'
+import { AUDITION_SONG } from '../../game/Map/styles/sg_auditionStore.js'
 import { recordTake, uploadTake } from './auditionTake.js'
 import KeyboardRhythm, { JudgeFeedback, playMelody } from './KeyboardRhythm.jsx'
 import { detectMicMode } from './micMode.js'
@@ -16,20 +16,6 @@ const TAIL_SECONDS = 2.5 // 늦은 시작도 담되 서버의 곡 끝+6초 안�
 const STATUS = { ok: ['정확', '#9be7c4'], flat: ['낮음', '#8ab4ff'], sharp: ['높음', '#ffb86b'], crack: ['삑사리', '#ff6b8b'], missed: ['안 들림', '#6b5a8f'] }
 
 export default function AuditionPanel() {
-  const near = useSgAudition((s) => s.near)
-  const open = useGameStore((s) => s.openPanel?.type === AUDITION_PANEL)
-  if (open) return <Audition />
-  if (!near) return null
-  return (
-    <div style={hudWrap}>
-      <div style={chip}>
-        <kbd style={kbd}>E</kbd> SUNGRAY 오디션 도전
-      </div>
-    </div>
-  )
-}
-
-function Audition() {
   const [notes, setNotes] = useState(null)
   const [phase, setPhase] = useState('ready') // ready | asking | retry | keyboard | countdown | recording | judging | result | error
   const [count, setCount] = useState(COUNTDOWN)
@@ -238,8 +224,6 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // drei <Html> 이름표 위에 뜨게 응원봉 게임(CheerGame.jsx)과 같은 값
 const overlay = { position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5, 3, 18, 0.56)', zIndex: 16777280 }
-const hudWrap = { position: 'absolute', left: 0, right: 0, bottom: 72, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 20 }
-const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
 // 작은 화면에서는 내용만 세로로 스크롤해 조작 버튼까지 닿게
 const panel = { pointerEvents: 'auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.2vh, 14px)', width: 'min(1220px, 92vw)', minHeight: 'min(750px, 86vh)', maxHeight: 'min(760px, 86vh)', overflowY: 'auto', overflowX: 'hidden', padding: 'clamp(16px, 2.4vw, 36px)', borderRadius: 20, border: '1px solid #756097', background: 'rgba(24,18,43,0.97)', boxShadow: '0 24px 80px #0009, 0 0 36px #b18cff22', color: '#fff', fontSize: 'clamp(16px, 1.5vw, 20px)', overflowWrap: 'anywhere', lineHeight: 1.5 }
 const roll = { position: 'relative', flex: '1 0 auto', height: 'clamp(220px, 32vh, 340px)', minHeight: 220, margin: '8px 0', borderRadius: 14, border: '1px solid #4e3b70', background: '#160f26', overflow: 'hidden' }

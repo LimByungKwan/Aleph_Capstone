@@ -164,7 +164,7 @@ function HallColumn({ x, z, r = 0.32, half = false }) {
       {[0, 1, 2].map((i) => (
         <Cyl key={i} p={[0, HALL_SPRING - 0.5 + i * 0.16, 0]} rad={r * (1.12 + i * 0.1) * s} h={0.1} m={i === 1 ? HALL_BAND : HALL_BAND_PALE} />
       ))}
-      <Box p={[0, HALL_SPRING - 0.04, 0]} s={[r * 3 * s, 0.08, r * 3 * s]} m={HALL_BAND_PALE} />
+      <Box p={[0, HALL_SPRING - 0.032, 0]} s={[r * 3 * s, 0.096, r * 3 * s]} m={HALL_BAND_PALE} />
     </group>
   )
 }
@@ -287,7 +287,7 @@ function JmWaitingHall({ hall, pass, passH }) {
       {/* 바닥 + 낙엽 */}
       <Box p={[0, 0.04, hz]} s={[hall.w - 0.4, 0.08, hd]} m={HALL_STONE_FLOOR} />
       {leaves.map(([x, z, r, c, s], i) => (
-        <mesh key={i} position={[x, 0.085, z]} rotation={[-Math.PI / 2, 0, r]} scale={[s, s * 0.6, 1]} material={LEAF_C[c]}>
+        <mesh key={i} position={[x, 0.096 + c * 0.016, z]} rotation={[-Math.PI / 2, 0, r]} scale={[s, s * 0.6, 1]} material={LEAF_C[c]}>
           <circleGeometry args={[1, 5]} />
         </mesh>
       ))}
@@ -1413,8 +1413,9 @@ const MOSS_C = ['#5d7a3a', '#6e8a42', '#4f6a33', '#7f9a4c'].map((c) => mat(c, { 
 const GRASS_BLADE = mat('#5f8a3a', { roughness: 1, flat: true, double: true })
 export function JmMossPath({ item }) {
   const [w, , d] = item.size
+  const { capEnd, raisedEnd = 0, seed: pathSeed } = item
   const parts = useMemo(() => {
-    let seed = (item.seed ?? 3) + 17
+    let seed = (pathSeed ?? 3) + 17
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
     const long = d >= w // 길 방향
     const L = long ? d : w
@@ -1427,10 +1428,14 @@ export function JmMossPath({ item }) {
       const edge = rnd() < 0.65
       const v = edge ? (rnd() < 0.5 ? -1 : 1) * (W / 2 - rnd() * 0.5) : (rnd() - 0.5) * W * 0.8
       const s = edge ? 0.25 + rnd() * 0.45 : 0.12 + rnd() * 0.22
-      patches.push([...at(u, v), s, s * (0.5 + rnd() * 0.5), rnd() * Math.PI, Math.floor(rnd() * MOSS_C.length)])
+      // 대합실 경계 앞에서 이끼가 끝나도록 타원의 최대 반경을 남긴다.
+      patches.push([...at(capEnd ? Math.min(u, L / 2 - s) : u, v), s, s * (0.5 + rnd() * 0.5), rnd() * Math.PI, Math.floor(rnd() * MOSS_C.length)])
     }
     const joints = [] // 돌 사이 가는 이끼 줄
-    for (let u = -L / 2 + 0.4; u < L / 2; u += 0.55 + rnd() * 0.25) joints.push([...at(u, (rnd() - 0.5) * 0.4), W * (0.4 + rnd() * 0.4), Math.floor(rnd() * MOSS_C.length)])
+    for (let u = -L / 2 + 0.4; u < L / 2; u += 0.55 + rnd() * 0.25) {
+      const top = raisedEnd > 0 && u + 0.03 > L / 2 - raisedEnd ? 0.092 : 0.076
+      joints.push([...at(u, (rnd() - 0.5) * 0.4), W * (0.4 + rnd() * 0.4), Math.floor(rnd() * MOSS_C.length), top])
+    }
     const tufts = []
     for (let i = 0; i < Math.round(L * 1.4); i++) {
       const u = (rnd() - 0.5) * L
@@ -1438,16 +1443,16 @@ export function JmMossPath({ item }) {
       tufts.push([...at(u, v), 0.18 + rnd() * 0.22, rnd() * Math.PI])
     }
     return { patches, joints, tufts, long }
-  }, [w, d, item.seed])
+  }, [w, d, capEnd, raisedEnd, pathSeed])
   return (
     <group>
       {parts.patches.map(([x, z, a, b, r, c], i) => (
-        <mesh key={`p${i}`} position={[x, 0.075, z]} rotation={[-Math.PI / 2, 0, r]} scale={[a, b, 1]} material={MOSS_C[c]}>
+        <mesh key={`p${i}`} position={[x, 0.108 + c * 0.016, z]} rotation={[-Math.PI / 2, 0, r]} scale={[a, b, 1]} material={MOSS_C[c]}>
           <circleGeometry args={[1, 7]} />
         </mesh>
       ))}
-      {parts.joints.map(([x, z, len, c], i) => (
-        <Box key={`j${i}`} p={[x, 0.072, z]} s={parts.long ? [len, 0.004, 0.06] : [0.06, 0.004, len]} m={MOSS_C[c]} />
+      {parts.joints.map(([x, z, len, c, top], i) => (
+        <Box key={`j${i}`} p={[x, (0.072 + top) / 2, z]} s={parts.long ? [len, top - 0.072, 0.06] : [0.06, top - 0.072, len]} m={MOSS_C[c]} />
       ))}
       {parts.tufts.map(([x, z, h, r], i) => (
         <group key={`t${i}`} position={[x, 0.06, z]} rotation={[0, r, 0]}>

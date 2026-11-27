@@ -5,6 +5,15 @@ import { Toasts } from '../movieZone/common.jsx'
 import '../movieZone/ui.css'
 import '../movieZone/ui-components.css'
 
+export function Stat({ label, value }) {
+  return (
+    <div className="ui-stat">
+      <div className="ui-stat__label">{label}</div>
+      <div className="ui-stat__value">{value}</div>
+    </div>
+  )
+}
+
 // [3. 개발 > 프론트엔드] 사장님·관리자 화면 공통 틀 (위쪽 바 + 3D 맵으로 돌아가기)
 export function PageShell({ title, children }) {
   const user = currentUser(useUiStore((s) => s.userId))

@@ -1,10 +1,11 @@
-import { useMemo, useRef } from 'react'
+import { Suspense, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { hipRoofGeometry } from './geometry.js'
 import { getCirclePlazaTexture, getNeonWingsTexture, getSignTexture, getStripeTexture, getTiledTexture } from './textures.js'
 import { Ball, Box, Cone, Cyl, GEO, Instances, hashString, mat, seeded, texMat } from './kit.jsx'
+import { PicnicBeanbags } from './PicnicBeanbags.jsx'
 import SeasonalTree from './SeasonalTree.jsx'
 import { live } from '../../timeOfDay.js'
 import { TowerTelescopes } from './bk_telescope.jsx'
@@ -517,7 +518,7 @@ export function FlowerBed({ item }) {
   )
   return (
     <group>
-      <Box p={[0, h / 2, 0]} s={[w, h, d]} c="#9a6b45" />
+      <Box p={[0, h / 2, 0]} s={[w, h, d]} c={item.color ?? '#9a6b45'} />
       <Box p={[0, h - 0.02, 0]} s={[w - 0.12, 0.06, d - 0.12]} c="#5b4636" />
       <Instances geometry={GEO.ico} material={TINTABLE} items={flowers} />
     </group>
@@ -1140,7 +1141,7 @@ const LEAF = ['#5fa24f', '#4f8f45', '#6fb35c', '#3f7a3a', '#7cbf63']
 const PINE = ['#2f6b4a', '#3a7a55', '#285f42']
 const BLOSSOM_LS = ['#f9a8d4', '#fbcfe8', '#f472b6', '#fbb6d5']
 
-function addLandscapeFeature(P, f, random) {
+function addLandscapeFeature(P, f, random, hubPicnic) {
   const [x, z] = f.p
   const y = f.y ?? 0
   const s = f.s ?? 1
@@ -1173,7 +1174,7 @@ function addLandscapeFeature(P, f, random) {
       }
       if (f.flowers) for (let k = 0; k < 6; k++) {
         const a = random() * Math.PI * 2
-        P.push(piece('ico', [x + Math.cos(a) * 0.45 * s, y + 0.55 * s + random() * 0.25 * s, z + Math.sin(a) * 0.45 * s], [0.09, 0.09, 0.09], pick(FLOWER_COLORS)))
+        P.push(piece('ico', [x + Math.cos(a) * 0.45 * s, y + 0.55 * s + random() * 0.25 * s, z + Math.sin(a) * 0.45 * s], [0.09, 0.09, 0.09], pick(f.palette ?? FLOWER_COLORS)))
       }
       break
     }
@@ -1183,11 +1184,11 @@ function addLandscapeFeature(P, f, random) {
       for (let k = 0; k < n; k++) {
         const a = random() * Math.PI * 2
         const d = Math.sqrt(random()) * r
-        const fs = 0.09 + random() * 0.07
+        const fs = (0.09 + random() * 0.07) * (f.blossomScale ?? 1)
         const fx = x + Math.cos(a) * d
         const fz = z + Math.sin(a) * d
         if (k % 3 === 0) P.push(piece('cone', [fx, y + 0.12, fz], [0.12, 0.25, 0.12], pick(LEAF)))
-        P.push(piece('ico', [fx, y + 0.2 + random() * 0.12, fz], [fs, fs, fs], pick(FLOWER_COLORS)))
+        P.push(piece('ico', [fx, y + 0.2 + random() * 0.12, fz], [fs, fs, fs], pick(f.palette ?? FLOWER_COLORS)))
       }
       break
     }
@@ -1255,15 +1256,18 @@ function addLandscapeFeature(P, f, random) {
         for (let j = 0; j < 3; j++) {
           const lx = -0.9 + i * 0.6
           const lz = -0.6 + j * 0.6
-          P.push(piece('box', [x + lx * Math.cos(rot) + lz * Math.sin(rot), y + 0.02, z - lx * Math.sin(rot) + lz * Math.cos(rot)], [0.6, 0.03, 0.6], (i + j) % 2 ? '#ffffff' : '#f9a8d4', 0, rot))
+          const color = (i + j) % 2 ? (f.fabric ? '#fff8e8' : '#ffffff') : (f.fabric ?? '#f9a8d4')
+          P.push(piece('box', [x + lx * Math.cos(rot) + lz * Math.sin(rot), y + 0.02, z - lx * Math.sin(rot) + lz * Math.cos(rot)], [0.6, 0.03, 0.6], color, 0, rot))
         }
       }
-      P.push(piece('box', [x + 0.5, y + 0.2, z - 0.1], [0.5, 0.35, 0.35], '#b07a4f', 0, rot))
-      P.push(piece('box', [x + 0.5, y + 0.45, z - 0.1], [0.4, 0.05, 0.05], '#8b5e3c', 0, rot))
-      for (const [cx, cz, c] of [[-0.6, 0.3, '#c4b5fd'], [-0.1, 0.4, '#fde68a']]) P.push(piece('box', [x + cx, y + 0.1, z + cz], [0.45, 0.15, 0.45], c, 0, rot))
-      for (const [cx, cz] of [[-0.3, -0.3], [0, -0.35]]) P.push(piece('cyl', [x + cx, y + 0.12, z + cz], [0.06, 0.18, 0.06], '#ffffff'))
+      if (!hubPicnic) {
+        P.push(piece('box', [x + 0.5, y + 0.2, z - 0.1], [0.5, 0.35, 0.35], '#b07a4f', 0, rot))
+        P.push(piece('box', [x + 0.5, y + 0.45, z - 0.1], [0.4, 0.05, 0.05], '#8b5e3c', 0, rot))
+        for (const [cx, cz, c] of [[-0.6, 0.3, '#c4b5fd'], [-0.1, 0.4, '#fde68a']]) P.push(piece('box', [x + cx, y + 0.1, z + cz], [0.45, 0.15, 0.45], c, 0, rot))
+        for (const [cx, cz] of [[-0.3, -0.3], [0, -0.35]]) P.push(piece('cyl', [x + cx, y + 0.12, z + cz], [0.06, 0.18, 0.06], '#ffffff'))
+      }
       P.push(piece('box', [x - 1.4, y + 1.1, z - 0.9], [0.04, 2.2, 0.04], '#e5e7eb'))
-      P.push(piece('cone', [x - 1.4, y + 2.25, z - 0.9], [1.3, 0.5, 1.3], '#fbcfe8'))
+      P.push(piece('cone', [x - 1.4, y + 2.25, z - 0.9], [1.3, 0.5, 1.3], f.fabric ?? '#fbcfe8'))
       break
     }
     default:
@@ -1275,7 +1279,7 @@ function landscapeGeometry(item) {
   if (landscapeCache.has(item.id)) return landscapeCache.get(item.id)
   const random = seeded(hashString(item.id))
   const P = []
-  for (const f of item.features ?? []) addLandscapeFeature(P, f, random)
+  for (const f of item.features ?? []) addLandscapeFeature(P, f, random, item.zone === 'HUB')
   const merged = mergeGeometries(P)
   P.forEach((g) => g.dispose())
   merged.computeBoundingSphere()
@@ -1289,6 +1293,9 @@ export function Landscape({ item }) {
   return (
     <group>
       <mesh geometry={geometry} material={LANDSCAPE_MAT} castShadow receiveShadow />
+      {item.zone === 'HUB' && item.features?.some(f => f.t === 'picnic') && (
+        <Suspense fallback={null}><PicnicBeanbags item={item} /></Suspense>
+      )}
       {ponds.map((f, i) => (
         <group key={i}>
           <Cyl p={[f.p[0], (f.y ?? 0) + 0.05, f.p[1]]} rad={f.r ?? 4} h={0.06} m={WATER} geo={GEO.cyl48} userData={NO_SHADOW} />

@@ -10,6 +10,11 @@
 
 export const AXIS_X = 0 // 궁궐 가운데 축 (구역 좌표 x)
 export const PALACE_ORIGIN_Z = -14 // haewol_palace 아이템 위치 z (근정전 실내·착석 좌표의 기준)
+export const PALACE_MODEL_WIDTH = 53
+export const PALACE_MODEL_DEPTH = 53
+export const THRONE_FOOTPRINT = { w: 14.2, d: 8.1 }
+export const LAWN_Z = 46.3
+export const GARDEN_PATH_W = 1.2 // 후원 돌길 반폭
 
 // 담장 바깥 테두리
 export const BOUNDS = { minX: -37, maxX: 37, minZ: -31, maxZ: 72 }

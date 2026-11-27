@@ -4,6 +4,7 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
 import { useJmActivity } from './jm_activityStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 앉을 수 있는 벤치 (애니메이션 구역 전용) — 담당: 지민
 //
@@ -28,6 +29,27 @@ const ease = (t) => t * t * (3 - 2 * t)
 
 export function JmBench({ item }) {
   const [w, , d] = item.size
+  return (
+    <InteractiveSeat id={item.id} seatHeight={SEAT_Y} label="벤치에 앉기">
+      <mesh position={[0, 0.45, 0]}>
+        <boxGeometry args={[w, 0.06, d * 0.8]} />
+        <meshStandardMaterial color={WOOD} />
+      </mesh>
+      <mesh position={[0, 0.72, -d * 0.4]}>
+        <boxGeometry args={[w, 0.4, 0.05]} />
+        <meshStandardMaterial color={WOOD} />
+      </mesh>
+      {[1, -1].map((side) => (
+        <mesh key={side} position={[side * (w / 2 - 0.15), 0.22, 0]}>
+          <boxGeometry args={[0.06, 0.45, d * 0.7]} />
+          <meshStandardMaterial color={METAL} />
+        </mesh>
+      ))}
+    </InteractiveSeat>
+  )
+}
+
+export function InteractiveSeat({ id, seatHeight, label, children }) {
   const scene = useThree((state) => state.scene)
   const getState = useThree((state) => state.get)
   const anchor = useRef(null)
@@ -56,7 +78,7 @@ export function JmBench({ item }) {
   // 벤치 자리(월드): 앉는 판 가운데, 앞쪽 방향
   function updateSeat() {
     const a = anchor.current
-    a.localToWorld(tmp.seat.set(0, SEAT_Y, 0.02))
+    a.localToWorld(tmp.seat.set(0, seatHeight, 0.02))
     a.getWorldQuaternion(tmp.q)
     tmp.front.set(0, 0, 1).applyQuaternion(tmp.q)
   }
@@ -96,13 +118,13 @@ export function JmBench({ item }) {
       if (event.repeat || event.code !== 'KeyE') return
       const st = useJmActivity.getState().sit
       const game = useGameStore.getState()
-      if (st.active === item.id) {
-        if (game.openPanel?.placeId === item.id) game.close()
+      if (st.active === id) {
+        if (game.openPanel?.placeId === id) game.close()
         return
       }
-      if (st.near === item.id && !st.active && !game.openPanel && !game.nearbyPlaceId) {
-        useJmActivity.getState().setSit({ active: item.id })
-        game.open({ type: 'jm_sit', placeId: item.id })
+      if (st.near === id && !st.active && !game.openPanel && !game.nearbyPlaceId) {
+        useJmActivity.getState().setSit({ active: id })
+        game.open({ type: 'jm_sit', placeId: id })
         sitDown()
       }
     }
@@ -110,14 +132,14 @@ export function JmBench({ item }) {
     return () => window.removeEventListener('keydown', down)
     // sitDown은 ref만 씀
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id])
+  }, [id])
 
   // 패널이 닫히면(ESC 또는 E) 일어남
   useEffect(
     () =>
       useGameStore.subscribe((state) => {
         const st = useJmActivity.getState().sit
-        if (st.active === item.id && state.openPanel?.placeId !== item.id) {
+        if (st.active === id && state.openPanel?.placeId !== id) {
           useJmActivity.getState().setSit({ active: null })
           if (sit.current.phase) {
             sit.current.fromProgress = sit.current.model?.userData.seatProgress ?? 0
@@ -126,7 +148,7 @@ export function JmBench({ item }) {
           }
         }
       }),
-    [item.id],
+    [id],
   )
 
   // 화면을 떠나면(구역 다시 그림 등) 모델을 원래대로
@@ -137,7 +159,7 @@ export function JmBench({ item }) {
     const t = clock.elapsedTime
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     const p = player.current?.parent ? player.current : null
     const store = useJmActivity.getState()
@@ -145,7 +167,7 @@ export function JmBench({ item }) {
     const s = sit.current
 
     // 가까운 벤치 하나만 "E 앉기" (벤치가 여러 개 붙어 있어도 안내가 번갈아 바뀌지 않게)
-    if (p && !st.active && (t >= nextCheck.current || st.near === item.id)) {
+    if (p && !st.active && (t >= nextCheck.current || st.near === id)) {
       updateSeat()
       p.getWorldPosition(tmp.me)
       // 앉는 자리 바로 앞(0.5m)을 기준으로 거리 → 등 뒤에서는 안내 안 뜸
@@ -156,12 +178,12 @@ export function JmBench({ item }) {
       // 10m 넘게 떨어져 있으면 0.3초 뒤에 다시 확인 (벤치 23개가 매 프레임 계산하지 않게)
       nextCheck.current = dist > 10 ? t + 0.3 : 0
       if (near) {
-        if (st.near === item.id) {
+        if (st.near === id) {
           if (Math.abs(st.nearDist - dist) > 0.2) store.setSit({ nearDist: dist })
         } else if (st.near === null || dist < st.nearDist - 0.2) {
-          store.setSit({ near: item.id, nearDist: dist })
+          store.setSit({ near: id, nearDist: dist })
         }
-      } else if (st.near === item.id) {
+      } else if (st.near === id) {
         store.setSit({ near: null, nearDist: Infinity })
       }
     }
@@ -203,27 +225,13 @@ export function JmBench({ item }) {
   return (
     <>
       <group ref={anchor} />
-      {/* 공용 bench와 같은 모양 */}
-      <mesh position={[0, 0.45, 0]}>
-        <boxGeometry args={[w, 0.06, d * 0.8]} />
-        <meshStandardMaterial color={WOOD} />
-      </mesh>
-      <mesh position={[0, 0.72, -d * 0.4]}>
-        <boxGeometry args={[w, 0.4, 0.05]} />
-        <meshStandardMaterial color={WOOD} />
-      </mesh>
-      {[1, -1].map((side) => (
-        <mesh key={side} position={[side * (w / 2 - 0.15), 0.22, 0]}>
-          <boxGeometry args={[0.06, 0.45, d * 0.7]} />
-          <meshStandardMaterial color={METAL} />
-        </mesh>
-      ))}
-      <SitHud benchId={item.id} />
+      {children}
+      <SitHud benchId={id} label={label} />
     </>
   )
 }
 
-function SitHud({ benchId }) {
+function SitHud({ benchId, label }) {
   const st = useJmActivity((state) => state.sit)
   const busy = useJmActivity((state) => Boolean(state.shoot.active || state.skip.active))
   // 촬영지 감지 원 안이면 E는 공용 촬영지 패널이 씀 → 앉기 안내를 띄우지 않음 (안내와 실제 동작이 어긋나지 않게)
@@ -236,7 +244,7 @@ function SitHud({ benchId }) {
     <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
       <div style={{ ...wrap, width: size.width, height: size.height }}>
         <div style={chip}>
-          <kbd style={kbd}>E</kbd> {active ? '일어나기' : '벤치에 앉기'}
+          <kbd style={kbd}>E</kbd> {active ? '일어나기' : label}
           {active && <span style={{ opacity: 0.75 }}> · 잠깐 쉬어 가요 · ESC도 가능</span>}
         </div>
       </div>

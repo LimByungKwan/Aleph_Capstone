@@ -11,11 +11,11 @@ import { seeded } from './styles/kit.jsx'
 // 하늘색은 시간대(아침/점심/밤, 설정창 ⚙)에 따라 timeOfDay.js의 live 값을 따라 부드럽게 바뀌어요. (계절과는 무관)
 // 최적화: 하늘 1번 + 구름 1번 + 먼 산 1번 + 바깥 땅 1번 + 별 1번(밤에만) = 그리기 호출 최대 5번, 그림자 없음.
 
-export default function PastelSky() {
+export default function PastelSky({ fullBackdrop = false }) {
   return (
     <>
       <TimeOfDayDriver />
-      <fog attach="fog" args={[SKY_COLORS.fog, FOG_NEAR, FOG_FAR]} />
+      <fog attach="fog" args={[SKY_COLORS.fog, fullBackdrop ? 550 : FOG_NEAR, fullBackdrop ? 1800 : FOG_FAR]} />
       <SkyDome />
       <Stars />
       <OuterGround />
@@ -31,8 +31,8 @@ function TimeOfDayDriver() {
   useLayoutEffect(() => {
     snapTimeOfDay(useSettings.getState().timeOfDay)
   }, [])
-  useFrame((_, delta) => {
-    stepTimeOfDay(useSettings.getState().timeOfDay, delta)
+  useFrame(({ camera }, delta) => {
+    if (!camera.userData.showFullMap) stepTimeOfDay(useSettings.getState().timeOfDay, delta)
     if (scene.fog) scene.fog.color.copy(live.fog)
   }, -1)
   return null

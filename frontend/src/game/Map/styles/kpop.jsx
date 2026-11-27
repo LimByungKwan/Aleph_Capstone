@@ -268,7 +268,7 @@ export function Storefront({ item, awning, wallTexture, children, wallColor = '#
         </mesh>
       )}
       {upperH >= 3.5 && <Box p={[0, GROUND_H + 2.3, front + 0.04]} s={[w - 1, 1.4, 0.08]} m={DARK_GLASS} />}
-      <Box p={[0, h - 0.17, 0]} s={[w + 0.15, 0.35, d + 0.15]} m={PARAPET} />
+      <Box p={[0, h - 0.154, 0]} s={[w + 0.15, 0.35, d + 0.15]} m={PARAPET} />
     </group>
   )
 }

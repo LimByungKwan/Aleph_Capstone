@@ -217,6 +217,11 @@ function FarOnly({ radius, children }) {
   const acc = useRef(1)
   const v = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ camera }, dt) => {
+    if (camera.userData.showFullMap && ref.current) {
+      ref.current.visible = false
+      acc.current = 1
+      return
+    }
     acc.current += dt
     if (acc.current < 0.25 || !ref.current) return
     acc.current = 0
@@ -566,6 +571,11 @@ export function NearOnly({ radius, children, merge = true }) {
   const tmp = useMemo(() => ({ p: null, next: 0 }), [])
   useFrame(({ camera, clock }) => {
     const g = ref.current
+    if (camera.userData.showFullMap && g) {
+      g.visible = true
+      tmp.next = 0
+      return
+    }
     if (!g || clock.elapsedTime < tmp.next) return
     tmp.next = clock.elapsedTime + 0.25
     tmp.p = tmp.p ?? g.position.clone()

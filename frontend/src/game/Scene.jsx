@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { KeyboardControls, OrbitControls } from '@react-three/drei'
@@ -12,6 +12,8 @@ import PastelSky from './Map/PastelSky.jsx'
 import Player, { KEYBOARD_MAP } from './Player/Player.jsx'
 import FirstPersonCamera from './Player/FirstPersonCamera.jsx'
 import FollowCamera from './Player/FollowCamera.jsx'
+import DateCourseCamera from './Player/DateCourseCamera.jsx'
+import { DATE_INTRO_PANEL } from './Player/dateIntroTimeline.js'
 import PlaceSensors from './Interaction/PlaceSensors.jsx'
 import FootSplashes from './Player/FootSplashes.jsx'
 import InteractionKeys from './Interaction/InteractionKeys.jsx'
@@ -44,9 +46,16 @@ import { WarpZones } from './Map/styles/bk_warpZones.jsx' // [병관] 구역 워
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
 export default function Scene() {
   const [playing, setPlaying] = useState(!FREE_CAMERA)
+  const dateIntro = useGameStore((s) => s.openPanel?.type === DATE_INTRO_PANEL)
   // 그래픽 품질은 설정창(⚙)과 왼쪽 '고화질' 체크박스가 같은 값을 씀 (기본: 낮음)
   const highDetail = useSettings((state) => state.quality === 'high')
   const playerRef = useRef(null) // 캐릭터 위치를 카메라·센서와 공유
+  const gameCamera = useMemo(() => {
+    const camera = new THREE.PerspectiveCamera(50, 1, .25, 1000)
+    camera.position.set(...CAMERA_START)
+    camera.lookAt(0, 0, 0)
+    return camera
+  }, [])
 
   const startPlay = (event) => {
     event.currentTarget.blur() // 버튼에 포커스가 남으면 Space(점프)가 버튼을 다시 누름
@@ -70,20 +79,24 @@ export default function Scene() {
         {/* 첫 접속 로딩 화면 (모델·텍스처 다운로드 + 셰이더 준비가 끝나면 사라짐) */}
         <LoadingScreen />
         {/* 고화질도 화면 해상도는 최대 1.5배까지 (2배면 그려야 할 픽셀이 1.8배 늘어 렉의 주원인) */}
-        <Canvas dpr={highDetail ? [1, 1.5] : 0.8} shadows={highDetail ? 'percentage' : false} camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1000 }}>
+        {/* near 0.25: 0.1이면 100m 앞 깊이 정밀도가 ~6mm라 몇 mm 차이로 겹친 바닥·지붕이 멀리서 물결처럼 깜빡임 (11/27) → 2.5배 정밀
+            캐릭터 몸통 반경이 0.3m라 1인칭에서도 벽이 0.25m 안으로 안 들어와 잘리지 않음 */}
+        <Canvas className="game-world" dpr={highDetail ? [1, 1.5] : 0.8} shadows={highDetail ? 'percentage' : false} camera={gameCamera}>
           {/* 파스텔 하늘 + 구름 + 먼 산 + 바깥 풀밭 + 안개 */}
-          <PastelSky />
+          <PastelSky fullBackdrop={dateIntro} />
 
           {/* 전체 조명 + 그림자 있는 태양광(밤에는 달빛) 1개 — 계절·시간대에 따라 색·세기가 바뀜 (그림자는 보고 있는 곳 주변만) */}
           <SkyAmbient />
           <SunLight castShadow={highDetail} />
           {highDetail && <ShadowThrottle />}
 
-          <MapLayout showStartMarker={!playing} highDetail={highDetail} />
-          {playing && <SeasonalWeather playerRef={playerRef} />}
-          <PlaceMarkers />
-          <CourseMarker />
-          <WarpZones playerRef={playerRef} />
+          <MapLayout showStartMarker={!playing && !dateIntro} highDetail={highDetail} />
+          <group visible={!dateIntro}>
+            {playing && <SeasonalWeather playerRef={playerRef} />}
+            <PlaceMarkers />
+            <CourseMarker />
+            <WarpZones playerRef={playerRef} />
+          </group>
 
           {/* 물리 엔진(Rapier)은 처음에 잠깐 로딩이 필요해서 Suspense로 감쌈 */}
           <Suspense fallback={null}>
@@ -92,20 +105,23 @@ export default function Scene() {
               <Elevators playerRef={playerRef} />
               {playing && (
                 <>
-                  <Player playerRef={playerRef} showModel={!firstPerson} />
-                  <PalaceTourPresence playerRef={playerRef} />
-                  <MultiplayerPresence playerRef={playerRef} />
-                  <FootSplashes playerRef={playerRef} />
+                  <group visible={!dateIntro}>
+                    <Player playerRef={playerRef} showModel={!firstPerson} />
+                    <PalaceTourPresence playerRef={playerRef} />
+                    <MultiplayerPresence playerRef={playerRef} />
+                    <FootSplashes playerRef={playerRef} />
+                  </group>
                   <PlaceSensors playerRef={playerRef} />
-                  {firstPerson ? <FirstPersonCamera playerRef={playerRef} /> : <FollowCamera playerRef={playerRef} />}
+                  {firstPerson ? <FirstPersonCamera playerRef={playerRef} camera={gameCamera} /> : <FollowCamera playerRef={playerRef} camera={gameCamera} />}
                 </>
               )}
             </Physics>
           </Suspense>
 
-          {playing ? <InteractionKeys /> : <OverviewCamera />}
+          {playing ? <InteractionKeys /> : <OverviewCamera camera={gameCamera} />}
+          {dateIntro && <DateCourseCamera />}
           <PointLightLock />
-          <ShaderWarmup trigger={`${playing}-${highDetail}`} />
+          <ShaderWarmup trigger={`${playing}-${highDetail}`} camera={gameCamera} />
         </Canvas>
 
         <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
@@ -148,7 +164,8 @@ function SunLight({ castShadow }) {
   useFrame(({ camera, controls }) => {
     const light = lightRef.current
     if (!light) return
-    if (controls?.getTarget) controls.getTarget(lookTarget)
+    if (camera.userData.showFullMap) camera.getWorldDirection(lookTarget).multiplyScalar(40).add(camera.position)
+    else if (controls?.getTarget) controls.getTarget(lookTarget)
     else if (controls?.target) lookTarget.copy(controls.target)
     else lookTarget.set(0, 0, 0)
 
@@ -229,8 +246,7 @@ const overviewBounds = (() => {
   return { x0, x1, z0, z1 }
 })()
 
-function OverviewCamera() {
-  const camera = useThree((state) => state.camera)
+function OverviewCamera({ camera }) {
   const controlsRef = useRef(null)
   const keys = useRef(new Set())
   const movement = useRef({ forward: new THREE.Vector3(), right: new THREE.Vector3(), offset: new THREE.Vector3() })
@@ -288,6 +304,7 @@ function OverviewCamera() {
   return (
     <OrbitControls
       ref={controlsRef}
+      camera={camera}
       makeDefault
       target={CAMERA_TARGET}
       minPolarAngle={0.18}

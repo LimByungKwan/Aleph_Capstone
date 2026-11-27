@@ -1,3 +1,4 @@
+import { lazy, Suspense, useEffect } from 'react'
 import { MOCK_USERS } from '../../api/mockDb.js'
 import { listMyCoupons, listMyStamps } from '../../api/client.js'
 import { currentUser, useUiStore } from './uiStore.js'
@@ -5,10 +6,7 @@ import { USE_SERVER } from '../../api/session.js'
 import { AccountBox } from '../auth/LoginPage.jsx'
 import { Toasts, useAsync } from './common.jsx'
 import DialogBox from './DialogBox.jsx'
-import StampBook from './StampBook.jsx'
-import CouponBox from './CouponBox.jsx'
 import CinemaOverlay from './CinemaOverlay.jsx'
-import BreakwaterScene from './BreakwaterScene.jsx'
 import EntranceWelcome from './EntranceWelcome.jsx'
 import PalaceSeatPrompt from './PalaceSeatPrompt.jsx'
 import RickshawMenu from './RickshawMenu.jsx'
@@ -34,6 +32,10 @@ import './ui.css'
 import './ui-components.css'
 import './cinema.css'
 import './breakwater.css'
+
+const StampBook = lazy(() => import('./StampBook.jsx'))
+const CouponBox = lazy(() => import('./CouponBox.jsx'))
+const BreakwaterScene = lazy(() => import('./BreakwaterScene.jsx'))
 
 if (import.meta.env.DEV) window.__scenewalk = { game: useGameStore, ui: useUiStore, portal: usePortalStore }
 
@@ -63,16 +65,28 @@ export default function UiRoot() {
       <DateMission enabled={!inCinema && !modal} />
       <DateCourseIntro enabled={!inCinema && !modal && !specialPanel && !specialEra} />
       <DialogBox />
-      <BreakwaterScene />
+      <BreakwaterModal open={modal === 'breakwater'} />
       <EntranceWelcome />
-      {modal === 'stampbook' && <StampBook onClose={closeModal} />}
-      {modal === 'coupons' && <CouponBox onClose={closeModal} />}
+      <Suspense fallback={null}>
+        {modal === 'stampbook' && <StampBook onClose={closeModal} />}
+        {modal === 'coupons' && <CouponBox onClose={closeModal} />}
+      </Suspense>
       {modal === 'badges' && <BadgeBook onClose={closeModal} />}
       <PhotoPreview />
       <SoundDirector />
       <Toasts />
     </div>
   )
+}
+
+function BreakwaterModal({ open }) {
+  const openPanel = useGameStore((s) => s.openPanel)
+  // ESC(InteractionKeys)로 패널이 닫히면 장면도 같이 닫기
+  useEffect(() => {
+    if (open && !openPanel) useUiStore.getState().closeModal()
+  }, [open, openPanel])
+
+  return open ? <Suspense fallback={null}><BreakwaterScene /></Suspense> : null
 }
 
 // "안으로 들어가는" 촬영지(방파제 등) 근처에 오면 아래에 뜨는 안내 칩

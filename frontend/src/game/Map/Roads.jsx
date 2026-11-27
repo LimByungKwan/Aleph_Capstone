@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { getRoadTextTexture, getTiledTexture, TILE_METERS } from './styles/textures.js'
 
+const HUB_PAVING_RELIEF = { hubGranite: .075, hubLimestone: .045 }
 // 길·인도·광장 바닥 (충돌 없음)
 // item.style은 TILE_METERS의 바닥 무늬예요. 없으면 color 단색을 사용해요.
 export function Road({ item, layer = 0 }) {
@@ -11,13 +12,18 @@ export function Road({ item, layer = 0 }) {
 
   const texture = useMemo(() => {
     const tile = TILE_METERS[item.style]
-    return tile ? getTiledTexture(item.style, w / tile, d / tile) : null
-  }, [item.style, w, d])
+    if (!tile) return null
+    const map = getTiledTexture(item.style, w / tile, d / tile)
+    if (item.style === 'hubLawn') map.offset.set((x - w / 2) / tile, -(z + d / 2) / tile)
+    return map
+  }, [item.style, w, d, x, z])
+  const relief = HUB_PAVING_RELIEF[item.style]
 
   return (
     <mesh position={[x, h / 2 + layer * 0.006, z]} rotation={[0, rotationY, 0]} receiveShadow name={item.id}>
       <boxGeometry args={[w, h, d]} />
-      <meshStandardMaterial map={texture} color={texture ? '#ffffff' : item.color} />
+      <meshStandardMaterial map={texture} color={texture ? '#ffffff' : item.color}
+        bumpMap={relief ? texture : null} bumpScale={relief ?? 0} />
     </mesh>
   )
 }

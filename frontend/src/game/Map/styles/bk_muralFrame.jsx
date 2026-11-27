@@ -11,6 +11,7 @@ import { labelLayer } from '../../labelLayer.js'
 import { usePlayerCharacter } from '../../Player/characterStore.js'
 import { WAVE_FRAMES, WAVE_FRAME_STEP, WAVE_JOINTS } from './bk_muralWaveFrames.js'
 import { GEO, mat } from './kit.jsx'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 export const MURAL_FRAME_PANEL = 'bkMuralFrame'
 const STAND_Z = 6
@@ -124,7 +125,7 @@ function MuralCamera({ anchor, targets }) {
       mural.localToWorld(tmp.point.set(...target)).project(camera)
       if (inside(tmp.point)) next |= 1 << i
     })
-    if (!player.current?.parent) player.current = scene.getObjectByName('player')
+    if (!player.current?.parent) player.current = findPlayer(scene)
     if (player.current) {
       player.current.getWorldPosition(tmp.player)
       if (inside(tmp.point.copy(tmp.player).project(camera))) next |= PLAYER_TARGET

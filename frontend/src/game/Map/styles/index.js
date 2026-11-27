@@ -40,7 +40,10 @@ import { ClawBooth } from './bk_clawMachine.jsx'
 import { TarotBooth } from './bk_tarotBooth.jsx'
 import { GuideBoard } from './bk_guideBoard.jsx'
 import { SunsetPavilion } from './bk_sunsetPavilion.jsx'
-import { HubBuskingStage, HubClockTower, HubCompass, HubFoodTruck, HubMapBoard, HubPergola, HubSignpost, HubTreeBench } from './hub.jsx'
+import {
+  HubBuskingStage, HubClockTower, HubCompass, HubCompassBorder, HubFoodTruck, HubGardenCourt,
+  HubGardenLantern, HubLoungeChair, HubMapBoard, HubPergola, HubPlantingBed, HubPromenade, HubSignpost, HubTreeBench,
+} from './hub.jsx'
 
 // hub.json / zones/*.json의 "style" 이름 ↔ 그리는 컴포넌트
 // 새 스타일을 만들면 여기에 한 줄 추가하면 돼요.
@@ -122,4 +125,10 @@ export const STYLES = {
   hubPergola: HubPergola,
   hubFoodTruck: HubFoodTruck,
   hubBuskingStage: HubBuskingStage,
+  hubPromenade: HubPromenade,
+  hubGardenCourt: HubGardenCourt,
+  hubGardenLantern: HubGardenLantern,
+  hubCompassBorder: HubCompassBorder,
+  hubPlantingBed: HubPlantingBed,
+  hubLoungeChair: HubLoungeChair,
 }

@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useGameStore } from '../../../store/gameStore.js'
 import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { RAIN_WAIT, SHOOT_GOAL, useJmActivity } from './jm_activityStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 애니메이션 구역(JM) 체험: 농구 슛. 담당: 지민
 //
@@ -252,7 +253,7 @@ export function HoopShoot({ item, rimY }) {
     // 캐릭터 찾기 (다시 생기거나 바뀔 수 있어서 가끔 다시 찾음)
     if (!player.current?.parent && t - lastLookup.current > FIND_PLAYER_EVERY) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     const store = useJmActivity.getState()
     const s = store.shoot
@@ -488,7 +489,7 @@ export function RainStop() {
     if (!anchor.current) return
     if (!player.current?.parent && t - lastLookup.current > FIND_PLAYER_EVERY) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     const store = useJmActivity.getState()
     const r = store.rain

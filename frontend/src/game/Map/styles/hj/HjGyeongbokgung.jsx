@@ -435,8 +435,8 @@ export default function HjGyeongbokgung({ item }) {
   useFrame(({ camera }) => {
     const { x, y, z } = camera.position
     const distanceSq = (x - worldX) ** 2 + (z - worldZ) ** 2
-    stage.current.visible = y > 18 || distanceSq < 157 ** 2
-    trim.current.visible = y < 82 && distanceSq < 131 ** 2
+    stage.current.visible = camera.userData.showFullMap || y > 18 || distanceSq < 157 ** 2
+    trim.current.visible = camera.userData.showFullMap || (y < 82 && distanceSq < 131 ** 2)
   })
 
   return (

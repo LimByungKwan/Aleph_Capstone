@@ -12,6 +12,7 @@ import { COUNTDOWN_MS, SHOTS, photoRoom, usePhotoRoom } from './bk_photoRoom.js'
 import { composeFourCut } from './bk_fourCut.js'
 import { useDateMission } from './bk_dateMission.js'
 import { useWarps } from './bk_warpStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 커플 포토존 "인생네컷" (담당: 병관) — CouplePhotoZone(dateCourse.jsx) 안에서 그려짐 → 좌표는 포토존 기준
 // 포토존 앞에서 E → [혼자 찍기] 또는 접속 중인 사람 [같이 찍자고 초대] (멀티: bk_photoRoom.js + 서버 bk_photoRooms.js)
@@ -85,7 +86,7 @@ export function PhotoBooth() {
       const guest = room?.role === 'b'
       if (store().photo.active || (guest && game.openPanel)) game.close()
       const here = root.current?.localToWorld(new THREE.Vector3(0, 0, 0))
-      const me = scene.getObjectByName('player')?.getWorldPosition(new THREE.Vector3())
+      const me = findPlayer(scene)?.getWorldPosition(new THREE.Vector3())
       const guide = () => {
         if (!here) return
         useCourseStore.getState().setCourse(
@@ -131,7 +132,7 @@ export function PhotoBooth() {
     if (!root.current) return
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     const ph = usePhotoRoom.getState()
     const p = store().photo

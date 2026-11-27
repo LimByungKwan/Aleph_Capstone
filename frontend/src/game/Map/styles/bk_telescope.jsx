@@ -10,6 +10,7 @@ import { useUiStore } from '../../../components/movieZone/uiStore.js'
 import { useBkActivity } from './bk_activityStore.js'
 import { labelLayer } from '../../labelLayer.js'
 import { useDateMission } from './bk_dateMission.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 데이트 코스 구역(BK) SKY 전망대 망원경. 담당: 병관
 // 전망층 난간의 망원경(dateCourse.jsx DECK_SCOPES: 중앙 광장 쪽·애니 구역 쪽 2대) 앞에서 E → 망원경 화면
@@ -87,7 +88,7 @@ export function TowerTelescopes({ T, angles }) {
     const cur = store().scope
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     let near = -1
     if (player.current?.parent && !cur.active) {

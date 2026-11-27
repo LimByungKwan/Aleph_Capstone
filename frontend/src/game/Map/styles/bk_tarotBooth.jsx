@@ -11,6 +11,7 @@ import { nightGlow } from './dateCourse.jsx'
 import { TarotSession } from './bk_tarotQuestions.jsx'
 import { tarotRoom, useTarotRoom } from './bk_tarotRoom.js'
 import { useWarps } from './bk_warpStore.js'
+import { findPlayer } from '../../Player/findPlayer.js'
 
 // 데이트 코스 구역(BK) 커플 타로 텐트. 담당: 병관
 //
@@ -166,7 +167,7 @@ function TarotInteraction({ item }) {
     const cur = store().tarot
     if (!player.current?.parent && t - lastLookup.current > 1) {
       lastLookup.current = t
-      player.current = scene.getObjectByName('player') ?? null
+      player.current = findPlayer(scene)
     }
     if (anchor.current && !cur.spot) {
       // 텐트 앞 손님 자리 (월드 x·z) → 같이 볼 사람 찾기(bk_tarotRoom.js)에 씀

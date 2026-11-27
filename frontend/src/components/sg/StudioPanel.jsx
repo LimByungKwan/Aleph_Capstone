@@ -12,26 +12,8 @@ import { useSgStudio } from '../../game/Map/styles/sg_studioStore.js'
 
 const MAX_LEN = 150 // 한 번에 읽어 줄 최대 글자 수 (긴 글로 오래 붙잡히지 않게)
 
-export default function StudioPanel() {
-  const near = useSgStudio((s) => s.near)
-  const step = useSgStudio((s) => s.step)
-  if (step === 'closed' && !near) return null
-
-  return (
-    <div style={hudWrap}>
-      {step === 'closed' ? (
-        <div style={chip}>
-          <kbd style={kbd}>E</kbd> 물결 레코딩 스튜디오 · 내 문장 녹음해 보기
-        </div>
-      ) : (
-        <Panel />
-      )}
-    </div>
-  )
-}
-
 // 입력 → 소리 확인 → 재생. text를 이 컴포넌트에 둬서 확인 단계에서 "아니요"로 돌아와도 글자가 남음
-function Panel() {
+export default function StudioPanel() {
   const step = useSgStudio((s) => s.step)
   const error = useSgStudio((s) => s.error)
   const [text, setText] = useState('')
@@ -149,8 +131,6 @@ function pickVoice() {
   return korean ? { voice: korean } : { error: 'noKoreanVoice' }
 }
 
-const hudWrap = { position: 'absolute', left: 0, right: 0, bottom: 72, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 20 }
-const chip = { padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 13 }
 const panel = { width: 360, padding: '12px 14px', borderRadius: 10, background: 'rgba(20,32,40,0.88)', color: '#fff', fontSize: 14, pointerEvents: 'auto' }
 const kbd = { padding: '0 5px', borderRadius: 4, background: '#fff', color: '#111', fontSize: 11, fontWeight: 700 }
 const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }

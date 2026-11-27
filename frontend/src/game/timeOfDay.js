@@ -46,8 +46,20 @@ export const live = {
 
 let settled = null // 이미 목표에 도착했으면 계산 생략
 
+export function blendTimeOfDay(from, to, amount) {
+  const a = targetFor(from)
+  const b = targetFor(to)
+  for (const name of COLOR_KEYS) live[name].lerpColors(a[name], b[name], amount)
+  live.sunDir.lerpVectors(a.sunDir, b.sunDir, amount).normalize()
+  for (const name of ['lightIntensity', 'hemiIntensity', 'stars']) {
+    live[name] = THREE.MathUtils.lerp(a[name], b[name], amount)
+  }
+  settled = null
+}
+
 // 처음 화면은 저장된 시간대로 바로 맞춤 (전환 애니메이션 없이)
 export function snapTimeOfDay(time) {
+  if (settled === time) return
   stepTimeOfDay(time, 1, true)
 }
 

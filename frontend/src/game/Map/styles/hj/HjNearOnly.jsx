@@ -11,11 +11,16 @@ export default function NearOnly({ radius = 40, center = [0, 0, 0], children }) 
   const wait = useRef(Math.random() * 0.3) // 여러 개가 한 프레임에 몰리지 않게 흩어 놓기
   const tmp = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ camera }, delta) => {
+    const g = ref.current
+    if (!g) return
+    if (camera.userData.showFullMap) {
+      g.visible = true
+      wait.current = 0
+      return
+    }
     wait.current -= delta
     if (wait.current > 0) return
     wait.current = 0.3
-    const g = ref.current
-    if (!g) return
     tmp.set(center[0], center[1], center[2])
     g.localToWorld(tmp)
     g.visible = tmp.distanceToSquared(camera.position) < radius * radius

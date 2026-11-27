@@ -1,4 +1,5 @@
 import hub from './hub.json'
+import { hubGardenProps } from './hubGardenLayout.js'
 import places from '@shared/places.json'
 import { terrainHeightAt } from '../Map/terrain.js'
 
@@ -80,7 +81,7 @@ function settle(items) {
   )
 }
 
-const props = settle([...hub.props, ...zones.flatMap((zone) => placeItems(zone.props, zone))])
+const props = settle([...hubGardenProps, ...hub.props, ...zones.flatMap((zone) => placeItems(zone.props, zone))])
 // [3. 개발 > 프론트엔드] 남쪽 경계와 만나는 확장 지형의 중심과 크기를 물리·카메라가 함께 씁니다.
 export const southGroundExtension = props.find((item) => item.extendsSouthBoundary)
 
