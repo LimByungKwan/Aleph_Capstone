@@ -632,12 +632,13 @@ for (const [k, x0, x1, z0, z1] of [
 ]) {
   const w = r2(z1 - z0)
   const len = r2(x1 - x0)
-  prop(`jm_sea_${k}`, 'jmCanal', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [w, 0.1, len], { rotationDeg: 90, curb: false, beach: 'sea', collider: [w, 1, len] })
+  // (11/27) s_w(옛 부두 서쪽)는 새 湯灯駅으로 걸어가는 길이라 걷기 막음(1m 상자)을 끔 — 아래 jm_sea_shoal_w 얕은 물 띠
+  prop(`jm_sea_${k}`, 'jmCanal', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [w, 0.1, len], { rotationDeg: 90, curb: false, beach: 'sea', collider: k === 's_w' ? false : [w, 1, len] })
 }
 // 얕은 물 띠: 모래 바닥이 비치는 발목 깊이 물, 걸으면 물 튐 (둑 없음)
-prop('jm_sea_shoal', 'jmCanal', [r2((SHOAL.x0 + SHOAL.x1) / 2), r2((SHOAL.z0 + SHOAL.z1) / 2)], [r2(SHOAL.z1 - SHOAL.z0), 0.1, r2(SHOAL.x1 - SHOAL.x0)], { rotationDeg: 90, natural: true, wade: true, depth: 0.12, banks: false, curb: false, collider: false })
+// (11/27) 얕은 물 띠(jm_sea_shoal)는 jm_seaLine.jsx WadeWater(선착장 → 湯灯駅 정강이 깊이 물, 바다 색)로 바뀜
 road('jm_pier_link', null, [r2((LINK.x0 + LINK.x1) / 2), r2((LINK.z0 + LINK.z1) / 2)], [r2(LINK.x1 - LINK.x0), 0.2, r2(LINK.z1 - LINK.z0)], { color: '#8d877c' })
-road('jm_pier_step', null, [r2(PIER.x1 + 0.6), r2((SHOAL.z0 + PIER.z1) / 2)], [1.2, 0.38, r2(PIER.z1 - SHOAL.z0)], { color: '#8d877c' })
+// (11/27 지민 요청) 옛 湯灯駅 부두·계단·팻말은 없앰 — 역이 서쪽 바다 위(jm_sea_line station)로 옮겨감
 // (11/25 밤 지민 선택: 보이기만 하는 물길) 여관 바다 → 서쪽 벽 밖 강 → SG 해변 바다. 맵 벽(x -130) 바깥이라 걸어갈 수는 없음
 //   벽 안쪽 풀밭 강(z -39)도 서쪽 끝에서 이 강으로 흘러듦. 월드 z = 구역 z - 85
 prop('jm_outer_bay', 'jmCanal', [-140, -188.5], [73, 0.1, 24], { rotationDeg: 90, curb: false, beach: 'sea', collider: false })
@@ -647,8 +648,6 @@ prop('jm_outer_bay', 'jmCanal', [-140, -188.5], [73, 0.1, 24], { rotationDeg: 90
 // (11/26) 'jm_outer_join'는 넓힌 바다 밑에 겹쳐 비쳐서 뺌
 // (11/26 지민 요청) 역 서쪽은 경복궁 터널까지 가는 바다 철길(jm_sea_line)이 이어받음 → 예전 철길은 역 동쪽(x -62 ~ 125)만 장식으로 남김
 prop('jm_sea_rail', 'jmSeaRail', [31.5, TRAIN.z], [3, 0.3, 187], { rotationDeg: 90, collider: false, submerged: true })
-road('jm_pier', null, [r2((PIER.x0 + PIER.x1) / 2), r2((PIER.z0 + PIER.z1) / 2)], [r2(PIER.x1 - PIER.x0), PIER.h, r2(PIER.z1 - PIER.z0)], { color: '#8d877c' })
-prop('jm_pier_sign', 'jmStationSign', [r2(PIER.x1 - 1.5), -162], [1.6, 2.4, 0.3], { rotationDeg: 0, elevation: PIER.h, signs: [{ text: '湯灯駅' }] })
 // 전차 2량: 로컬 +z = 진행 방향(동쪽, rotationDeg 90), 문은 남쪽(부두 쪽) 옆면
 // (11/26 지민 요청) 세워 둔 전차는 바다 철길을 달리는 전차(jm_sea_line, 앉아서 타기)로 바뀜 → 아래는 끔
 for (const [k, cx] of []) {
@@ -693,9 +692,9 @@ YU.z = r2(YU.front - YU.d / 2)
 const YU_LV = [0.6, 7.6, 12.4, 17.2, 22.0, 27.6]
 const YU_IN = { x: r2(YU.w / 2 - YU.wt), z: r2(YU.d / 2 - YU.wt) }
 const YU_VOID = { x0: -9, x1: 9, z0: -8, z1: 7.5 }
+const YU_PAV = { x0: -3, x1: 3, z0: -8, z1: -4 }
 // (11/27 지민 결정: 누각 기능 3) 누각 위 전망대: 뒤 길에서 나무 계단 → 누각 뒤 문(높이 4.0) → 안 바닥 → 앞 붉은 두짝문 → 앞 발코니(4.2)에서 큰 목욕탕 내려다봄
 const YU_LOOK = { floor: 4.0, deck: 4.2, stairZ: -13.8, open: 2.8 }
-const YU_PAV = { x0: -3, x1: 3, z0: -8, z1: -4 }
 const YU_BRIDGE = { z: 1.0, w: 2.4, arch: 1.0, lv: 1 }
 const YU_STAIR_W = 2.0
 // (11/25 밤 지민 요청) 계단은 가운데 뚫린 네모(void)를 따라 빙 돌아 올라감
@@ -722,8 +721,8 @@ const YU_BATH = {
   part: { z: 2.5, gap: [-13.6, -11.2] }, // 번대 자리 ↔ 탕 칸막이 (가운데 노렌 통로)
   counter: { x: -20.5, z: 10, w: 1.4, d: 2.4 },
   tubs: [[-21.6, 0, 3.4], [-21.6, -4, 3.4], [-21.6, -8, 3.4], [-21.6, -12, 3.4], [-21.6, -16, 3.4], [-17.4, -16.6, 3.4], [-13.2, -16.6, 3.4]],
-  off: true, // (11/27 지민 요청) 서쪽 목욕탕 벽을 없애고 1층 뒤쪽 전체를 큰 목욕탕 하나로 → 이 칸의 벽·탕·번대는 안 만듦 (YU_HALL_BATH가 대신)
   center: { x: -14.8, z: -6.5, r: 2.6 },
+  off: true, // (11/27 지민 요청) 서쪽 목욕탕 벽을 없애고 1층 뒤쪽 전체를 큰 목욕탕 하나로 → 이 칸의 벽·탕·번대는 안 만듦 (YU_HALL_BATH가 대신)
 }
 // (11/26 지민이 보낸 영화 장면) 신들의 큰 목욕탕은 홀 가운데 다리 아래 — 가운데 붉은 길(가로등·붉은 긴 의자) 양옆에 탕 칸. 남탕·여탕 구분 없음
 //   tubs: 둥글게 꺼진 탕(테두리 0.5, 점프로 들어가 무릎까지 물) / barrels: 밧줄 감은 큰 나무 욕조 / part: 다리 밑 낮은 칸막이 / benches: 길 위 붉은 긴 의자
@@ -798,6 +797,7 @@ const YU_FEAST = {
   ghosts: [[-1.8, 11.7, 1, 1.25], [4.2, 13.9, -1, 1.4], [6.6, 11.7, 1, 1.15], [0.6, 17.5, -1, 1.3], [13.2, 13.9, -1, 1.5], [16.2, 11.7, 1, 1.2], [14.4, 17.5, -1, 1.35]],
 }
 const YU_FLOOR_HOLES = [[18.2, 7, 23.7, 16], [YU_DOMA.x0, YU_DOMA.z0, YU_DOMA.x1, YU_DOMA.z1]]
+// 5층: 서쪽 칸막이(x -13, 금빛 문) | 집무실 | 안쪽 문(x 7) | 문 사이 복도 | 큰 문(x 13) | 동쪽 모자이크 방(엘리베이터)
 // (11/27 지민 요청: 3층 좌우 뒤집기) 엘리베이터·계단이 서쪽에 있어서 → 서쪽 = 모자이크 방(엘리베이터·계단이 닿음) + 북서 구석 창고(아기 방),
 //   큰 문(x 0) → 문 사이 복도 → 안쪽 문(x 5) → 동쪽 끝까지 집무실. 값은 예전 방향(집무실이 서쪽)으로 적고 mirror: true로 x를 뒤집음 (그림도 같이)
 //   서쪽 칸막이(west)는 바깥벽에 붙여 없앰. 계단 구멍(x -9.2 ~ -0.5)이 큰 문 서쪽에 다 들어가게 큰 문을 x 0에 둠
@@ -836,7 +836,6 @@ const YU_TOP = (() => {
     chandeliers: [[11, -6], [11, 4], [-13, 0.5], [20.6, 15.6]], hole: null,
   }
 })()
-// 5층: 서쪽 칸막이(x -13, 금빛 문) | 집무실 | 안쪽 문(x 7) | 문 사이 복도 | 큰 문(x 13) | 동쪽 모자이크 방(엘리베이터)
 const YU_OFFICE = {
   mirror: true,
   west: { x: -YU_IN.x, gap: [-1.4, 1.4] }, inner: { x: -5, gap: [2.6, 5.4] }, east: { x: 0, gap: [2.6, 5.4], fakeZ: -8 },
@@ -900,6 +899,7 @@ const yuLayout = (() => {
   YU_STAIRS.forEach((s, i) => {
     if (!s.hole) return
     const y = YU_LV[i + 1]
+    const [x0, z0, x1, z1] = s.hole
     if (s.open === 'x-') {
       // 서쪽(꼭대기)만 열고 동·북·남 세 변에 난간
       rails.push({ y, a: [x1, z0], b: [x1, z1], face: 'hole' })
@@ -907,7 +907,6 @@ const yuLayout = (() => {
       rails.push({ y, a: [x0, z1], b: [x1, z1], face: 'hole' })
       return
     }
-    const [x0, z0, x1, z1] = s.hole
     if (s.open === 'x+') {
       // 동쪽(꼭대기)만 열고 서·북·남 세 변에 난간
       rails.push({ y, a: [x0, z0], b: [x0, z1], face: 'hole' })
@@ -1063,8 +1062,8 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
   }
   // 홀 다리 밑 큰 목욕탕: 둥근 탕 테두리는 작은 상자를 둥글게 이어 붙임(틈 없이), 나무 욕조·칸막이·긴 의자는 통째로
   {
-    // (11/27 최적화) 0.5m 정사각 상자를 촘촘히(탕 6개에 약 390개) → 둘레를 따라 돌린 긴 상자(약 1m)로 이어 붙임 (약 절반, 틈 없음)
     const HB = YU_HALL_BATH
+    // (11/27 최적화) 0.5m 정사각 상자를 촘촘히(탕 6개에 약 390개) → 둘레를 따라 돌린 긴 상자(약 1m)로 이어 붙임 (약 절반, 틈 없음)
     HB.tubs.forEach(([cx, cz, rx, rz], i) => {
       const ax = rx + 0.2
       const az = rz + 0.2
@@ -1086,13 +1085,13 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
     HB.steps.forEach(([x, z], i) => wall(`jm_yutoya_hallbath_step${i + 1}`, at(x, z), [1.0, 0.3, 1.0], { elevation: el(YU.base) }))
     HB.barrels.forEach(([cx, cz, r], i) => wall(`jm_yutoya_hallbath_barrel${i + 1}`, at(cx, cz), [r2(r * 1.8), 0.85, r2(r * 1.8)], { elevation: el(YU.base) }))
     HB.part.segs.forEach(([x0, z0, x1, z1], i) => wall(`jm_yutoya_hallbath_part${i + 1}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), [Math.max(0.15, r2(Math.abs(x1 - x0))), HB.part.h, Math.max(0.15, r2(Math.abs(z1 - z0)))], { elevation: el(YU.base) }))
+    HB.benches.forEach(([x, z, len], i) => wall(`jm_yutoya_hallbath_bench${i + 1}`, at(x, z), [0.65, 0.5, len], { elevation: el(YU.base) }))
     ;(HB.lamps ?? []).forEach(([x, z], i) => wall(`jm_yutoya_hallbath_lamp${i + 1}`, at(x, z), [0.22, 2.4, 0.22], { elevation: el(YU.base) }))
     ;(HB.walls ?? []).forEach(([x0, z0, x1, z1], i) => {
       const alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0)
       const len = r2(Math.hypot(x1 - x0, z1 - z0))
       wall(`jm_yutoya_hallbath_wall${i + 1}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), alongX ? [len, HB.wallH, 0.25] : [0.25, HB.wallH, len], { elevation: el(YU.base) })
     })
-    HB.benches.forEach(([x, z, len], i) => wall(`jm_yutoya_hallbath_bench${i + 1}`, at(x, z), [0.65, 0.5, len], { elevation: el(YU.base) }))
   }
   for (const s of [-1, 1]) wall(`jm_yutoya_shoes_${s < 0 ? 'w' : 'e'}`, at(s * 3.2, r2(YU_IN.z - 0.6)), [1.6, 1.3, 0.5], { elevation: el(YU.base) })
   // 1층 목욕탕: 로비 쪽 벽(문 자리 비움) + 칸막이(통로 비움) + 번대 + 욕조
@@ -1131,6 +1130,7 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
       band.splits.forEach((x, j) => wall(`jm_yutoya_room${k + 1}_${bk}_part${j + 1}`, at(x, r2((band.z + outer) / 2)), [0.2, hh, r2(Math.abs(outer - band.z))], { elevation: y }))
     }
     wall(`jm_yutoya_room${k + 1}_b_lobby`, at(YU_ROOMS.back.x1, r2((YU_ROOMS.back.z - YU_IN.z) / 2)), [0.2, hh, r2(YU_IN.z + YU_ROOMS.back.z)], { elevation: y })
+  }
   // (11/27) 2층 큰 연회장: 무대(0.5) + 오르는 두 단 + 큰 북 + 낮은 상 두 줄 (방석은 충돌 없음)
   {
     const F = YU_FEAST
@@ -1165,7 +1165,6 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
     wall('jm_yutoya_top_pile', at(...T.pile), [3.2, 1.3, 3.2], { elevation: ty })
     prop('jm_yutoya_bath_fx', 'jmYuBath', [YU.x, YU.z], [YU.w, 4, YU.d], { collider: false, elevation: TOP, bath: { y: YU.base, board: [0, -2.4] } }) // 누각 앞 약탕 패 (jm_yuBath.jsx)
     prop('jm_yutoya_top', 'jmYuTop', [YU.x, YU.z], [YU.w, 6, YU.d], { collider: false, elevation: TOP, top: T })
-  }
   }
   // 엘리베이터 칸 옆벽 (1층 ~ 5층 지붕 밑까지, 열린 쪽 = 서쪽)
   // (11/26 지민 요청) 구석 직원용 엘리베이터는 없앰 — 로비 손님용 하나가 1~5층을 다님
@@ -1909,6 +1908,7 @@ const LAMP_STYLES = new Set(['jmLantern', 'jmLanternLine', 'jmGasLamp', 'jmTwinL
 // (11/26 지민 요청) 바다 철길: 湯灯駅 ↔ 서쪽 바다를 크게 돌아 ↔ 북악산(혜진 hjBugaksan) 터널 북쪽 끝. 바다 전차 1대 왕복 (jm_seaLine.jsx)
 //   마을 압축·당기기 뒤의 최종 좌표로 둠 → 湯灯駅 자리는 남은 장식 철길(jm_sea_rail)의 최종 z를 읽어서 맞춤
 //   점은 터널 안 → 湯灯駅 쪽 끝 순서(구역 좌표, 월드 z = 구역 z - 85). 터널 입구 = 북악산 궁궐 쪽 기슭 월드 z 163.4 → mouthZ 248.4 (혜진 구역 좌표라 고정)
+//   (11/27) 첫 점 = 경성역 쪽 터널 입구(gs_tunnel_s, 월드 z 213) · 경복궁 2번 선로(x -49.7)와 같은 줄 → 산속 터널을 지나 경성역까지 그대로 이어짐 (jm_seaLine.jsx)
 //   경성역 쪽으로는 안 나가고, 터널 안에서 손님을 경복궁 남행 기차로 옮겨 태움 (혜진 구역 파일은 안 고침)
 {
   const rail = props.find((p) => p.id === 'jm_sea_rail')
@@ -1918,13 +1918,17 @@ const LAMP_STYLES = new Set(['jmLantern', 'jmLanternLine', 'jmGasLamp', 'jmTwinL
     collider: false,
     sign: '湯灯',
     line: {
-      pts: [[-46.6, 256], [-46.6, 240], [-46.6, 223], [-53, 212], [-72, 208], [-130, 207], [-210, 205], [-280, 183], [-318, 130], [-326, 35], [-310, -60],
-        [-258, r2(SZ + 20)], [-180, r2(SZ + 1)], [-120, SZ], [SX, SZ], [r2(SX + 18), SZ]],
-      station: 14,
+      pts: [[-49.7, 298], [-49.7, 285], [-49.7, 265], [-49.7, 248.4], [-49.7, 238], [-51, 224], [-56, 212.5], [-72, 208], [-130, 207], [-210, 205], [-280, 183], [-318, 130], [-326, 35], [-310, -60],
+        [-258, r2(SZ + 20)], [-180, r2(SZ + 1)], [-165, SZ], [-120, SZ], [SX, SZ], [r2(SX + 18), SZ]],
+      station: 16, // (11/27 지민 A안) 湯灯駅을 여관 앞 부두에서 서쪽 바다 위 85m로 — 부두에서 선로 옆 얕은 물을 걸어 나감
       mouthZ: 248.4,
     },
   })
 }
+// (11/27) 선로 옆 얕은 물 띠(jm_sea_shoal_w)는 바다 물결 위에 판이 겹쳐 따로 움직여 보여서 뺌 — 걷는 바닥은 아래 물 밑 바닥
+// (11/27 지민 요청: 경계 넓히기) 湯灯駅이 맵 서쪽 벽(x -130) 밖 바다 위라, 선로 옆 물 밑 바닥(그림 없는 소품)이 벽을 넘어감 → opensBoundary로 서쪽 벽에 그 폭만 구멍
+//   (Colliders.jsx westWallSegments). 윗면 y 0 = 맵 땅 높이, 물 밑이라 안 보임. 바닥 둘레(북·남·서) 투명 벽은 jm_seaLine.jsx JmSeaTramColliders
+prop('jm_sea_walk_w', 'jmSeaWalk', [-153, -130.5], [66, 0.3, 15], { rotationDeg: 0, elevation: -0.3, opensBoundary: true }) // 그림 없음(충돌 바닥만) — jm_seaLine.jsx jmSeaWalk
 
 const zone = {
   zoneId: 'JM',

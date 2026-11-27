@@ -56,6 +56,20 @@ export const useWallet = create((set, get) => ({
     toast(`🎫 ${FARE_NAME[kind]} 1장을 샀어요`, 'success')
     return true
   },
+  /** [지민 11/27] 코인 n개 쓰기 (애니 구역 바다 전차 회수권 등 표 말고 다른 것 살 때). 모자라면 false */
+  spend(n, why) {
+    const s = get()
+    if (!(n > 0)) return true
+    if (s.coins < n) {
+      toast(`코인이 ${n - s.coins}개 모자라요 · 인력거를 끌어 코인을 모아 보세요`, 'error')
+      return false
+    }
+    const next = { coins: s.coins - n, tickets: s.tickets }
+    set(next)
+    save(next)
+    toast(`🪙 코인 -${n}${why ? ` · ${why}` : ''}`, 'info')
+    return true
+  },
   /** 탈 때 표 1장 쓰기 (없으면 false) */
   use(kind) {
     const s = get()
