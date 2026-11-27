@@ -39,21 +39,22 @@ for (const gender of ['male', 'female', 'male2', 'female2', 'lumi']) {
     const expected = { Idle: 6, Walk: 1, Run: .7, Jump: 1, Greeting: 157 / 30 }
     const mixer = new AnimationMixer(scene)
     if (gender === 'female2') {
+      const [body] = meshes
+      const point = new Vector3()
+      // Bind pose has a clear gap between the skirt and the lowered hands.
+      // Read it through skinning: a quantized (compressed) GLB stores position in [-1, 1], not meters.
+      body.skeleton.update()
+      const inSkirt = []
+      for (let i = 0; i < body.geometry.getAttribute('position').count; i++) {
+        body.getVertexPosition(i, point)
+        if (Math.abs(point.x) < .25 && point.y >= .62 && point.y < .95) inSkirt.push(i)
+      }
       const idle = mixer.clipAction(animations.find(clip => clip.name === 'Idle')).play()
       mixer.setTime(.5)
       const wave = createWavePose(scene, gender)
-      const [body] = meshes
-      const position = body.geometry.getAttribute('position')
-      const skirt = []
-      const point = new Vector3()
       scene.updateMatrixWorld(true)
       body.skeleton.update()
-      for (let i = 0; i < position.count; i++) {
-        // Bind pose has a clear gap between the skirt and the lowered hands.
-        if (Math.abs(position.getX(i)) < .25 && position.getY(i) >= .62 && position.getY(i) < .95) {
-          skirt.push([i, body.getVertexPosition(i, new Vector3())])
-        }
-      }
+      const skirt = inSkirt.map(i => [i, body.getVertexPosition(i, new Vector3())])
       assert.ok(skirt.length > 1000)
       const hand = scene.getObjectByName('RightHand')
       const lowered = hand.getWorldPosition(new Vector3())
