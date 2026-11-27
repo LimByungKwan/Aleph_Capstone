@@ -39,7 +39,7 @@ function PlaceMarker({ place }) {
           <capsuleGeometry args={[0.35, 1.0, 8, 16]} />
           <meshStandardMaterial color={color} />
         </mesh>
-      ) : place.zone !== 'SG' && place.zone !== 'BK' && place.zone !== 'HJ' && ( // SG·BK·HJ는 기둥 없이 바닥 원과 이름표만 표시
+      ) : place.zone !== 'SG' && place.zone !== 'BK' && place.zone !== 'HJ' && place.type !== 'spot' && ( // SG·BK·HJ는 기둥 없이 바닥 원과 이름표만 표시. 촬영지(스탬프) 주황 기둥은 JM도 뺌 (11/27 지민)
         <mesh position={[0, 1.5, 0]} castShadow>
           <cylinderGeometry args={[0.15, 0.15, 3, 16]} />
           <meshStandardMaterial color={color} />

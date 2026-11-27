@@ -174,6 +174,8 @@ for (const [i, x, z, s] of [[1, -14, -5, 'jmMaple'], [2, 12, -26.5, 'jmSakura'],
 for (const [i, x, z, r] of [[1, 16, -7, -10], [2, -36, -6, 15], [3, 21, 2, 25]]) prop(`jm_field_hut_${i}`, 'jmFieldHut', [x, z], [4.2, 3, 3.6], { rotationDeg: r })
 // (11/26 지민 요청) 팻말은 「전망대」만, 동쪽 돌길 바로 옆(길 안에 서지 않게 북쪽 가)
 prop('jm_field_sign', 'jmArrowSign', [3.2, -12.2], [1.6, 2.1, 0.2], { rotationDeg: -20, signs: [{ text: '전망대', dir: 'right' }] })
+// (11/27 지민 요청) 터널 나와서 강 건너기 전: 구역 지도 팻말 (누르거나 E → 애니 구역 지도, jm_zoneMap.jsx)
+prop('jm_zone_board', 'jmZoneBoard', [-3.4, -12.2], [2.4, 2.7, 0.3], { rotationDeg: 20 })
 light('jm_light_field', [0, -18])
 grassPatch('jm_grass_field', [0, -12], 0, 112, 30, 0.02, [{ strip: 2.2 }], 0.5)
 
@@ -183,8 +185,9 @@ road('jm_field_east', 'stone', [15.15, -10], [26.9, 0.06, 3], { color: '#a8946e'
 terrain.push({ type: 'platform', id: 'jm_stage', rect: [31, -13, 43, 1], height: 6.5, surface: 'paver', lights: true,
   rails: [{ edge: 'north' }, { edge: 'west' }, { edge: 'south', gaps: [[35.3, 38.7]] }, { edge: 'east', gaps: [[-6.4, -3.6]] }] })
 terrain.push({ type: 'stairs', id: 'jm_stage_stairs', from: [37, 14, 0], to: [37, 1, 6.5], width: 3 })
-road('jm_stage_path_a', 'stone', [28.6, 2.5], [3, 0.06, 25])
-road('jm_stage_path_b', 'stone', [33, 15.6], [9, 0.06, 3])
+// (11/27 성근 님 z-fighting 수정 #122를 스크립트에 옮김) 두 길이 겹치는 곳에서 깜빡이지 않게 두께를 다르게
+road('jm_stage_path_a', 'stone', [28.6, 2.5], [3, 0.076, 25])
+road('jm_stage_path_b', 'stone', [33, 15.6], [9, 0.092, 3])
 prop('jm_sign_tower', 'jmArrowSign', [34.3, -2.6], [1.6, 2.1, 0.2], { elevation: 6.5, signs: [{ text: '전망대', dir: 'right' }, { text: '데이트 코스', dir: 'right' }] })
 prop('jm_stage_sign', 'jmArrowSign', [30.4, 13], [1.6, 2.1, 0.2], { signs: [{ text: '전망 무대', dir: 'right' }] })
 for (const [i, x, z] of [[1, 32.5, -0.8], [2, 41.5, -11.5]]) stoneLantern(`jm_stage_lantern_${i}`, [x, z], { elevation: 6.5 })
@@ -606,6 +609,8 @@ const BR = { x: 0, z0: -150, z1: -179, w: 6, arch: 1.5, seg: 8 }
     }
   }
   for (const side of [-1, 1]) piers.forEach((z, i) => wall(`jm_grand_bridge_pier_${side < 0 ? 'w' : 'e'}${i + 1}`, [r2(BR.x + side * (BR.w / 2 - 0.7)), z], [0.9, r2(TOP - 1), 0.9]))
+  // (11/27 지민 요청) 명장면 ⑤ 실제 성지 팻말: 다리 남쪽 끝 광장 동쪽 (누르거나 E → 실제 성지 정보, jm_realSpots.jsx)
+  prop(fixedAt('jm_onsen_real_sign'), 'jmRealSpotSign', [7.6, -133.8], [2.4, 2.4, 0.3], { rotationDeg: -35, elevation: 7.4, spot: 'onsen' })
   placePositions.spot_jm_onsen = toWorld([BR.x, r2(TOP + BR.arch), cz])
 }
 // (11/25 지민 요청: 여관 마당 너머는 다 바다) 섬(x -36 ~ 36, z -179 ~ -225)만 남기고 다리 밑·섬 둘레는 모두 바다
@@ -1440,7 +1445,9 @@ for (const p of props) if (p.style === 'jmCanal' && p.beach === 'sea') p.hideWat
 // (11/26 지민 요청: 돌길이 맨 돌바닥이라 숲길과 안 어울림) 풀밭 돌길 위에 이끼 조각·줄눈 이끼·가장자리 풀 (jm_tunnel.jsx JmMossPath)
 for (const id of ['jm_field_path', 'jm_field_east']) {
   const rd = roads.find((r) => r.id === id)
-  if (rd) prop(`${id}_moss`, 'jmMossPath', rd.position, [rd.size[0], 0.1, rd.size[2]], { rotationDeg: rd.rotationDeg ?? 0, collider: false, seed: id.length * 7 })
+  // (11/27 성근 님 #122를 스크립트에 옮김) 두 이끼 판이 만나는 끝: 가운데 길은 끝을 막고(capEnd), 동쪽 길은 끝을 1.5m 들어 올림(raisedEnd)
+  const ends = id === 'jm_field_path' ? { capEnd: true } : { raisedEnd: 1.5 }
+  if (rd) prop(`${id}_moss`, 'jmMossPath', rd.position, [rd.size[0], 0.1, rd.size[2]], { rotationDeg: rd.rotationDeg ?? 0, collider: false, seed: id.length * 7, ...ends })
 }
 
 // (11/26 지민 요청: 숲 규모를 터널 양옆·풀밭 양쪽까지, 그림의 초록 선) 왼쪽(x -39 ~ -4.5)·오른쪽(x 4.5 ~ 26.5, 전망 무대 길 앞까지),

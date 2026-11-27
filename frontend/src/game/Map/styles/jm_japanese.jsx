@@ -19,6 +19,8 @@ import { JM_TUNNEL_STYLES } from './jm_tunnel.jsx'
 import { JM_SPIRIT_STYLES } from './jm_spirit.jsx'
 import { JM_SCENE_STYLES } from './jm_scenes.jsx'
 import { JM_SEALINE_STYLES } from './jm_seaLine.jsx'
+import { JM_ZONEMAP_STYLES } from './jm_zoneMap.jsx'
+import { JM_REALSPOT_STYLES } from './jm_realSpots.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -58,6 +60,8 @@ const NO_MERGE = new Set([
   'jmSceneRoom', // 장면 공간 (비·체험 등 움직이는 부품)
   'jmSeaLine', // 바다 철길: 달리는 전차 (11/26)
   'jmLandFill', // 땅 메우기 (깊이 조정 재질 그대로)
+  'jmZoneBoard', // 구역 지도 팻말: 누르기·HUD (11/27)
+  'jmRealSpotSign', // 실제 성지 팻말: 누르기·HUD (11/27)
 ])
 
 const JM_STYLES_RAW = {
@@ -104,6 +108,9 @@ const JM_STYLES_RAW = {
   ...JM_SCENE_STYLES,
   // 바다 철길·전차·경복궁 터널 북쪽 입구, 땅 메우기 (jm_seaLine.jsx, 11/26)
   ...JM_SEALINE_STYLES,
+  // 구역 지도 팻말·실제 성지 팻말 (jm_zoneMap.jsx·jm_realSpots.jsx, 11/27)
+  ...JM_ZONEMAP_STYLES,
+  ...JM_REALSPOT_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)
