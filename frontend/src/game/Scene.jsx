@@ -8,6 +8,7 @@ import PlaceMarkers from './Map/PlaceMarkers.jsx'
 import CourseMarker from './Map/CourseMarker.jsx'
 import Colliders from './Map/Colliders.jsx'
 import { Elevators } from './Map/Terrain.jsx'
+import { JmGuestLifts } from './Map/styles/jm_guestLift.jsx' // [지민] 애니 구역 온천장 손님용 엘리베이터 (병관님 Elevators와 같은 방식, 11/27)
 import PastelSky from './Map/PastelSky.jsx'
 import Player, { KEYBOARD_MAP } from './Player/Player.jsx'
 import FirstPersonCamera from './Player/FirstPersonCamera.jsx'
@@ -116,6 +117,7 @@ export default function Scene({ locked = false }) {
             <Physics debug={PHYSICS_DEBUG}>
               <Colliders />
               <Elevators playerRef={playerRef} />
+              <JmGuestLifts playerRef={playerRef} />
               {playing && (
                 <>
                   <group visible={!dateIntro}>

@@ -774,9 +774,14 @@ const yuLayout = (() => {
   const ring = [[-ix, V.z1, ix, iz], [-ix, -iz, ix, V.z0], [-ix, V.z0, V.x0, V.z1], [V.x1, V.z0, ix, V.z1]]
   const holes = YU_STAIRS.map((s) => s.hole ?? null)
   const slabs = []
+  // (11/27) 손님용 엘리베이터 칸이 실제로 오르내림(jm_guestLift.jsx) → 2~5층 바닥판에 승강로 안쪽(벽 안쪽 면 ±1.5) 구멍
+  //   칸이 없는 층의 구멍은 층 문 충돌(칸이 그 층에 서서 문이 열렸을 때만 꺼짐)이 막음
+  const G = YU_GUEST
+  const gHole = [r2(G.x - G.shaft + 0.1), r2(G.z - G.shaft + 0.1), r2(G.x + G.shaft - 0.1), r2(G.z + G.shaft - 0.1)]
   for (let k = 1; k <= 4; k++) {
     let rects = k === 4 ? [full] : ring
     if (holes[k - 1]) rects = rects.flatMap((r) => rectSub(r, holes[k - 1]))
+    rects = rects.flatMap((r) => rectSub(r, gHole))
     slabs.push({ lv: k, y: YU_LV[k], rects: rects.map((r) => r.map(r2)) })
   }
   const rails = []
@@ -1126,11 +1131,11 @@ prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collid
     { key: '4', label: '4층 객실', sign: '客用', pos: gAt(3) },
     { key: '5', label: '5층 주인의 방', sign: '客用', pos: gAt(4) },
   ]
-  for (let k = 0; k <= 4; k++) {
-    prop(`jm_gelev_${k + 1}`, 'jmElevator', [r2(YU.x + YU_GUEST.x), r2(YU.z + YU_GUEST.z)], [YU_GUEST.w, YU_GUEST.h, YU_GUEST.w], {
-      rotationDeg: 90, collider: false, elevation: r2(TOP + YU_LV[k] + 0.02), elevator: { me: String(k + 1), stops: guestStops, kind: 'guest' },
-    })
-  }
+  // (11/27) 칸 하나가 실제로 오르내림 (병관님 전망대 엘리베이터 방식, jm_guestLift.jsx). elevation = 1층 칸 바닥
+  //   예전: 층마다 칸 5개 + 매 프레임 순간 이동 → 바닥판 통과·카메라 끼임·도착 칸 겹침 등 오류
+  prop('jm_gelev', 'jmElevator', [r2(YU.x + YU_GUEST.x), r2(YU.z + YU_GUEST.z)], [YU_GUEST.w, YU_GUEST.h, YU_GUEST.w], {
+    rotationDeg: 90, collider: false, elevation: r2(TOP + YU_LV[0] + 0.02), elevator: { stops: guestStops, kind: 'guest', shaft: YU_GUEST.shaft },
+  })
 }
 
 // ─────────────────────────────────────────────
