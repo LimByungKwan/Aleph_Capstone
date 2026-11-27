@@ -45,10 +45,15 @@ import {
   HYANGWON_STAIR,
   HYANGWON_UPPER_OPEN,
   HYANGWON_Y1,
+  LAWN_Z,
+  GARDEN_PATH_W,
+  PALACE_MODEL_WIDTH,
+  PALACE_MODEL_DEPTH,
   PALACE_ORIGIN_Z,
   PONDS,
   PUMGYE_ROWS,
   TREES,
+  THRONE_FOOTPRINT,
   WALLS,
   WALL_H,
   WALL_T,
@@ -88,7 +93,7 @@ export default function HjGyeongbokPalace({ item }) {
   const [w, h, d] = item.size
   const closedDoors = useHallDoors((s) => s.closed) // 전각 문 열림·닫힘 (E로 바꿔요)
   return (
-    <group scale={[w / 53, h / 9, d / 53]}>
+    <group scale={[w / PALACE_MODEL_WIDTH, h / 9, d / PALACE_MODEL_DEPTH]}>
       {/* ── 근정전 (아이템 기준 좌표: 실내·착석 기능과 같은 좌표계) ── */}
       <Geunjeongjeon />
 
@@ -206,8 +211,8 @@ function Geunjeongjeon() {
       ))}
       <HanokHall
         position={THRONE_ROOM_POSITION}
-        width={14.2}
-        depth={8.1}
+        width={THRONE_FOOTPRINT.w}
+        depth={THRONE_FOOTPRINT.d}
         height={3.8}
         bays={5}
         sideBays={5}
@@ -260,8 +265,6 @@ function cutRects([x0, x1, z0, z1], holes) {
 }
 
 // 바닥: 장대석 받침 + 마당은 네모 화강석 포석, 근정전 마당은 불규칙 박석, 가운데 삼도, 후원은 잔디 (HjPalaceGround.jsx)
-const LAWN_Z = 46.3 // 침전 뒤 담장 너머 후원 (잔디)
-const GARDEN_PATH_W = 1.2 // 후원 가운데 돌길 반폭
 function Grounds() {
   const { minX, maxX, minZ, maxZ } = BOUNDS
   const ponds = useMemo(() => PONDS.map((p) => [p.ax - p.w / 2, p.ax + p.w / 2, p.az - p.d / 2, p.az + p.d / 2]), [])

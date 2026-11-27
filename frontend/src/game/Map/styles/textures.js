@@ -39,9 +39,78 @@ function makeCanvasTexture(key, width, height, draw, repeat = true) {
 
 // ── 바닥 무늬 (반복용) ─────────────────────────
 // 각 무늬 한 장이 실제로 몇 m인지 (반복 횟수 계산에 사용)
-export const TILE_METERS = { brick: 1, asphalt: 4, tile: 1, stone: 2, paver: 2, grass: 5, gardenPath: 2.4 }
+export const TILE_METERS = {
+  brick: 1, asphalt: 4, tile: 1, stone: 2, paver: 2, grass: 5, gardenPath: 2.4,
+  hubGranite: 7.2, hubLimestone: 4.8, hubLawn: 13, hubSoil: 3.6,
+}
+
+function scatterGrain(ctx, size, random, count, colors, scale) {
+  for (let i = 0; i < count; i++) {
+    ctx.fillStyle = colors[i % colors.length]
+    const x = Math.floor(random() * size)
+    const y = Math.floor(random() * size)
+    ctx.fillRect(x, y, 1 + random() * scale, 1 + random() * scale * .65)
+  }
+}
+
+function hubMasonry(key, seed, colors, joints, rows, columns) {
+  return makeCanvasTexture(key, 512, 512, (ctx, size) => {
+    const random = seededRandom(seed)
+    const w = size / columns
+    const h = size / rows
+    const seam = 1.6
+    ctx.fillStyle = joints
+    ctx.fillRect(0, 0, size, size)
+    for (let row = 0; row < rows; row++) {
+      const offset = (row % 2) * w * .5
+      for (let col = 0; col < columns; col++) {
+        const color = vary(colors[Math.floor(random() * colors.length)], random, .035)
+        const x = col * w + offset
+        const y = row * h
+        // Draw the same end stone on both edges for a continuous bond.
+        for (const left of [x - size, x]) {
+          if (left + w <= 0) continue
+          ctx.fillStyle = color
+          ctx.fillRect(left + seam, y + seam, w - seam * 2, h - seam * 2)
+          ctx.fillStyle = '#fff6df46'
+          ctx.fillRect(left + 2, y + 2, w - 4, 1.6)
+          ctx.fillStyle = '#30282230'
+          ctx.fillRect(left + 2, y + h - 3, w - 4, 1.4)
+        }
+      }
+    }
+    scatterGrain(ctx, size, random, 13500, ['#fff7e224', '#3e443429', '#e8e2ca19', '#4a39301d'], 2.7)
+  })
+}
 
 const PATTERNS = {
+  hubGranite: () => hubMasonry('hub-granite', 512, ['#8e9f8e', '#a5aa98', '#929e93', '#b5b2a0', '#9eaa9b'], '#7c867a', 12, 8),
+  hubLimestone: () => hubMasonry('hub-limestone', 307, ['#d5c4a9', '#c7b59e', '#dfd2ba', '#d7c8b3', '#bfac95'], '#a89986', 8, 8),
+  hubLawn: () => makeCanvasTexture('hub-lawn', 512, 512, (ctx, size) => {
+    const random = seededRandom(831)
+    ctx.fillStyle = '#8eae71'
+    ctx.fillRect(0, 0, size, size)
+    for (let i = 0; i < 44; i++) {
+      const x = random() * size
+      const y = random() * size
+      const radius = 23 + random() * 64
+      const tint = i % 3 === 0 ? '#4e714350' : i % 3 === 1 ? '#c9c47144' : '#64965860'
+      for (const dx of [-size, 0, size]) for (const dy of [-size, 0, size]) {
+        const blend = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, radius)
+        blend.addColorStop(0, tint)
+        blend.addColorStop(1, tint.slice(0, 7) + '00')
+        ctx.fillStyle = blend
+        ctx.fillRect(x + dx - radius, y + dy - radius, radius * 2, radius * 2)
+      }
+    }
+    scatterGrain(ctx, size, random, 17000, ['#c1c48175', '#536f4882', '#a0b96b80', '#6b8c536b'], 2.9)
+  }),
+  hubSoil: () => makeCanvasTexture('hub-soil', 256, 256, (ctx, size) => {
+    const random = seededRandom(579)
+    ctx.fillStyle = '#78604a'
+    ctx.fillRect(0, 0, size, size)
+    scatterGrain(ctx, size, random, 5400, ['#ac8c6f70', '#45352680', '#8f806270', '#ccb58d80'], 4)
+  }),
   grass: () =>
     makeCanvasTexture('grass', 256, 256, (ctx, w, h) => {
       const random = seededRandom(219)

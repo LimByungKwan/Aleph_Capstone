@@ -1,7 +1,7 @@
-import { CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
+import { CapsuleCollider, CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { beachBounds, seabed } from './seabed.js'
 import * as THREE from 'three'
-import { layout, southGroundExtension } from '../data/mapData.js'
+import { layout, mapPlaces, southGroundExtension } from '../data/mapData.js'
 import { TerrainColliders } from './Terrain.jsx'
 import { GEO } from './styles/kit.jsx'
 import { BkDateColliders } from './styles/bk_dateColliders.jsx'
@@ -29,6 +29,9 @@ const harborProps = layout.props.filter((item) => item.zone === 'HJ' && (
 const palaceBoxes = layout.props.filter((item) => item.style === 'hjGyeongbokgung')
   .flatMap((item) => [...palaceGroundsColliders(item), ...specialAccessColliders(item)])
 const cameraBlockers = [...layout.buildings, ...palaceBoxes.filter((item) => item.blocksCamera)]
+const lumi = mapPlaces.find((place) => place.id === 'npc_guide')
+const LUMI_CAPSULE = [0.5, 0.35]
+const LUMI_BODY_DATA = { ecctrl: { excludeRay: true } }
 
 // [3. 개발 > 프론트엔드] +z 가장자리 벽에 구멍을 내는 땅: southGroundExtension + opensBoundary가 붙은 바닥(혜진 구역 경성거리 북쪽 땅)
 const boundaryOpenings = [southGroundExtension, ...layout.roads.filter((item) => item.opensBoundary)].filter(Boolean)
@@ -95,6 +98,13 @@ export default function Colliders() {
 
       {bugaksan && <HjBugaksanCollider item={bugaksan} />}
       {harborProps.map((item) => <HjHarborCollider key={item.id} item={item} />)}
+
+      {/* 루미는 제자리에서 회전하므로, 대화 센서 안쪽에 회전 대칭인 몸체를 둡니다. */}
+      {lumi && (
+        <RigidBody type="fixed" colliders={false} position={lumi.position} name="lumi-body" userData={LUMI_BODY_DATA}>
+          <CapsuleCollider args={LUMI_CAPSULE} position={[0, LUMI_CAPSULE[0] + LUMI_CAPSULE[1], 0]} friction={0} />
+        </RigidBody>
+      )}
 
       {/* 건물: 카메라가 벽을 뚫지 않게 막아 주는 투명 박스 (소품은 제외 — 가로등 기둥에 카메라가 걸리지 않게) */}
       {cameraBlockers.map((item) => (
