@@ -1,9 +1,10 @@
 import { Grid } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
-import { BufferGeometry, Color, Float32BufferAttribute, Vector2 } from 'three'
-import { SHOW_GRID, SKY_COLORS } from '../config.js'
+import { BufferGeometry, Float32BufferAttribute } from 'three'
+import { SHOW_GRID } from '../config.js'
 import { getTiledTexture, TILE_METERS } from './styles/textures.js'
 import { beachBounds, COAST_SEGMENTS, coastPoint } from './seabed.js'
+import { meadowBlend } from './meadowBlend.js'
 
 // [3. 개발 > 렌더링] 해변과 풀밭이 같은 위치에 그려지지 않게 해안선에서 풀밭을 잘라요.
 function groundGeometry(width, depth, cx, cz) {
@@ -52,19 +53,7 @@ export default function Ground({ ground }) {
   const [cx, cz] = ground.center ?? [0, 0]
   const grass = useMemo(() => getTiledTexture('grass', width / TILE_METERS.grass, depth / TILE_METERS.grass), [width, depth])
   const geometry = useMemo(() => groundGeometry(width, depth, cx, cz), [width, depth, cx, cz])
-  // Blend the texture itself, not alpha: retain opaque ground and its shadows.
-  const blendMeadow = useMemo(() => (shader) => {
-    shader.uniforms.meadowHalfSize = { value: new Vector2(width / 2, depth / 2) }
-    shader.uniforms.meadowColor = { value: new Color(SKY_COLORS.outerGround) }
-    shader.vertexShader = `varying vec2 vMeadowPosition;\n${shader.vertexShader}`
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvMeadowPosition = position.xz;')
-    shader.fragmentShader = `varying vec2 vMeadowPosition;\nuniform vec2 meadowHalfSize;\nuniform vec3 meadowColor;\n${shader.fragmentShader}`
-      .replace('#include <map_fragment>', `#include <map_fragment>
-        vec2 edgeDistance = meadowHalfSize - abs(vMeadowPosition);
-        float meadowBlend = smoothstep(0.0, 28.0, min(edgeDistance.x, edgeDistance.y));
-        diffuseColor.rgb = mix(meadowColor, diffuseColor.rgb, meadowBlend);
-      `)
-  }, [width, depth])
+  const blendMeadow = useMemo(() => meadowBlend([width, depth]), [width, depth])
   useEffect(() => () => grass.dispose(), [grass])
   useEffect(() => () => geometry.dispose(), [geometry])
   return (

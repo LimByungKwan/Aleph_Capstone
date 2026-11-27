@@ -7,6 +7,10 @@ export function shoreline(x) {
 }
 export const beachBounds = [originX-45, originX+40, originZ+40, originZ+130]
 export const COAST_SEGMENTS = 96
+export const BEACH_BOARDWALK = { fromX: -38, toX: 13, z: 44, depth: 3 }
+export const BEACH_PARASOLS = [
+  [-32, 48, '#a881bf'], [-18, 49, '#57aaa6'], [-5, 48, '#d48794'], [8, 50, '#7597bd'],
+]
 
 export function coastPoint(index) {
   const x = -45 + 85 * index / COAST_SEGMENTS

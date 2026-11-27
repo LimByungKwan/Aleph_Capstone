@@ -1,25 +1,19 @@
-import { DoubleSide, Shape, ShapeGeometry } from 'three'
+import { DoubleSide } from 'three'
 import { zones } from '../data/mapData.js'
 import { useSettings } from '../settingsStore.js'
 import { Box, Cyl, GEO, Instances, mat } from './styles/kit.jsx'
 import { getSignTexture } from './styles/textures.js'
 import { getWoodSignTexture } from './styles/hj/hjTextures.js'
+import DateWalkGate from './styles/bk_dateWalkGate.jsx'
 
 // [3. 개발 > 프론트엔드] 광장에서 각 테마로 이어지는 실제 3D 입구.
 const GATES = {
   JM: { title: '애니메이션 골목', subtitle: '이야기가 시작되는 길', post: '#a54c3d', roof: '#354b49', ink: '#fff3d6', face: 0 },
-  BK: { title: '데이트 산책길', subtitle: '함께 걷는 작은 정원', post: '#78916e', roof: '#48644a', ink: '#fff6ed', face: -90 },
+  BK: { title: '데이트 산책길', subtitle: '함께 걷는 작은 정원', face: -90 },
   HJ: { title: '영화·드라마 거리', subtitle: 'SceneWalk · 촬영지 골목', post: '#574032', roof: '#3a2b26', ink: '#fff3d6', face: 180 },
   SG: { title: 'K-POP 스테이지', subtitle: '음악이 흐르는 거리', post: '#352948', roof: '#201b32', ink: '#ffe9ff', face: 90 },
 }
 
-const heartShape = new Shape()
-heartShape.moveTo(0, -0.53)
-heartShape.bezierCurveTo(-1.25, 0.35, -0.36, 0.99, 0, 0.46)
-heartShape.bezierCurveTo(0.36, 0.99, 1.25, 0.35, 0, -0.53)
-const heart = new ShapeGeometry(heartShape)
-const heartMaterial = mat('#f2b8c6', { emissive: '#da758d', emissiveIntensity: 0.35 })
-const flowerMaterial = mat('#fff', { flat: true })
 const lightMaterial = mat('#fff1c9', { emissive: '#ffd27a', emissiveIntensity: 1.1 })
 const curbMaterial = mat('#ffffff', { flat: true })
 
@@ -68,7 +62,9 @@ export default function Zones() {
         {showZones && items.length > 0 && <Instances geometry={GEO.box} material={curbMaterial} items={items} />}
         {zone.entrance && gate && (
           <group name={gate.title} position={[x, 0, z]} rotation={[0, gate.face * Math.PI / 180, 0]}>
-            <ThemeGate id={zone.zoneId} gate={gate} width={width} />
+            {zone.zoneId === 'BK'
+              ? <DateWalkGate width={width} title={gate.title} subtitle={gate.subtitle} />
+              : <ThemeGate id={zone.zoneId} gate={gate} width={width} />}
           </group>
         )}
       </group>
@@ -91,7 +87,6 @@ function ThemeGate({ id, gate, width }) {
           <Box p={[0, 2.35, 0]} s={[0.44, 4.4, 0.49]} c={gate.post} />
           {id === 'JM' && <Cyl p={[0, 3.52, 0.48]} rad={0.23} h={0.55} c="#ffd29a" />}
           {id === 'SG' && <Box p={[0, 2.55, 0.26]} s={[0.14, 2.95, 0.04]} m={mat('#c8acff', { emissive: '#9a7cf3', emissiveIntensity: 0.8 })} />}
-          {id === 'BK' && <GardenFlowers side={side} />}
         </group>
       ))}
       <Box p={[0, 4.48, 0]} s={[span + 0.85, 0.32, 0.72]} c={gate.roof} />
@@ -99,12 +94,6 @@ function ThemeGate({ id, gate, width }) {
         <>
           <Box p={[0, 4.79, 0]} s={[span + 1.2, 0.24, 1.04]} c={gate.roof} />
           {[-1, 1].map((side) => <Box key={side} p={[side * (half + 0.56), 4.83, 0]} s={[0.9, 0.23, 1.04]} r={[0, 0, side * 0.16]} c={gate.roof} />)}
-        </>
-      )}
-      {id === 'BK' && (
-        <>
-          <mesh geometry={heart} material={heartMaterial} position={[0, 5.06, 0.25]} scale={[0.54, 0.54, 0.54]} />
-          <GardenFlowers side={1} across />
         </>
       )}
       {id === 'SG' && (
@@ -126,14 +115,4 @@ function ThemeGate({ id, gate, width }) {
       </mesh>
     </>
   )
-}
-
-function GardenFlowers({ side, across = false }) {
-  const palette = ['#e6a4b4', '#f6d3d7', '#f8e7c5', '#759560']
-  const items = Array.from({ length: across ? 16 : 9 }, (_, i) => ({
-    p: across ? [1.7 + i * 0.12, 4.63 + Math.sin(i * 2) * 0.12, 0.27] : [side * (0.16 + (i % 2) * 0.10), 0.58 + i * 0.17, 0.29],
-    c: palette[i % palette.length],
-    s: [0.14, 0.12, 0.11],
-  }))
-  return <Instances geometry={GEO.rock} material={flowerMaterial} items={items} />
 }

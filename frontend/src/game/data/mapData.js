@@ -74,11 +74,22 @@ const terrain = [...(hub.terrain ?? []), ...zones.flatMap((zone) => placeTerrain
 
 // "onTerrain": true인 건물·소품은 언덕 높이만큼 자동으로 올려 줌 (elevation은 거기에 더하는 값)
 function settle(items) {
-  return items.map((item) =>
-    item.onTerrain
-      ? { ...item, elevation: terrainHeightAt(terrain, item.position[0], item.position[1]) + (item.elevation ?? 0) }
-      : item,
-  )
+  return items.map((item) => {
+    const [x, z] = item.position
+    const elevation = item.onTerrain ? terrainHeightAt(terrain, x, z) + (item.elevation ?? 0) : item.elevation
+    if (item.featuresOnTerrain) {
+      const yaw = (item.rotationDeg ?? 0) * Math.PI / 180
+      const cos = Math.cos(yaw)
+      const sin = Math.sin(yaw)
+      const features = item.features.map((feature) => {
+        const [dx, dz] = feature.p
+        const y = terrainHeightAt(terrain, x + dx * cos + dz * sin, z - dx * sin + dz * cos)
+        return { ...feature, y: y - (elevation ?? 0) }
+      })
+      return { ...item, elevation, features }
+    }
+    return item.onTerrain ? { ...item, elevation } : item
+  })
 }
 
 const props = settle([...hubGardenProps, ...hub.props, ...zones.flatMap((zone) => placeItems(zone.props, zone))])

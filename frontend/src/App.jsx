@@ -5,7 +5,7 @@ import AdminLauncher from './components/admin/AdminLauncher.jsx'
 import { AuditionInteraction, CheerInteraction, StudioInteraction } from './components/sg/SgInteractionUi.jsx'
 import KpopGuide from './components/sg/KpopGuide.jsx'
 import KeyHints from './components/sg/KeyHints.jsx'
-import ClockTowerMap from './components/sg/ClockTowerMap.jsx'
+import HubMapInteraction from './components/minimap/HubMapInteraction.jsx'
 import KpopIntro from './components/sg/KpopIntro.jsx'
 import { LoginGate, LoginModal } from './components/auth/LoginPage.jsx'
 import { USE_SERVER, openLogin, useSessionStore } from './api/session.js'
@@ -62,7 +62,7 @@ export default function App() {
       <AuditionInteraction />
       <KpopGuide />
       <KeyHints />
-      <ClockTowerMap />
+      <HubMapInteraction />
       <KpopIntro />
       <LoginModal />
     </div>

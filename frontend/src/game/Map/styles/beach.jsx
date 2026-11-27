@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { Box, Cyl, GEO, Instances, mat, seeded } from './kit.jsx'
 
-import { COAST_SEGMENTS, coastPoint, shoreline } from '../seabed.js'
+import { BEACH_BOARDWALK, BEACH_PARASOLS, COAST_SEGMENTS, coastPoint, shoreline } from '../seabed.js'
 import { coastRows } from '../coastColors.js'
 
 function coastline() {
@@ -28,8 +28,8 @@ function coastline() {
 const shoreGeometry = coastline()
 const boards = [], ripples = []
 const rand = seeded(742)
-for (let x=-38;x<=13;x+=.53)
-  boards.push({ p:[x,.09,44], s:[.51,.18,3], c:rand()>.5?'#bb906a':'#c79d77' })
+for (let x = BEACH_BOARDWALK.fromX; x <= BEACH_BOARDWALK.toX; x += .53)
+  boards.push({ p:[x,.09,BEACH_BOARDWALK.z], s:[.51,.18,BEACH_BOARDWALK.depth], c:rand()>.5?'#bb906a':'#c79d77' })
 for (let i=0;i<190;i++) {
   const x=-44+rand()*79, edge=shoreline(x)+13
   const z=edge+rand()*(129-edge)
@@ -56,7 +56,7 @@ export function SungrayBeach() {
     </mesh>
     <Instances geometry={GEO.box} items={boards} material={mat('#ffffff')} />
     <Instances geometry={GEO.box} items={ripples} material={pale} />
-    {[[-32,48,'#a881bf'],[-18,49,'#57aaa6'],[-5,48,'#d48794'],[8,50,'#7597bd']].map(([x,z,color])=>
+    {BEACH_PARASOLS.map(([x,z,color])=>
       <Parasol key={x} x={x} z={z} color={color} />)}
   </group>
 }

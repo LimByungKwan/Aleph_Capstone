@@ -172,15 +172,22 @@ export function CherryTree({ item }) {
   return <SeasonalTree item={item} kind="sakura" planter={item.planter} />
 }
 
+export function LanternGlow({ height, groundY = 0.03, poolScale = 1, haloSize = 2.4 }) {
+  useFrame((state) => updateNight(state.gl.info.render.frame))
+  return (
+    <>
+      <mesh geometry={POOL_GEO} material={POOL_MAT} position={[0, groundY, 0]} scale={poolScale} renderOrder={2} userData={NO_SHADOW} />
+      <sprite material={HALO_MAT} position={[0, height, 0]} scale={[haloSize, haloSize, 1]} renderOrder={3} />
+    </>
+  )
+}
+
 // ── 등불 가로등 ───────────────────────────────
 export function LanternLamp({ item }) {
   const [, h] = item.size
-  useFrame((state) => updateNight(state.gl.info.render.frame))
   return (
     <group>
-      {/* 밤에만: 바닥 불빛 + 등불 빛무리 */}
-      <mesh geometry={POOL_GEO} material={POOL_MAT} position={[0, 0.03, 0]} renderOrder={2} userData={NO_SHADOW} />
-      <sprite material={HALO_MAT} position={[0, h + 0.3, 0]} scale={[2.4, 2.4, 1]} renderOrder={3} />
+      <LanternGlow height={h + 0.3} />
       <Cyl p={[0, 0.15, 0]} rad={0.14} h={0.3} c={DARK} geo={GEO.cyl8} />
       <Cyl p={[0, h / 2, 0]} rad={0.06} h={h} c={DARK} geo={GEO.cyl8} />
       <Box p={[0, h + 0.03, 0]} s={[0.46, 0.06, 0.46]} c={DARK} />
@@ -1198,7 +1205,7 @@ function addLandscapeFeature(P, f, random, hubPicnic) {
       }
       break
     case 'rock':
-      P.push(piece('rock', [x, y + 0.25 * s, z], [0.7 * s, 0.45 * s, 0.6 * s], pick(['#b8acc0', '#a99fb2', '#c4bacb']), 0, random() * 3))
+      P.push(piece('rock', [x, y + 0.25 * s, z], [0.7 * s, 0.45 * s, 0.6 * s], pick(f.palette ?? ['#b8acc0', '#a99fb2', '#c4bacb']), 0, random() * 3))
       break
     case 'hedge': {
       const [x2, z2] = f.p2

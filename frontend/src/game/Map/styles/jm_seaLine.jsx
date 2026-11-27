@@ -8,6 +8,7 @@ import { sharedSeconds } from '../../../components/movieZone/hjSync.js'
 import { registerVehicle, updateVehicleWorld, vehicles } from '../../../components/movieZone/rideSeats.js'
 import { usePalaceSeatStore } from '../../../components/movieZone/palaceSeating.js'
 import { SeaRideView } from './jm_seaRide.jsx'
+import { buildSeaLinePath } from './jm_seaGeometry.js'
 
 // 애니 구역(JM) 바다 철길 — 담당: 지민 (11/26)
 // 湯灯駅(애니 구역 북서쪽 바다 위 역) ↔ 바다를 크게 돌아 ↔ 북악산 터널(경복궁 구역 기차 터널 gs_tunnel_s의 북쪽 끝)
@@ -42,60 +43,6 @@ const CAR_W = 2.6
 const CAR_GAP = 0.2
 const RAIL_Y = 0.3 // 레일 윗면 (자갈 둑이 물결 바로 위로 살짝 드러나는 높이 → 바다 위를 달리는 철길)
 const POLE_X = 4.5 // 전봇대: 선로 가운데에서 떨어진 거리 (湯灯駅 승강장 반대편)
-
-// 선을 0.5m 간격 점으로 (위치·방향·누적 길이) → 매 프레임 거리로 바로 찾기
-function buildPath(line) {
-  const curve = new THREE.CatmullRomCurve3(line.pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal')
-  const total = curve.getLength()
-  const n = Math.ceil(total / 0.5)
-  const P = new Float32Array((n + 1) * 2)
-  const D = new Float32Array((n + 1) * 2)
-  for (let i = 0; i <= n; i++) {
-    const t = i / n
-    const p = curve.getPointAt(t)
-    const d = curve.getTangentAt(t)
-    P[i * 2] = p.x
-    P[i * 2 + 1] = p.z
-    const l = Math.hypot(d.x, d.z) || 1
-    D[i * 2] = d.x / l
-    D[i * 2 + 1] = d.z / l
-  }
-  const step = total / n
-  const near = (x, z) => {
-    let best = 0
-    let bd = Infinity
-    for (let i = 0; i <= n; i++) {
-      const dd = (P[i * 2] - x) ** 2 + (P[i * 2 + 1] - z) ** 2
-      if (dd < bd) {
-        bd = dd
-        best = i
-      }
-    }
-    return best * step
-  }
-  const sStation = near(...line.pts[line.station])
-  let sMouth = 0
-  for (let i = 0; i <= n; i++) {
-    if (P[i * 2 + 1] < line.mouthZ) {
-      sMouth = i * step
-      break
-    }
-  }
-  const at = (s, out) => {
-    const f = Math.min(n, Math.max(0, s / step))
-    const i = Math.min(n - 1, Math.floor(f))
-    const u = f - i
-    out.x = P[i * 2] + (P[i * 2 + 2] - P[i * 2]) * u
-    out.z = P[i * 2 + 1] + (P[i * 2 + 3] - P[i * 2 + 1]) * u
-    out.dx = D[i * 2] + (D[i * 2 + 2] - D[i * 2]) * u
-    out.dz = D[i * 2 + 1] + (D[i * 2 + 3] - D[i * 2 + 1]) * u
-    const l = Math.hypot(out.dx, out.dz) || 1
-    out.dx /= l
-    out.dz /= l
-    return out
-  }
-  return { total, sStation, sMouth, at, step }
-}
 
 function makeSchedule(path) {
   const L = path.sStation
@@ -179,7 +126,7 @@ function mergeGeometries(list) {
 
 function SeaTrack({ path }) {
   const { rails, bed, wire, sleepers, poles, arms } = useMemo(() => {
-    const from = Math.max(0, path.sMouth - 2)
+    const from = path.trackStart
     const to = path.total
     const zero = () => 0
     const sleepers = []
@@ -309,7 +256,7 @@ function SeaTrainRun({ item, path, schedule, runs }) {
 }
 
 export function JmSeaLine({ item }) {
-  const path = useMemo(() => buildPath(item.line), [item.line])
+  const path = useMemo(() => buildSeaLinePath(item.line), [item.line])
   const schedule = useMemo(() => makeSchedule(path), [path])
   const runs = useMemo(() => [null], [])
   if (import.meta.env.DEV) window.__jmSeaLine = { path, schedule, runs }
