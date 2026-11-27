@@ -4,10 +4,10 @@ import { useGameStore } from '../../store/gameStore.js'
 import { playerPose } from '../../store/playerPose.js'
 import { inDateZone } from '../../game/Map/styles/bk_dateMission.js'
 import { useUiStore } from '../movieZone/uiStore.js'
+import { DATE_INTRO_PANEL as PANEL } from '../../game/Player/dateIntroTimeline.js'
 
 const DateCourseIntroPlayer = lazy(() => import('./DateCourseIntroPlayer.jsx'))
 
-const PANEL = 'dateCourseIntro'
 const seen = new Set()
 const pendingSaves = new Set()
 

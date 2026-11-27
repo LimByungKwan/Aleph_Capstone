@@ -15,6 +15,30 @@
   pointer-events: auto;
 }
 .date-intro video { width: 100%; height: 100%; object-fit: contain; }
+.date-intro--live[open], .date-intro--live::backdrop { background: transparent; }
+.date-intro--live video { opacity: 0; }
+/* The modal keeps gameplay controls inert while the existing WebGL canvas shows the shot. */
+body:has(.date-intro--live[open]) #root { visibility: hidden; }
+body:has(.date-intro--live[open]) .game-world canvas,
+.date-intro--live[open] { visibility: visible; }
+.date-intro__caption {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem .85rem;
+  padding: 4rem max(4.5vw, env(safe-area-inset-left)) max(8vh, env(safe-area-inset-bottom));
+  color: #fff4f2;
+  background: linear-gradient(transparent, #170e19bb);
+  font: 700 clamp(.85rem, 2.4vmin, 1.5rem) "Malgun Gothic", sans-serif;
+  text-shadow: 0 1px 4px #170e19;
+}
+.date-intro__caption strong { font-size: 1.25em; }
+.date-intro__caption span {
+  border-inline-start: 2px solid #ffd9e5;
+  padding-inline-start: .85rem;
+}
 .date-intro__actions {
   position: absolute;
   top: max(1rem, env(safe-area-inset-top));
