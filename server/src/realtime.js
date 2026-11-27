@@ -63,14 +63,6 @@ function cleanChat(text) {
   return t && t.length <= CHAT_MAX ? t : null
 }
 
-/** JWT 내용(aal)만 읽음 — 서명은 getUser가 이미 확인함 */
-function tokenAal(token) {
-  try {
-    return JSON.parse(Buffer.from(String(token).split('.')[1] ?? '', 'base64url').toString('utf8')).aal
-  } catch {
-    return null
-  }
-}
 const MAP_LIMIT = 1000 // 맵은 수백 m 크기. 이보다 먼 좌표는 잘못된 값
 const round = (n, digits = 2) => Math.round(n * 10 ** digits) / 10 ** digits
 
@@ -145,9 +137,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     ])
     // 다른 기기에서 로그인해서 끊긴 토큰 → 접속 거절 (화면은 이 코드를 보고 로그아웃 안내). 확인 자체가 실패하면 막지 않음(API가 막음)
     if (!session?.error && session?.data === false) return { name: '손님', userId: null, replaced: true }
-    // 관리자: 역할이 admin이고, 2단계 인증을 등록했다면 이번 로그인에서 코드까지 넣었어야 함 (app.js requireRole과 같은 규칙)
-    const mfaEnrolled = (data.user.factors ?? []).some((f) => f.factor_type === 'totp' && f.status === 'verified')
-    const admin = profile?.role === 'admin' && (!mfaEnrolled || tokenAal(token) === 'aal2')
+    const admin = profile?.role === 'admin'
     return { name: profile?.display_name || '순례객', userId: data.user.id, admin }
   }
 

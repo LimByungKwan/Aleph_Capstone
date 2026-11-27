@@ -130,25 +130,3 @@ form.auth-account {
   width: 100%;
   min-height: 44px;
 }
-
-/* 관리자 2단계 인증 (TOTP) — 6자리 입력칸, QR, 직접 입력용 값 */
-.auth-code-input {
-  font-size: 1.5rem;
-  letter-spacing: 0.4em;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.auth-qr {
-  display: block;
-  margin: 12px auto;
-  padding: 8px;
-  background: #fff; /* 다크 모드에서도 QR이 읽히게 흰 바탕 */
-  border-radius: 8px;
-}
-.auth-secret {
-  margin: 0 0 12px;
-  font-size: 0.8rem;
-  text-align: center;
-  opacity: 0.8;
-  word-break: break-all;
-}

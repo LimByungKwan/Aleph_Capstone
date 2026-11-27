@@ -68,38 +68,9 @@ test('그냥 만료(UNAUTHORIZED)는 예전처럼 refresh 후 한 번 더 시도
   assert.equal(session.useSessionStore.getState().loginPrompt, null)
 })
 
-// ── 관리자 2단계 인증 (TOTP) ──
-test('로그인 응답 mfa.required면 6자리 코드 창(mfaPrompt)이 뜨고, 아니면 안 뜸', async () => {
-  session.useSessionStore.setState({ session: null, user: null, mfa: null, mfaPrompt: null })
-  respond = () => ({ body: { session: { accessToken: 'a1', refreshToken: 'r' }, user: { id: 'u1', role: 'admin' }, mfa: { enrolled: true, ok: false, required: true } } })
-  await session.login({ email: 'x@example.com', password: 'p' })
-  assert.ok(session.useSessionStore.getState().mfaPrompt)
-  respond = () => ({ body: { session: { accessToken: 'a2', refreshToken: 'r' }, user: { id: 'u2', role: 'pilgrim' }, mfa: { enrolled: false, ok: false, required: false } } })
-  await session.login({ email: 'y@example.com', password: 'p' })
-  assert.equal(session.useSessionStore.getState().mfaPrompt, null)
-})
-
-test('관리자 기능이 MFA_REQUIRED를 돌려주면 코드 창이 뜨고 로그아웃은 안 됨', async () => {
-  respond = () => ({ status: 403, body: { error: { code: 'MFA_REQUIRED', message: '' } } })
-  await assert.rejects(session.authRequest('/admin/stats'), (e) => e.code === 'MFA_REQUIRED')
-  const state = session.useSessionStore.getState()
-  assert.ok(state.mfaPrompt)
-  assert.equal(state.session.accessToken, 'old-tok')
-})
-
-test('코드 확인 성공 → aal2 토큰으로 바꿔 끼우고 창 닫힘, mfa.ok', async () => {
-  session.useSessionStore.setState({ mfaPrompt: { reason: '' } })
-  respond = (url) => (url.endsWith('/auth/mfa/verify') ? { body: { session: { accessToken: 'aal2-tok', refreshToken: 'r2' } } } : { body: {} })
-  await session.verifyMfa('123456')
-  const state = session.useSessionStore.getState()
-  assert.equal(state.session.accessToken, 'aal2-tok')
-  assert.equal(state.mfaPrompt, null)
-  assert.equal(state.mfa.ok, true)
-  assert.equal(JSON.parse(stored.get(STORAGE_KEY)).session.accessToken, 'aal2-tok')
-})
-
-test('로그인 화면 컴포넌트가 문법 오류 없이 불러와짐 (2단계 인증 창 포함)', async () => {
+test('로그인 화면 컴포넌트가 문법 오류 없이 불러와짐 (로그인 전 첫 화면 포함)', async () => {
   const ui = await server.ssrLoadModule('/src/components/auth/LoginPage.jsx')
   assert.equal(typeof ui.LoginModal, 'function')
+  assert.equal(typeof ui.LoginGate, 'function')
   assert.equal(typeof ui.AccountBox, 'function')
 })

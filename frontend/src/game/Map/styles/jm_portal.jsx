@@ -12,6 +12,7 @@ import { JmCanal, JmCrossing } from './jm_kyoto.jsx'
 import { hipRoofGeometry } from './geometry.js'
 import { JmBusStop } from './jm_shops.jsx'
 import { MossForest, NatsumeShrine, ScenePad, ShintaiShrine, WisteriaPath } from './jm_scenes.jsx'
+import { JmZoneMapLayer, signClickProps } from './jm_zoneMap.jsx'
 
 // 애니메이션 구역(JM) 「명장면 공간」 — 담당: 지민 (11/24)
 // 계단 거리 가게 문(jmPortalDoor) 앞에서 E → 화면이 잠깐 어두워지고 맵 밖(남쪽 바다 위 멀리)의 장면 공간(jmSceneRoom)으로 이동
@@ -258,10 +259,15 @@ export function JmSceneRoom({ item }) {
       {room.kind === 'natsume' && <NatsumeShrine w={w} d={d} stair={room.stair} />}
       {room.kind === 'crossing' && <SakuraCrossing w={w} d={d} />}
       {room.kind === 'onsen' && <OnsenMotif w={w} d={d} bridge={room.bridge} />}
-      {/* 입구 쪽 장면 안내판 */}
-      <group position={[-3.2, 0, d / 2 - 4.5]} rotation={[0, 0.35, 0]}>
+      {/* 입구 쪽 장면 안내판 — (11/27) 누르면 애니 구역 지도 창 (jm_zoneMap.jsx) */}
+      <group position={[-3.2, 0, d / 2 - 4.5]} rotation={[0, 0.35, 0]} {...signClickProps(item.id)}>
         <Box p={[0, 0.9, 0]} s={[0.12, 1.8, 0.12]} c="#3a281c" />
-        <Box p={[0, 1.75, 0.02]} s={[2.4, 1.0, 0.08]} c="#2b1d14" />
+        <Box p={[0, 1.65, 0.02]} s={[2.4, 1.2, 0.08]} c="#2b1d14" />
+        <mesh position={[0, 1.18, 0.07]}>
+          <planeGeometry args={[1.6, 0.17]} />
+          <GlowMaterial glow={0.6} map={getJpSignTexture('누르면 마을 지도', '#ffd77a', '#2b1d14', 1.6 / 0.17)} side={THREE.DoubleSide} />
+        </mesh>
+        <JmZoneMapLayer signId={item.id} />
         <mesh position={[0, 1.95, 0.07]}>
           <planeGeometry args={[2.2, 0.42]} />
           <GlowMaterial glow={0.6} map={getJpSignTexture(room.title ?? '명장면', '#f3e6c8', '#5b1a12', 2.2 / 0.42)} side={THREE.DoubleSide} />
