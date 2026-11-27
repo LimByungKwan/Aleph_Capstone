@@ -43,6 +43,12 @@ export default function SeasonalWeather({ playerRef }) {
   )
 }
 
+// 작은 메시인지 (모양 크기 × 실제 배율). 여러 개를 한 번에 그리는 InstancedMesh(나무 등)는 그대로 둠
+function isSmall(o) {
+  if (!o.isMesh || o.isInstancedMesh || !o.geometry) return false
+  if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere()
+  return o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() < 0.8
+}
 // 위에서 내려다본 높이 지도 찍기 (깊이를 RGBA에 담아요)
 function CoverMap({ playerRef, active }) {
   const gl = useThree((s) => s.gl)
@@ -98,7 +104,8 @@ function CoverMap({ playerRef, active }) {
           o.isPoints ||
           o.isSprite ||
           o.isLine ||
-          (m && !Array.isArray(m) && (m.isShaderMaterial || m.fog === false || (m.transparent && m.opacity < 0.95) || m.colorWrite === false))
+          (m && !Array.isArray(m) && (m.isShaderMaterial || m.fog === false || (m.transparent && m.opacity < 0.95) || m.colorWrite === false)) ||
+          isSmall(o) // (11/26 지민) 지붕 노릇을 못 하는 작은 소품(반지름 0.8m 미만)은 빼서 그리기 호출을 줄임
         if (skip) S.list.push(o)
       })
     }

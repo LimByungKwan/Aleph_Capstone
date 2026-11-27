@@ -240,18 +240,19 @@ export function JmVendingRow({ item }) {
 // ⚠ three.js는 조명 하나마다 맵 전체 물체의 계산이 조금씩 늘어나요. 이 구역에는 4개까지만 쓰기.
 // item.light = { intensity, distance } (선택). 색은 계절마다 바뀜
 const ZONE_LIGHT_COLOR = {
-  spring: '#ffb8d2', // 벚꽃 분홍빛
+  spring: '#ffdce6', // 벚꽃 분홍빛 (11/26: 너무 붉게 물들어 옅게)
   summer: '#fff0a8', // 쨍한 노란 햇빛
-  autumn: '#ffa45c', // 노을 주황빛
+  autumn: '#ffc896', // 노을 주황빛 (11/26: 옅게)
   winter: '#a9c8ff', // 차가운 푸른빛
 }
 // 색 세기를 한곳에서 조절 (0.5 은은함 ~ 1.2 강함)
-export const JM_LIGHT_INTENSITY = 1.2
+export const JM_LIGHT_INTENSITY = 0.9 // (11/26 지민 요청: 전체가 너무 빨강빨강) 1.2 → 0.9
 export function JmZoneLight({ item }) {
   const season = useSeason()
   const [, h] = item.size
-  const { intensity = JM_LIGHT_INTENSITY, distance = 36 } = item.light ?? {}
-  return <pointLight position={[0, h, 0]} color={ZONE_LIGHT_COLOR[season]} intensity={intensity} distance={distance} decay={0} castShadow={false} />
+  const { intensity = JM_LIGHT_INTENSITY, distance = 36, color } = item.light ?? {}
+  // item.light.color: 실내(보일러실 등)는 계절 색 대신 정한 색
+  return <pointLight position={[0, h, 0]} color={color ?? ZONE_LIGHT_COLOR[season]} intensity={intensity} distance={distance} decay={0} castShadow={false} />
 }
 
 export const JM_SEASON_STYLES = {

@@ -680,7 +680,8 @@ const CALM_D = 22 // 물가에서 이만큼 떨어진 바다 한가운데는 큰
 const LAKE_MUD = new THREE.Color('#7d6e52')
 const LAKE_GRASS = new THREE.Color('#5f8a45')
 const lakeBank = new THREE.Color()
-const OCEAN_M = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.4, metalness: 0.05, depthWrite: false })
+// (11/26) 서쪽 땅 메우기(jm_seaLine.jsx JmLandFill) 위에 모래·물이 그려지게 깊이를 조금 더 앞으로
+const OCEAN_M = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.4, metalness: 0.05, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 })
 export function JmOcean({ item }) {
   const geo = useMemo(() => oceanGeometry(item.ocean), [item.ocean])
   return <mesh geometry={geo} material={OCEAN_M} frustumCulled={false} renderOrder={1} receiveShadow userData={{ noMerge: true }} />

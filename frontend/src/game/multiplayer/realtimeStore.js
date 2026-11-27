@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { API_URL, USE_SERVER, handleSessionReplaced, useSessionStore } from '../../api/session.js'
+import { API_URL, USE_SERVER, freshToken, handleSessionReplaced, logout, openLogin, useSessionStore } from '../../api/session.js'
 import { useSettings } from '../settingsStore.js'
 import { useSeasonStore } from '../seasons.js'
 
@@ -19,6 +19,8 @@ export const useRealtimeStore = create(() => ({
 }))
 
 const CHAT_KEEP = 30
+/** 손님이 채팅하려 할 때 띄우는 로그인 창 문구 (ChatBox와 같이 씀) */
+export const CHAT_LOGIN = { title: '로그인하고 채팅하기', reason: '채팅은 로그인한 순례객만 쓸 수 있어요.' }
 let chatKey = 0
 
 // [지민] 관리자가 정한 시간대·계절을 이 화면에 적용 (null이면 건드리지 않음 / 계절 null = 자동)
@@ -37,6 +39,7 @@ let wanted = false
 let retryMs = 1000
 let retryTimer = null
 let characterId = 'male'
+let loginRetried = false // 4005를 받고 토큰을 새로 받아 한 번 다시 붙었는지 (welcome 받으면 초기화)
 let fullNow = false // 서버가 정원 참(4003)으로 끊었는지
 const FULL_RETRY_MS = 30_000
 
@@ -62,6 +65,7 @@ const setPeers = (fn) => useRealtimeStore.setState((s) => ({ peers: fn(s.peers) 
 function handle(msg) {
   if (msg.t === 'welcome') {
     retryMs = 1000
+    loginRetried = false
     useRealtimeStore.setState({
       status: 'online',
       maxPeers: null,
@@ -84,6 +88,9 @@ function handle(msg) {
   } else if (msg.t === 'chat' && typeof msg.text === 'string') {
     const chat = { key: ++chatKey, id: msg.id, name: String(msg.name ?? ''), text: msg.text, at: Date.now() }
     useRealtimeStore.setState((s) => ({ chats: [...s.chats, chat].slice(-CHAT_KEEP) }))
+  } else if (msg.t === 'chat.denied') {
+    // 서버가 손님으로 봄 (로그인 안 함·토큰 만료) → 채팅은 로그인한 계정만 (server/src/realtime.js)
+    openLogin(CHAT_LOGIN)
   } else if (typeof msg.t === 'string' && /^(tarot|photo|lift|episode)\./.test(msg.t)) {
     tarotListeners.forEach((fn) => fn(msg))
   } else if (typeof msg.t === 'string' && msg.t.startsWith('hj.')) {
@@ -104,10 +111,11 @@ function open() {
   if (useRealtimeStore.getState().status !== 'full') useRealtimeStore.setState({ status: 'connecting' }) // 정원 안내는 다시 시도하는 동안 유지
   const socket = new WebSocket(WS_URL)
   ws = socket
-  socket.onopen = () => {
+  socket.onopen = async () => {
     // 토큰은 주소(?token=)가 아니라 첫 메시지로 보냄 → 서버·프록시 접속 기록에 토큰이 남지 않음
-    const token = useSessionStore.getState().session?.accessToken
-    socket.send(JSON.stringify({ t: 'hello', token, characterId }))
+    // 서버는 손님을 받지 않음(4005) → 만료가 가까우면 먼저 새 토큰을 받아서 보냄
+    const token = await freshToken()
+    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'hello', token, characterId }))
   }
   socket.onmessage = (event) => {
     try {
@@ -132,6 +140,17 @@ function open() {
     //   4002: 같은 로그인으로 다른 탭·창이 접속 → 다시 붙지 않음 (다시 붙으면 두 탭이 서로 끊는 반복)
     if (event?.code === 4001 && useSessionStore.getState().session) handleSessionReplaced()
     if (event?.code === 4002) return
+    // 4005: 서버가 로그인한 계정으로 못 봄(토큰 만료·잘못됨) → 새 토큰도 못 받으면 로그아웃(로그인 화면으로)
+    //   새 토큰으로도 또 4005면(서버가 Supabase에 확인을 못 하는 등) 아래의 보통 재시도 간격으로 넘어감 → 빠른 반복 방지
+    if (event?.code === 4005 && !loginRetried) {
+      if (!useSessionStore.getState().session) return
+      loginRetried = true
+      freshToken().then((token) => {
+        if (!token) return logout()
+        if (wanted) open()
+      })
+      return
+    }
     if (!wanted) return
     clearTimeout(retryTimer)
     retryTimer = setTimeout(open, retryMs)

@@ -18,6 +18,7 @@ import { JM_GINZAN_STYLES } from './jm_ginzan.jsx'
 import { JM_TUNNEL_STYLES } from './jm_tunnel.jsx'
 import { JM_SPIRIT_STYLES } from './jm_spirit.jsx'
 import { JM_SCENE_STYLES } from './jm_scenes.jsx'
+import { JM_SEALINE_STYLES } from './jm_seaLine.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -27,7 +28,7 @@ import { Fence } from './props.jsx'
 // - 앞면은 +z → JSON rotationDeg로 길 쪽을 보게 돌림
 // - style 이름은 다른 구역과 겹치지 않게 "jm"으로 시작 (index.js에 등록)
 
-const VERMILION = '#c8452f' // 주홍 (도리이·신사 기둥)
+const VERMILION = '#a9543a' // 주홍 (도리이·신사 기둥)
 const DARK_WOOD = '#4a3424'
 const WOOD = '#6e4b33'
 const ROOF_TILE = '#33373d'
@@ -55,6 +56,8 @@ const NO_MERGE = new Set([
   'jmCrossing', // 깜빡이는 경보등
   'jmPortalDoor', // 문 앞 안내(HUD)·순간 이동
   'jmSceneRoom', // 장면 공간 (비·체험 등 움직이는 부품)
+  'jmSeaLine', // 바다 철길: 달리는 전차 (11/26)
+  'jmLandFill', // 땅 메우기 (깊이 조정 재질 그대로)
 ])
 
 const JM_STYLES_RAW = {
@@ -99,6 +102,8 @@ const JM_STYLES_RAW = {
   ...JM_TUNNEL_STYLES,
   ...JM_SPIRIT_STYLES,
   ...JM_SCENE_STYLES,
+  // 바다 철길·전차·경복궁 터널 북쪽 입구, 땅 메우기 (jm_seaLine.jsx, 11/26)
+  ...JM_SEALINE_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)
@@ -536,7 +541,7 @@ export function JmLanternString({ item }) {
       {range(count).map((i) => (
         <mesh key={i} position={[-w / 2 + (w * (i + 0.5)) / count, ropeY - 0.35, 0]}>
           <cylinderGeometry args={[0.2, 0.2, 0.42, 12]} />
-          <meshStandardMaterial color="#d93a2b" emissive="#ff6b3d" emissiveIntensity={0.55} />
+          <meshStandardMaterial color="#b0503a" emissive="#ff6b3d" emissiveIntensity={0.55} />
         </mesh>
       ))}
     </group>

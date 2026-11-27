@@ -66,14 +66,14 @@ export function JmNodate() {
   return (
     <group>
       <Box p={[0, 0.25, 0]} s={[1.9, 0.5, 0.9]} c={WOOD} />
-      <Box p={[0, 0.52, 0]} s={[2.0, 0.05, 1.0]} c="#c0392b" />
+      <Box p={[0, 0.52, 0]} s={[2.0, 0.05, 1.0]} c="#a24a36" />
       <mesh position={[0.7, 1.35, -0.2]}>
         <cylinderGeometry args={[0.03, 0.03, 2.7, 6]} />
         <meshStandardMaterial color={DARK} />
       </mesh>
       <mesh position={[0.7, 2.55, -0.2]}>
         <coneGeometry args={[1.55, 0.55, 16, 1, true]} />
-        <meshStandardMaterial color="#c8302a" side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#a44c38" side={THREE.DoubleSide} />
       </mesh>
       {/* 찻잔과 화과자 접시 */}
       <mesh position={[-0.4, 0.6, 0.1]}>
@@ -98,7 +98,7 @@ export function JmHanamiMat() {
     <group>
       <Box p={[0, 0.02, 0]} s={[2.2, 0.03, 1.7]} c="#3b6fb6" />
       <Box p={[-0.4, 0.09, 0.1]} s={[0.45, 0.12, 0.35]} c="#1f1f1f" />
-      <Box p={[-0.4, 0.16, 0.1]} s={[0.43, 0.02, 0.33]} c="#b91c1c" />
+      <Box p={[-0.4, 0.16, 0.1]} s={[0.43, 0.02, 0.33]} c="#9a3a30" />
       <Box p={[0.3, 0.07, -0.3]} s={[0.3, 0.08, 0.3]} c="#e8d3a8" />
       <mesh position={[0.55, 0.12, 0.3]}>
         <cylinderGeometry args={[0.06, 0.06, 0.2, 10]} />

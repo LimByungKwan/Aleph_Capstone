@@ -11,7 +11,7 @@ import KpopGuide from './components/sg/KpopGuide.jsx'
 import KeyHints from './components/sg/KeyHints.jsx'
 import ClockTowerMap from './components/sg/ClockTowerMap.jsx'
 import KpopIntro from './components/sg/KpopIntro.jsx'
-import { LoginModal } from './components/auth/LoginPage.jsx'
+import { LoginGate, LoginModal } from './components/auth/LoginPage.jsx'
 import { USE_SERVER, openLogin, useSessionStore } from './api/session.js'
 
 // 주소 # 뒤로 화면 전환 (라우터 라이브러리 없이)
@@ -31,8 +31,8 @@ function useHashRoute() {
 
 export default function App() {
   const route = useHashRoute()
-  // [지민] 서버 모드(VITE_API_URL): 로그인 없이 맵을 둘러볼 수 있고, 스탬프를 받으려 할 때 로그인 창이 뜸
-  //        사장님·관리자 화면은 계정이 있어야 의미가 있으니 들어오자마자 로그인 창을 띄움 (mock 모드는 예전 그대로)
+  // [지민] 서버 모드(VITE_API_URL): 손님 없음 (11/27) — 로그인해야 맵에 들어감. 로그인 전엔 맵 대신 로그인·회원가입 화면
+  //        사장님·관리자 화면은 들어오자마자 로그인 창을 띄움 (mock 모드는 예전 그대로 로그인 없이)
   const loggedIn = useSessionStore((s) => Boolean(s.user))
   const staffRoute = route === '/owner' || route === '/admin'
   useEffect(() => {
@@ -47,6 +47,9 @@ export default function App() {
       </>
     )
   }
+
+  // 로그인 전에는 3D 맵을 아예 불러오지 않음 (로그아웃·다른 기기 로그인으로 끊기면 이 화면으로 돌아옴)
+  if (USE_SERVER && !loggedIn) return <LoginGate />
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>

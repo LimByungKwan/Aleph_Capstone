@@ -43,7 +43,7 @@ const ROPE = mat('#d9c48a', { roughness: 0.9 })
 const PAPER = mat('#f7f3ea', { roughness: 0.8, double: true })
 const LANTERN_GLOW = mat('#fff1c8', { emissive: '#ffcf7a', emissiveIntensity: 1.2 })
 const SHRINE_WOOD = mat('#8a6a48', { roughness: 0.9 })
-const SHRINE_RED = mat('#c0392b', { roughness: 0.6 })
+const SHRINE_RED = mat('#a24a36', { roughness: 0.6 })
 
 // 큰 나무 (줄기 + 덩어리 잎)
 function Tree({ p, h = 8, r = 0.35, leaf = LEAF, crown = 2.6, s = 0 }) {
@@ -319,7 +319,7 @@ export function NatsumeShrine({ w, d, stair }) {
           <mesh position={[0, 1.7, 0]} geometry={hipRoofGeometry(2.4, 2.0, 0.7, 0.08)}>
             <meshStandardMaterial color="#5e615f" flatShading side={THREE.DoubleSide} />
           </mesh>
-          <Cyl p={[0, 1.6, 0.85]} rad={0.015} h={1.0} c="#c0392b" />
+          <Cyl p={[0, 1.6, 0.85]} rad={0.015} h={1.0} c="#a24a36" />
           <Ball p={[0, 2.05, 0.85]} rad={0.12} c="#d4a83e" />
           <Box p={[0, 0.85, 1.1]} s={[0.9, 0.5, 0.45]} c="#5a3d2a" />
           {range(5).map((i) => (
@@ -335,7 +335,7 @@ export function NatsumeShrine({ w, d, stair }) {
           {[-0.8, 0.8].map((x) => (
             <Cyl key={x} p={[x, 1.3, -0.3]} rad={0.05} h={2.6} c="#5a3d2a" />
           ))}
-          <Box p={[0, 2.6, -0.1]} s={[2.0, 0.08, 1.2]} c="#c0392b" />
+          <Box p={[0, 2.6, -0.1]} s={[2.0, 0.08, 1.2]} c="#a24a36" />
           <mesh position={[0, 2.1, 0.32]}>
             <planeGeometry args={[1.6, 0.7]} />
             <GlowMaterial glow={0.4} map={getJpSignTexture('妖の菓子屋', '#f2ead8', '#2a1a10', 1.6 / 0.7)} side={THREE.DoubleSide} />

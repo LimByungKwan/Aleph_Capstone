@@ -409,7 +409,7 @@ function TeahouseInterior({ w, back, d, wallH }) {
             <coneGeometry args={[0.09, 0.32, 10]} />
             <meshStandardMaterial color="#f5f0e6" />
           </mesh>
-          <Box p={[0, 0.12, 0.07]} s={[0.12, 0.06, 0.02]} c="#b91c1c" />
+          <Box p={[0, 0.12, 0.07]} s={[0.12, 0.06, 0.02]} c="#9a3a30" />
         </group>
       ))}
 
@@ -431,7 +431,7 @@ function TeahouseInterior({ w, back, d, wallH }) {
       </group>
 
       {/* 종이 제등 (가운데 붉은 것 하나 + 양옆) */}
-      <Cyl p={[0, wallH - 0.7, 0.3]} r={0.26} h={0.55} c="#c2410c" e="#ff9a4d" />
+      <Cyl p={[0, wallH - 0.7, 0.3]} r={0.26} h={0.55} c="#a8532e" e="#ff9a4d" />
       {[-1, 1].map((i) => (
         <Cyl key={i} p={[i * w * 0.28, wallH - 0.6, -0.6]} r={0.18} h={0.4} c="#f5f0e6" e="#ffcc66" />
       ))}
@@ -454,7 +454,7 @@ function TeruTeruBozu({ p, scale = 1 }) {
         <coneGeometry args={[0.14, 0.28, 12, 1, true]} />
         <meshStandardMaterial color="#ffffff" side={THREE.DoubleSide} />
       </mesh>
-      <Box p={[0, -0.09, 0]} s={[0.2, 0.02, 0.2]} c="#ef4444" />
+      <Box p={[0, -0.09, 0]} s={[0.2, 0.02, 0.2]} c="#d27171" />
     </group>
   )
 }
@@ -563,7 +563,7 @@ function Komodaru({ p }) {
       <Cyl p={[0, 0.23, 0]} r={0.28} h={0.46} c="#e9dfc4" />
       <Cyl p={[0, 0.06, 0]} r={0.29} h={0.05} c="#7a6a4a" />
       <Cyl p={[0, 0.4, 0]} r={0.29} h={0.05} c="#7a6a4a" />
-      <Box p={[0, 0.23, 0.27]} s={[0.22, 0.24, 0.02]} c="#b91c1c" />
+      <Box p={[0, 0.23, 0.27]} s={[0.22, 0.24, 0.02]} c="#9a3a30" />
     </group>
   )
 }
