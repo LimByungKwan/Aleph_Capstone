@@ -157,6 +157,7 @@ function BikeMesh({ variant = 0, number = 7, wheelRef }) {
   const roof = ROOF_COLORS[variant % ROOF_COLORS.length]
   const body = BODY_COLORS[variant % BODY_COLORS.length]
   const roofMat = useMemo(() => new THREE.MeshStandardMaterial({ color: roof, transparent: true, opacity: 0.82, roughness: 0.4, side: THREE.DoubleSide }), [roof])
+  useEffect(() => () => roofMat.dispose(), [roofMat]) // 다른 사람 바이크가 나타났다 사라질 때마다 재질이 남지 않게
   return (
     <group>
       <Box p={[0, 0.36, 0]} s={[1.5, 0.1, 2.2]} m={BIKE_FRAME} />
@@ -376,6 +377,7 @@ function JmRailBike({ item }) {
   useEffect(
     () => () => {
       restoreModel()
+      state.v = 0 // 자리는 기억하되 속도는 0 (안 그러면 다시 그려질 때 바퀴가 계속 돎)
       const rail = useJmActivity.getState().rail
       if (rail.active === item.id) {
         useJmActivity.getState().setRail({ active: null, near: null })
@@ -432,7 +434,12 @@ function JmRailBike({ item }) {
         state.lapAt = time
       }
       if (rail.lap && time - state.lapAt > 4) store.setRail({ lap: false })
-      if (Math.abs(rail.speed - state.v) > 0.25) store.setRail({ speed: state.v })
+      // 속도 표시는 0.25초에 한 번만 (가속 중 매번 바꾸면 초당 12번 화면 UI를 다시 그렸음 — 11/27 리뷰). 멈추면 바로 0
+      const stopped = state.v === 0 && rail.speed !== 0
+      if (stopped || (Math.abs(rail.speed - state.v) > 0.25 && time - (state.hudAt ?? 0) > 0.25)) {
+        state.hudAt = time
+        store.setRail({ speed: state.v })
+      }
     }
     place()
     // 바퀴 굴리기 (그림만)

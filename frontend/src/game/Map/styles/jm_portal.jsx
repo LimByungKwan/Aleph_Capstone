@@ -261,9 +261,12 @@ export function JmSceneRoom({ item }) {
       {room.kind === 'crossing' && <SakuraCrossing w={w} d={d} />}
       {room.kind === 'onsen' && <OnsenMotif w={w} d={d} bridge={room.bridge} />}
       {/* 입구 쪽 장면 안내판 — (11/27) 누르면(또는 가까이서 버튼·E) 실제 성지 정보 창 (jm_realSpots.jsx) */}
-      <group position={[-3.2, 0, d / 2 - (room.kind === 'totoro' ? 7 : 4.5)]} rotation={[0, 0.35, 0]}>
-        <RealSpotSign signId={item.id} spot={SPOT_OF_ROOM[room.kind]} title={room.title} sub={room.sub} />
-      </group>
+      {/*   실제 성지가 연결 안 된 공간 종류(stairs·rock·crossing)는 팻말을 안 세움 — 눌러도 창이 열렸다 바로 닫혔음 (11/27 리뷰) */}
+      {SPOT_OF_ROOM[room.kind] && (
+        <group position={[-3.2, 0, d / 2 - (room.kind === 'totoro' ? 7 : 4.5)]} rotation={[0, 0.35, 0]}>
+          <RealSpotSign signId={item.id} spot={SPOT_OF_ROOM[room.kind]} title={room.title} sub={room.sub} />
+        </group>
+      )}
     </group>
   )
 }

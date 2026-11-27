@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Component, Suspense, useEffect, useState } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { USE_SERVER } from './api/session.js'
 import { cachedCharacterIds, getPlayerCharacter } from './api/serverApi.js'
@@ -29,8 +29,11 @@ export default function GameRoot({ locked = false }) {
   const { ready, warm } = useCharacterReady(!locked)
   // 로그인 직후 "입장하는 중…" 카드가 먼저 그려진 다음에 캐릭터를 세움 (같이 하면 무거운 작업에 묶여 카드가 늦게 보임)
   const painted = useAfterTwoFrames(!locked)
-  const hold = locked || !ready || !painted
-  const entered = useEntered(locked, hold)
+  const waiting = locked || !ready || !painted
+  const entered = useEntered(locked, waiting)
+  // 한 번 들어온 뒤에는 다시 잠그지 않음 — 설정창에서 캐릭터를 바꿔도 그 자리에서 모델만 바뀜
+  //   (잠그면 캐릭터가 출발점으로 돌아가고 열린 창이 닫히고 멀티 접속이 끊겼다 다시 붙었음 — 11/27 리뷰)
+  const hold = locked || (!entered && waiting)
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {warm}
@@ -74,21 +77,28 @@ function useEntered(locked, hold) {
   return entered
 }
 
+const GIVE_UP_MS = 12_000
+
 /** 로그인한 계정의 캐릭터 정보 + 모델(GLB)이 준비됐는지 { ready, warm(모델 미리 받기 — 화면에 붙일 것) }. active가 false면(로그인 전) 기다리지 않음 */
 function useCharacterReady(active) {
   const userId = useUiStore((s) => s.userId)
   const known = useCharacterStore((s) => Boolean(s.byUser[userId] || s.errors[userId]))
   const model = useCharacterStore((s) => (s.byUser[userId] ?? characters[0]).model)
   const [loadedModel, setLoadedModel] = useState(null)
+  const [gaveUp, setGaveUp] = useState(false)
 
   useEffect(() => {
-    if (!active || !userId) return
-    if (USE_SERVER && applyCachedCharacter(userId)) return
+    if (!active || !userId) return undefined
+    if (USE_SERVER && applyCachedCharacter(userId)) return undefined
     useCharacterStore.getState().load(userId)
+    // 서버 답이 끝내 안 오면 "입장하는 중…"에 갇히지 않게: 기다리다 기본 캐릭터로 입장 (답이 늦게 오면 그때 바뀜)
+    setGaveUp(false)
+    const id = setTimeout(() => setGaveUp(true), GIVE_UP_MS)
+    return () => clearTimeout(id)
   }, [active, userId])
 
   if (!active) return { ready: true, warm: null }
-  if (!known) return { ready: false, warm: null }
+  if (!known && !gaveUp) return { ready: false, warm: null }
   if (loadedModel === model) return { ready: true, warm: null }
   return { ready: false, warm: <ModelWarm key={model} model={model} onReady={setLoadedModel} /> }
 }
@@ -104,7 +114,8 @@ function applyCachedCharacter(userId) {
   put(cached)
   getPlayerCharacter({ userId })
     .then(({ character }) => {
-      if (character && store.getState().byUser[userId]?.id !== character.id) put(character)
+      // 그사이 설정창에서 새로 골랐으면(byUser가 바뀜) 늦게 온 서버 값으로 덮지 않음
+      if (character && store.getState().byUser[userId] === cached && cached.id !== character.id) put(character)
     })
     .catch(() => {}) // 확인 실패 → 저장된 값 그대로
   return true
@@ -129,10 +140,27 @@ function ModelWarm({ model, onReady }) {
   }, [model])
   if (!started) return null
   return (
-    <Suspense fallback={null}>
-      <Warmed model={model} onReady={onReady} />
-    </Suspense>
+    <WarmErrorBoundary onError={() => onReady(model)}>
+      <Suspense fallback={null}>
+        <Warmed model={model} onReady={onReady} />
+      </Suspense>
+    </WarmErrorBoundary>
   )
+}
+// 모델 파일을 못 받아도(404·네트워크) 게임 전체가 하얗게 꺼지지 않게: 미리 받기만 포기하고 입장
+//   (실제 캐릭터는 CharacterModel.jsx의 자체 오류 처리로 대체 모양이 나옴)
+class WarmErrorBoundary extends Component {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch(error) {
+    console.error('[GameRoot] 캐릭터 모델 미리 받기 실패', error)
+    this.props.onError()
+  }
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
 }
 function Warmed({ model, onReady }) {
   useGLTF(import.meta.env.BASE_URL + model)

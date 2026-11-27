@@ -1,8 +1,9 @@
 // 애니 구역 서쪽 바닷가 산책로 소품 — 담당: 지민 (11/27)
 // 애니 ↔ K-pop 사이 빈 땅: 물가 나무 데크(terrain jm_sea_walk) 끝 바다 위 정자, 바닷가 소나무, 물가 바위
 // 다른 jm 스타일과 같은 약속: size [w, h, d] 안에 그림, 앞면 +z, 바닥 y = 0 (JSON elevation으로 띄움)
-import { useMemo } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import * as THREE from 'three'
+import { createPortal, useThree } from '@react-three/fiber'
 import { hipRoofGeometry } from './geometry.js'
 
 const DECK_WOOD = '#8a6a48' // 산책로 데크(jm_sea_walk color)와 같은 색
@@ -138,8 +139,39 @@ function JmSeaPavilion({ item }) {
 // size [w, h, d]. 잎 덩어리는 id마다 기울기·층이 조금씩 다름
 const PINE_BARK = '#5a4030'
 const PINE_GREENS = ['#2f5634', '#3a6640', '#284b2e']
+// (11/27 최적화) 소나무 20그루를 한 그루씩 그리면 그루마다 메시 약 4개 → 그리기 호출 약 80번이었음.
+//   이제 각 소나무는 자기 위치와 모양만 아래 목록(pineList)에 올리고, 목록의 첫 소나무 하나가
+//   줄기 아래·줄기 위·잎 덩어리를 모든 소나무 몫까지 인스턴싱 메시 3개로 한꺼번에 그림 → 그리기 호출 3번
+//   (jm_perf.jsx 합치기는 인스턴싱 메시를 건드리지 않음. 충돌은 원래대로 JSON collider가 맡음)
+const PINE_LOWER_GEO = new THREE.CylinderGeometry(0.16, 0.24, 1, 7)
+const PINE_UPPER_GEO = new THREE.CylinderGeometry(0.1, 0.16, 1, 6)
+const PINE_PAD_GEO = new THREE.IcosahedronGeometry(1, 1)
+const PINE_BARK_MAT = new THREE.MeshStandardMaterial({ color: PINE_BARK, roughness: 1, flatShading: true })
+const PINE_PAD_MAT = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, flatShading: true }) // 색은 잎마다(instanceColor)
+const pineList = new Map() // 소나무 키 → { world: 월드 행렬, parts }
+let pineVersion = 0
+const pineListeners = new Set()
+const notifyPines = () => {
+  pineVersion++
+  pineListeners.forEach((f) => f())
+}
+const subscribePines = (f) => {
+  pineListeners.add(f)
+  return () => pineListeners.delete(f)
+}
+const firstPineKey = () => {
+  let first = null
+  for (const k of pineList.keys()) if (first === null || k < first) first = k
+  return first
+}
+const Y_UP = new THREE.Vector3(0, 1, 0)
+
 function JmPine({ item }) {
   const [w, h] = item.size
+  const autoKey = useId()
+  const key = item.id ?? autoKey
+  const anchor = useRef(null)
+  const scene = useThree((st) => st.scene)
   const shape = useMemo(() => {
     const rnd = seeded(item.id ?? 'pine')
     const lean = (rnd() - 0.5) * 0.5 // 줄기 기울기(라디안)
@@ -158,32 +190,80 @@ function JmPine({ item }) {
         c: PINE_GREENS[i % PINE_GREENS.length],
       })
     }
-    return { bend, lowH, pads }
+    // 부품별 이 소나무 안에서의 행렬 (원통은 높이 1짜리를 y로 늘림 — 예전 높이 len 원통과 같은 모양)
+    const upper = new THREE.Vector3(bend[0] * 0.6, h - lowH - 0.6, bend[1] * 0.6)
+    const lower = new THREE.Vector3(bend[0], lowH, bend[1])
+    const trunk = (center, v) =>
+      new THREE.Matrix4().compose(center, new THREE.Quaternion().setFromUnitVectors(Y_UP, v.clone().normalize()), new THREE.Vector3(1, v.length(), 1))
+    return {
+      lower: trunk(new THREE.Vector3(bend[0] / 2, lowH / 2, bend[1] / 2), lower),
+      upper: trunk(new THREE.Vector3(bend[0] + upper.x / 2, lowH + upper.y / 2, bend[1] + upper.z / 2), upper),
+      pads: pads.map((pad) => ({
+        m: new THREE.Matrix4().compose(new THREE.Vector3(...pad.p), new THREE.Quaternion(), new THREE.Vector3(...pad.s)),
+        c: new THREE.Color(pad.c),
+      })),
+    }
   }, [item.id, w, h])
-  const { bend, lowH, pads } = shape
-  const upper = new THREE.Vector3(bend[0] * 0.6, h - lowH - 0.6, bend[1] * 0.6)
-  const upperLen = upper.length()
-  const upperQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), upper.clone().normalize())
-  const lower = new THREE.Vector3(bend[0], lowH, bend[1])
-  const lowerQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), lower.clone().normalize())
+
+  useLayoutEffect(() => {
+    const g = anchor.current
+    g.updateWorldMatrix(true, false)
+    pineList.set(key, { world: g.matrixWorld.clone(), parts: shape })
+    notifyPines()
+    return () => {
+      pineList.delete(key)
+      notifyPines()
+    }
+  }, [key, shape])
+
+  const version = useSyncExternalStore(subscribePines, () => pineVersion)
+  const host = firstPineKey() === key
+  // 묶음은 장면 맨 위에 붙임 — 소품은 가까운 칸만 보이게 칸마다 숨기는데(MapLayout DetailCell), 첫 소나무 칸 밑에 두면
+  //   그 칸이 숨을 때 모든 소나무가 같이 사라짐. 3번 그리기라 멀리 있어도 늘 그림
+  return <group ref={anchor}>{host && createPortal(<PineGrove version={version} />, scene)}</group>
+}
+
+// 목록의 모든 소나무를 월드 좌표 그대로 인스턴싱 메시 3개에 담음
+function PineGrove({ version }) {
+  const sets = useMemo(() => {
+    const lower = []
+    const upper = []
+    const pads = []
+    const padColors = []
+    for (const { world, parts } of pineList.values()) {
+      const base = world
+      lower.push(base.clone().multiply(parts.lower))
+      upper.push(base.clone().multiply(parts.upper))
+      for (const pad of parts.pads) {
+        pads.push(base.clone().multiply(pad.m))
+        padColors.push(pad.c)
+      }
+    }
+    return { lower, upper, pads, padColors }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version])
   return (
-    <group>
-      <mesh position={[bend[0] / 2, lowH / 2, bend[1] / 2]} quaternion={lowerQuat} castShadow>
-        <cylinderGeometry args={[0.16, 0.24, lower.length(), 7]} />
-        <meshStandardMaterial color={PINE_BARK} roughness={1} flatShading />
-      </mesh>
-      <mesh position={[bend[0] + upper.x / 2, lowH + upper.y / 2, bend[1] + upper.z / 2]} quaternion={upperQuat} castShadow>
-        <cylinderGeometry args={[0.1, 0.16, upperLen, 6]} />
-        <meshStandardMaterial color={PINE_BARK} roughness={1} flatShading />
-      </mesh>
-      {pads.map((pad, i) => (
-        <mesh key={i} position={pad.p} scale={pad.s} castShadow>
-          <icosahedronGeometry args={[1, 1]} />
-          <meshStandardMaterial color={pad.c} roughness={1} flatShading />
-        </mesh>
-      ))}
-    </group>
+    <>
+      <GroveMesh key={`l${sets.lower.length}`} geometry={PINE_LOWER_GEO} material={PINE_BARK_MAT} matrices={sets.lower} />
+      <GroveMesh key={`u${sets.upper.length}`} geometry={PINE_UPPER_GEO} material={PINE_BARK_MAT} matrices={sets.upper} />
+      <GroveMesh key={`p${sets.pads.length}`} geometry={PINE_PAD_GEO} material={PINE_PAD_MAT} matrices={sets.pads} colors={sets.padColors} />
+    </>
   )
+}
+
+function GroveMesh({ geometry, material, matrices, colors }) {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    matrices.forEach((m, i) => mesh.setMatrixAt(i, m))
+    colors?.forEach((c, i) => mesh.setColorAt(i, c))
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [matrices, colors])
+  if (matrices.length === 0) return null
+  return <instancedMesh ref={ref} args={[geometry, material, matrices.length]} castShadow receiveShadow />
 }
 
 // ── 물가 바위 무리 (참고: 데크 옆 갯바위) ─────────────────────

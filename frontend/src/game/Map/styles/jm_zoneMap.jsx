@@ -36,7 +36,7 @@ const w2 = ([x, z]) => [x, z + ORIGIN_Z]
 // ⚠ 작품 공식 콜라보 가게는 하나도 없음 (팬·관광 매체가 꼽는 모델지 기준). 기간 한정 팝업은 넣지 않음
 export const JM_REAL_PLACES = {
   // 명장면
-  spot_jm_crossing: { kind: 'spot', name: '가미야스마쓰 지조손 (사이타마 도코로자와)', query: '上安松地蔵尊' },
+  spot_jm_crossing: { kind: 'spot', name: '토토로의 숲 1호지 (사이타마 도코로자와)', query: 'トトロの森1号地' }, // jm_realSpotData.js crossing과 같게 (11/27 리뷰)
   spot_jm_stairs: { kind: 'spot', name: '케타와카미야 신사 (기후 히다후루카와)', query: '気多若宮神社' },
   spot_jm_shrine: { kind: 'spot', name: '호만구 가마도 신사 (후쿠오카 다자이후)', query: '宝満宮竈門神社' },
   spot_jm_sakura_river: { kind: 'spot', name: '시라타니운스이쿄 이끼 숲 (가고시마 야쿠시마)', query: '白谷雲水峡 苔むす森' },

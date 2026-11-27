@@ -12,6 +12,7 @@ export const loadGame = () => import('../../GameRoot.jsx')
 
 const HEALTH_TIMEOUT_MS = 70_000
 const SLOW_AFTER_MS = 90_000 // 이만큼 지나도 안 깨어나면 "늦어요" 안내 (계속 시도는 함)
+const GIVE_UP_MS = 10 * 60_000
 
 /**
  * server: 'waking'(깨우는 중) | 'ready'(준비됨) | 'slow'(오래 걸림 — 계속 시도 중) | 'off'(mock 모드)
@@ -39,6 +40,8 @@ async function wakeUntilReady() {
       // 잠에서 깨는 중(연결 끊김·시간 초과) → 잠깐 쉬고 다시
     }
     if (Date.now() - begin > SLOW_AFTER_MS) usePreload.setState({ server: 'slow' })
+    // 10분이 지나도 안 깨어나면(서버 장애) 그만 — 탭을 열어 둔 채 계속 두드리지 않게. 로그인 버튼은 그대로 쓸 수 있음
+    if (Date.now() - begin > GIVE_UP_MS) return
     await new Promise((r) => setTimeout(r, 3000))
   }
 }
