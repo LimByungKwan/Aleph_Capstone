@@ -1038,9 +1038,29 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
 // 섬 정원: 현관 앞 돌길, 양옆 정원(풀밭 + 꽃덤불 + 나무 + 가스등), 서쪽 끝에서 선착장으로 내려가는 바깥 계단
 prop(fixedAt('jm_ryokan_fox_w'), 'jmFox', [-4.6, -134.2], [0.9, 1.8, 0.9], { mirror: true, elevation: T_N })
 prop(fixedAt('jm_ryokan_fox_e'), 'jmFox', [4.6, -134.2], [0.9, 1.8, 0.9], { elevation: T_N })
-road('jm_ryokan_path', 'stone', [0, -182], [4, 0.06, 6], { elevation: TOP })
-road('jm_ryokan_path_w', 'gardenPath', [-17.5, -180.4], [33, 0.06, 2], { elevation: TOP })
-for (const s of [-1, 1]) road(`jm_ryokan_path_side_${s < 0 ? 'w' : 'e'}`, 'gardenPath', [s * 29.5, -202], [2, 0.06, 40], { elevation: TOP })
+// (11/27 지민 요청: 여관 앞 돌길이 어색함) 예전: 가운데 길 폭 4(다리 6보다 좁음) + 서쪽 가로길이 가운데 길 위에 1m 겹침
+//   + 동쪽 가로길 없음 + 옆길 끝과 가로길 사이 0.6m 빔 → 다리 폭(BR.w)과 같은 가운데 길 + 양옆 돌 테두리,
+//   가로길은 가운데 길 가장자리에서 양쪽으로(겹치지 않게), 옆길은 가로길까지 늘려 모서리에서 만나게
+{
+  const PW = BR.w // 가운데 길 폭 = 다리 폭
+  const pz0 = BR.z1 // 다리 북쪽 끝
+  const pz1 = r2(YU.front + 1.9) // 현관 계단 앞 (계단은 YU.front + 1.7 언저리)
+  const pc = r2((pz0 + pz1) / 2)
+  const pd = r2(Math.abs(pz0 - pz1))
+  road('jm_ryokan_path', 'stone', [0, pc], [PW, 0.06, pd], { elevation: TOP })
+  for (const s of [-1, 1]) road(`jm_ryokan_path_curb_${s < 0 ? 'w' : 'e'}`, null, [r2(s * (PW / 2 + 0.15)), pc], [0.3, 0.06, pd], { elevation: TOP, color: '#7d7466' })
+  const CZ = -180.4 // 가로길 가운데 z (폭 2)
+  const SX = 29.5 // 옆길 가운데 x (폭 2)
+  const x0 = r2(PW / 2 + 0.3) // 테두리 바깥에서 시작
+  const x1 = r2(SX + 1)
+  for (const s of [-1, 1]) {
+    road(`jm_ryokan_path_${s < 0 ? 'w' : 'e'}`, 'gardenPath', [r2(s * (x0 + x1) / 2), CZ], [r2(x1 - x0), 0.06, 2], { elevation: TOP })
+    // 옆길: 북쪽 끝(z -222)은 그대로, 남쪽 끝을 가로길 북쪽 가장자리(CZ - 1)까지
+    const sz0 = -222
+    const sz1 = r2(CZ - 1)
+    road(`jm_ryokan_path_side_${s < 0 ? 'w' : 'e'}`, 'gardenPath', [s * SX, r2((sz0 + sz1) / 2)], [2, 0.06, r2(sz1 - sz0)], { elevation: TOP })
+  }
+}
 for (const [i, x, z] of [[1, -27, -181.6], [2, 27, -181.6], [3, -32.5, -200], [4, 32.5, -200], [5, -32.5, -216], [6, 32.5, -216]]) gasLamp(`jm_ryokan_lamp_${i}`, [x, z], { elevation: TOP })
 const GARDEN_FLOWERS = [[-26.5, -192], [-26.5, -206], [-26.5, -218], [-33.5, -195], [-33.5, -209], [26.5, -192], [26.5, -206], [26.5, -218], [33.5, -195], [33.5, -209], [-20, -224], [20, -224]]
 GARDEN_FLOWERS.forEach(([x, z], i) => prop(`jm_flower_${i + 1}`, 'jmFlowerBush', [x, z], [2.6, 1.5, 2.2], { elevation: TOP, seed: i, collider: [1.8, 1.2, 1.6] }))
@@ -1119,7 +1139,8 @@ road('jm_dock', null, [-22, -171.5], [28, 0.12, 15], { color: '#6b4a30' })
 // 깃발 단 굴뚝 (보일러실 굴뚝 — 섬 서쪽 정원에서 솟음)
 prop('jm_chimney', 'jmChimney', [-26, -213], [1.8, 42, 1.8], { elevation: TOP, collider: [1.8, 42, 1.8] })
 // (지민이 보낸 장면 참고) 섬 아래는 물에서 솟은 돌 옹벽
-prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collider: false })
+// (11/27) gap: 다리가 섬에 닿는 자리(가운데)는 꼭대기 화분 줄을 비움 — 덤불이 다리 → 현관 돌길을 막고 있었음
+prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collider: false, gap: r2(BR.w + 0.6) })
 // 엘리베이터: 직원용 1~5층 (지하 보일러실은 로비 구석 작은 문 계단으로). 칸마다 같은 정류장 목록, me만 다름
 {
   // 손님용 (작은 로비 서쪽 승강로): 모든 층에서 동쪽(+x)으로 열림

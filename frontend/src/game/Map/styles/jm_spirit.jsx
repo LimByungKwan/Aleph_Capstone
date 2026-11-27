@@ -964,7 +964,8 @@ export function JmYuLowerFacade({ item }) {
   const [w, h] = item.size
   const winTex = windowStripTexture('lattice')
   const eave = useMemo(() => hipRoofGeometry(w + 0.8, 2.2, 0.55, 0.06), [w])
-  const plants = useMemo(() => range(Math.round(w / 1.6)).map((i) => ({ p: [-w / 2 + 0.8 + i * 1.6, h + 0.35, 0.55], s: [0.5 + srand(i) * 0.3, 0.45, 0.4] })), [w, h])
+  const gap = item.gap ?? 0 // (11/27) 가운데 비울 폭: 다리가 닿는 자리에는 화분 줄을 두지 않음
+  const plants = useMemo(() => range(Math.round(w / 1.6)).map((i) => ({ p: [-w / 2 + 0.8 + i * 1.6, h + 0.35, 0.55], s: [0.5 + srand(i) * 0.3, 0.45, 0.4] })).filter((pl) => Math.abs(pl.p[0]) > gap / 2 + 0.3), [w, h, gap])
   return (
     <group>
       <Box p={[0, h / 2, 0]} s={[w, h, 0.6]} c="#8a7f6e" />
@@ -1020,7 +1021,8 @@ export function JmYuLowerFacade({ item }) {
       {/* 벽을 타고 꺾이는 흰 관 */}
       {[[-w / 2 + 2.2, 0, 4.4], [-2, 2.4, 7], [w / 2 - 8.5, 0.8, 5]].map(([x, z0, len], i) => (
         <group key={`pp${i}`}>
-          <Cyl p={[x, (z0 + h) / 2 + 0.3, 0.5]} rad={0.13} h={h - z0 + 0.6} c="#d6d1c6" />
+          {/* (11/27) 관 위 끝을 벽 꼭대기(h) 바로 아래에서 끝냄 — 예전엔 마당 위로 0.6m 튀어나와 다리 끝에 짧은 기둥처럼 보였음 */}
+          <Cyl p={[x, (z0 + h - 0.05) / 2, 0.5]} rad={0.13} h={h - 0.05 - z0} c="#d6d1c6" />
           <Cyl p={[x + len / 2, z0 + 0.3, 0.5]} rad={0.13} h={len} c="#d6d1c6" r={[0, 0, Math.PI / 2]} />
           <Ball p={[x, z0 + 0.3, 0.5]} rad={0.17} c="#bdb7aa" />
           <Ball p={[x + len, z0 + 0.3, 0.5]} rad={0.17} c="#bdb7aa" />
@@ -1028,7 +1030,9 @@ export function JmYuLowerFacade({ item }) {
         </group>
       ))}
       {/* 지대 끝 위 화분 줄 (사진의 층마다 초록 덤불) */}
-      <Box p={[0, h + 0.1, 0.55]} s={[w, 0.2, 0.6]} c="#5a3d2a" />
+      {gap > 0
+        ? [-1, 1].map((sx) => <Box key={`pb${sx}`} p={[sx * (w / 4 + gap / 4), h + 0.1, 0.55]} s={[w / 2 - gap / 2, 0.2, 0.6]} c="#5a3d2a" />)
+        : <Box p={[0, h + 0.1, 0.55]} s={[w, 0.2, 0.6]} c="#5a3d2a" />}
       <Instances geometry={GEO.sphere} material={mat('#3f6b3a', { flat: true })} items={plants} />
     </group>
   )

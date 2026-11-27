@@ -742,8 +742,10 @@ function YuExterior({ W, D, Y, sign }) {
         </group>
       ))}
       <Box p={[0, (base + doorH + R) / 2, front - wt / 2]} s={[door, R - base - doorH, wt]} c={RED} />
-      {/* 1층 아래 짙은 나무 띠 + 모서리 기둥 */}
-      <Box p={[0, base + 0.5, front + 0.02]} s={[W, 1, 0.05]} c={DARK} />
+      {/* 1층 아래 짙은 나무 띠 + 모서리 기둥 — (11/27) 띠가 정문 자리까지 가로질러 입구 아래쪽을 막아서, 문 양옆 두 조각으로 나눔 */}
+      {[-1, 1].map((s) => (
+        <Box key={`skirt${s}`} p={[s * (door / 2 + side / 2), base + 0.5, front + 0.02]} s={[side, 1, 0.05]} c={DARK} />
+      ))}
       {[-1, 1].map((sx) => [-1, 1].map((sz) => <Box key={`${sx}${sz}`} p={[sx * (W / 2 - 0.1), (base + R) / 2, sz * (front - 0.1)]} s={[0.4, R - base, 0.4]} c={RED_DARK} />))}
       {/* 격자창 */}
       {windows.map((w, i) => (
