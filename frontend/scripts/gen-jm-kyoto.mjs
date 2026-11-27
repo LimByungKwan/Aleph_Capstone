@@ -1532,6 +1532,148 @@ const LAMP_STYLES = new Set(['jmLantern', 'jmLanternLine', 'jmGasLamp', 'jmTwinL
   props.length = 0
   props.push(...kept)
 }
+// (11/27 지민 요청: 애니 ↔ K-pop 사이 빈 땅을 바닷가 산책로로 — 강가는 안 만듦) 서쪽 만(jm_ocean 남쪽 물가, 호수식 둑이라 모래 없음)을 따라
+//   맵 서쪽 벽(x -130) ~ 바위 강 어귀(x -70)까지 물가에 반쯤 걸친 나무 데크. 바다 쪽만 난간(빠지지 않게), 땅 쪽은 트여서 어디서든 올라섬
+//   풀 언덕(jm_field_hill_2·4) 충돌 상자 북쪽 끝(z -11.6)보다 바다 쪽이라 언덕과 안 겹침. 벤치는 데크 땅 쪽 가장자리에서 바다를 봄
+//   (등 줄이기 필터 뒤에 둬서 석등이 빠지지 않음)
+{
+  const H = 0.2
+  // 점 = 실제 물가 곡선(jm_water.jsx densify: 닫힌 Catmull-Rom)보다 0.4m 바다 쪽 → 폭 3.6 중 1.4m는 땅, 나머지는 물 위
+  // (11/27 2차 지민 요청: 빈 땅 더 꾸미기, 참고 사진 중 골라서) 서쪽 끝은 맵 벽 앞에서 바다 쪽(북)으로 휘어 바다 위 정자에서 끝남
+  //   (참고: 데크 끝 바다 쪽 전망 정자). 물가를 떠나는 굽은 구간부터는 양쪽 난간 (땅 쪽 트임은 LAND_N번째 발판까지)
+  const LAND = [[-70, -11.4], [-82, -13.4], [-91, -14.8], [-100, -16.5], [-111, -18.7], [-119, -20.2]]
+  const PAV = { x: -124.5, z: -31.2, w: 6 } // 정자 가운데·한 변 (바닥 z -28.2 ~ -34.2)
+  const WALK = [...LAND, [-123, -22.5], [-124.5, -26], [PAV.x, r2(PAV.z + PAV.w / 2 - 0.2)]]
+  const W = 3.6
+  let LAND_N = 0
+  for (let i = 1; i < LAND.length; i++) LAND_N += Math.hypot(LAND[i][0] - LAND[i - 1][0], LAND[i][1] - LAND[i - 1][1])
+  // (11/27 3차) 풀 언덕 4 자리는 레일바이크 무지개 터널(언덕 모양)이 대신함 → 언덕 4 뺌.
+  //   언덕 2·벚나무 하나는 철길 동쪽 굽은 곳과 겹쳐서 옮김
+  for (let i = props.length - 1; i >= 0; i--) if (props[i].id === 'jm_field_hill_4') props.splice(i, 1)
+  const hill2 = props.find((p) => p.id === 'jm_field_hill_2')
+  if (hill2) hill2.position = [-50, -9]
+  const fieldSakura = props.find((p) => p.id === 'jm_field_tree_5')
+  if (fieldSakura) fieldSakura.position = [-73, 13]
+  terrain.push({ type: 'deck', id: 'jm_sea_walk', width: W, smooth: true, step: 1, color: '#8a6a48', railGap: { side: 1, segments: [0, Math.floor(LAND_N)] }, points: WALK.map(([x, z]) => [x, z, H]) })
+
+  // 바다 위 정자: 그림(jm_seaside.jsx JmSeaPavilion) + 걷는 바닥(데크 윗면과 같은 0.25) + 난간 막이(남쪽 가운데는 데크가 들어옴)
+  prop('jm_sea_pavilion', 'jmSeaPavilion', [PAV.x, PAV.z], [PAV.w, 4.4, PAV.w], { collider: false, open: W })
+  wall('jm_sea_pavilion_floor', [PAV.x, PAV.z], [PAV.w, H + 0.05, PAV.w])
+  const e = PAV.w / 2 - 0.08
+  wall('jm_sea_pavilion_rail_n', [PAV.x, r2(PAV.z - e)], [PAV.w, 1.3, 0.16], { elevation: H + 0.05 })
+  wall('jm_sea_pavilion_rail_w', [r2(PAV.x - e), PAV.z], [0.16, 1.3, PAV.w], { elevation: H + 0.05 })
+  wall('jm_sea_pavilion_rail_e', [r2(PAV.x + e), PAV.z], [0.16, 1.3, PAV.w], { elevation: H + 0.05 })
+  const stub = (PAV.w - W) / 2
+  for (const s of [-1, 1]) wall(`jm_sea_pavilion_rail_s${s < 0 ? 'w' : 'e'}`, [r2(PAV.x + s * (PAV.w / 2 - stub / 2)), r2(PAV.z + e)], [r2(stub), 1.3, 0.16], { elevation: H + 0.05 })
+  bench('jm_sea_pavilion_bench', [PAV.x, r2(PAV.z - 0.6)], 180, H + 0.05) // 바다(북쪽) 보고 앉음
+
+  // ── (11/27 3차 지민 요청: 해안선만이 아니라 빈 땅 전체를 산책로답게 + 참고: 해안 레일바이크) 바닷길 레일바이크 공원 ──
+  //   땅 둘레를 도는 레일바이크 순환선(jm_railbike.jsx) — 남쪽 직선에 역, 북쪽 직선은 무지개 터널(옛 언덕 4 자리)
+  //   순환선 안쪽 풀밭: 오솔길(입구 → 꽃 정원 고리 → 데크 / 소나무 쉼터 / 터널 전망 자리), 철길 건너는 곳은 건널목
+  //   철길 바깥: 소나무 줄 + 바다 쪽 노란 울타리. 바이크는 E로 타서 W/S로 몰기 (내 화면에서만 움직임)
+  const TRACK = [
+    [-62, 38.8], [-70, 38.8], [-78, 38.8], [-86, 38.8], // 역 직선 (서쪽으로)
+    [-100, 37.5], [-113, 33.5], [-121, 25], [-123.5, 13], [-120.5, 2.5], [-111, -2.4],
+    [-96, -2.8], [-82, -2.8], [-68, -2.8], // 터널 직선 (동쪽으로)
+    [-61, 1.5], [-56.5, 11], [-55, 23], [-57, 33],
+  ]
+  const TUN = { x: -82, z: -2.8, len: 22, H: 4.6, W: 10, iw: 4.2, ih: 3.4 } // 터널: x -93 ~ -71
+  prop('jm_rail_track', 'jmRailTrack', [0, 0], [80, 0.2, 60], { collider: false, track: { points: TRACK, closed: true } })
+  prop('jm_rail_bike', 'jmRailBike', [0, 0], [80, 2.2, 60], { // 크기 16m 넘게 = 거리 숨기기 대상 아님 (기준 위치가 구역 원점이라 숨겨지면 안 보임)
+    collider: false, number: 7, startAt: [-76, 38.8], track: { points: TRACK, closed: true },
+    tunnel: { x0: TUN.x - TUN.len / 2, x1: TUN.x + TUN.len / 2, z: TUN.z, half: TUN.iw / 2 },
+  })
+  // 무지개 터널 (언덕 모양) + 걷기 막이: 안쪽 통로(폭 4.2)만 남기고 양옆 언덕 몸통을 상자로
+  prop('jm_rail_tunnel', 'jmRailTunnel', [TUN.x, TUN.z], [TUN.len, TUN.H, TUN.W], { collider: false, inner: [TUN.iw, TUN.ih], sign: '무지개 터널' })
+  const tunSide = (TUN.W - TUN.iw) / 2
+  for (const s of [-1, 1]) wall(`jm_rail_tunnel_body_${s < 0 ? 'n' : 's'}`, [TUN.x, r2(TUN.z + s * (TUN.iw / 2 + tunSide / 2))], [TUN.len + 1, TUN.H, r2(tunSide)])
+  // 역: 승강장(철길 북쪽) + 매표소, 걷는 바닥·기둥 막이
+  const ST = { x: -78, z: 36.6, len: 12, h: 2.6, d: 2.2 }
+  prop('jm_rail_station', 'jmRailStation', [ST.x, ST.z], [ST.len, ST.h, ST.d], { collider: false, sign: '바닷길역', subSign: 'UMIBE · 海辺レールバイク' })
+  wall('jm_rail_station_floor', [ST.x, ST.z], [ST.len, 0.25, ST.d])
+  wall('jm_rail_station_booth', [r2(ST.x + ST.len / 2 - 1.1), r2(ST.z - ST.d / 2 - 0.85)], [1.6, 2.4, 1.3]) // 승강장 뒤 땅 (jm_railbike.jsx와 같은 자리)
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) wall(`jm_rail_station_post_${sx < 0 ? 'w' : 'e'}${sz < 0 ? 'n' : 's'}`, [r2(ST.x + sx * (ST.len / 2 - 1.5)), r2(ST.z + sz * (ST.d / 2 - 0.5))], [0.2, 2.6, 0.2], { elevation: 0.25 })
+  bench('jm_rail_station_bench', [-80.8, 36.05], 0, 0.25) // 철길 보고 앉음 (서쪽 지붕 기둥 x -82.5 옆, 바이크 서는 자리 x -76과 떨어져 "E 타기" 안내와 안 겹침)
+  // 대기선 (역 남쪽) + 세워 둔 바이크 4대
+  prop('jm_rail_siding', 'jmRailTrack', [0, 0], [24, 0.2, 4], { collider: false, track: { points: [[-88, 41.4], [-78, 41.4], [-68, 41.4]], closed: false } })
+  prop('jm_rail_parked', 'jmRailBikeParked', [0, 0], [20, 2.2, 3], { collider: false, firstNumber: 11, bikes: [[-84, 41.4, -90], [-80.5, 41.4, -90], [-77, 41.4, -90], [-73.5, 41.4, -90]] })
+  // 건널목 (입구 오솔길 · 데크 가는 오솔길이 철길을 건너는 곳)
+  prop('jm_rail_crossing_s', 'jmCrossing', [-65.5, 38.8], [2.8, 3.2, 1], { collider: false, gap: 2.1 })
+  prop('jm_rail_crossing_n', 'jmCrossing', [-106, -2.6], [2.8, 3.2, 1], { collider: false, gap: 2.1 })
+  // 노란 울타리: 북쪽(데크 쪽) 철길 바깥 — 건널목 자리는 비움 / 동쪽(숲 쪽) 철길 바깥
+  prop('jm_rail_fence_n1', 'jmRailFence', [0, 0], [40, 1, 40], { collider: false, points: [[-93.6, -5], [-100, -5], [-104.4, -4.9]] })
+  prop('jm_rail_fence_n2', 'jmRailFence', [0, 0], [40, 1, 40], { collider: false, points: [[-107.6, -4.8], [-111, -4.6], [-115, -3.3], [-118.5, -1.2]] })
+  prop('jm_rail_fence_e', 'jmRailFence', [0, 0], [40, 1, 40], { collider: false, points: [[-53.4, 12], [-52.4, 22], [-54.4, 31]] })
+
+  // 오솔길 (참고: 바닷가 풀밭 사이 붉은 흙길)
+  const PATH_COLOR = '#b38b6a'
+  const C = { x: -89, z: 18, r: 6.5 } // 꽃 정원 고리
+  const ring = Array.from({ length: 25 }, (_, i) => i).map((i) => [r2(C.x + Math.cos((i / 24) * Math.PI * 2) * C.r), r2(C.z + Math.sin((i / 24) * Math.PI * 2) * C.r)])
+  for (const [id, points] of [
+    ['entry', [[-28, 58], [-38, 49], [-52, 44.5], [-60, 41.5], [-65.5, 38.8], [-67, 35.5], [-71, 33.5], [-71.6, 36.2]]], // 허브 북서쪽 → 건널목 → 역
+    ['main', [[-71, 33.5], [-78, 29], [-84.8, 23]]],
+    ['north', [[-93.1, 13], [-99, 8], [-104, 3], [-106, -0.5], [-106, -6], [-106, -15.6]]], // 정원 → 건널목 → 데크
+    ['grove', [[-94.8, 21], [-100, 24], [-104.5, 26]]],
+    ['view', [[-71, 33.5], [-69, 26], [-68, 17], [-67, 9]]], // 터널 나오는 바이크 보는 자리
+    ['ring', ring],
+  ]) prop(`jm_park_path_${id}`, 'jmPathRibbon', [0, 0], [40, 0.03, 40], { collider: false, color: PATH_COLOR, ribbon: { points, width: id === 'entry' || id === 'north' ? 2.2 : 1.8 } })
+  // 꽃 정원: 가운데 석등 + 꽃밭 4 + 안쪽을 보는 벤치 3
+  stoneLantern('jm_park_ring_lantern', [C.x, C.z])
+  for (const [i, deg] of [45, 135, 225, 315].entries()) {
+    const a = (deg * Math.PI) / 180
+    prop(`jm_park_ring_bed_${i + 1}`, 'jmFlowerBed', [r2(C.x + Math.cos(a) * 3), r2(C.z + Math.sin(a) * 3)], [2.6, 0.3, 1.2], { collider: false, rotationDeg: r2((Math.atan2(-Math.cos(a), -Math.sin(a)) * 180) / Math.PI) })
+  }
+  for (const [i, deg] of [-40, 100, 190].entries()) {
+    const a = (deg * Math.PI) / 180
+    bench(`jm_park_ring_bench_${i + 1}`, [r2(C.x + Math.cos(a) * 4.6), r2(C.z + Math.sin(a) * 4.6)], r2((Math.atan2(-Math.cos(a), -Math.sin(a)) * 180) / Math.PI))
+  }
+  // 소나무 쉼터: 노다테(빨간 양산 평상) 2 + 꽃놀이 돗자리 + 석등
+  prop('jm_park_nodate_1', 'jmNodate', [-107, 25.5], [2, 2.8, 1], { rotationDeg: 30, collider: [2, 0.6, 1] })
+  prop('jm_park_nodate_2', 'jmNodate', [-102.5, 29], [2, 2.8, 1], { rotationDeg: -20, collider: [2, 0.6, 1] })
+  prop('jm_park_hanami', 'jmHanamiMat', [-104.5, 22.6], [2.2, 0.2, 1.7], { rotationDeg: 10, collider: false })
+  stoneLantern('jm_park_grove_lantern', [-101.5, 24])
+  // 터널 전망 자리: 터널 동쪽 입구·굽은 철길을 보는 벤치 2
+  bench('jm_park_view_bench_1', [-66.2, 6.6], 200)
+  bench('jm_park_view_bench_2', [-68.6, 7.4], 160)
+  // 가로등 + 안내판
+  for (const [i, p] of [[-73.5, 31.6], [-80.4, 27.6], [-97.2, 10.6], [-104.3, 0.8], [-70.2, 20.5], [-102.6, 27]].entries()) gasLamp(`jm_park_lamp_${i + 1}`, p)
+  prop('jm_park_sign_entry', 'jmArrowSign', [-40.5, 48.6], [1.6, 2.1, 0.2], { rotationDeg: 135, signs: [{ text: '레일바이크 역', dir: 'left' }, { text: '바닷가 데크', dir: 'left' }] })
+  prop('jm_park_sign_deck', 'jmArrowSign', [-108, -12.6], [1.6, 2.1, 0.2], { rotationDeg: 180, signs: [{ text: '레일바이크 공원', dir: 'left' }] })
+  // 소나무: 철길 바깥 줄(서·남·북) + 안쪽 풀밭 군데군데 + 쉼터 둘레. 철길·길·소품과 3m 넘게 떨어짐
+  for (const [i, [x, z, s]] of [
+    [-128, 3, 1.1], [-128, 11, 1], [-127.8, 19, 1.15], [-126.5, 27, 1], [-123, 35, 0.95], // 서쪽 바깥
+    [-96, 42.6, 1], [-104, 41.6, 1.1], [-112, 38.8, 0.95], // 남쪽 바깥
+    [-99, -8.5, 1], [-114, -8.5, 1.05], [-122, -12, 1.15], [-127, -16, 0.9], // 북쪽 바깥 (데크 뒤)
+    [-64, 24, 1.05], [-79, 7, 1], [-98, 30.5, 0.95], [-116, 10, 1.1], // 안쪽 풀밭
+    [-110.5, 30.5, 1], [-111, 21.5, 1.1], [-100.5, 32, 0.9], [-108, 19, 0.95], // 쉼터 둘레
+  ].entries()) prop(`jm_sea_pine_${i + 1}`, 'jmPine', [x, z], [r2(4.2 * s), r2(6.5 * s), r2(4.2 * s)], { collider: [0.5, 3, 0.5] })
+  for (const [i, [x, z]] of [[-97, 15.5], [-62, 30], [-112, 8], [-86, 32]].entries()) prop(`jm_sea_flower_${i + 1}`, 'jmFlowerBush', [x, z], [2.6, 1.5, 2.2], { seed: 30 + i, collider: [1.8, 1.2, 1.6] })
+
+  // 물가 바위 (반쯤 잠긴 갯바위, 걷기 판정 없음): 정자 밑 / 데크 바다 쪽 / 바위 강 어귀 / 서쪽 물가
+  for (const [id, rocks] of [
+    ['pavilion', [[-128.3, -30, 0.8], [-128, -33.6, 0.6], [-120.9, -34.9, 0.7, 0.5], [-120.7, -29.4, 0.9], [-126, -35.4, 0.5]]],
+    ['walk', [[-85, -17.2, 0.7], [-87.5, -18.1, 1, 0.5], [-90, -17.7, 0.6], [-92.5, -18.8, 0.8]]],
+    ['mouth', [[-67, -15, 1.1, 0.7], [-65, -16.6, 0.8], [-68.6, -17.1, 0.6]]],
+    ['west', [[-111, -22.4, 0.8], [-113.6, -23.6, 1.1, 0.5], [-116, -22.9, 0.6]]],
+  ]) {
+    const cx = r2(rocks.reduce((a, r) => a + r[0], 0) / rocks.length)
+    const cz = r2(rocks.reduce((a, r) => a + r[1], 0) / rocks.length)
+    prop(`jm_sea_rocks_${id}`, 'jmShoreRocks', [cx, cz], [6, 1, 6], { collider: false, rocks: rocks.map(([x, z, ...rest]) => [r2(x - cx), r2(z - cz), ...rest]) })
+  }
+
+  const zAt = (x) => {
+    for (let i = 0; i < WALK.length - 1; i++) {
+      const [ax, az] = WALK[i]
+      const [bx, bz] = WALK[i + 1]
+      if (x <= ax && x >= bx) return az + ((bz - az) * (x - ax)) / (bx - ax)
+    }
+    return WALK.at(-1)[1]
+  }
+  const TOP = H + 0.05
+  for (const [i, x] of [-76, -96, -116].entries()) bench(`jm_sea_walk_bench_${i + 1}`, [x, r2(zAt(x) + W / 2 - 0.45)], 170, TOP)
+  // (11/27) 석등 x -106은 데크 가는 오솔길 끝(x -106)을 막아서 -110으로
+  for (const [i, x] of [-72, -86, -110].entries()) stoneLantern(`jm_sea_walk_lantern_${i + 1}`, [x, r2(zAt(x) + W / 2 - 0.4)], { elevation: TOP })
+}
 // (11/26 지민 요청: 계단 난간) 바깥 계단 양옆에 나무 난간 (jm_spirit.jsx JmStairRail) + 옆으로 떨어지지 않게 얇은 충돌 벽
 // 여관 안 계단·다리 경사로(다리 난간이 따로 있음)·지하 계단(벽 사이)은 뺌. 모든 위치 보정이 끝난 뒤의 계단 값으로 만듦
 {

@@ -21,6 +21,8 @@ import { JM_SCENE_STYLES } from './jm_scenes.jsx'
 import { JM_SEALINE_STYLES } from './jm_seaLine.jsx'
 import { JM_ZONEMAP_STYLES } from './jm_zoneMap.jsx'
 import { JM_REALSPOT_STYLES } from './jm_realSpots.jsx'
+import { JM_SEASIDE_STYLES } from './jm_seaside.jsx'
+import { JM_RAILBIKE_STYLES } from './jm_railbike.jsx'
 import { mergeStyles } from './jm_perf.jsx'
 import { Fence } from './props.jsx'
 
@@ -47,6 +49,7 @@ const NO_MERGE = new Set([
   'jmSkipSpot', // 물수제비 돌·물보라(움직임)
   'jmBridgeDress', // 흔들다리(매 프레임 움직임)
   'jmWaterwheel', // 도는 바퀴
+  'jmRailBike', // 철길을 달리는 레일바이크 (11/27)
   'jmRiver', // 흐르는 물결
   'jmCollider', // 그리는 것 없음 (높은 벽은 카메라 막이만)
   'jmElevator', // 레버·다이얼 움직임, HUD
@@ -111,6 +114,10 @@ const JM_STYLES_RAW = {
   // 구역 지도 팻말·실제 성지 팻말 (jm_zoneMap.jsx·jm_realSpots.jsx, 11/27)
   ...JM_ZONEMAP_STYLES,
   ...JM_REALSPOT_STYLES,
+  // 서쪽 바닷가 산책로: 바다 위 정자·소나무·물가 바위 (jm_seaside.jsx, 11/27)
+  ...JM_SEASIDE_STYLES,
+  // 바닷길 레일바이크 공원: 철길·타는 바이크·무지개 터널·역·노란 울타리 (jm_railbike.jsx, 11/27)
+  ...JM_RAILBIKE_STYLES,
 }
 
 export const JM_STYLES = mergeStyles(JM_STYLES_RAW, NO_MERGE)
