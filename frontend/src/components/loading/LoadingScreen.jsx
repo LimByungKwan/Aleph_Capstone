@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { useLoadState } from '../../store/loadState.js'
 import { wakeAiServer } from '../../api/course.js'
+import { usePreload } from '../auth/jm_preload.js'
 import './loading-screen.css'
 
 // 첫 접속 로딩 화면 (담당: 병관)
@@ -35,8 +36,12 @@ export default function LoadingScreen() {
   const shadersReady = useLoadState((s) => s.shadersReady)
   const [assetsDone, setAssetsDone] = useState(false)
   const [phase, setPhase] = useState('loading') // loading → fading → gone
-  const [tip, setTip] = useState(() => Math.floor(Math.random() * TIPS.length))
+  // [지민 11/27] 앞 화면에서 보던 팁 그대로 이어 감
+  const [tip, setTip] = useState(() => usePreload.getState().tip ?? Math.floor(Math.random() * TIPS.length))
   const shown = useRef(0)
+  // [지민 11/27] 게임 코드를 받는 동안 같은 모양의 화면(components/auth/jm_EntryScreen.jsx)이 먼저 떠 있었으면
+  //   이 화면이 같은 자리에서 이어지는 것처럼: 카드 등장 효과 없이 (진행 막대는 둘 다 5%에서 시작)
+  const [continued] = useState(() => usePreload.getState().fallbackShown)
   const peak = useRef(0)
 
   useEffect(() => {
@@ -62,6 +67,7 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     if (phase !== 'fading') return undefined
+    usePreload.setState({ loadingDone: true }) // [지민 11/27] 걷히기 시작 → 맵 위 로그인 창의 이메일 칸에 커서
     const id = setTimeout(() => setPhase('gone'), FADE_MS)
     return () => clearTimeout(id)
   }, [phase])
@@ -80,7 +86,7 @@ export default function LoadingScreen() {
   const status = assetsDone && !shadersReady ? '골목에 불을 켜는 중…' : percent >= 100 ? '준비 완료!' : '골목을 꾸미는 중…'
 
   return (
-    <div className={`ld${phase === 'fading' ? ' is-fading' : ''}`} role="status" aria-live="polite" aria-label={`SceneWalk 불러오는 중 ${percent}%`}>
+    <div className={`ld${continued ? ' is-continued' : ''}${phase === 'fading' ? ' is-fading' : ''}`} role="status" aria-live="polite" aria-label={`SceneWalk 불러오는 중 ${percent}%`}>
       <div className="ld__sky" aria-hidden="true">
         <span className="ld__cloud ld__cloud--1" />
         <span className="ld__cloud ld__cloud--2" />

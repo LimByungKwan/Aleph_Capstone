@@ -38,6 +38,11 @@ export const useJmActivity = create((set, get) => ({
   sit: { near: null, nearDist: Infinity, active: null },
   setSit: (patch) => set({ sit: { ...get().sit, ...patch } }),
 
+  // rail: 바닷길 레일바이크 (jm_railbike.jsx). near = "E 타기" 안내가 뜬 바이크 id, active = 타고 있는 바이크 id,
+  //   speed = 지금 속도(m/s, HUD용), lap = 방금 한 바퀴 완주(안내 4초)
+  rail: { near: null, active: null, speed: 0, lap: false },
+  setRail: (patch) => set({ rail: { ...get().rail, ...patch } }),
+
   completed: {},
   complete: (activityId) => {
     if (get().completed[activityId]) return false // 이미 완료 → 다시 처리하지 않음

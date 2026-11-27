@@ -48,7 +48,6 @@ function fakeClient(token) {
   return {
     auth: {
       async getUser(t) {
-        if (tokenUsers[t]) return { data: { user: tokenUsers[t] }, error: null }
         return t === GOOD_TOKEN ? { data: { user: USER }, error: null } : { data: { user: null }, error: { code: 'bad_jwt' } }
       },
       async signInWithPassword({ email, password }) {
@@ -84,25 +83,10 @@ function fakeClient(token) {
   }
 }
 
-// Supabase Auth REST(2단계 인증 /factors …) 가짜: 무엇을 어떤 토큰으로 불렀는지 기록
-let authCalls
-let authRestHandler
 const supabase = {
   anon: () => fakeClient(null),
   asUser: (t) => fakeClient(t),
-  authRest: async (token, method, path, body) => {
-    authCalls.push({ token, method, path, body })
-    return authRestHandler(method, path, body)
-  },
 }
-
-// 2단계 인증 테스트용: JWT 모양 토큰(내용에 aal) + 그 토큰의 사용자(factors)
-let tokenUsers
-const jwt = (claims) => `h.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.s`
-const FACTOR_ID = '33333333-3333-4333-8333-333333333333'
-const TOKEN_AAL1 = jwt({ sub: USER.id, aal: 'aal1' })
-const TOKEN_AAL2 = jwt({ sub: USER.id, aal: 'aal2' })
-const ENROLLED = { ...USER, factors: [{ id: FACTOR_ID, factor_type: 'totp', status: 'verified' }] }
 
 // ── 서버 띄우기 ─────────────────────────────────────────────────
 let server
@@ -126,9 +110,6 @@ beforeEach(() => {
   sessionChecks = []
   sessionOk = { data: true, error: null }
   replacedUsers = []
-  authCalls = []
-  authRestHandler = () => ({ status: 500, data: null })
-  tokenUsers = {}
 })
 
 async function api(method, path, { token, body, origin, ip } = {}) {
@@ -580,124 +561,17 @@ describe('역할 검사 미들웨어 (requireRole)', () => {
   })
 })
 
-describe('관리자 2단계 인증 (TOTP, 등록한 관리자만)', () => {
-  const ADMIN_ROW = { profiles: [{ display_name: '관리자', role: 'admin', shop_id: null }] }
-  const verifyOk = (method, path) => {
-    if (path.endsWith('/challenge')) return { status: 200, data: { id: 'ch-1' } }
-    if (path.endsWith('/verify')) return { status: 200, data: { access_token: TOKEN_AAL2, refresh_token: 'r2', expires_in: 3600 } }
-    return { status: 500, data: null }
-  }
-
-  test('로그인 응답에 mfa: 등록 안 했으면 required=false, 등록했으면 비밀번호만으로는 required=true', async () => {
-    let res = await api('POST', '/auth/login', { body: { email: 'a@example.com', password: 'right-pass' } })
-    assert.deepEqual(res.body.mfa, { enrolled: false, ok: false, required: false })
-    tokenUsers[TOKEN_AAL1] = ENROLLED
-    res = await api('GET', '/me', { token: TOKEN_AAL1 })
-    assert.deepEqual(res.body.mfa, { enrolled: true, ok: false, required: true })
-  })
-
-  test('등록한 관리자가 코드 없이(aal1) 관리자 통계 → 403 MFA_REQUIRED, DB 함수는 부르지 않음', async () => {
-    tokenUsers[TOKEN_AAL1] = ENROLLED
-    tableRows = ADMIN_ROW
-    const res = await api('GET', '/admin/stats', { token: TOKEN_AAL1 })
-    assert.equal(res.status, 403)
-    assert.equal(res.body.error.code, 'MFA_REQUIRED')
-    assert.equal(calls.filter((c) => c.rpc).length, 0)
-  })
-
-  test('코드를 넣은(aal2) 등록 관리자, 등록 안 한 관리자는 관리자 통계 통과', async () => {
-    tokenUsers[TOKEN_AAL2] = ENROLLED
-    tableRows = ADMIN_ROW
-    rpcHandler = () => ({ data: { ok: 1 }, error: null })
-    assert.equal((await api('GET', '/admin/stats', { token: TOKEN_AAL2 })).status, 200)
-    assert.equal((await api('GET', '/admin/stats', { token: GOOD_TOKEN })).status, 200)
-  })
-
-  test('로그인 2단계: 형식이 틀리면 400(인증 서버 안 부름), 등록 안 한 계정은 400 MFA_NOT_ENROLLED', async () => {
-    tokenUsers[TOKEN_AAL1] = ENROLLED
-    let res = await api('POST', '/auth/mfa/verify', { token: TOKEN_AAL1, body: { code: '12ab' } })
-    assert.equal(res.status, 400)
-    assert.equal(authCalls.length, 0)
-    res = await api('POST', '/auth/mfa/verify', { token: GOOD_TOKEN, body: { code: '123456' } })
-    assert.equal(res.body.error.code, 'MFA_NOT_ENROLLED')
-  })
-
-  test('로그인 2단계: 틀린 코드 → 401 MFA_INVALID_CODE', async () => {
-    tokenUsers[TOKEN_AAL1] = ENROLLED
-    authRestHandler = (method, path) => (path.endsWith('/verify') ? { status: 422, data: { error_code: 'mfa_verification_failed' } } : verifyOk(method, path))
-    const res = await api('POST', '/auth/mfa/verify', { token: TOKEN_AAL1, body: { code: '000000' } })
-    assert.equal(res.status, 401)
-    assert.equal(res.body.error.code, 'MFA_INVALID_CODE')
-  })
-
-  test('로그인 2단계: 맞는 코드 → 서버가 찾은 factor로 challenge·verify, aal2 세션 + 새 토큰으로 claim_session(다른 연결은 안 끊음)', async () => {
-    tokenUsers[TOKEN_AAL1] = ENROLLED
-    authRestHandler = verifyOk
-    const res = await api('POST', '/auth/mfa/verify', { token: TOKEN_AAL1, body: { code: '123456', factorId: 'someone-elses' } })
-    assert.equal(res.status, 200)
-    assert.equal(res.body.session.accessToken, TOKEN_AAL2)
-    assert.ok(res.body.session.expiresAt > Date.now() / 1000)
-    assert.deepEqual(authCalls.map((c) => [c.method, c.path, c.token]), [
-      ['POST', `/factors/${FACTOR_ID}/challenge`, TOKEN_AAL1],
-      ['POST', `/factors/${FACTOR_ID}/verify`, TOKEN_AAL1],
-    ])
-    assert.deepEqual(authCalls[1].body, { challenge_id: 'ch-1', code: '123456' })
-    assert.ok(calls.some((c) => c.rpc === 'claim_session' && c.token === TOKEN_AAL2))
-    assert.deepEqual(replacedUsers, [])
-  })
-
-  test('등록 시작: 순례객은 403, 관리자는 하다 만 factor를 지우고 QR(data URI)·factorId를 받음', async () => {
-    assert.equal((await api('POST', '/auth/mfa/enroll', { token: GOOD_TOKEN })).status, 403)
-    tableRows = ADMIN_ROW
-    tokenUsers[TOKEN_AAL1] = { ...USER, factors: [{ id: 'old-unverified', factor_type: 'totp', status: 'unverified' }] }
-    authRestHandler = (method, path) =>
-      method === 'POST' && path === '/factors'
-        ? { status: 200, data: { id: FACTOR_ID, type: 'totp', totp: { qr_code: '<svg>#</svg>', secret: 'ABC', uri: 'otpauth://x' } } }
-        : { status: 200, data: {} }
-    const res = await api('POST', '/auth/mfa/enroll', { token: TOKEN_AAL1 })
-    assert.equal(res.status, 201)
-    assert.deepEqual(res.body, { factorId: FACTOR_ID, qrCode: 'data:image/svg+xml;charset=utf-8,%3Csvg%3E%23%3C%2Fsvg%3E', secret: 'ABC' })
-    assert.deepEqual(authCalls[0], { token: TOKEN_AAL1, method: 'DELETE', path: '/factors/old-unverified', body: undefined })
-    assert.equal(authCalls[1].body.factor_type, 'totp')
-  })
-
-  test('등록 시작: 이미 등록했으면(aal2) 409, aal1이면 먼저 코드부터(403 MFA_REQUIRED)', async () => {
-    tableRows = ADMIN_ROW
-    tokenUsers[TOKEN_AAL2] = ENROLLED
-    tokenUsers[TOKEN_AAL1] = ENROLLED
-    assert.equal((await api('POST', '/auth/mfa/enroll', { token: TOKEN_AAL2 })).body.error.code, 'MFA_ALREADY_ENROLLED')
-    assert.equal((await api('POST', '/auth/mfa/enroll', { token: TOKEN_AAL1 })).body.error.code, 'MFA_REQUIRED')
-  })
-
-  test('등록 마무리: 내 것이 아닌(또는 이미 검증된) factorId는 400, 내 미검증 factor면 aal2 세션', async () => {
-    tableRows = ADMIN_ROW
-    tokenUsers[TOKEN_AAL1] = { ...USER, factors: [{ id: FACTOR_ID, factor_type: 'totp', status: 'unverified' }] }
-    const other = '44444444-4444-4444-8444-444444444444'
-    assert.equal((await api('POST', '/auth/mfa/enroll/verify', { token: TOKEN_AAL1, body: { factorId: other, code: '123456' } })).status, 400)
-    authRestHandler = verifyOk
-    const res = await api('POST', '/auth/mfa/enroll/verify', { token: TOKEN_AAL1, body: { factorId: FACTOR_ID, code: '123456' } })
-    assert.equal(res.status, 200)
-    assert.equal(res.body.session.accessToken, TOKEN_AAL2)
-  })
-
-  test('코드를 15분에 5번 틀리면 6번째는 인증 서버를 부르지 않고 429', async () => {
-    tokenUsers[TOKEN_AAL1] = ENROLLED
-    authRestHandler = (method, path) => (path.endsWith('/verify') ? { status: 422, data: {} } : verifyOk(method, path))
-    for (let i = 0; i < 5; i += 1) {
-      assert.equal((await api('POST', '/auth/mfa/verify', { token: TOKEN_AAL1, body: { code: '000000' } })).status, 401)
+describe('관리자 2단계 인증은 없앰 (11/27)', () => {
+  test('/auth/mfa/* 는 404, 관리자는 비밀번호 로그인만으로 관리자 통계 통과, 로그인 응답에 mfa 없음', async () => {
+    for (const path of ['/auth/mfa/verify', '/auth/mfa/enroll', '/auth/mfa/enroll/verify']) {
+      assert.equal((await api('POST', path, { token: GOOD_TOKEN, body: { code: '123456' } })).status, 404)
     }
-    authCalls = []
-    const res = await api('POST', '/auth/mfa/verify', { token: TOKEN_AAL1, body: { code: '123456' } })
-    assert.equal(res.status, 429)
-    assert.equal(authCalls.length, 0)
-  })
-
-  test('인증 서버 오류는 내부 내용(비밀·QR)을 숨기고 500', async () => {
-    tableRows = ADMIN_ROW
-    authRestHandler = () => ({ status: 503, data: { msg: 'secret stuff' } })
-    const res = await api('POST', '/auth/mfa/enroll', { token: GOOD_TOKEN })
-    assert.equal(res.status, 500)
-    assert.equal(res.body.error.code, 'SERVER_ERROR')
+    tableRows = { profiles: [{ display_name: '관리자', role: 'admin', shop_id: null }] }
+    rpcHandler = () => ({ data: { visitors: 0 }, error: null })
+    assert.equal((await api('GET', '/admin/stats', { token: GOOD_TOKEN })).status, 200)
+    const res = await api('POST', '/auth/login', { body: { email: 'a@example.com', password: 'right-pass' } })
+    assert.equal(res.status, 200)
+    assert.equal('mfa' in res.body, false)
   })
 })
 

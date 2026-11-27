@@ -12,6 +12,7 @@ import { JmCanal, JmCrossing } from './jm_kyoto.jsx'
 import { hipRoofGeometry } from './geometry.js'
 import { JmBusStop } from './jm_shops.jsx'
 import { MossForest, NatsumeShrine, ScenePad, ShintaiShrine, WisteriaPath } from './jm_scenes.jsx'
+import { RealSpotSign, SPOT_OF_ROOM } from './jm_realSpots.jsx'
 import { findPlayer } from '../../Player/findPlayer.js'
 
 // 애니메이션 구역(JM) 「명장면 공간」 — 담당: 지민 (11/24)
@@ -259,19 +260,13 @@ export function JmSceneRoom({ item }) {
       {room.kind === 'natsume' && <NatsumeShrine w={w} d={d} stair={room.stair} />}
       {room.kind === 'crossing' && <SakuraCrossing w={w} d={d} />}
       {room.kind === 'onsen' && <OnsenMotif w={w} d={d} bridge={room.bridge} />}
-      {/* 입구 쪽 장면 안내판 */}
-      <group position={[-3.2, 0, d / 2 - 4.5]} rotation={[0, 0.35, 0]}>
-        <Box p={[0, 0.9, 0]} s={[0.12, 1.8, 0.12]} c="#3a281c" />
-        <Box p={[0, 1.75, 0.02]} s={[2.4, 1.0, 0.08]} c="#2b1d14" />
-        <mesh position={[0, 1.95, 0.07]}>
-          <planeGeometry args={[2.2, 0.42]} />
-          <GlowMaterial glow={0.6} map={getJpSignTexture(room.title ?? '명장면', '#f3e6c8', '#5b1a12', 2.2 / 0.42)} side={THREE.DoubleSide} />
-        </mesh>
-        <mesh position={[0, 1.5, 0.07]}>
-          <planeGeometry args={[2.2, 0.32]} />
-          <GlowMaterial glow={0.5} map={getJpSignTexture(room.sub ?? '', '#3d2a1e', '#f3e6c8', 2.2 / 0.32)} side={THREE.DoubleSide} />
-        </mesh>
-      </group>
+      {/* 입구 쪽 장면 안내판 — (11/27) 누르면(또는 가까이서 버튼·E) 실제 성지 정보 창 (jm_realSpots.jsx) */}
+      {/*   실제 성지가 연결 안 된 공간 종류(stairs·rock·crossing)는 팻말을 안 세움 — 눌러도 창이 열렸다 바로 닫혔음 (11/27 리뷰) */}
+      {SPOT_OF_ROOM[room.kind] && (
+        <group position={[-3.2, 0, d / 2 - (room.kind === 'totoro' ? 7 : 4.5)]} rotation={[0, 0.35, 0]}>
+          <RealSpotSign signId={item.id} spot={SPOT_OF_ROOM[room.kind]} title={room.title} sub={room.sub} />
+        </group>
+      )}
     </group>
   )
 }

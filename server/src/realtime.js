@@ -3,6 +3,7 @@ import { WebSocketServer } from 'ws'
 import { createTarotRooms } from './bk_tarotRooms.js'
 import { createPhotoRooms } from './bk_photoRooms.js'
 import { createLifts } from './bk_lifts.js'
+import { createJmLifts } from './jm_lifts.js'
 import { createEpisodeRooms } from './bk_episodeRooms.js'
 import { createHjWorld } from './hj_world.js'
 
@@ -63,14 +64,6 @@ function cleanChat(text) {
   return t && t.length <= CHAT_MAX ? t : null
 }
 
-/** JWT 내용(aal)만 읽음 — 서명은 getUser가 이미 확인함 */
-function tokenAal(token) {
-  try {
-    return JSON.parse(Buffer.from(String(token).split('.')[1] ?? '', 'base64url').toString('utf8')).aal
-  } catch {
-    return null
-  }
-}
 const MAP_LIMIT = 1000 // 맵은 수백 m 크기. 이보다 먼 좌표는 잘못된 값
 const round = (n, digits = 2) => Math.round(n * 10 ** digits) / 10 ** digits
 
@@ -130,6 +123,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   const lifts = createLifts({ broadcast, send, options: options.lift })
   const episodes = createEpisodeRooms({ send, findPeer, inviteMs: options.episode?.inviteMs })
   const hj = createHjWorld({ broadcast, send }) // [혜진] 경복궁·경성 문·앉기·탈것·시계 동기화 (hj_world.js)
+  const jmLifts = createJmLifts({ broadcast, send, options: options.jmLift }) // [지민] 애니 구역 온천장 엘리베이터 (jm_lifts.js)
 
   // [지민] 관리자가 정한 시간대·계절 → 접속한 모든 사람에게 같은 값 (메모리에만 둠: 서버가 다시 켜지면 각자 기본값)
   const world = { timeOfDay: null, season: null }
@@ -145,9 +139,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
     ])
     // 다른 기기에서 로그인해서 끊긴 토큰 → 접속 거절 (화면은 이 코드를 보고 로그아웃 안내). 확인 자체가 실패하면 막지 않음(API가 막음)
     if (!session?.error && session?.data === false) return { name: '손님', userId: null, replaced: true }
-    // 관리자: 역할이 admin이고, 2단계 인증을 등록했다면 이번 로그인에서 코드까지 넣었어야 함 (app.js requireRole과 같은 규칙)
-    const mfaEnrolled = (data.user.factors ?? []).some((f) => f.factor_type === 'totp' && f.status === 'verified')
-    const admin = profile?.role === 'admin' && (!mfaEnrolled || tokenAal(token) === 'aal2')
+    const admin = profile?.role === 'admin'
     return { name: profile?.display_name || '순례객', userId: data.user.id, admin }
   }
 
@@ -239,11 +231,12 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         broadcast({ t: 'join', peer: publicPeer(peer) }, ws)
         lifts.welcome(ws) // [병관] 지금 엘리베이터 상태
         hj.welcome(ws) // [혜진] 지금 문·앉은 자리 상태 + 서버 시각
+        jmLifts.welcome(ws) // [지민] 지금 온천장 엘리베이터 상태
         send(ws, { t: 'world', world }) // [지민] 관리자가 정한 시간대·계절
         return
       }
       if (!peer.ready) return
-      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg) || hj.handle(ws, peer, msg)) return
+      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg) || hj.handle(ws, peer, msg) || jmLifts.handle(ws, peer, msg)) return
 
       if (msg.t === 'bye') return ws.close(1000, 'bye')
       if (msg.t === 'chat') {
@@ -327,6 +320,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       tarot.close()
       photo.close()
       lifts.close()
+      jmLifts.close()
       for (const ws of peers.keys()) ws.terminate()
       wss.close()
     },

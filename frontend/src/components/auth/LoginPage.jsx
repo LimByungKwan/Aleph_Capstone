@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react'
 import {
   closeLogin,
-  closeMfaPrompt,
-  confirmMfaEnroll,
   login,
   logout,
   openLogin,
-  openMfaPrompt,
   signup,
-  startMfaEnroll,
   updateName,
   useSessionStore,
-  verifyMfa,
   wakeServer,
 } from '../../api/session.js'
+import { usePreload } from './jm_preload.js'
+import { GateOverlay, MapLoadingLook } from './jm_EntryScreen.jsx'
 import '../movieZone/ui.css'
 import '../movieZone/ui-components.css'
 import './auth.css'
@@ -23,6 +20,23 @@ import './auth.css'
 //   회원가입은 가입 코드가 있어야 함. 맵 안에서는 다시 로그인이 필요할 때만 창으로 뜸 (LoginModal)
 // 맵 위에 떠 있어도 입력칸에 친 W·A·S·D·E가 캐릭터 조작으로 새지 않게 키 이벤트를 창 안에서 멈춤
 export default function LoginPage({ title = '', reason = '', onClose = null }) {
+  return (
+    <div className="ui-page auth-page">
+      <main className="auth-card ui-card">
+        {onClose && (
+          <button type="button" className="auth-close" aria-label="닫기" onClick={onClose}>
+            ×
+          </button>
+        )}
+        <p className="auth-brand">SceneWalk AI</p>
+        <LoginForm title={title} reason={reason} onClose={onClose} />
+      </main>
+    </div>
+  )
+}
+
+// 로그인·회원가입 입력 부분 (창 틀 없이) — 맵 위 로그인 창(LoginPage)과 첫 화면(EntryScreen)이 같이 씀
+function LoginForm({ title = '', reason = '', onClose = null }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [form, setForm] = useState({ email: '', password: '', name: '', signupCode: '' })
   const [busy, setBusy] = useState(false)
@@ -58,20 +72,12 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
   }
 
   const isSignup = mode === 'signup'
+  const serverReady = usePreload((s) => s.server === 'ready' || s.server === 'off')
   return (
-    <div className="ui-page auth-page">
-      <main className="auth-card ui-card">
-        {onClose && (
-          <button type="button" className="auth-close" aria-label="닫기" onClick={onClose}>
-            ×
-          </button>
-        )}
-        <p className="auth-brand">SceneWalk AI</p>
+    <>
         {/* 제목: 왜 창이 떴는지(스탬프 찍기 등)를 먼저 말함. 회원가입으로 바꾸면 가입용 문장 */}
-        <h1 className="auth-title">{isSignup ? '회원가입하고 시작해요' : title || '로그인하고 들어가요'}</h1>
-        <p className="ui-sub">
-          {isSignup ? '안내받은 가입 코드와 이메일·비밀번호로 가입할 수 있어요.' : reason || 'SceneWalk는 회원만 이용할 수 있어요. 처음이라면 안내받은 가입 코드로 회원가입해 주세요.'}
-        </p>
+        <h1 className="auth-title" id="auth-heading">{isSignup ? '회원가입' : title || '로그인'}</h1>
+        <p className="ui-sub">{isSignup ? '팀에게 받은 가입 코드가 있어야 가입할 수 있어요.' : reason || 'SceneWalk는 회원만 이용할 수 있어요.'}</p>
 
         <form onSubmit={submit} noValidate>
           <div className="ui-field">
@@ -119,7 +125,7 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
           )}
 
           <button type="submit" className="ui-btn ui-btn--primary auth-submit" disabled={busy || !form.email || !form.password || (isSignup && !form.signupCode.trim())}>
-            {busy ? '잠시만요… (서버가 깨어나는 중이면 1분쯤 걸려요)' : isSignup ? '가입하고 시작하기' : '로그인'}
+            {busy ? (serverReady ? '잠시만요…' : '서버가 깨어나면 바로 이어서 진행돼요…') : isSignup ? '가입하고 시작하기' : '로그인'}
           </button>
         </form>
 
@@ -135,29 +141,42 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
             setError('')
           }}
         >
-          {isSignup ? '로그인하기' : '회원가입하기'}
+          {isSignup ? (
+            '로그인하기'
+          ) : (
+            <>
+              회원가입하기
+              {/* 말풍선: 가입 코드가 있어야 한다는 걸 버튼에 붙여서 보여 줌 */}
+              <span className="auth-bubble">가입 코드 필요</span>
+            </>
+          )}
         </button>
         {onClose && (
           <button type="button" className="auth-switch" onClick={onClose}>
             닫기
           </button>
         )}
-      </main>
-    </div>
+    </>
   )
 }
 
-// [지민] 로그인 전 첫 화면 (App.jsx가 맵 대신 보여 줌). 닫기 버튼 없음
+// [지민] 로그인 전: 로딩이 끝나면 캐릭터 없는 맵 전체 위에 뜨는 로그인 창 (App.jsx). 닫기 버튼 없음
 //   다른 기기 로그인으로 끊겨서 돌아온 경우 등은 그 이유(loginPrompt)를 제목·설명으로 보여 줌
-export function LoginGate() {
+//   entering: 로그인은 끝났고 캐릭터·첫 화면을 준비하는 중 → 입력 칸 대신 "입장하는 중…"
+export function LoginGate({ entering = false }) {
   const prompt = useSessionStore((s) => s.loginPrompt)
-  return <LoginPage title={prompt?.title} reason={prompt?.reason} />
+  return <GateOverlay entering={entering}>{entering ? null : <LoginForm title={prompt?.title} reason={prompt?.reason} />}</GateOverlay>
 }
 
-// 맵 위에 뜨는 로그인 창 (openLogin()으로 열림) + 관리자 2단계 인증 코드 창 (App.jsx가 이 컴포넌트 하나만 붙임)
+// 게임 코드(약 7MB)를 받는 동안 (App.jsx의 Suspense 자리) — 병관님 로딩 화면과 같은 모양
+export function MapLoading() {
+  return <MapLoadingLook />
+}
+
+// 맵 위에 뜨는 로그인 창 (openLogin()으로 열림)
 export function LoginModal() {
   const prompt = useSessionStore((s) => s.loginPrompt)
-  if (!prompt) return <MfaCodeModal />
+  if (!prompt) return null
   // 창 안의 키 입력은 여기서 멈춤 → window에 붙은 캐릭터·체험 조작(WASD, E, Space)으로 새지 않음
   const stop = (event) => {
     if (event.key === 'Escape') closeLogin()
@@ -167,186 +186,6 @@ export function LoginModal() {
     <div className="auth-overlay ui-interactive" role="dialog" aria-modal="true" aria-label="로그인" onKeyDown={stop} onKeyUp={stop}>
       <LoginPage title={prompt.title} reason={prompt.reason} onClose={closeLogin} />
     </div>
-  )
-}
-
-// ── 관리자 2단계 인증 (TOTP) ──
-// 6자리 숫자 입력칸 (붙여 넣은 값에서 숫자만 남김)
-function CodeInput({ value, onChange, disabled }) {
-  return (
-    <div className="ui-field">
-      <label htmlFor="auth-mfa-code">인증 앱의 6자리</label>
-      <input
-        id="auth-mfa-code"
-        className="auth-code-input"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        maxLength={6}
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
-        disabled={disabled}
-        autoFocus
-      />
-    </div>
-  )
-}
-
-// 창 틀: 키 입력이 캐릭터 조작으로 새지 않게 + Esc로 닫기
-function AuthDialog({ label, onClose, children }) {
-  const stop = (event) => {
-    if (event.key === 'Escape') onClose()
-    event.stopPropagation()
-  }
-  return (
-    <div className="auth-overlay ui-interactive" role="dialog" aria-modal="true" aria-label={label} onKeyDown={stop} onKeyUp={stop}>
-      <div className="ui-page auth-page">
-        <main className="auth-card ui-card">
-          <button type="button" className="auth-close" aria-label="닫기" onClick={onClose}>
-            ×
-          </button>
-          <p className="auth-brand">SceneWalk AI</p>
-          {children}
-        </main>
-      </div>
-    </div>
-  )
-}
-
-// 로그인 2단계: 비밀번호로 로그인한 관리자(등록한 사람만)에게 뜸. 닫으면 순례객 기능만 쓰다가, 관리자 기능을 누르면 다시 뜸
-function MfaCodeModal() {
-  const prompt = useSessionStore((s) => s.mfaPrompt)
-  const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  if (!prompt) return null
-
-  async function submit(event) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      await verifyMfa(code)
-      setCode('')
-    } catch (err) {
-      setError(err.message)
-      setCode('')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <AuthDialog label="2단계 인증" onClose={closeMfaPrompt}>
-      <h1 className="auth-title">2단계 인증</h1>
-      <p className="ui-sub">{prompt.reason}</p>
-      <form onSubmit={submit} noValidate>
-        <CodeInput value={code} onChange={setCode} disabled={busy} />
-        {error && (
-          <p className="ui-field__error" role="alert">
-            {error}
-          </p>
-        )}
-        <button type="submit" className="ui-btn ui-btn--primary auth-submit" disabled={busy || code.length !== 6}>
-          {busy ? '확인 중…' : '확인'}
-        </button>
-      </form>
-      <button type="button" className="auth-switch" onClick={closeMfaPrompt}>
-        나중에 (관리자 기능 없이 둘러보기)
-      </button>
-    </AuthDialog>
-  )
-}
-
-// 등록: QR 받기 → 인증 앱(Google Authenticator 등)으로 찍기 → 앱에 뜬 6자리로 확인
-function MfaEnrollModal({ onClose }) {
-  const [step, setStep] = useState({ loading: true })
-  const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    let alive = true
-    startMfaEnroll()
-      .then((enroll) => alive && setStep(enroll))
-      .catch((err) => alive && setStep({ failed: err.message }))
-    return () => {
-      alive = false
-    }
-  }, [])
-
-  async function submit(event) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      await confirmMfaEnroll(step.factorId, code)
-      setStep({ done: true })
-    } catch (err) {
-      setError(err.message)
-      setCode('')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <AuthDialog label="2단계 인증 등록" onClose={onClose}>
-      <h1 className="auth-title">관리자 2단계 인증 켜기</h1>
-      {step.loading && <p className="ui-sub">QR 코드를 만드는 중이에요…</p>}
-      {step.failed && (
-        <p className="ui-field__error" role="alert">
-          {step.failed}
-        </p>
-      )}
-      {step.done && (
-        <>
-          <p className="ui-sub">켜졌어요. 다음 로그인부터 비밀번호 다음에 인증 앱의 6자리를 넣어야 관리자 기능을 쓸 수 있어요.</p>
-          <button type="button" className="ui-btn ui-btn--primary auth-submit" onClick={onClose}>
-            닫기
-          </button>
-        </>
-      )}
-      {step.factorId && (
-        <>
-          <p className="ui-sub">휴대폰 인증 앱(Google Authenticator, Microsoft Authenticator 등)으로 아래 QR을 찍고, 앱에 뜬 6자리를 넣어 주세요.</p>
-          <img className="auth-qr" src={step.qrCode} alt="2단계 인증 QR 코드" width={180} height={180} />
-          <p className="auth-secret">
-            QR을 못 찍으면 앱에 직접 입력: <code>{step.secret}</code>
-          </p>
-          <form onSubmit={submit} noValidate>
-            <CodeInput value={code} onChange={setCode} disabled={busy} />
-            {error && (
-              <p className="ui-field__error" role="alert">
-                {error}
-              </p>
-            )}
-            <button type="submit" className="ui-btn ui-btn--primary auth-submit" disabled={busy || code.length !== 6}>
-              {busy ? '확인 중…' : '등록 완료'}
-            </button>
-          </form>
-        </>
-      )}
-    </AuthDialog>
-  )
-}
-
-// 관리자 이름표 옆 🔐 버튼: 안 켰으면 등록, 켰는데 이번 로그인에서 코드를 안 넣었으면 코드 창, 다 됐으면 표시만
-function MfaButton() {
-  const mfa = useSessionStore((s) => s.mfa)
-  const [enrolling, setEnrolling] = useState(false)
-  const label = !mfa?.enrolled ? '2단계 인증 켜기' : mfa.ok ? '2단계 인증 켜짐' : '2단계 인증 코드 넣기'
-  function click(event) {
-    event.currentTarget.blur()
-    if (!mfa?.enrolled) setEnrolling(true)
-    else if (!mfa.ok) openMfaPrompt()
-  }
-  return (
-    <>
-      <button type="button" className="ui-btn" onClick={click} title={label} aria-label={label} disabled={Boolean(mfa?.ok)}>
-        {mfa?.ok ? '🔐✓' : '🔐'}
-      </button>
-      {enrolling && <MfaEnrollModal onClose={() => setEnrolling(false)} />}
-    </>
   )
 }
 
@@ -437,7 +276,6 @@ function AccountInfo({ user }) {
       <button type="button" className="ui-btn" onClick={startEdit} title="닉네임 바꾸기" aria-label="닉네임 바꾸기">
         ✎
       </button>
-      {user.role === 'admin' && <MfaButton />}
       <button type="button" className="ui-btn" onClick={(e) => (e.currentTarget.blur(), logout())}>
         로그아웃
       </button>

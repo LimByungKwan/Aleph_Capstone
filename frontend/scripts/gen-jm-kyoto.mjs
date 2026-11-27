@@ -174,6 +174,8 @@ for (const [i, x, z, s] of [[1, -14, -5, 'jmMaple'], [2, 12, -26.5, 'jmSakura'],
 for (const [i, x, z, r] of [[1, 16, -7, -10], [2, -36, -6, 15], [3, 21, 2, 25]]) prop(`jm_field_hut_${i}`, 'jmFieldHut', [x, z], [4.2, 3, 3.6], { rotationDeg: r })
 // (11/26 지민 요청) 팻말은 「전망대」만, 동쪽 돌길 바로 옆(길 안에 서지 않게 북쪽 가)
 prop('jm_field_sign', 'jmArrowSign', [3.2, -12.2], [1.6, 2.1, 0.2], { rotationDeg: -20, signs: [{ text: '전망대', dir: 'right' }] })
+// (11/27 지민 요청) 터널 나와서 강 건너기 전: 구역 지도 팻말 (누르거나 E → 애니 구역 지도, jm_zoneMap.jsx)
+prop('jm_zone_board', 'jmZoneBoard', [-3.4, -12.2], [2.4, 2.7, 0.3], { rotationDeg: 20 })
 light('jm_light_field', [0, -18])
 grassPatch('jm_grass_field', [0, -12], 0, 112, 30, 0.02, [{ strip: 2.2 }], 0.5)
 
@@ -183,8 +185,9 @@ road('jm_field_east', 'stone', [15.15, -10], [26.9, 0.06, 3], { color: '#a8946e'
 terrain.push({ type: 'platform', id: 'jm_stage', rect: [31, -13, 43, 1], height: 6.5, surface: 'paver', lights: true,
   rails: [{ edge: 'north' }, { edge: 'west' }, { edge: 'south', gaps: [[35.3, 38.7]] }, { edge: 'east', gaps: [[-6.4, -3.6]] }] })
 terrain.push({ type: 'stairs', id: 'jm_stage_stairs', from: [37, 14, 0], to: [37, 1, 6.5], width: 3 })
-road('jm_stage_path_a', 'stone', [28.6, 2.5], [3, 0.06, 25])
-road('jm_stage_path_b', 'stone', [33, 15.6], [9, 0.06, 3])
+// (11/27 성근 님 z-fighting 수정 #122를 스크립트에 옮김) 두 길이 겹치는 곳에서 깜빡이지 않게 두께를 다르게
+road('jm_stage_path_a', 'stone', [28.6, 2.5], [3, 0.076, 25])
+road('jm_stage_path_b', 'stone', [33, 15.6], [9, 0.092, 3])
 prop('jm_sign_tower', 'jmArrowSign', [34.3, -2.6], [1.6, 2.1, 0.2], { elevation: 6.5, signs: [{ text: '전망대', dir: 'right' }, { text: '데이트 코스', dir: 'right' }] })
 prop('jm_stage_sign', 'jmArrowSign', [30.4, 13], [1.6, 2.1, 0.2], { signs: [{ text: '전망 무대', dir: 'right' }] })
 for (const [i, x, z] of [[1, 32.5, -0.8], [2, 41.5, -11.5]]) stoneLantern(`jm_stage_lantern_${i}`, [x, z], { elevation: 6.5 })
@@ -606,6 +609,8 @@ const BR = { x: 0, z0: -150, z1: -179, w: 6, arch: 1.5, seg: 8 }
     }
   }
   for (const side of [-1, 1]) piers.forEach((z, i) => wall(`jm_grand_bridge_pier_${side < 0 ? 'w' : 'e'}${i + 1}`, [r2(BR.x + side * (BR.w / 2 - 0.7)), z], [0.9, r2(TOP - 1), 0.9]))
+  // (11/27 지민 요청) 명장면 ⑤ 실제 성지 팻말: 다리 남쪽 끝 광장 동쪽 (누르거나 E → 실제 성지 정보, jm_realSpots.jsx)
+  prop(fixedAt('jm_onsen_real_sign'), 'jmRealSpotSign', [7.6, -133.8], [2.4, 2.4, 0.3], { rotationDeg: -35, elevation: 7.4, spot: 'onsen' })
   placePositions.spot_jm_onsen = toWorld([BR.x, r2(TOP + BR.arch), cz])
 }
 // (11/25 지민 요청: 여관 마당 너머는 다 바다) 섬(x -36 ~ 36, z -179 ~ -225)만 남기고 다리 밑·섬 둘레는 모두 바다
@@ -627,12 +632,13 @@ for (const [k, x0, x1, z0, z1] of [
 ]) {
   const w = r2(z1 - z0)
   const len = r2(x1 - x0)
-  prop(`jm_sea_${k}`, 'jmCanal', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [w, 0.1, len], { rotationDeg: 90, curb: false, beach: 'sea', collider: [w, 1, len] })
+  // (11/27) s_w(옛 부두 서쪽)는 새 湯灯駅으로 걸어가는 길이라 걷기 막음(1m 상자)을 끔 — 아래 jm_sea_shoal_w 얕은 물 띠
+  prop(`jm_sea_${k}`, 'jmCanal', [r2((x0 + x1) / 2), r2((z0 + z1) / 2)], [w, 0.1, len], { rotationDeg: 90, curb: false, beach: 'sea', collider: k === 's_w' ? false : [w, 1, len] })
 }
 // 얕은 물 띠: 모래 바닥이 비치는 발목 깊이 물, 걸으면 물 튐 (둑 없음)
-prop('jm_sea_shoal', 'jmCanal', [r2((SHOAL.x0 + SHOAL.x1) / 2), r2((SHOAL.z0 + SHOAL.z1) / 2)], [r2(SHOAL.z1 - SHOAL.z0), 0.1, r2(SHOAL.x1 - SHOAL.x0)], { rotationDeg: 90, natural: true, wade: true, depth: 0.12, banks: false, curb: false, collider: false })
+// (11/27) 얕은 물 띠(jm_sea_shoal)는 jm_seaLine.jsx WadeWater(선착장 → 湯灯駅 정강이 깊이 물, 바다 색)로 바뀜
 road('jm_pier_link', null, [r2((LINK.x0 + LINK.x1) / 2), r2((LINK.z0 + LINK.z1) / 2)], [r2(LINK.x1 - LINK.x0), 0.2, r2(LINK.z1 - LINK.z0)], { color: '#8d877c' })
-road('jm_pier_step', null, [r2(PIER.x1 + 0.6), r2((SHOAL.z0 + PIER.z1) / 2)], [1.2, 0.38, r2(PIER.z1 - SHOAL.z0)], { color: '#8d877c' })
+// (11/27 지민 요청) 옛 湯灯駅 부두·계단·팻말은 없앰 — 역이 서쪽 바다 위(jm_sea_line station)로 옮겨감
 // (11/25 밤 지민 선택: 보이기만 하는 물길) 여관 바다 → 서쪽 벽 밖 강 → SG 해변 바다. 맵 벽(x -130) 바깥이라 걸어갈 수는 없음
 //   벽 안쪽 풀밭 강(z -39)도 서쪽 끝에서 이 강으로 흘러듦. 월드 z = 구역 z - 85
 prop('jm_outer_bay', 'jmCanal', [-140, -188.5], [73, 0.1, 24], { rotationDeg: 90, curb: false, beach: 'sea', collider: false })
@@ -642,8 +648,6 @@ prop('jm_outer_bay', 'jmCanal', [-140, -188.5], [73, 0.1, 24], { rotationDeg: 90
 // (11/26) 'jm_outer_join'는 넓힌 바다 밑에 겹쳐 비쳐서 뺌
 // (11/26 지민 요청) 역 서쪽은 경복궁 터널까지 가는 바다 철길(jm_sea_line)이 이어받음 → 예전 철길은 역 동쪽(x -62 ~ 125)만 장식으로 남김
 prop('jm_sea_rail', 'jmSeaRail', [31.5, TRAIN.z], [3, 0.3, 187], { rotationDeg: 90, collider: false, submerged: true })
-road('jm_pier', null, [r2((PIER.x0 + PIER.x1) / 2), r2((PIER.z0 + PIER.z1) / 2)], [r2(PIER.x1 - PIER.x0), PIER.h, r2(PIER.z1 - PIER.z0)], { color: '#8d877c' })
-prop('jm_pier_sign', 'jmStationSign', [r2(PIER.x1 - 1.5), -162], [1.6, 2.4, 0.3], { rotationDeg: 0, elevation: PIER.h, signs: [{ text: '湯灯駅' }] })
 // 전차 2량: 로컬 +z = 진행 방향(동쪽, rotationDeg 90), 문은 남쪽(부두 쪽) 옆면
 // (11/26 지민 요청) 세워 둔 전차는 바다 철길을 달리는 전차(jm_sea_line, 앉아서 타기)로 바뀜 → 아래는 끔
 for (const [k, cx] of []) {
@@ -689,6 +693,8 @@ const YU_LV = [0.6, 7.6, 12.4, 17.2, 22.0, 27.6]
 const YU_IN = { x: r2(YU.w / 2 - YU.wt), z: r2(YU.d / 2 - YU.wt) }
 const YU_VOID = { x0: -9, x1: 9, z0: -8, z1: 7.5 }
 const YU_PAV = { x0: -3, x1: 3, z0: -8, z1: -4 }
+// (11/27 지민 결정: 누각 기능 3) 누각 위 전망대: 뒤 길에서 나무 계단 → 누각 뒤 문(높이 4.0) → 안 바닥 → 앞 붉은 두짝문 → 앞 발코니(4.2)에서 큰 목욕탕 내려다봄
+const YU_LOOK = { floor: 4.0, deck: 4.2, stairZ: -13.8, open: 2.8 }
 const YU_BRIDGE = { z: 1.0, w: 2.4, arch: 1.0, lv: 1 }
 const YU_STAIR_W = 2.0
 // (11/25 밤 지민 요청) 계단은 가운데 뚫린 네모(void)를 따라 빙 돌아 올라감
@@ -698,11 +704,15 @@ const YU_STAIR_W = 2.0
 const YU_STAIRS = [
   // (11/26 지민 요청) 1→2층 계단은 목욕탕 말고 로비에: 칸막이(z 7.5) 바로 앞에서 동쪽으로 올라 2층 앞 회랑 동쪽 끝에 닿음. 꼭대기 쪽 2층 바닥은 구멍
   { a: [2.5, 8.85], b: [17.5, 8.85], w: 2.0, hole: [12.5, 7.5, 17.5, 9.95], open: 'x+' },
-  { a: [9, 6.3], b: [-9, 6.3], w: 1.8 },
-  { a: [-10.5, 5], b: [-10.5, -8], w: 2.0, hole: [-11.7, -8.2, -9, 5.2], open: 'z-' },
-  { a: [-16, -5.5], b: [-16, 5.5], w: 2.0, hole: [-23.7, -5.7, -14.8, 5.7], open: 'z+' },
+  // (11/27 지민 요청: 계단이 홀 가운데 떠 있어 부자연스러움 → 2층 대기실에서 올라 3층 복도에 닿게) 2층 앞쪽 서쪽 대기실의 앞벽을 따라 동쪽으로 오름
+  //   꼭대기(x -11) = 3층 긴 복도 서쪽 끝(엘리베이터 바로 뒤). 머리 닿는 위쪽 절반만 3층 바닥 구멍, 꼭대기(동쪽)만 열림
+  { a: [-21.4, 17.3], b: [-11, 17.3], w: 1.8, hole: [-16.3, 16.3, -10.8, 18.3], open: 'x+', void: false },
+  // 예전 3→4층·4→5층 계단은 없앰 (3·4층 객실을 빼고 5층 집무실을 3층으로)
 ]
-const YU_PILLARS = [[-9, 7.5], [9, 7.5], [-9, -8], [9, -8], [-9, 3.6], [9, 3.6], [-4.5, 7.5], [4.5, 7.5]]
+// (11/27 지민 요청) 여관 안은 3층만 씀: 1층 로비·목욕탕 / 2층 연회장 / 3층 집무실(YU_LV[2] ~ [3]). 바깥 모양(YU_LV 전체 높이)은 그대로 — 3층 천장 위는 닫힌 다락
+const YU_OF = 2
+// (11/27 한 공간 큰 목욕탕) 칸 한가운데 걸리던 기둥 (±9, 3.6)은 뺌 — 나머지는 칸막이 줄(z 7.5)·누각 옆에 섬
+const YU_PILLARS = [[-9, 7.5], [9, 7.5], [-9, -8], [9, -8], [-4.5, 7.5], [4.5, 7.5]]
 const YU_HOLE_IN = 14.8
 // 1층 서쪽 목욕탕 (로비와 x -10 벽으로 나뉨, 13.7 × 37m)
 const YU_BATH = {
@@ -712,22 +722,45 @@ const YU_BATH = {
   counter: { x: -20.5, z: 10, w: 1.4, d: 2.4 },
   tubs: [[-21.6, 0, 3.4], [-21.6, -4, 3.4], [-21.6, -8, 3.4], [-21.6, -12, 3.4], [-21.6, -16, 3.4], [-17.4, -16.6, 3.4], [-13.2, -16.6, 3.4]],
   center: { x: -14.8, z: -6.5, r: 2.6 },
+  off: true, // (11/27 지민 요청) 서쪽 목욕탕 벽을 없애고 1층 뒤쪽 전체를 큰 목욕탕 하나로 → 이 칸의 벽·탕·번대는 안 만듦 (YU_HALL_BATH가 대신)
 }
 // (11/26 지민이 보낸 영화 장면) 신들의 큰 목욕탕은 홀 가운데 다리 아래 — 가운데 붉은 길(가로등·붉은 긴 의자) 양옆에 탕 칸. 남탕·여탕 구분 없음
 //   tubs: 둥글게 꺼진 탕(테두리 0.5, 점프로 들어가 무릎까지 물) / barrels: 밧줄 감은 큰 나무 욕조 / part: 다리 밑 낮은 칸막이 / benches: 길 위 붉은 긴 의자
-const YU_HALL_BATH = {
-  // (11/26 지민 요청: 신들이 쓰는 곳이라 사람보다 큼) 탕 수를 줄이고 크게: [x, z, 반지름x, 반지름z] 타원. 테두리 0.6(밟는 돌로 오름), 물 0.52
-  tubs: [[-5.3, -0.6, 3.3, 6.2], [12.5, -1.5, 4.0, 5.0], [-4.0, -13.4, 4.4, 4.4], [8.6, -13.4, 3.5, 3.5]],
-  rim: 0.6, water: 0.52,
-  steps: [[-5.3, -7.75], [7.65, -1.5], [1.35, -13.4], [4.15, -13.4]], // 탕마다 밟고 오르는 돌 (가운데 길·문 쪽 통로는 비움)
-  barrels: [[4.7, 3.6, 1.3], [4.7, -2.6, 1.2]],
-  // (11/26 지민 요청: 사진처럼 칸막이, 신들 기준이라 사람보다 높게 2.4m) [x0, z0, x1, z1] 벽 조각
-  part: { h: 2.4, segs: [[-9, -8.4, -1.6, -8.4], [1.6, -8.4, 16.5, -8.4], [3.0, -18.4, 3.0, -8.4], [7.0, -8.4, 7.0, 6.9]] },
-  benches: [], // (11/26 지민 요청) 붉은 길 위 장식(의자·등불 기둥)은 뺌
-}
+// (11/27 지민 결정: 영화 장면처럼 한 공간 큰 목욕탕) 가운데 붉은 나무 길(x -2.2 ~ 2.2)이 노렌 입구 앞에서 뒤 벽까지, 홀 누각을 품음
+//   길 양옆 큰 칸막이(2.4m): 가로 줄 z 7.5 · -0.5 · -8.5 + 길 가장자리(칸마다 드나드는 틈) → 양옆 3칸씩, 칸마다 큰 둥근 탕 1개(6개)
+//   맨 앞 줄(z 7.5 ~ 로비 벽)은 씻는 곳(서쪽) · 번대와 2층 계단(동쪽). 로비 ↔ 목욕탕은 엘리베이터 옆 노렌(x -6.8 ~ -2.6)
+const YU_HALL_BATH = (() => {
+  const E = [] // 길 가장자리 칸막이 (서쪽 기준 z 구간, 동쪽은 x만 뒤집음)
+  for (const [a, b] of [[7.5, 4.0], [1.5, -0.5], [-0.5, -2.5], [-9.6, -11.0], [-13.5, -YU_IN.z]]) E.push([a, b])
+  const segs = []
+  for (const s of [-1, 1]) {
+    const xi = s * 2.6
+    const xo = s * YU_IN.x
+    // (11/27 지민 요청: 누각 뒤로도 가게) 누각(x ±3, z -8 ~ -4) 옆 칸 → 누각 뒤 길로 빠지게 z -8.5 칸막이는 x ±5부터
+    segs.push([xi, 7.5, s < 0 ? xo : 18.2, 7.5], [xi, -0.5, xo, -0.5], [s * 5, -8.5, xo, -8.5])
+    for (const [a, b] of E) segs.push([xi, a, xi, b])
+  }
+  return {
+    tubs: [[-13.5, 3.5, 6.8, 2.7], [-13.5, -4.5, 6.8, 2.7], [-13, -13.6, 7.2, 3.6], [13.5, 3.5, 6.8, 2.7], [13.5, -4.5, 6.8, 2.7], [13, -13.6, 7.2, 3.6]],
+    rim: 0.6, water: 0.52,
+    steps: [[-5.6, 3.5], [-5.6, -4.5], [-4.7, -13.6], [5.6, 3.5], [5.6, -4.5], [4.7, -13.6]],
+    barrels: [],
+    part: { h: 2.4, segs },
+    benches: [[0, 9.6, 2.8], [0, 1.2, 2.6], [0, -16.8, 2.4]], // 누각 뒤 의자는 전망대 계단 자리 비켜 뒤로
+    path: { x0: -2.2, x1: 2.2, z0: -YU_IN.z, z1: 12.6 },
+    lamps: [11, 7, 3, -1, -9.5, -13.5, -17.5].flatMap((z) => [[-2.3, z], [2.3, z]]),
+    wash: [[-21.5, 18.0], [-18.5, 18.0], [-15.5, 18.0], [-12.5, 18.0], [-21.5, 8.6], [-17.5, 8.6], [-13.5, 8.6], [-9.5, 8.6], [-5.5, 8.6]],
+    noren: { x0: -6.8, x1: -2.6, z: 12.6 },
+    // 로비 ↔ 목욕탕 벽 (2층 바닥 밑까지): 노렌 서쪽 + 엘리베이터 승강로 앞뒤 틈
+    walls: [[-10, 12.6, -6.8, 12.6], [-10, 16.1, -10, YU_IN.z], [-10, 12.6, -10, 12.9]],
+    wallH: r2(YU_LV[1] - YU.base - 0.25),
+  }
+})()
 // 2~4층 연회장: 앞뒤 띠에 방, 회랑 쪽 장지문 벽(방마다 가운데 2.4m 열림) + 방 사이 칸막이
 const YU_ROOMS = {
-  front: { z: 10.5, x0: -YU_IN.x, x1: YU_IN.x, splits: [-8, 8] },
+  // (11/27 지민 4안) 손님 엘리베이터를 목욕탕 벽(x -10)에 붙이면서 2~4층 앞쪽 서쪽 칸막이도 x -8 → -10 (승강로 서쪽 벽과 한 줄)
+  // (11/27 3층 구조) 2층 앞쪽 = 서쪽 대기실 | 엘리베이터 홀(x -10 ~ -4.4, 문 앞 2.4m) | 큰 연회장 하나(x -4.4 ~ 동쪽 끝)
+  front: { z: 10.5, x0: -YU_IN.x, x1: YU_IN.x, splits: [-10, -4.4], hall: [-10, -4.4], feast: -4.4 }, // feast: 이 칸의 상·초롱은 jm_banquet.jsx가 따로 그림
   back: { z: -10.5, x0: -YU_IN.x, x1: 17, splits: [-8, 4.5] },
   doorW: 2.4,
 }
@@ -735,21 +768,81 @@ const YU_ROOMS = {
 const YU_ELEV = { x: 20.4, z: -15, w: 2.8, h: 3.4 } // 직원용: 보일러실·1~5층(집무실)
 // (11/25 지민 요청) 홀 뒤 가운데 누각 = 손님용 엘리베이터 (1층 로비 ↔ 2~4층 연회장). 집무실·보일러실은 구석 직원용으로만
 // (11/26 지민 요청) 손님용 엘리베이터는 목욕탕(홀) 밖으로 → 작은 로비 서쪽 끝. 문은 동쪽(+x)을 봄, 2~4층에선 앞쪽 가운데 방으로 열림
-const YU_GUEST = { x: -6.3, z: 14.5, w: 2.8, h: 3.4, shaft: 1.6 }
+// (11/27 지민 4안) 서쪽 목욕탕 벽에 바짝 붙임: 승강로 서쪽 면 = x -10 (1층 목욕탕 벽·2~4층 칸막이와 한 줄) → 1층 서쪽 통로 4.2m로 넓어짐. 문은 그대로 동쪽
+const YU_GUEST = { x: -8.4, z: 14.5, w: 2.8, h: 3.4, shaft: 1.6 }
 // 칸은 층 사이를 순간 이동 → 바닥에 구멍은 내지 않고 층마다 승강로 벽만 (구멍을 내면 2층 이상 칸 밑으로 떨어짐)
 // (11/26 지민 요청: 영화 속 로비는 아주 작음) 1층은 현관 쪽 얕은 로비(z 10.5 ~ 앞벽)만, 그 뒤는 칸막이 문 너머 전부 목욕탕
-const YU_LOBBY = { z: 7.5, x0: -10, x1: 18.2, door: { x: 0, w: 2.4, h: 3.0 } } // z 7.5 = 홀(위로 뚫린 곳) 앞 끝. 계단이 로비 안에 들어오게
+// (11/27 한 공간 큰 목욕탕) 로비 ↔ 홀 칸막이(z 7.5)는 없앰 — 로비는 정면 벽(z 12.6) 앞 띠만, 그 뒤는 목욕탕
+const YU_LOBBY = null
 // 로비 앞쪽 동쪽 구석 지하 계단실 (로컬): 작은 문은 서쪽 벽 z 16.3 ~ 17.7. 바닥 구멍 = 계단 위 (꺾인 두 단)
 // (11/25 밤 정리) 문으로 들어오면 넓은 바닥(z 16~18.7) → 동쪽 계단으로 내려감 → 2m 쉼터 → 서쪽 계단 → 보일러실 미닫이문 바로 앞
 const YU_BASE_ROOM = { x0: 18.2, x1: 23.7, z0: 7, z1: 18.7, door: [16.3, 17.7], doorH: 2.4 }
-const YU_FLOOR_HOLES = [[18.2, 7, 23.7, 16]]
+// (11/27 지민이 보낸 영화 장면: 현관) 문 안쪽 흙바닥(돌)은 마당 높이 → 신발 벗는 돌(0.3) → 마루(기단 0.6)로 두 단 올라섬
+//   기단에 doma 자리만큼 구멍(문 밖 기단 끝까지), 두 단은 stairs(stepHeight 0.3)로 — 바깥 돌계단 3단은 없앰
+const YU_DOMA = { x0: -2, x1: 2, z0: 16.05, z1: r2(YU.d / 2 + 0.5), step: 17.2 }
+// 들어서면 정면을 가리는 붉은 벽 (영화처럼 보에 나무 패 줄) — 양옆으로 돌아 들어감. 예전엔 문에서 「大湯」 문까지 곧게 보였음
+// (11/27 2차 지민 요청) 동쪽은 보일러실(지하 계단실) 벽(x 18.2)까지 쭉 이어서 막음 — 현관 쪽 문은 보일러실 문만 남음. 서쪽(엘리베이터 쪽)으로 돌아 들어감
+// (11/27 3차) 가림막 → 2층 바닥 밑까지 닿는 벽 (높이 = 1층 천장 - 바닥판 0.25)
+const YU_ENTRY = { z: 12.6, x0: -2.6, x1: 18.2, h: r2(YU_LV[1] - YU.base - 0.25) }
+// (11/27 지민 요청: 2층 연회장이 너무 비어 있음 → 1 무대 북 치기 · 2 차린 연회 상 · 3 손님 신들 · 4 바다 쪽 미닫이) — 그림·동작은 jm_banquet.jsx
+//   큰 연회장 = 앞쪽 x -4.4 ~ 동쪽 끝. 무대는 동쪽 끝, 상은 두 줄(가운데 x 8.2 ~ 11.1은 복도 문에서 들어오는 통로), 미닫이는 앞벽 x 12 ~ 16 → 밖에 작은 발코니
+const YU_FEAST = {
+  y: YU_LV[1],
+  stage: [19.6, 11.0, 23.55, 18.4], stageH: 0.5, step: 18.9,
+  drum: [21.5, 14.7],
+  rows: [12.8, 16.4], segs: [[-3.6, 8.2], [11.1, 18.2]],
+  door: { x0: 12, x1: 16, h: 3.0, z: r2(YU.d / 2 - YU.wt / 2) },
+  balcony: { x0: 11, x1: 17, d: 1.5 },
+  // (11/27 겹침 정리) 손님 신 몸통(반지름 0.5×크기)이 상 가장자리를 파고들어서 방석 바깥쪽으로 0.3m 물림
+  ghosts: [[-1.8, 11.7, 1, 1.25], [4.2, 13.9, -1, 1.4], [6.6, 11.7, 1, 1.15], [0.6, 17.5, -1, 1.3], [13.2, 13.9, -1, 1.5], [16.2, 11.7, 1, 1.2], [14.4, 17.5, -1, 1.35]],
+}
+const YU_FLOOR_HOLES = [[18.2, 7, 23.7, 16], [YU_DOMA.x0, YU_DOMA.z0, YU_DOMA.x1, YU_DOMA.z1]]
 // 5층: 서쪽 칸막이(x -13, 금빛 문) | 집무실 | 안쪽 문(x 7) | 문 사이 복도 | 큰 문(x 13) | 동쪽 모자이크 방(엘리베이터)
+// (11/27 지민 요청: 3층 좌우 뒤집기) 엘리베이터·계단이 서쪽에 있어서 → 서쪽 = 모자이크 방(엘리베이터·계단이 닿음) + 북서 구석 창고(아기 방),
+//   큰 문(x 0) → 문 사이 복도 → 안쪽 문(x 5) → 동쪽 끝까지 집무실. 값은 예전 방향(집무실이 서쪽)으로 적고 mirror: true로 x를 뒤집음 (그림도 같이)
+//   서쪽 칸막이(west)는 바깥벽에 붙여 없앰. 계단 구멍(x -9.2 ~ -0.5)이 큰 문 서쪽에 다 들어가게 큰 문을 x 0에 둠
+// (11/27 지민 결정: 3층 나안) 엘리베이터(서쪽 앞) → 무늬 벽지 긴 복도 → 붉은 두짝문 4개를 일렬로(방마다 벽 색) → 북쪽 큰 문 → 집무실(동쪽, 모자이크 방보다 큼)
+//   모자이크 방(서쪽, 2층 계단이 닿음)은 긴 복도 북쪽 금빛 문. 북서 구석 창고. 그림·기능은 jm_yuTop.jsx (기능 1 문 자동 열림 · 2 벽난로 · 3 숙박부 · 6 초상화 눈 · 8 창 커튼 · 9 모자이크 퍼즐 · 10 주인 의자)
+//   walls: [x0, z0, x1, z1, 종류] 축에 나란한 벽 (문 자리는 비우고, 문 위는 lintels)
+const YU_TOP = (() => {
+  const B = 12.6 // 앞 띠 북쪽 벽
+  const F = YU_IN.z
+  // (11/27 2차) 긴 복도 = 앞벽 쪽 띠(z 15.9 ~ 앞벽), 2층 계단 꼭대기(x -11)에서 엘리베이터 뒤를 지나 동쪽 문들까지. 엘리베이터 문 앞은 작은 홀(z 12.6 ~ 15.9)
+  const walls = [
+    [-YU_IN.x, B, -6.4, B, 'band'], [-4.8, B, 19.4, B, 'band'], [22.4, B, YU_IN.x, B, 'band'],
+    [-YU_IN.x, 15.9, -10, 15.9, 'band'], [-4.4, 15.9, 4, 15.9, 'hall'], [-4.4, B, -4.4, 15.9, 'hall'],
+    [0.6, -YU_IN.z, 0.6, B, 'part'],
+    [-13, -YU_IN.z, -13, -6, 'store'], [-YU_IN.x, -6, -17, -6, 'store'], [-15, -6, -13, -6, 'store'],
+  ]
+  const rooms = [4, 8.5, 13, 17.5]
+  for (const x of rooms) walls.push([x, B, x, 16.0, 'room'])
+  // 문: 자리 [x, z], 축(x: 벽이 x를 따라 놓임 = 남북으로 지나감 / z), 폭, 높이, 열리는 쪽(+1/-1)
+  const doors = [
+    ...rooms.map((x, i) => ({ id: `room${i + 1}`, p: [x, 17.3], along: 'z', w: 2.6, h: 3.6, open: 1 })),
+    { id: 'office', p: [20.9, B], along: 'x', w: 3.0, h: 3.8, open: -1 },
+    { id: 'mosaic', p: [-5.6, B], along: 'x', w: 1.6, h: 3.4, open: -1 },
+    { id: 'store', p: [-16, -6], along: 'x', w: 2.0, h: 3.0, open: 1 },
+  ]
+  return {
+    y: YU_LV[YU_OF], h: r2(YU_LV[YU_OF + 1] - YU_LV[YU_OF]), band: B, walls, doors,
+    hall: { x0: -10.8, x1: 4, z0: 15.9, z1: YU_IN.z }, vest: { x0: -6.8, x1: -4.4, z0: B, z1: 15.9 },
+    rooms: [[-10.8, 4, 'hall'], [4, 8.5, 'red'], [8.5, 13, 'green'], [13, 17.5, 'gold'], [17.5, YU_IN.x, 'violet']],
+    office: [0.6, -YU_IN.z, YU_IN.x, B], mosaic: [-YU_IN.x, -YU_IN.z, 0.6, B], store: [-YU_IN.x, -YU_IN.z, -13, -6],
+    desk: [11.5, -14.2], chair: [11.5, -16.1], lamp: [14.7, -15.3], fire: [0.6, -4], chaise: [5.2, 2.6], cabinet: [6, 12.1],
+    books: [[YU_IN.x, -9], [YU_IN.x, 4]], window: { x0: 6, x1: 17 },
+    vases: [[1.7, 11.6], [22.9, 11.6], [22.9, -17.9], [2.2, -17.9], [-22.9, 11.6], [-2.2, 11.6], [-22.9, -4], [3.3, 18.1]],
+    columns: [[-19, -2], [-19, 7], [-6, -2], [-6, 10]], benches: [[-17, 11.8]], puzzle: { c: [-13, 0.5], r: 3.2, n: 6 }, // (11/27 겹침 정리) 가운데 원 무늬가 2층 계단 구멍(x -9.2 ~, z 5.3 ~)에 걸려서 옮김
+    portraits: [[-2.4, 15.9], [1.6, 15.9]], pile: [-19, -13],
+    chandeliers: [[11, -6], [11, 4], [-13, 0.5], [20.6, 15.6]], hole: null,
+  }
+})()
 const YU_OFFICE = {
-  west: { x: -13, gap: [-1.4, 1.4] }, inner: { x: 7, gap: [2.6, 5.4] }, east: { x: 13, gap: [2.6, 5.4], fakeZ: -8 },
-  boh: { x0: -13, x1: -4, z1: -9, doorX: -8.5, doorW: 2.2, pile: [-8.5, -14] },
-  desk: [1.5, -12], chair: [1.5, -13.6], fire: [6.6, -4], bookcases: [[-12.6, 4], [-12.6, 10]], sofa: [-4, 11], table: [-4, 8.6], cabinets: [[-6, 18.1], [2, 18.1]],
-  vases: [[-12.2, -6], [-12.2, 15.6], [6.2, 15.6], [6.2, -16.6], [-2.5, -17.9], [4.5, -17.9], [22.9, 4], [22.9, 12], [16.5, 17.9], [14.2, -17.9]],
-  door: [-13, 0],
+  mirror: true,
+  west: { x: -YU_IN.x, gap: [-1.4, 1.4] }, inner: { x: -5, gap: [2.6, 5.4] }, east: { x: 0, gap: [2.6, 5.4], fakeZ: -8 },
+  boh: { x0: 13, x1: YU_IN.x, side: 13, z1: -6, doorX: 15.5, doorW: 2.2, pile: [19, -13] },
+  desk: [-13.5, -12], chair: [-13.5, -13.6], fire: [-5.6, -4], bookcases: [[-23.2, 4], [-23.2, 10]], sofa: [-15, 11], table: [-15, 8.6], cabinets: [[-19, 18.1], [-10, 18.1]],
+  vases: [[-23, -6], [-23, 15.6], [-5.9, 15.6], [-5.9, -16.6], [-15, -17.9], [-9, -17.9], [22.9, 4], [22.9, 12], [16.5, 17.9], [11, -17.9]],
+  paintings: [-19, -11, 6], chandeliers: [[-14, -4], [-14, 9], [11, 2]],
 }
 const rectSub = (r, h) => {
   const [x0, z0, x1, z1] = r
@@ -769,9 +862,15 @@ const yuLayout = (() => {
   const ring = [[-ix, V.z1, ix, iz], [-ix, -iz, ix, V.z0], [-ix, V.z0, V.x0, V.z1], [V.x1, V.z0, ix, V.z1]]
   const holes = YU_STAIRS.map((s) => s.hole ?? null)
   const slabs = []
-  for (let k = 1; k <= 4; k++) {
-    let rects = k === 4 ? [full] : ring
+  // (11/27) 손님용 엘리베이터 칸이 실제로 오르내림(jm_guestLift.jsx) → 2~5층 바닥판에 승강로 안쪽(벽 안쪽 면 ±1.5) 구멍
+  //   칸이 없는 층의 구멍은 층 문 충돌(칸이 그 층에 서서 문이 열렸을 때만 꺼짐)이 막음
+  const G = YU_GUEST
+  const gHole = [r2(G.x - G.shaft + 0.1), r2(G.z - G.shaft + 0.1), r2(G.x + G.shaft - 0.1), r2(G.z + G.shaft - 0.1)]
+  // 2층 = 홀 둘레 회랑(ring), 3층 = 집무실 바닥(통째), 그 위 = 3층 천장(통째, 승강로도 막음)
+  for (let k = 1; k <= YU_OF + 1; k++) {
+    let rects = k >= YU_OF ? [full] : ring
     if (holes[k - 1]) rects = rects.flatMap((r) => rectSub(r, holes[k - 1]))
+    if (k <= YU_OF) rects = rects.flatMap((r) => rectSub(r, gHole))
     slabs.push({ lv: k, y: YU_LV[k], rects: rects.map((r) => r.map(r2)) })
   }
   const rails = []
@@ -780,7 +879,7 @@ const yuLayout = (() => {
   const S2 = YU_STAIRS[1]
   const s1x = [r2(S1.a[0] - S1.w / 2 - 0.1), r2(S1.a[0] + S1.w / 2 + 0.1)]
   const s2z = [r2(S2.a[1] - S2.w / 2 - 0.1), V.z1]
-  for (let k = 1; k <= 3; k++) {
+  for (let k = 1; k < YU_OF; k++) {
     const y = YU_LV[k]
     rails.push({ y, a: [V.x0, V.z1], b: [V.x1, V.z1], face: 'void' })
     rails.push({ y, a: [V.x0, V.z0], b: [YU_PAV.x0, V.z0], face: 'void' })
@@ -788,7 +887,7 @@ const yuLayout = (() => {
     rails.push({ y, a: [YU_PAV.x1, V.z0], b: [V.x1, V.z0], face: 'void' })
     for (const x of [V.x0, V.x1]) {
       // 2층 동쪽 = 2→3층 계단 시작, 3층 서쪽 = 2→3층 계단 끝 → 앞쪽 끝 비움
-      const cutFront = (k === 1 && x === V.x1) || (k === 2 && x === V.x0)
+      const cutFront = S2.void !== false && ((k === 1 && x === V.x1) || (k === 2 && x === V.x0))
       const zEnd = cutFront ? s2z[0] : V.z1
       if (k === YU_BRIDGE.lv) {
         rails.push({ y, a: [x, V.z0], b: [x, r2(YU_BRIDGE.z - YU_BRIDGE.w / 2)], face: 'void' })
@@ -801,6 +900,13 @@ const yuLayout = (() => {
     if (!s.hole) return
     const y = YU_LV[i + 1]
     const [x0, z0, x1, z1] = s.hole
+    if (s.open === 'x-') {
+      // 서쪽(꼭대기)만 열고 동·북·남 세 변에 난간
+      rails.push({ y, a: [x1, z0], b: [x1, z1], face: 'hole' })
+      rails.push({ y, a: [x0, z0], b: [x1, z0], face: 'hole' })
+      rails.push({ y, a: [x0, z1], b: [x1, z1], face: 'hole' })
+      return
+    }
     if (s.open === 'x+') {
       // 동쪽(꼭대기)만 열고 서·북·남 세 변에 난간
       rails.push({ y, a: [x0, z0], b: [x0, z1], face: 'hole' })
@@ -831,8 +937,8 @@ function roomWallPieces(band) {
 }
 prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
   collider: false, elevation: TOP, signs: [{ text: '湯灯屋' }],
-  yutoya: { lv: YU_LV, wt: YU.wt, base: YU.base, door: YU.door, doorH: YU.doorH, void: YU_VOID, pav: YU_PAV, bridge: YU_BRIDGE,
-    stairs: YU_STAIRS, stairW: YU_STAIR_W, bath: YU_BATH, hallBath: YU_HALL_BATH, lobby: YU_LOBBY, rooms: YU_ROOMS, elev: YU_ELEV, guest: YU_GUEST, floorHoles: YU_FLOOR_HOLES, baseRoom: YU_BASE_ROOM, office: YU_OFFICE, pillars: YU_PILLARS, ...yuLayout },
+  yutoya: { look: YU_LOOK, lv: YU_LV, wt: YU.wt, base: YU.base, door: YU.door, doorH: YU.doorH, void: YU_VOID, pav: YU_PAV, bridge: YU_BRIDGE,
+    stairs: YU_STAIRS, stairW: YU_STAIR_W, bath: YU_BATH, hallBath: YU_HALL_BATH, lobby: YU_LOBBY, rooms: YU_ROOMS, officeLv: YU_OF, top: true, feastDoor: { x0: YU_FEAST.door.x0, x1: YU_FEAST.door.x1, h: YU_FEAST.door.h }, elev: YU_ELEV, guest: YU_GUEST, floorHoles: YU_FLOOR_HOLES, baseRoom: YU_BASE_ROOM, office: YU_OFFICE, pillars: YU_PILLARS, doma: YU_DOMA, entry: YU_ENTRY, ...yuLayout },
 })
 {
   const at = (lx, lz) => [r2(YU.x + lx), r2(YU.z + lz)]
@@ -845,12 +951,31 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
     for (const hole of YU_FLOOR_HOLES) pieces = pieces.flatMap((r) => rectSub(r, hole))
     pieces.forEach(([x0, z0, x1, z1], j) => wall(`jm_yutoya_base_${j + 1}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), [r2(x1 - x0), YU.base, r2(z1 - z0)], { elevation: TOP }))
   }
-  for (let i = 0; i < 3; i++) wall(`jm_yutoya_step_${i + 1}`, at(0, r2(YU.d / 2 + 1.7 - i * 0.4)), [9, r2(0.2 * (i + 1)), 0.4], { elevation: TOP })
+  // (11/27) 현관 두 단 (흙바닥 → 신발 벗는 돌 0.3 → 마루 0.6). 충돌은 경사로, 그림은 돌 두 단 + jm_yutoya.jsx가 나무 턱·큰 돌을 덧댐
+  terrain.push({ type: 'stairs', id: 'jm_yutoya_genkan_step', from: [...at(0, YU_DOMA.step), TOP], to: [...at(0, YU_DOMA.z0), el(YU.base)], width: r2(YU_DOMA.x1 - YU_DOMA.x0), stepHeight: 0.3, walls: false })
+  wall('jm_yutoya_entry_screen', at(r2((YU_ENTRY.x0 + YU_ENTRY.x1) / 2), YU_ENTRY.z), [r2(YU_ENTRY.x1 - YU_ENTRY.x0), YU_ENTRY.h, 0.3], { elevation: el(YU.base) })
+  // 흙바닥 밟는 판: 기단 밑(섬 윗면)에는 충돌이 없어서 기단 구멍 자리에 얇은 바닥을 깜 (디딤돌 단 앞까지)
+  wall('jm_yutoya_doma_floor', at(r2((YU_DOMA.x0 + YU_DOMA.x1) / 2), r2((YU_DOMA.step + YU_DOMA.z1) / 2)), [r2(YU_DOMA.x1 - YU_DOMA.x0), 0.05, r2(YU_DOMA.z1 - YU_DOMA.step + 0.1)], { elevation: TOP })
   wall('jm_yutoya_wall_back', at(0, -fz), [YU.w, H, YU.wt], { elevation: TOP })
   wall('jm_yutoya_wall_w', at(r2(-(YU.w / 2 - YU.wt / 2)), 0), [YU.wt, H, YU.d], { elevation: TOP })
   wall('jm_yutoya_wall_e', at(r2(YU.w / 2 - YU.wt / 2), 0), [YU.wt, H, YU.d], { elevation: TOP })
   wall('jm_yutoya_wall_front_w', at(r2(-(YU.door / 2 + side / 2)), fz), [side, H, YU.wt], { elevation: TOP })
-  wall('jm_yutoya_wall_front_e', at(r2(YU.door / 2 + side / 2), fz), [side, H, YU.wt], { elevation: TOP })
+  {
+    // (11/27) 2층 연회장 미닫이(x 12 ~ 16, 높이 3) 자리를 비움 — 닫혔을 때 막는 충돌은 jm_banquet.jsx(JmBanquetDoors, 물리 안)가 켜고 끔
+    const D = YU_FEAST.door
+    const x0 = r2(YU.door / 2)
+    const x1 = r2(YU.w / 2)
+    wall('jm_yutoya_wall_front_e', at(r2((x0 + D.x0) / 2), fz), [r2(D.x0 - x0), H, YU.wt], { elevation: TOP })
+    wall('jm_yutoya_wall_front_e2', at(r2((D.x1 + x1) / 2), fz), [r2(x1 - D.x1), H, YU.wt], { elevation: TOP })
+    wall('jm_yutoya_wall_front_e_low', at(r2((D.x0 + D.x1) / 2), fz), [r2(D.x1 - D.x0), YU_FEAST.y, YU.wt], { elevation: TOP })
+    wall('jm_yutoya_wall_front_e_high', at(r2((D.x0 + D.x1) / 2), fz), [r2(D.x1 - D.x0), r2(H - YU_FEAST.y - D.h), YU.wt], { elevation: el(YU_FEAST.y + D.h) })
+    // 발코니 바닥 + 난간 (1층 처마 바로 위)
+    const B = YU_FEAST.balcony
+    const bz0 = r2(YU.d / 2)
+    wall('jm_yutoya_balcony_deck', at(r2((B.x0 + B.x1) / 2), r2(bz0 + B.d / 2)), [r2(B.x1 - B.x0), 0.12, B.d], { elevation: el(YU_FEAST.y - 0.12) })
+    wall('jm_yutoya_balcony_rail_s', at(r2((B.x0 + B.x1) / 2), r2(bz0 + B.d - 0.05)), [r2(B.x1 - B.x0), 1.1, 0.12], { elevation: el(YU_FEAST.y) })
+    for (const x of [B.x0, B.x1]) wall(`jm_yutoya_balcony_rail_${x === B.x0 ? 'w' : 'e'}`, at(x, r2(bz0 + B.d / 2)), [0.12, 1.1, B.d], { elevation: el(YU_FEAST.y) })
+  }
   wall('jm_yutoya_wall_lintel', at(0, fz), [YU.door, r2(H - YU.base - YU.doorH), YU.wt], { elevation: el(YU.base + YU.doorH) })
   for (const s of yuLayout.slabs) {
     s.rects.forEach(([x0, z0, x1, z1], j) => wall(`jm_yutoya_f${s.lv + 1}_slab_${j + 1}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), [r2(x1 - x0), 0.25, r2(z1 - z0)], { elevation: el(s.y - 0.25) }))
@@ -891,24 +1016,33 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
   // 1층: 누각(속은 손님용 엘리베이터 칸 — 1층은 앞(로비), 2~4층은 뒤(회랑)로 열림), 접수대, 신발장
   {
     const pz = r2((YU_PAV.z0 + YU_PAV.z1) / 2)
-    const ph = r2(YU_LV[4] - YU.base)
+    const ph = r2(YU_LV[YU_OF] - YU.base)
     const cw = YU_GUEST.w + 0.2
     const side = r2((YU_PAV.x1 - YU_PAV.x0 - cw) / 2)
     for (const s of [-1, 1]) wall(`jm_yutoya_pavilion_${s < 0 ? 'w' : 'e'}`, at(r2(s * (cw / 2 + side / 2)), pz), [side, ph, r2(YU_PAV.z1 - YU_PAV.z0)], { elevation: el(YU.base) })
-    for (let k = 0; k <= 3; k++) {
+    for (let k = 0; k < YU_OF; k++) {
       const hh = r2(YU_LV[k + 1] - YU_LV[k])
       if (k === 0) {
-        wall('jm_yutoya_pavilion_back_1', at(0, r2(YU_PAV.z0 + 0.15)), [cw, hh, 0.3], { elevation: el(YU_LV[0]) })
-        wall('jm_yutoya_pavilion_front_1', at(0, r2(YU_PAV.z1 - 0.15)), [cw, hh, 0.3], { elevation: el(YU_LV[0]) }) // 엘리베이터가 로비로 옮겨 가 1층 앞도 막음
+        // (11/27 전망대) 뒤는 높이 4.0 ~ 6.8 문, 앞은 4.2 위로 열림(발코니로 나가는 붉은 두짝문)
+        const L = YU_LOOK
+        wall('jm_yutoya_pavilion_back_1', at(0, r2(YU_PAV.z0 + 0.15)), [cw, L.floor, 0.3], { elevation: el(YU_LV[0]) })
+        wall('jm_yutoya_pavilion_back_1u', at(0, r2(YU_PAV.z0 + 0.15)), [cw, r2(hh - L.floor - L.open), 0.3], { elevation: el(YU_LV[0] + L.floor + L.open) })
+        wall('jm_yutoya_pavilion_front_1', at(0, r2(YU_PAV.z1 - 0.15)), [cw, L.deck, 0.3], { elevation: el(YU_LV[0]) })
+        wall('jm_yutoya_pavilion_look_floor', at(0, pz), [cw, 0.2, r2(YU_PAV.z1 - YU_PAV.z0 - 0.3)], { elevation: el(YU_LV[0] + L.floor - 0.2) })
+        const bw = r2(YU_PAV.x1 - YU_PAV.x0 + 0.4)
+        wall('jm_yutoya_pavilion_deck', at(0, r2(YU_PAV.z1 + 0.5)), [bw, 0.4, 1.4], { elevation: el(YU_LV[0] + L.deck - 0.4) })
+        wall('jm_yutoya_pavilion_deck_rail_s', at(0, r2(YU_PAV.z1 + 1.15)), [bw, 1.05, 0.1], { elevation: el(YU_LV[0] + L.deck) })
+        for (const sx of [-1, 1]) wall(`jm_yutoya_pavilion_deck_rail_${sx < 0 ? 'w' : 'e'}`, at(r2(sx * (bw / 2 - 0.05)), r2(YU_PAV.z1 + 0.5)), [0.1, 1.05, 1.4], { elevation: el(YU_LV[0] + L.deck) })
+        terrain.push({ type: 'stairs', id: 'jm_yutoya_pav_stairs', from: [...at(0, L.stairZ), el(YU.base)], to: [...at(0, YU_PAV.z0), el(YU.base + L.floor)], width: 1.8 })
       } else {
         wall(`jm_yutoya_pavilion_front_${k + 1}`, at(0, r2(YU_PAV.z1 - 0.15)), [cw, hh, 0.3], { elevation: el(YU_LV[k]) })
         wall(`jm_yutoya_pavilion_floor_${k + 1}`, at(0, pz), [cw, 0.25, r2(YU_PAV.z1 - YU_PAV.z0)], { elevation: el(YU_LV[k] - 0.25) })
       }
     }
   }
-  wall('jm_yutoya_counter', at(12.6, 12.4), [3.4, 1.1, 0.9], { elevation: el(YU.base) })
+  wall('jm_yutoya_counter', at(12.6, 11.0), [3.4, 1.1, 0.9], { elevation: el(YU.base) }) // (11/27) 정면 벽 뒤(홀 쪽)로 옮겨 홀을 봄
   // 작은 로비 ↔ 목욕탕 칸막이 (가운데 문, 2층 바닥 밑까지)
-  {
+  if (YU_LOBBY) {
     const L = YU_LOBBY
     const hh = r2(YU_LV[1] - YU.base)
     const d0 = r2(L.door.x - L.door.w / 2)
@@ -920,32 +1054,48 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
   // 손님용 승강로 벽 (1층 ~ 5층 바닥 밑): 북·남·서 통째, 동쪽(문 쪽)은 층마다 문 위만
   {
     const G = YU_GUEST
-    const hh = r2(YU_LV[5] - YU.base)
+    const hh = r2(YU_LV[YU_OF + 1] - YU.base)
     wall('jm_yutoya_gshaft_n', at(G.x, r2(G.z - G.shaft)), [r2(G.shaft * 2 + 0.2), hh, 0.2], { elevation: el(YU.base) })
     wall('jm_yutoya_gshaft_s', at(G.x, r2(G.z + G.shaft)), [r2(G.shaft * 2 + 0.2), hh, 0.2], { elevation: el(YU.base) })
     wall('jm_yutoya_gshaft_w', at(r2(G.x - G.shaft), G.z), [0.2, hh, r2(G.shaft * 2)], { elevation: el(YU.base) })
-    for (let k = 0; k <= 4; k++) wall(`jm_yutoya_gshaft_e${k + 1}`, at(r2(G.x + G.shaft), G.z), [0.2, r2(YU_LV[k + 1] - YU_LV[k] - 3.6), r2(G.shaft * 2)], { elevation: el(YU_LV[k] + 3.6) })
+    for (let k = 0; k <= YU_OF; k++) wall(`jm_yutoya_gshaft_e${k + 1}`, at(r2(G.x + G.shaft), G.z), [0.2, r2(YU_LV[k + 1] - YU_LV[k] - 3.6), r2(G.shaft * 2)], { elevation: el(YU_LV[k] + 3.6) })
   }
   // 홀 다리 밑 큰 목욕탕: 둥근 탕 테두리는 작은 상자를 둥글게 이어 붙임(틈 없이), 나무 욕조·칸막이·긴 의자는 통째로
   {
     const HB = YU_HALL_BATH
+    // (11/27 최적화) 0.5m 정사각 상자를 촘촘히(탕 6개에 약 390개) → 둘레를 따라 돌린 긴 상자(약 1m)로 이어 붙임 (약 절반, 틈 없음)
     HB.tubs.forEach(([cx, cz, rx, rz], i) => {
       const ax = rx + 0.2
       const az = rz + 0.2
-      const n = Math.ceil((Math.PI * (ax + az)) / 0.5) // 타원 둘레 ≈ π(a+b), 0.5m마다 상자
-      for (let k = 0; k < n; k++) {
+      const n = Math.ceil((Math.PI * (ax + az)) / 1.0)
+      const pt = (k) => {
         const a = (k / n) * Math.PI * 2
-        wall(`jm_yutoya_hallbath_tub${i + 1}_${k}`, at(r2(cx + Math.cos(a) * ax), r2(cz + Math.sin(a) * az)), [0.6, HB.rim, 0.6], { elevation: el(YU.base) })
+        return [cx + Math.cos(a) * ax, cz + Math.sin(a) * az]
+      }
+      for (let k = 0; k < n; k++) {
+        const [x0, z0] = pt(k)
+        const [x1, z1] = pt(k + 1)
+        const len = Math.hypot(x1 - x0, z1 - z0)
+        wall(`jm_yutoya_hallbath_tub${i + 1}_${k}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), [r2(len + 0.25), HB.rim, 0.6], {
+          elevation: el(YU.base),
+          rotationDeg: r2((Math.atan2(-(z1 - z0), x1 - x0) * 180) / Math.PI),
+        })
       }
     })
     HB.steps.forEach(([x, z], i) => wall(`jm_yutoya_hallbath_step${i + 1}`, at(x, z), [1.0, 0.3, 1.0], { elevation: el(YU.base) }))
     HB.barrels.forEach(([cx, cz, r], i) => wall(`jm_yutoya_hallbath_barrel${i + 1}`, at(cx, cz), [r2(r * 1.8), 0.85, r2(r * 1.8)], { elevation: el(YU.base) }))
     HB.part.segs.forEach(([x0, z0, x1, z1], i) => wall(`jm_yutoya_hallbath_part${i + 1}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), [Math.max(0.15, r2(Math.abs(x1 - x0))), HB.part.h, Math.max(0.15, r2(Math.abs(z1 - z0)))], { elevation: el(YU.base) }))
     HB.benches.forEach(([x, z, len], i) => wall(`jm_yutoya_hallbath_bench${i + 1}`, at(x, z), [0.65, 0.5, len], { elevation: el(YU.base) }))
+    ;(HB.lamps ?? []).forEach(([x, z], i) => wall(`jm_yutoya_hallbath_lamp${i + 1}`, at(x, z), [0.22, 2.4, 0.22], { elevation: el(YU.base) }))
+    ;(HB.walls ?? []).forEach(([x0, z0, x1, z1], i) => {
+      const alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0)
+      const len = r2(Math.hypot(x1 - x0, z1 - z0))
+      wall(`jm_yutoya_hallbath_wall${i + 1}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), alongX ? [len, HB.wallH, 0.25] : [0.25, HB.wallH, len], { elevation: el(YU.base) })
+    })
   }
   for (const s of [-1, 1]) wall(`jm_yutoya_shoes_${s < 0 ? 'w' : 'e'}`, at(s * 3.2, r2(YU_IN.z - 0.6)), [1.6, 1.3, 0.5], { elevation: el(YU.base) })
   // 1층 목욕탕: 로비 쪽 벽(문 자리 비움) + 칸막이(통로 비움) + 번대 + 욕조
-  {
+  if (!YU_BATH.off) {
     const B = YU_BATH
     const h = B.h
     const d0 = r2(B.door.z - B.door.w / 2)
@@ -966,11 +1116,12 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
       wall(`jm_yutoya_bath_tub_${i + 1}_floor`, at(x, z), [r2(sz - 2 * t), 0.35, r2(sz - 2 * t)], { elevation: el(YU.base) })
     })
     wall('jm_yutoya_bath_tub_center', at(B.center.x, B.center.z), [r2(B.center.r * 1.8), 1.0, r2(B.center.r * 1.8)], { elevation: el(YU.base) })
-    roomLight('jm_light_yutoya_bath', at(-15, -4), el(5.5))
   }
-  for (const [i, [x, z]] of YU_PILLARS.entries()) wall(`jm_yutoya_pillar_${i + 1}`, at(x, z), [0.45, r2(YU_LV[4] - YU.base), 0.45], { elevation: el(YU.base) })
+  // (11/27) 큰 목욕탕 조명 — 점조명은 맵 전체 그림 비용이 늘어서 하나만 (가운데, 거리 36·감쇠 0이라 양옆 칸까지 닿음)
+  roomLight('jm_light_yutoya_bath', at(0, -4), el(5.5))
+  for (const [i, [x, z]] of YU_PILLARS.entries()) wall(`jm_yutoya_pillar_${i + 1}`, at(x, z), [0.45, r2(YU_LV[YU_OF] - YU.base), 0.45], { elevation: el(YU.base) })
   // 2~4층 연회장 벽: 회랑 쪽 장지문 벽(문 자리 비움) + 방 사이 칸막이 + 엘리베이터 앞 칸막이
-  for (let k = 1; k <= 3; k++) {
+  for (let k = 1; k < YU_OF; k++) {
     const y = el(YU_LV[k])
     const hh = r2(YU_LV[k + 1] - YU_LV[k] - 0.25)
     for (const [bk, band] of Object.entries({ f: YU_ROOMS.front, b: YU_ROOMS.back })) {
@@ -980,6 +1131,41 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
     }
     wall(`jm_yutoya_room${k + 1}_b_lobby`, at(YU_ROOMS.back.x1, r2((YU_ROOMS.back.z - YU_IN.z) / 2)), [0.2, hh, r2(YU_IN.z + YU_ROOMS.back.z)], { elevation: y })
   }
+  // (11/27) 2층 큰 연회장: 무대(0.5) + 오르는 두 단 + 큰 북 + 낮은 상 두 줄 (방석은 충돌 없음)
+  {
+    const F = YU_FEAST
+    const [sx0, sz0, sx1, sz1] = F.stage
+    const fy = el(F.y)
+    wall('jm_yutoya_stage', at(r2((sx0 + sx1) / 2), r2((sz0 + sz1) / 2)), [r2(sx1 - sx0), F.stageH, r2(sz1 - sz0)], { elevation: fy })
+    terrain.push({ type: 'stairs', id: 'jm_yutoya_stage_step', from: [...at(F.step, F.drum[1]), fy], to: [...at(sx0, F.drum[1]), r2(fy + F.stageH)], width: 3, stepHeight: 0.25, walls: false })
+    wall('jm_yutoya_drum', at(...F.drum), [1.5, 1.7, 1.5], { elevation: r2(fy + F.stageH) })
+    F.rows.forEach((z, i) => F.segs.forEach(([a, b], j) => wall(`jm_yutoya_feast_table_${i + 1}_${j + 1}`, at(r2((a + b) / 2), z), [r2(b - a), 0.4, 0.8], { elevation: fy })))
+    prop('jm_yutoya_banquet', 'jmBanquetHall', [YU.x, YU.z], [YU.w, 6, YU.d], { collider: false, elevation: TOP, feast: F })
+  }
+  // (11/27) 3층 나안: 벽·문 위 상인방·가구 충돌 + 그림/기능 소품(jmYuTop)
+  {
+    const T = YU_TOP
+    const ty = el(T.y)
+    T.walls.forEach(([x0, z0, x1, z1], i) => {
+      const alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0)
+      const len = r2(Math.hypot(x1 - x0, z1 - z0))
+      wall(`jm_yutoya_top_wall_${i + 1}`, at(r2((x0 + x1) / 2), r2((z0 + z1) / 2)), alongX ? [len, T.h, 0.25] : [0.25, T.h, len], { elevation: ty })
+    })
+    for (const d of T.doors) wall(`jm_yutoya_top_lintel_${d.id}`, at(...d.p), d.along === 'x' ? [d.w, r2(T.h - d.h), 0.25] : [0.25, r2(T.h - d.h), d.w], { elevation: el(T.y + d.h) })
+    wall('jm_yutoya_top_desk', at(...T.desk), [4.6, 1.0, 1.75], { elevation: ty })
+    wall('jm_yutoya_top_chair', at(T.chair[0], r2(T.chair[1] - 0.25)), [1.3, 2.1, 0.7], { elevation: ty })
+    wall('jm_yutoya_top_fire', at(r2(T.fire[0] + 0.45), T.fire[1]), [0.9, 2.8, 3.6], { elevation: ty })
+    wall('jm_yutoya_top_chaise', at(...T.chaise), [1.0, 1.0, 2.8], { elevation: ty })
+    wall('jm_yutoya_top_cabinet', at(...T.cabinet), [2.4, 2.0, 0.6], { elevation: ty })
+    wall('jm_yutoya_top_lamp', at(...T.lamp), [0.5, 2.6, 0.5], { elevation: ty })
+    T.books.forEach(([x, z], i) => wall(`jm_yutoya_top_books_${i + 1}`, at(r2(x - 0.35), z), [0.7, 3.2, 6], { elevation: ty }))
+    T.vases.forEach(([x, z], i) => wall(`jm_yutoya_top_vase_${i + 1}`, at(x, z), [0.9, 1.8, 0.9], { elevation: ty }))
+    T.columns.forEach(([x, z], i) => wall(`jm_yutoya_top_col_${i + 1}`, at(x, z), [0.9, r2(T.h - 0.3), 0.9], { elevation: ty }))
+    T.benches.forEach(([x, z], i) => wall(`jm_yutoya_top_bench_${i + 1}`, at(x, z), [3.0, 1.0, 1.0], { elevation: ty }))
+    wall('jm_yutoya_top_pile', at(...T.pile), [3.2, 1.3, 3.2], { elevation: ty })
+    prop('jm_yutoya_bath_fx', 'jmYuBath', [YU.x, YU.z], [YU.w, 4, YU.d], { collider: false, elevation: TOP, bath: { y: YU.base, board: [0, -2.4] } }) // 누각 앞 약탕 패 (jm_yuBath.jsx)
+    prop('jm_yutoya_top', 'jmYuTop', [YU.x, YU.z], [YU.w, 6, YU.d], { collider: false, elevation: TOP, top: T })
+  }
   // 엘리베이터 칸 옆벽 (1층 ~ 5층 지붕 밑까지, 열린 쪽 = 서쪽)
   // (11/26 지민 요청) 구석 직원용 엘리베이터는 없앰 — 로비 손님용 하나가 1~5층을 다님
   // 바깥: 현관 기둥 2개, 소나무 줄기 2개, 굴뚝
@@ -988,49 +1174,68 @@ prop('jm_yutoya', 'jmYutoya', [YU.x, YU.z], [YU.w, 34, YU.d], {
   wall('jm_yutoya_pine_w', at(r2(-(YU.w / 2 - 1.8)), r2(YU.d / 2 + 2.4)), [0.8, 6, 0.8], { elevation: TOP })
   // 현관 양옆 격자 담 (그림: jm_yutoya.jsx YuFacadeExtras)
   for (const s of [-1, 1]) wall(`jm_yutoya_fence_${s < 0 ? 'w' : 'e'}`, at(r2(s * (YU.door / 2 + 8.2)), r2(YU.d / 2 + 2.2)), [11.2, 2.5, 0.9], { elevation: TOP })
-  // 5층: 칸막이 3줄(문 자리 비움) + 아기 방 벽 + 집무실 가구
-  {
+  // 5층: 칸막이 3줄(문 자리 비움) + 아기 방 벽 + 집무실 가구 — (11/27) 3층 나안(YU_TOP)으로 바꿔서 쓰지 않음
+  if (!YU_TOP) {
     const O = YU_OFFICE
-    const e5 = el(YU_LV[4])
-    const hh = r2(YU_LV[5] - YU_LV[4])
+    const mx = (x) => r2(O.mirror ? -x : x) // 3층 좌우 뒤집기
+    const e5 = el(YU_LV[YU_OF])
+    const hh = r2(YU_LV[YU_OF + 1] - YU_LV[YU_OF])
     const zWall = (id, x, [g0, g1]) => {
-      wall(`${id}_n`, at(x, r2((-YU_IN.z + g0) / 2)), [0.25, hh, r2(g0 + YU_IN.z)], { elevation: e5 })
-      wall(`${id}_s`, at(x, r2((g1 + YU_IN.z) / 2)), [0.25, hh, r2(YU_IN.z - g1)], { elevation: e5 })
+      wall(`${id}_n`, at(mx(x), r2((-YU_IN.z + g0) / 2)), [0.25, hh, r2(g0 + YU_IN.z)], { elevation: e5 })
+      wall(`${id}_s`, at(mx(x), r2((g1 + YU_IN.z) / 2)), [0.25, hh, r2(YU_IN.z - g1)], { elevation: e5 })
     }
-    zWall('jm_yutoya_office_part_w', O.west.x, O.west.gap)
+    if (O.west.x > -YU_IN.x + 0.5) zWall('jm_yutoya_office_part_w', O.west.x, O.west.gap)
     zWall('jm_yutoya_office_part_in', O.inner.x, O.inner.gap)
     zWall('jm_yutoya_office_part_e', O.east.x, O.east.gap)
     const B = O.boh
-    wall('jm_yutoya_boh_wall_e', at(B.x1, r2((-YU_IN.z + B.z1) / 2)), [0.2, hh, r2(B.z1 + YU_IN.z)], { elevation: e5 })
+    wall('jm_yutoya_boh_wall_e', at(mx(B.side ?? B.x1), r2((-YU_IN.z + B.z1) / 2)), [0.2, hh, r2(B.z1 + YU_IN.z)], { elevation: e5 })
     const d0 = r2(B.doorX - B.doorW / 2)
     const d1 = r2(B.doorX + B.doorW / 2)
-    wall('jm_yutoya_boh_wall_n_w', at(r2((B.x0 + d0) / 2), B.z1), [r2(d0 - B.x0), hh, 0.2], { elevation: e5 })
-    wall('jm_yutoya_boh_wall_n_e', at(r2((d1 + B.x1) / 2), B.z1), [r2(B.x1 - d1), hh, 0.2], { elevation: e5 })
-    wall('jm_yutoya_boh_pile', at(...B.pile), [3.2, 1.3, 3.2], { elevation: e5 })
-    wall('jm_yutoya_office_desk', at(...O.desk), [4.6, 1.0, 1.75], { elevation: e5 })
-    wall('jm_yutoya_office_chair', at(...O.chair), [1.4, 2.8, 1.2], { elevation: e5 })
-    wall('jm_yutoya_office_fire', at(...O.fire), [0.8, 1.7, 2.9], { elevation: e5 })
-    wall('jm_yutoya_office_sofa', at(...O.sofa), [3.0, 1.0, 1.0], { elevation: e5 })
-    wall('jm_yutoya_office_table', at(...O.table), [1.6, 0.5, 0.9], { elevation: e5 })
-    O.cabinets.forEach(([x, z], i) => wall(`jm_yutoya_office_cab_${i + 1}`, at(x, z), [2.2, 1.9, 0.6], { elevation: e5 }))
-    O.bookcases.forEach(([x, z], i) => wall(`jm_yutoya_office_books_${i + 1}`, at(x, z), [0.6, 2.7, 2.6], { elevation: e5 }))
-    O.vases.forEach(([x, z], i) => wall(`jm_yutoya_office_vase_${i + 1}`, at(x, z), [1.1, 1.9, 1.1], { elevation: e5 }))
+    wall('jm_yutoya_boh_wall_n_w', at(mx((B.x0 + d0) / 2), B.z1), [r2(d0 - B.x0), hh, 0.2], { elevation: e5 })
+    wall('jm_yutoya_boh_wall_n_e', at(mx((d1 + B.x1) / 2), B.z1), [r2(B.x1 - d1), hh, 0.2], { elevation: e5 })
+    wall('jm_yutoya_boh_pile', at(mx(B.pile[0]), B.pile[1]), [3.2, 1.3, 3.2], { elevation: e5 })
+    wall('jm_yutoya_office_desk', at(mx(O.desk[0]), O.desk[1]), [4.6, 1.0, 1.75], { elevation: e5 })
+    wall('jm_yutoya_office_chair', at(mx(O.chair[0]), O.chair[1]), [1.4, 2.8, 1.2], { elevation: e5 })
+    wall('jm_yutoya_office_fire', at(mx(O.fire[0]), O.fire[1]), [0.8, 1.7, 2.9], { elevation: e5 })
+    wall('jm_yutoya_office_sofa', at(mx(O.sofa[0]), O.sofa[1]), [3.0, 1.0, 1.0], { elevation: e5 })
+    wall('jm_yutoya_office_table', at(mx(O.table[0]), O.table[1]), [1.6, 0.5, 0.9], { elevation: e5 })
+    O.cabinets.forEach(([x, z], i) => wall(`jm_yutoya_office_cab_${i + 1}`, at(mx(x), z), [2.2, 1.9, 0.6], { elevation: e5 }))
+    O.bookcases.forEach(([x, z], i) => wall(`jm_yutoya_office_books_${i + 1}`, at(mx(x), z), [0.6, 2.7, 2.6], { elevation: e5 }))
+    O.vases.forEach(([x, z], i) => wall(`jm_yutoya_office_vase_${i + 1}`, at(mx(x), z), [1.1, 1.9, 1.1], { elevation: e5 }))
   }
-  // 지하(보일러실) 가는 길 안내: 로비 동쪽 뒤 엘리베이터 앞 + 현관 안쪽
-  prop('jm_yutoya_sign_elev', 'jmArrowSign', at(18.4, -11), [1.6, 2.1, 0.2], { elevation: el(YU.base), rotationDeg: 180, signs: [{ text: '직원용 엘리베이터', dir: 'right' }, { text: '5층 주인의 방', dir: 'right' }] })
-  prop('jm_yutoya_sign_lobby', 'jmArrowSign', at(6, 15.4), [1.6, 2.1, 0.2], { elevation: el(YU.base), rotationDeg: 200, signs: [{ text: '손님 엘리베이터·연회장', dir: 'left' }, { text: '지하 보일러실', dir: 'right' }] })
+  // (11/27 3차 지민 요청) 로비 나무 안내판(손님 엘리베이터·보일러실)과 없어진 직원용 엘리베이터 안내판은 지움
   roomLight('jm_light_yutoya_hall', at(0, 3), el(5)) // 1층 천장(2층 바닥 밑) 아래 → 위층들의 천장까지 밑에서 비춤
-  roomLight('jm_light_yutoya_upper', at(0, 1), el(20)) // 5층 바닥 밑 → 2~4층 바닥·회랑을 위에서 비춤
-  roomLight('jm_light_yutoya_office', at(0, -4), el(26), { light: { color: '#ffb46e', intensity: 0.95, distance: 30 } }) // 집무실: 영화처럼 어둑한 주황빛
+  roomLight('jm_light_yutoya_upper', at(0, 1), el(r2(YU_LV[YU_OF] - 1))) // 3층 바닥 밑 → 2층 바닥·회랑을 위에서 비춤
+  roomLight('jm_light_yutoya_office', at(0, -4), el(r2(YU_LV[YU_OF + 1] - 1.6)), { light: { color: '#ffb46e', intensity: 0.95, distance: 30 } }) // 집무실: 영화처럼 어둑한 주황빛
   roomLight('jm_light_yutoya_mosaic', at(17, 0), el(12)) // 동쪽 회랑: 홀 가운데 등만으론 바깥(동쪽)을 보는 면이 새까맸음
   roomLight('jm_light_yutoya_rooms', at(-17, 0), el(12)) // 서쪽 회랑 (같은 이유)
 }
 // 섬 정원: 현관 앞 돌길, 양옆 정원(풀밭 + 꽃덤불 + 나무 + 가스등), 서쪽 끝에서 선착장으로 내려가는 바깥 계단
 prop(fixedAt('jm_ryokan_fox_w'), 'jmFox', [-4.6, -134.2], [0.9, 1.8, 0.9], { mirror: true, elevation: T_N })
 prop(fixedAt('jm_ryokan_fox_e'), 'jmFox', [4.6, -134.2], [0.9, 1.8, 0.9], { elevation: T_N })
-road('jm_ryokan_path', 'stone', [0, -182], [4, 0.06, 6], { elevation: TOP })
-road('jm_ryokan_path_w', 'gardenPath', [-17.5, -180.4], [33, 0.06, 2], { elevation: TOP })
-for (const s of [-1, 1]) road(`jm_ryokan_path_side_${s < 0 ? 'w' : 'e'}`, 'gardenPath', [s * 29.5, -202], [2, 0.06, 40], { elevation: TOP })
+// (11/27 지민 요청: 여관 앞 돌길이 어색함) 예전: 가운데 길 폭 4(다리 6보다 좁음) + 서쪽 가로길이 가운데 길 위에 1m 겹침
+//   + 동쪽 가로길 없음 + 옆길 끝과 가로길 사이 0.6m 빔 → 다리 폭(BR.w)과 같은 가운데 길 + 양옆 돌 테두리,
+//   가로길은 가운데 길 가장자리에서 양쪽으로(겹치지 않게), 옆길은 가로길까지 늘려 모서리에서 만나게
+{
+  const PW = BR.w // 가운데 길 폭 = 다리 폭
+  const pz0 = BR.z1 // 다리 북쪽 끝
+  const pz1 = r2(YU.front + 0.5) // 기단 앞 끝까지 (11/27 바깥 돌계단 없앰 — 현관 흙바닥이 마당 높이)
+  const pc = r2((pz0 + pz1) / 2)
+  const pd = r2(Math.abs(pz0 - pz1))
+  road('jm_ryokan_path', 'stone', [0, pc], [PW, 0.06, pd], { elevation: TOP })
+  for (const s of [-1, 1]) road(`jm_ryokan_path_curb_${s < 0 ? 'w' : 'e'}`, null, [r2(s * (PW / 2 + 0.15)), pc], [0.3, 0.06, pd], { elevation: TOP, color: '#7d7466' })
+  const CZ = -180.4 // 가로길 가운데 z (폭 2)
+  const SX = 29.5 // 옆길 가운데 x (폭 2)
+  const x0 = r2(PW / 2 + 0.3) // 테두리 바깥에서 시작
+  const x1 = r2(SX + 1)
+  for (const s of [-1, 1]) {
+    road(`jm_ryokan_path_${s < 0 ? 'w' : 'e'}`, 'gardenPath', [r2(s * (x0 + x1) / 2), CZ], [r2(x1 - x0), 0.06, 2], { elevation: TOP })
+    // 옆길: 북쪽 끝(z -222)은 그대로, 남쪽 끝을 가로길 북쪽 가장자리(CZ - 1)까지
+    const sz0 = -222
+    const sz1 = r2(CZ - 1)
+    road(`jm_ryokan_path_side_${s < 0 ? 'w' : 'e'}`, 'gardenPath', [s * SX, r2((sz0 + sz1) / 2)], [2, 0.06, r2(sz1 - sz0)], { elevation: TOP })
+  }
+}
 for (const [i, x, z] of [[1, -27, -181.6], [2, 27, -181.6], [3, -32.5, -200], [4, 32.5, -200], [5, -32.5, -216], [6, 32.5, -216]]) gasLamp(`jm_ryokan_lamp_${i}`, [x, z], { elevation: TOP })
 const GARDEN_FLOWERS = [[-26.5, -192], [-26.5, -206], [-26.5, -218], [-33.5, -195], [-33.5, -209], [26.5, -192], [26.5, -206], [26.5, -218], [33.5, -195], [33.5, -209], [-20, -224], [20, -224]]
 GARDEN_FLOWERS.forEach(([x, z], i) => prop(`jm_flower_${i + 1}`, 'jmFlowerBush', [x, z], [2.6, 1.5, 2.2], { elevation: TOP, seed: i, collider: [1.8, 1.2, 1.6] }))
@@ -1109,7 +1314,8 @@ road('jm_dock', null, [-22, -171.5], [28, 0.12, 15], { color: '#6b4a30' })
 // 깃발 단 굴뚝 (보일러실 굴뚝 — 섬 서쪽 정원에서 솟음)
 prop('jm_chimney', 'jmChimney', [-26, -213], [1.8, 42, 1.8], { elevation: TOP, collider: [1.8, 42, 1.8] })
 // (지민이 보낸 장면 참고) 섬 아래는 물에서 솟은 돌 옹벽
-prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collider: false })
+// (11/27) gap: 다리가 섬에 닿는 자리(가운데)는 꼭대기 화분 줄을 비움 — 덤불이 다리 → 현관 돌길을 막고 있었음
+prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collider: false, gap: r2(BR.w + 0.6) })
 // 엘리베이터: 직원용 1~5층 (지하 보일러실은 로비 구석 작은 문 계단으로). 칸마다 같은 정류장 목록, me만 다름
 {
   // 손님용 (작은 로비 서쪽 승강로): 모든 층에서 동쪽(+x)으로 열림
@@ -1117,15 +1323,13 @@ prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collid
   const guestStops = [
     { key: '1', label: '1층 로비', sign: '客用', pos: gAt(0) },
     { key: '2', label: '2층 연회장', sign: '客用', pos: gAt(1) },
-    { key: '3', label: '3층 객실', sign: '客用', pos: gAt(2) },
-    { key: '4', label: '4층 객실', sign: '客用', pos: gAt(3) },
-    { key: '5', label: '5층 주인의 방', sign: '客用', pos: gAt(4) },
+    { key: '3', label: '3층 주인의 방', sign: '客用', pos: gAt(YU_OF) },
   ]
-  for (let k = 0; k <= 4; k++) {
-    prop(`jm_gelev_${k + 1}`, 'jmElevator', [r2(YU.x + YU_GUEST.x), r2(YU.z + YU_GUEST.z)], [YU_GUEST.w, YU_GUEST.h, YU_GUEST.w], {
-      rotationDeg: 90, collider: false, elevation: r2(TOP + YU_LV[k] + 0.02), elevator: { me: String(k + 1), stops: guestStops, kind: 'guest' },
-    })
-  }
+  // (11/27) 칸 하나가 실제로 오르내림 (병관님 전망대 엘리베이터 방식, jm_guestLift.jsx). elevation = 1층 칸 바닥
+  //   예전: 층마다 칸 5개 + 매 프레임 순간 이동 → 바닥판 통과·카메라 끼임·도착 칸 겹침 등 오류
+  prop('jm_gelev', 'jmElevator', [r2(YU.x + YU_GUEST.x), r2(YU.z + YU_GUEST.z)], [YU_GUEST.w, YU_GUEST.h, YU_GUEST.w], {
+    rotationDeg: 90, collider: false, elevation: r2(TOP + YU_LV[0] + 0.02), elevator: { stops: guestStops, kind: 'guest', shaft: YU_GUEST.shaft },
+  })
 }
 
 // ─────────────────────────────────────────────
@@ -1134,8 +1338,9 @@ prop('jm_yutoya_lower', 'jmYuLowerFacade', [0, -178.7], [72, TOP, 0.6], { collid
 for (const item of terrain) if (item.type === 'stairs') item.walls = false
 // 계단 겉모습 (jm_stairs.jsx 시안): A 자연석(기본) / B 붉은 목조 / D 밝은 화강암 / E 등불 계단
 const STAIR_LOOK = { jm_town_stairs: 'E', jm_dock_stairs: 'B', jm_scene2_stairs: 'C', jm_scene6_stairs: 'C', jm_basement_stairs_1: 'B', jm_basement_stairs_2: 'B' }
-for (let k = 1; k <= 4; k++) STAIR_LOOK[`jm_yutoya_stairs_${k}`] = 'B'
-const STAIR_PREVIEW = Object.fromEntries(terrain.filter((t) => t.type === 'stairs' && !/^jm_(grand|yutoya)_bridge_ramp|_slope$/.test(t.id)).map((t) => [t.id, STAIR_LOOK[t.id] ?? 'A']))
+for (let k = 1; k <= YU_STAIRS.length; k++) STAIR_LOOK[`jm_yutoya_stairs_${k}`] = 'B'
+STAIR_LOOK.jm_yutoya_pav_stairs = 'B'
+const STAIR_PREVIEW = Object.fromEntries(terrain.filter((t) => t.type === 'stairs' && !/^jm_(grand|yutoya)_bridge_ramp|_slope$|^jm_yutoya_(genkan|stage)_step$/.test(t.id)).map((t) => [t.id, STAIR_LOOK[t.id] ?? 'A']))
 for (const st of terrain.filter((t) => t.type === 'stairs' && STAIR_PREVIEW[t.id])) {
   const [ax, az, ah] = st.from
   const [bx, bz, bh] = st.to
@@ -1440,7 +1645,9 @@ for (const p of props) if (p.style === 'jmCanal' && p.beach === 'sea') p.hideWat
 // (11/26 지민 요청: 돌길이 맨 돌바닥이라 숲길과 안 어울림) 풀밭 돌길 위에 이끼 조각·줄눈 이끼·가장자리 풀 (jm_tunnel.jsx JmMossPath)
 for (const id of ['jm_field_path', 'jm_field_east']) {
   const rd = roads.find((r) => r.id === id)
-  if (rd) prop(`${id}_moss`, 'jmMossPath', rd.position, [rd.size[0], 0.1, rd.size[2]], { rotationDeg: rd.rotationDeg ?? 0, collider: false, seed: id.length * 7 })
+  // (11/27 성근 님 #122를 스크립트에 옮김) 두 이끼 판이 만나는 끝: 가운데 길은 끝을 막고(capEnd), 동쪽 길은 끝을 1.5m 들어 올림(raisedEnd)
+  const ends = id === 'jm_field_path' ? { capEnd: true } : { raisedEnd: 1.5 }
+  if (rd) prop(`${id}_moss`, 'jmMossPath', rd.position, [rd.size[0], 0.1, rd.size[2]], { rotationDeg: rd.rotationDeg ?? 0, collider: false, seed: id.length * 7, ...ends })
 }
 
 // (11/26 지민 요청: 숲 규모를 터널 양옆·풀밭 양쪽까지, 그림의 초록 선) 왼쪽(x -39 ~ -4.5)·오른쪽(x 4.5 ~ 26.5, 전망 무대 길 앞까지),
@@ -1525,12 +1732,156 @@ const LAMP_STYLES = new Set(['jmLantern', 'jmLanternLine', 'jmGasLamp', 'jmTwinL
   props.length = 0
   props.push(...kept)
 }
+// (11/27 지민 요청: 애니 ↔ K-pop 사이 빈 땅을 바닷가 산책로로 — 강가는 안 만듦) 서쪽 만(jm_ocean 남쪽 물가, 호수식 둑이라 모래 없음)을 따라
+//   맵 서쪽 벽(x -130) ~ 바위 강 어귀(x -70)까지 물가에 반쯤 걸친 나무 데크. 바다 쪽만 난간(빠지지 않게), 땅 쪽은 트여서 어디서든 올라섬
+//   풀 언덕(jm_field_hill_2·4) 충돌 상자 북쪽 끝(z -11.6)보다 바다 쪽이라 언덕과 안 겹침. 벤치는 데크 땅 쪽 가장자리에서 바다를 봄
+//   (등 줄이기 필터 뒤에 둬서 석등이 빠지지 않음)
+{
+  const H = 0.2
+  // 점 = 실제 물가 곡선(jm_water.jsx densify: 닫힌 Catmull-Rom)보다 0.4m 바다 쪽 → 폭 3.6 중 1.4m는 땅, 나머지는 물 위
+  // (11/27 2차 지민 요청: 빈 땅 더 꾸미기, 참고 사진 중 골라서) 서쪽 끝은 맵 벽 앞에서 바다 쪽(북)으로 휘어 바다 위 정자에서 끝남
+  //   (참고: 데크 끝 바다 쪽 전망 정자). 물가를 떠나는 굽은 구간부터는 양쪽 난간 (땅 쪽 트임은 LAND_N번째 발판까지)
+  const LAND = [[-70, -11.4], [-82, -13.4], [-91, -14.8], [-100, -16.5], [-111, -18.7], [-119, -20.2]]
+  const PAV = { x: -124.5, z: -31.2, w: 6 } // 정자 가운데·한 변 (바닥 z -28.2 ~ -34.2)
+  const WALK = [...LAND, [-123, -22.5], [-124.5, -26], [PAV.x, r2(PAV.z + PAV.w / 2 - 0.2)]]
+  const W = 3.6
+  let LAND_N = 0
+  for (let i = 1; i < LAND.length; i++) LAND_N += Math.hypot(LAND[i][0] - LAND[i - 1][0], LAND[i][1] - LAND[i - 1][1])
+  // (11/27 3차) 풀 언덕 4 자리는 레일바이크 무지개 터널(언덕 모양)이 대신함 → 언덕 4 뺌.
+  //   언덕 2·벚나무 하나는 철길 동쪽 굽은 곳과 겹쳐서 옮김
+  for (let i = props.length - 1; i >= 0; i--) if (props[i].id === 'jm_field_hill_4') props.splice(i, 1)
+  const hill2 = props.find((p) => p.id === 'jm_field_hill_2')
+  if (hill2) hill2.position = [-50, -9]
+  const fieldSakura = props.find((p) => p.id === 'jm_field_tree_5')
+  if (fieldSakura) fieldSakura.position = [-73, 13]
+  terrain.push({ type: 'deck', id: 'jm_sea_walk', width: W, smooth: true, step: 1, color: '#8a6a48', railGap: { side: 1, segments: [0, Math.floor(LAND_N)] }, points: WALK.map(([x, z]) => [x, z, H]) })
+
+  // 바다 위 정자: 그림(jm_seaside.jsx JmSeaPavilion) + 걷는 바닥(데크 윗면과 같은 0.25) + 난간 막이(남쪽 가운데는 데크가 들어옴)
+  prop('jm_sea_pavilion', 'jmSeaPavilion', [PAV.x, PAV.z], [PAV.w, 4.4, PAV.w], { collider: false, open: W })
+  wall('jm_sea_pavilion_floor', [PAV.x, PAV.z], [PAV.w, H + 0.05, PAV.w])
+  const e = PAV.w / 2 - 0.08
+  wall('jm_sea_pavilion_rail_n', [PAV.x, r2(PAV.z - e)], [PAV.w, 1.3, 0.16], { elevation: H + 0.05 })
+  wall('jm_sea_pavilion_rail_w', [r2(PAV.x - e), PAV.z], [0.16, 1.3, PAV.w], { elevation: H + 0.05 })
+  wall('jm_sea_pavilion_rail_e', [r2(PAV.x + e), PAV.z], [0.16, 1.3, PAV.w], { elevation: H + 0.05 })
+  const stub = (PAV.w - W) / 2
+  for (const s of [-1, 1]) wall(`jm_sea_pavilion_rail_s${s < 0 ? 'w' : 'e'}`, [r2(PAV.x + s * (PAV.w / 2 - stub / 2)), r2(PAV.z + e)], [r2(stub), 1.3, 0.16], { elevation: H + 0.05 })
+  bench('jm_sea_pavilion_bench', [PAV.x, r2(PAV.z - 0.6)], 180, H + 0.05) // 바다(북쪽) 보고 앉음
+
+  // ── (11/27 3차 지민 요청: 해안선만이 아니라 빈 땅 전체를 산책로답게 + 참고: 해안 레일바이크) 바닷길 레일바이크 공원 ──
+  //   땅 둘레를 도는 레일바이크 순환선(jm_railbike.jsx) — 남쪽 직선에 역, 북쪽 직선은 무지개 터널(옛 언덕 4 자리)
+  //   순환선 안쪽 풀밭: 오솔길(입구 → 꽃 정원 고리 → 데크 / 소나무 쉼터 / 터널 전망 자리), 철길 건너는 곳은 건널목
+  //   철길 바깥: 소나무 줄 + 바다 쪽 노란 울타리. 바이크는 E로 타서 W/S로 몰기 (내 화면에서만 움직임)
+  const TRACK = [
+    [-62, 38.8], [-70, 38.8], [-78, 38.8], [-86, 38.8], // 역 직선 (서쪽으로)
+    [-100, 37.5], [-113, 33.5], [-121, 25], [-123.5, 13], [-120.5, 2.5], [-111, -2.4],
+    [-96, -2.8], [-82, -2.8], [-68, -2.8], // 터널 직선 (동쪽으로)
+    [-61, 1.5], [-56.5, 11], [-55, 23], [-57, 33],
+  ]
+  const TUN = { x: -82, z: -2.8, len: 22, H: 4.6, W: 10, iw: 4.2, ih: 3.4 } // 터널: x -93 ~ -71
+  prop('jm_rail_track', 'jmRailTrack', [0, 0], [80, 0.2, 60], { collider: false, track: { points: TRACK, closed: true } })
+  prop('jm_rail_bike', 'jmRailBike', [0, 0], [80, 2.2, 60], { // 크기 16m 넘게 = 거리 숨기기 대상 아님 (기준 위치가 구역 원점이라 숨겨지면 안 보임)
+    collider: false, number: 7, startAt: [-76, 38.8], track: { points: TRACK, closed: true },
+    tunnel: { x0: TUN.x - TUN.len / 2, x1: TUN.x + TUN.len / 2, z: TUN.z, half: TUN.iw / 2 },
+  })
+  // 무지개 터널 (언덕 모양) + 걷기 막이: 안쪽 통로(폭 4.2)만 남기고 양옆 언덕 몸통을 상자로
+  prop('jm_rail_tunnel', 'jmRailTunnel', [TUN.x, TUN.z], [TUN.len, TUN.H, TUN.W], { collider: false, inner: [TUN.iw, TUN.ih], sign: '무지개 터널' })
+  const tunSide = (TUN.W - TUN.iw) / 2
+  for (const s of [-1, 1]) wall(`jm_rail_tunnel_body_${s < 0 ? 'n' : 's'}`, [TUN.x, r2(TUN.z + s * (TUN.iw / 2 + tunSide / 2))], [TUN.len + 1, TUN.H, r2(tunSide)])
+  // 역: 승강장(철길 북쪽) + 매표소, 걷는 바닥·기둥 막이
+  const ST = { x: -78, z: 36.6, len: 12, h: 2.6, d: 2.2 }
+  prop('jm_rail_station', 'jmRailStation', [ST.x, ST.z], [ST.len, ST.h, ST.d], { collider: false, sign: '바닷길역', subSign: 'UMIBE · 海辺レールバイク' })
+  wall('jm_rail_station_floor', [ST.x, ST.z], [ST.len, 0.25, ST.d])
+  wall('jm_rail_station_booth', [r2(ST.x + ST.len / 2 - 1.1), r2(ST.z - ST.d / 2 - 0.85)], [1.6, 2.4, 1.3]) // 승강장 뒤 땅 (jm_railbike.jsx와 같은 자리)
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) wall(`jm_rail_station_post_${sx < 0 ? 'w' : 'e'}${sz < 0 ? 'n' : 's'}`, [r2(ST.x + sx * (ST.len / 2 - 1.5)), r2(ST.z + sz * (ST.d / 2 - 0.5))], [0.2, 2.6, 0.2], { elevation: 0.25 })
+  bench('jm_rail_station_bench', [-80.8, 36.05], 0, 0.25) // 철길 보고 앉음 (서쪽 지붕 기둥 x -82.5 옆, 바이크 서는 자리 x -76과 떨어져 "E 타기" 안내와 안 겹침)
+  // 대기선 (역 남쪽) + 세워 둔 바이크 4대
+  prop('jm_rail_siding', 'jmRailTrack', [0, 0], [24, 0.2, 4], { collider: false, track: { points: [[-88, 41.4], [-78, 41.4], [-68, 41.4]], closed: false } })
+  prop('jm_rail_parked', 'jmRailBikeParked', [0, 0], [20, 2.2, 3], { collider: false, firstNumber: 11, bikes: [[-84, 41.4, -90], [-80.5, 41.4, -90], [-77, 41.4, -90], [-73.5, 41.4, -90]] })
+  // 건널목 (입구 오솔길 · 데크 가는 오솔길이 철길을 건너는 곳)
+  prop('jm_rail_crossing_s', 'jmCrossing', [-65.5, 38.8], [2.8, 3.2, 1], { collider: false, gap: 2.1 })
+  prop('jm_rail_crossing_n', 'jmCrossing', [-106, -2.6], [2.8, 3.2, 1], { collider: false, gap: 2.1 })
+  // 노란 울타리: 북쪽(데크 쪽) 철길 바깥 — 건널목 자리는 비움 / 동쪽(숲 쪽) 철길 바깥
+  prop('jm_rail_fence_n1', 'jmRailFence', [0, 0], [40, 1, 40], { collider: false, points: [[-93.6, -5], [-100, -5], [-104.4, -4.9]] })
+  prop('jm_rail_fence_n2', 'jmRailFence', [0, 0], [40, 1, 40], { collider: false, points: [[-107.6, -4.8], [-111, -4.6], [-115, -3.3], [-118.5, -1.2]] })
+  prop('jm_rail_fence_e', 'jmRailFence', [0, 0], [40, 1, 40], { collider: false, points: [[-53.4, 12], [-52.4, 22], [-54.4, 31]] })
+
+  // 오솔길 (참고: 바닷가 풀밭 사이 붉은 흙길)
+  const PATH_COLOR = '#b38b6a'
+  const C = { x: -89, z: 18, r: 6.5 } // 꽃 정원 고리
+  const ring = Array.from({ length: 25 }, (_, i) => i).map((i) => [r2(C.x + Math.cos((i / 24) * Math.PI * 2) * C.r), r2(C.z + Math.sin((i / 24) * Math.PI * 2) * C.r)])
+  for (const [id, points] of [
+    ['entry', [[-28, 58], [-38, 49], [-52, 44.5], [-60, 41.5], [-65.5, 38.8], [-67, 35.5], [-71, 33.5], [-71.6, 36.2]]], // 허브 북서쪽 → 건널목 → 역
+    ['main', [[-71, 33.5], [-78, 29], [-84.8, 23]]],
+    ['north', [[-93.1, 13], [-99, 8], [-104, 3], [-106, -0.5], [-106, -6], [-106, -15.6]]], // 정원 → 건널목 → 데크
+    ['grove', [[-94.8, 21], [-100, 24], [-104.5, 26]]],
+    ['view', [[-71, 33.5], [-69, 26], [-68, 17], [-67, 9]]], // 터널 나오는 바이크 보는 자리
+    ['ring', ring],
+  ]) prop(`jm_park_path_${id}`, 'jmPathRibbon', [0, 0], [40, 0.03, 40], { collider: false, color: PATH_COLOR, ribbon: { points, width: id === 'entry' || id === 'north' ? 2.2 : 1.8 } })
+  // 꽃 정원: 가운데 석등 + 꽃밭 4 + 안쪽을 보는 벤치 3
+  stoneLantern('jm_park_ring_lantern', [C.x, C.z])
+  for (const [i, deg] of [45, 135, 225, 315].entries()) {
+    const a = (deg * Math.PI) / 180
+    prop(`jm_park_ring_bed_${i + 1}`, 'jmFlowerBed', [r2(C.x + Math.cos(a) * 3), r2(C.z + Math.sin(a) * 3)], [2.6, 0.3, 1.2], { collider: false, rotationDeg: r2((Math.atan2(-Math.cos(a), -Math.sin(a)) * 180) / Math.PI) })
+  }
+  for (const [i, deg] of [-40, 100, 190].entries()) {
+    const a = (deg * Math.PI) / 180
+    bench(`jm_park_ring_bench_${i + 1}`, [r2(C.x + Math.cos(a) * 4.6), r2(C.z + Math.sin(a) * 4.6)], r2((Math.atan2(-Math.cos(a), -Math.sin(a)) * 180) / Math.PI))
+  }
+  // 소나무 쉼터: 노다테(빨간 양산 평상) 2 + 꽃놀이 돗자리 + 석등
+  prop('jm_park_nodate_1', 'jmNodate', [-107, 25.5], [2, 2.8, 1], { rotationDeg: 30, collider: [2, 0.6, 1] })
+  prop('jm_park_nodate_2', 'jmNodate', [-102.5, 29], [2, 2.8, 1], { rotationDeg: -20, collider: [2, 0.6, 1] })
+  prop('jm_park_hanami', 'jmHanamiMat', [-104.5, 22.6], [2.2, 0.2, 1.7], { rotationDeg: 10, collider: false })
+  stoneLantern('jm_park_grove_lantern', [-101.5, 24])
+  // 터널 전망 자리: 터널 동쪽 입구·굽은 철길을 보는 벤치 2
+  bench('jm_park_view_bench_1', [-66.2, 6.6], 200)
+  bench('jm_park_view_bench_2', [-68.6, 7.4], 160)
+  // 가로등 + 안내판
+  for (const [i, p] of [[-73.5, 31.6], [-80.4, 27.6], [-97.2, 10.6], [-104.3, 0.8], [-70.2, 20.5], [-102.6, 27]].entries()) gasLamp(`jm_park_lamp_${i + 1}`, p)
+  prop('jm_park_sign_entry', 'jmArrowSign', [-40.5, 48.6], [1.6, 2.1, 0.2], { rotationDeg: 135, signs: [{ text: '레일바이크 역', dir: 'left' }, { text: '바닷가 데크', dir: 'left' }] })
+  prop('jm_park_sign_deck', 'jmArrowSign', [-108, -12.6], [1.6, 2.1, 0.2], { rotationDeg: 180, signs: [{ text: '레일바이크 공원', dir: 'left' }] })
+  // 소나무: 철길 바깥 줄(서·남·북) + 안쪽 풀밭 군데군데 + 쉼터 둘레. 철길·길·소품과 3m 넘게 떨어짐
+  for (const [i, [x, z, s]] of [
+    [-128, 3, 1.1], [-128, 11, 1], [-127.8, 19, 1.15], [-126.5, 27, 1], [-123, 35, 0.95], // 서쪽 바깥
+    [-96, 42.6, 1], [-104, 41.6, 1.1], [-112, 38.8, 0.95], // 남쪽 바깥
+    [-99, -8.5, 1], [-114, -8.5, 1.05], [-122, -12, 1.15], [-127, -16, 0.9], // 북쪽 바깥 (데크 뒤)
+    [-64, 24, 1.05], [-79, 7, 1], [-98, 30.5, 0.95], [-116, 10, 1.1], // 안쪽 풀밭
+    [-110.5, 30.5, 1], [-111, 21.5, 1.1], [-100.5, 32, 0.9], [-108, 19, 0.95], // 쉼터 둘레
+  ].entries()) prop(`jm_sea_pine_${i + 1}`, 'jmPine', [x, z], [r2(4.2 * s), r2(6.5 * s), r2(4.2 * s)], { collider: [0.5, 3, 0.5] })
+  for (const [i, [x, z]] of [[-97, 15.5], [-62, 30], [-112, 8], [-86, 32]].entries()) prop(`jm_sea_flower_${i + 1}`, 'jmFlowerBush', [x, z], [2.6, 1.5, 2.2], { seed: 30 + i, collider: [1.8, 1.2, 1.6] })
+
+  // 물가 바위 (반쯤 잠긴 갯바위, 걷기 판정 없음): 정자 밑 / 데크 바다 쪽 / 바위 강 어귀 / 서쪽 물가
+  for (const [id, rocks] of [
+    ['pavilion', [[-128.3, -30, 0.8], [-128, -33.6, 0.6], [-120.9, -34.9, 0.7, 0.5], [-120.7, -29.4, 0.9], [-126, -35.4, 0.5]]],
+    ['walk', [[-85, -17.2, 0.7], [-87.5, -18.1, 1, 0.5], [-90, -17.7, 0.6], [-92.5, -18.8, 0.8]]],
+    ['mouth', [[-67, -15, 1.1, 0.7], [-65, -16.6, 0.8], [-68.6, -17.1, 0.6]]],
+    ['west', [[-111, -22.4, 0.8], [-113.6, -23.6, 1.1, 0.5], [-116, -22.9, 0.6]]],
+  ]) {
+    const cx = r2(rocks.reduce((a, r) => a + r[0], 0) / rocks.length)
+    const cz = r2(rocks.reduce((a, r) => a + r[1], 0) / rocks.length)
+    prop(`jm_sea_rocks_${id}`, 'jmShoreRocks', [cx, cz], [6, 1, 6], { collider: false, rocks: rocks.map(([x, z, ...rest]) => [r2(x - cx), r2(z - cz), ...rest]) })
+  }
+
+  const zAt = (x) => {
+    for (let i = 0; i < WALK.length - 1; i++) {
+      const [ax, az] = WALK[i]
+      const [bx, bz] = WALK[i + 1]
+      if (x <= ax && x >= bx) return az + ((bz - az) * (x - ax)) / (bx - ax)
+    }
+    return WALK.at(-1)[1]
+  }
+  const TOP = H + 0.05
+  for (const [i, x] of [-76, -96, -116].entries()) bench(`jm_sea_walk_bench_${i + 1}`, [x, r2(zAt(x) + W / 2 - 0.45)], 170, TOP)
+  // (11/27) 석등 x -106은 데크 가는 오솔길 끝(x -106)을 막아서 -110으로
+  for (const [i, x] of [-72, -86, -110].entries()) stoneLantern(`jm_sea_walk_lantern_${i + 1}`, [x, r2(zAt(x) + W / 2 - 0.4)], { elevation: TOP })
+}
 // (11/26 지민 요청: 계단 난간) 바깥 계단 양옆에 나무 난간 (jm_spirit.jsx JmStairRail) + 옆으로 떨어지지 않게 얇은 충돌 벽
 // 여관 안 계단·다리 경사로(다리 난간이 따로 있음)·지하 계단(벽 사이)은 뺌. 모든 위치 보정이 끝난 뒤의 계단 값으로 만듦
 {
   // 큰길 계단(양옆 돌 옹벽)·선착장 계단(난간 달린 나무 계단이 이미 있음)은 뺌
   const RAIL_STAIRS = ['jm_stage_stairs', 'jm_crossing_slope', 'jm_town_stairs_n', 'jm_town_stairs_w', 'jm_town_stairs_e',
-    'jm_alley_stairs_w', 'jm_alley_stairs_e', 'jm_garden_stairs', 'jm_scene2_stairs', 'jm_scene6_stairs']
+    'jm_alley_stairs_w', 'jm_alley_stairs_e', 'jm_garden_stairs', 'jm_scene2_stairs', 'jm_scene6_stairs',
+    // (11/27 지민 요청: 계단 난간 전부) 여관 안 1→2층·2→3층 계단 + 보일러실 내려가는 지하 계단 2개도
+    'jm_yutoya_stairs_1', 'jm_yutoya_stairs_2', 'jm_yutoya_pav_stairs', 'jm_basement_stairs_1', 'jm_basement_stairs_2']
   for (const id of RAIL_STAIRS) {
     const st = terrain.find((t) => t.id === id)
     if (!st) continue
@@ -1557,6 +1908,7 @@ const LAMP_STYLES = new Set(['jmLantern', 'jmLanternLine', 'jmGasLamp', 'jmTwinL
 // (11/26 지민 요청) 바다 철길: 湯灯駅 ↔ 서쪽 바다를 크게 돌아 ↔ 북악산(혜진 hjBugaksan) 터널 북쪽 끝. 바다 전차 1대 왕복 (jm_seaLine.jsx)
 //   마을 압축·당기기 뒤의 최종 좌표로 둠 → 湯灯駅 자리는 남은 장식 철길(jm_sea_rail)의 최종 z를 읽어서 맞춤
 //   점은 터널 안 → 湯灯駅 쪽 끝 순서(구역 좌표, 월드 z = 구역 z - 85). 터널 입구 = 북악산 궁궐 쪽 기슭 월드 z 163.4 → mouthZ 248.4 (혜진 구역 좌표라 고정)
+//   (11/27) 첫 점 = 경성역 쪽 터널 입구(gs_tunnel_s, 월드 z 213) · 경복궁 2번 선로(x -49.7)와 같은 줄 → 산속 터널을 지나 경성역까지 그대로 이어짐 (jm_seaLine.jsx)
 //   경성역 쪽으로는 안 나가고, 터널 안에서 손님을 경복궁 남행 기차로 옮겨 태움 (혜진 구역 파일은 안 고침)
 {
   const rail = props.find((p) => p.id === 'jm_sea_rail')
@@ -1566,13 +1918,17 @@ const LAMP_STYLES = new Set(['jmLantern', 'jmLanternLine', 'jmGasLamp', 'jmTwinL
     collider: false,
     sign: '湯灯',
     line: {
-      pts: [[-46.6, 256], [-46.6, 240], [-46.6, 223], [-53, 212], [-72, 208], [-130, 207], [-210, 205], [-280, 183], [-318, 130], [-326, 35], [-310, -60],
-        [-258, r2(SZ + 20)], [-180, r2(SZ + 1)], [-120, SZ], [SX, SZ], [r2(SX + 18), SZ]],
-      station: 14,
+      pts: [[-49.7, 298], [-49.7, 285], [-49.7, 265], [-49.7, 248.4], [-49.7, 238], [-51, 224], [-56, 212.5], [-72, 208], [-130, 207], [-210, 205], [-280, 183], [-318, 130], [-326, 35], [-310, -60],
+        [-258, r2(SZ + 20)], [-180, r2(SZ + 1)], [-165, SZ], [-120, SZ], [SX, SZ], [r2(SX + 18), SZ]],
+      station: 16, // (11/27 지민 A안) 湯灯駅을 여관 앞 부두에서 서쪽 바다 위 85m로 — 부두에서 선로 옆 얕은 물을 걸어 나감
       mouthZ: 248.4,
     },
   })
 }
+// (11/27) 선로 옆 얕은 물 띠(jm_sea_shoal_w)는 바다 물결 위에 판이 겹쳐 따로 움직여 보여서 뺌 — 걷는 바닥은 아래 물 밑 바닥
+// (11/27 지민 요청: 경계 넓히기) 湯灯駅이 맵 서쪽 벽(x -130) 밖 바다 위라, 선로 옆 물 밑 바닥(그림 없는 소품)이 벽을 넘어감 → opensBoundary로 서쪽 벽에 그 폭만 구멍
+//   (Colliders.jsx westWallSegments). 윗면 y 0 = 맵 땅 높이, 물 밑이라 안 보임. 바닥 둘레(북·남·서) 투명 벽은 jm_seaLine.jsx JmSeaTramColliders
+prop('jm_sea_walk_w', 'jmSeaWalk', [-153, -130.5], [66, 0.3, 15], { rotationDeg: 0, elevation: -0.3, opensBoundary: true }) // 그림 없음(충돌 바닥만) — jm_seaLine.jsx jmSeaWalk
 
 const zone = {
   zoneId: 'JM',

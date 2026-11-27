@@ -550,7 +550,7 @@ export function JmPathRibbon({ item }) {
   const geo = useMemo(() => ribbonGeometry(points, width, 0.03), [points, width])
   return (
     <mesh geometry={geo}>
-      <meshStandardMaterial color={season === 'winter' ? '#e6e2da' : '#cdbb8e'} roughness={1} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={season === 'winter' ? '#e6e2da' : item.color ?? '#cdbb8e'} roughness={1} side={THREE.DoubleSide} />
     </mesh>
   )
 }

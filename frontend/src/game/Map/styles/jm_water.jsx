@@ -230,6 +230,11 @@ export function WadeSplash({ w, len, y }) {
         }
       }
     }
+    // (11/27 최적화) 살아 있는 물방울·고리가 없으면 위치 올리기를 건너뜀 — 얕은 물마다 매 프레임 물방울 48개 행렬을 다시 올리던 것
+    //   마지막 물방울이 사라진 프레임에 한 번만 더 올려서(크기 0) 화면에서 지움
+    const alive = st.d.some((d) => d.life > 0) || st.r.some((r) => r.life > 0)
+    if (!alive && !st.dirty) return
+    st.dirty = alive
     const mesh = drops.current
     if (mesh) {
       st.d.forEach((d, i) => {
@@ -712,7 +717,7 @@ const lakeBank = new THREE.Color()
 const OCEAN_M = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.4, metalness: 0.05, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 })
 export function JmOcean({ item }) {
   const geo = useMemo(() => oceanGeometry(item.ocean), [item.ocean])
-  return <mesh geometry={geo} material={OCEAN_M} frustumCulled={false} renderOrder={1} receiveShadow userData={{ noMerge: true }} />
+  return <mesh name="jm-ocean" geometry={geo} material={OCEAN_M} frustumCulled={false} renderOrder={1} receiveShadow userData={{ noMerge: true }} />
 }
 
 export const JM_CHANNEL_STYLES = { jmChannelWater: JmChannelWater, jmSeaLake: JmSeaLake, jmOcean: JmOcean }

@@ -1,21 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { hipRoofGeometry } from './geometry.js'
 import { Box, Cyl, Ball, GEO, Instances, mat, seeded, texMat } from './kit.jsx'
 import { canvasTexture, getJpSignTexture, getJpVerticalTexture, GlowMaterial, JP_FONT } from './jm_landmarks.jsx'
 import { getTiledTexture, TILE_METERS } from './textures.js'
 import { VerticalSign } from './jm_ginzan.jsx'
-import { useGameStore } from '../../../store/gameStore.js'
 import { NearOnly } from './jm_yutoya.jsx'
-import { useUiStore } from '../../../components/movieZone/uiStore.js'
-import { useWarps } from './bk_warpStore.js'
-import { findPlayer } from '../../Player/findPlayer.js'
-import { requestPalaceWarp } from '../../../components/movieZone/palaceSeating.js'
-// (11/26 직접 타 보니) 타는 동안 매 프레임 공용 goto를 쓰면 한 프레임 늦게 적용되고 그 사이 중력이 쌓여 캐릭터가 덜컹이고 도착 뒤 0.3m 튀었음
-//   → 캐릭터 프레임 안에서 위치를 놓고 속도를 0으로 만드는 requestPalaceWarp로 붙잡음 (몸통 가운데 높이 = 바닥 + 1.6, goto exact와 같은 자리)
-const holdAt = (x, floorY, z) => requestPalaceWarp([x, floorY + 1.6, z])
 
 // 같은 입력이면 같은 0~1 난수 (kit의 seeded는 난수 '함수'를 돌려줌 → 숫자로 한 번 뽑음)
 const srand = (n) => seeded(Math.round(n * 9973) + 7)()
@@ -900,35 +891,17 @@ export function JmBoilerRoom({ item }) {
   )
 }
 
-// ── 엘리베이터 (온천장 층 사이 + 보일러실) ─────
-// item.size [w, h, d], 열린 쪽 = 로컬 +z. item.elevator = { me, stops: [{ key, label, pos: [월드 x, y, z], face(도) }] }
-// 칸 안에서 E → 층 고르기(숫자·B 키) → 화면이 어두워지고 그 층 칸으로 순간 이동
-// 이동은 병관님 워프(bk_warpStore.js goto)의 정확한 자리(exact) 요청을 씀. 워프 쪽이 아직 exact를 모르면(useWarps.exact 없음) 안내만 함
-export const useJmElevator = (() => {
-  let near = null
-  const subs = new Set()
-  return {
-    get: () => near,
-    set: (v) => {
-      near = v
-      subs.forEach((f) => f(v))
-    },
-    sub: (f) => {
-      subs.add(f)
-      return () => subs.delete(f)
-    },
-  }
-})()
-
-// (11/25 지민 요청) 탄 느낌: 문 닫힘 → 어두운 화면 가운데 층 숫자가 한 층씩 바뀌며 덜컹 → 도착하면 그 층 칸의 문이 닫힌 채 시작해서 열림
-const floorName = (key) => (key === 'B' ? 'B1' : `${key}F`)
-// 마지막 도착 기록: 도착한 칸은 문이 닫힌 채 시작했다가 열림
-const lastArrive = { kind: null, key: null, t: 0 }
-// (11/26) 지금 타고 가는 칸: 같은 종류의 다른 층 칸은 이동하는 동안 숨기고 "들어왔다" 판정도 안 함
-//   층마다 칸 모형이 따로 서 있어서, 움직이는 칸이 지나갈 때 겹쳐 보이고 그 칸들이 안내창·카메라를 가로채던 문제
-const rideNow = { kind: null, from: null }
-
-function cageTexture() {
+// ── 엘리베이터 ─────
+// (11/27) 손님용 엘리베이터는 칸 하나가 실제로 오르내리는 방식으로 바꿈 → jm_guestLift.jsx (Scene.jsx의 <Physics> 안에서 그림)
+// JSON의 jmElevator 소품은 위치·층 정보만 주고 여기서는 그리지 않음. 아래 그림 재료는 jm_guestLift.jsx가 가져다 씀
+export function JmElevator() {
+  return null
+}
+export { BRASS }
+export const LEVER_WOOD = mat('#9a5f2c', { roughness: 0.6 })
+export const LEVER_BRONZE = mat('#7a4e26', { roughness: 0.45, metalness: 0.55 })
+export const LEVER_HOLE = mat('#1a0e06', { roughness: 0.9 })
+export function cageTexture() {
   return canvasTexture('jmspirit:cage', 256, 512, (ctx, w, h) => {
     ctx.clearRect(0, 0, w, h)
     ctx.strokeStyle = '#c9a24a'
@@ -945,23 +918,7 @@ function cageTexture() {
     }
   })
 }
-
-// (11/26 지민 요청) 영화 장면처럼: 옆벽 축에 박힌 긴 나무 레버를 밀어 올리고 내리는 엘리베이터, 벽은 어두운 나무판
-// 조작은 쉽게: 칸 안에 들어가면 오른쪽에 층 목록 → 숫자 키(1~5) 또는 층을 눌러 바로 출발 (레버가 그 층 쪽으로 돌아감)
-// item.elevator.kind: 'staff'(구석, 1~5층) | 'guest'(가운데 누각, 1~4층)
-// 워프는 바닥 + 1.6m에 캐릭터 중심을 두는데 서 있을 때 중심은 약 1m → 타고 가는 동안 뜨지 않게 0.6m 내림
-// (11/26) 층 자리 x·z는 저장된 stops가 아니라 지금 칸이 서 있는 자리에서 계산함
-//   → 맵을 늘이거나 옮겨도 층 자리가 칸과 어긋나지 않음 (예전 stops z가 칸보다 약 100m 어긋나 엉뚱한 곳으로 보내던 문제)
-const STAND_FIX = 0.6
-// 영화 클로즈업처럼: 붉은 벽에 반원 청동 판(구멍 몇 개, 둥근 홈) + 짧은 놋쇠 팔 + 끝의 나무 원통 손잡이
-const LEVER_PIVOT = [-0.2, 1.45] // 옆벽 기준 (문 쪽 = +x, 위 = +y)
-const LEVER_LEN = 0.5
-const LEVER_SWING = 1.0 // 맨 아래층 -1.0rad ~ 맨 위층 +1.0rad (반원 안에서 돌아감)
-const LEVER_WOOD = mat('#9a5f2c', { roughness: 0.6 })
-const LEVER_BRONZE = mat('#7a4e26', { roughness: 0.45, metalness: 0.55 })
-const LEVER_HOLE = mat('#1a0e06', { roughness: 0.9 })
-// 층 글자 판 (B1·1F~5F). on = 빨갛게 빛남
-function floorTexture(key, on) {
+export function floorTexture(key, on) {
   const label = key === 'B' ? 'B1' : `${key}F`
   return canvasTexture(`jmspirit:floor:${label}:${on ? 1 : 0}`, 160, 110, (ctx, w, h) => {
     ctx.fillStyle = on ? '#7a1408' : '#1a120c'
@@ -976,8 +933,7 @@ function floorTexture(key, on) {
     ctx.fillText(label, w / 2, h / 2 + 3)
   })
 }
-// 어두운 세로 나무판 벽 (장면 속 엘리베이터 안벽)
-function elevPlankTexture() {
+export function elevPlankTexture() {
   return canvasTexture('jmspirit:elevplank', 256, 512, (ctx, w, h) => {
     ctx.fillStyle = '#4a2f1a'
     ctx.fillRect(0, 0, w, h)
@@ -1000,322 +956,6 @@ function elevPlankTexture() {
     }
   })
 }
-const isTyping = (target) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-export function JmElevator({ item }) {
-  const [w, h, d] = item.size
-  const E = item.elevator
-  const scene = useThree((s) => s.scene)
-  const anchor = useRef(null)
-  const player = useRef(null)
-  const next = useRef(0)
-  const [near, setNear] = useState(false)
-  const meIndex = Math.max(0, E.stops.findIndex((s) => s.key === E.me))
-  const [sel, setSel] = useState(meIndex)
-  const tmp = useMemo(() => ({ a: new THREE.Vector3(), b: new THREE.Vector3() }), [])
-  const cage = useMemo(() => cageTexture(), [])
-  const planks = useMemo(() => elevPlankTexture(), [])
-  const controls = useThree((s) => s.controls)
-  const tmpQ = useMemo(() => new THREE.Quaternion(), [])
-  const rideCam = useRef(null) // 타고 가는 동안 카메라 방향(문 쪽 azimuth)
-  const here = E.stops[meIndex]
-  const n = E.stops.length
-  const leverAngle = (i) => (n > 1 ? -LEVER_SWING + (2 * LEVER_SWING * i) / (n - 1) : 0)
-  const lever = useRef(null)
-  // 이 칸의 실제 x·z (월드). 칸은 위아래로만 움직이므로 한 번 재면 됨
-  const cabXZ = useRef(null)
-  const stopPos = (i) => {
-    const p = E.stops[i].pos
-    return cabXZ.current ? [cabXZ.current[0], p[1], cabXZ.current[1]] : p
-  }
-  // 문: 0 = 열림, 1 = 닫힘. 막 도착한 칸이면 닫힌 채 시작
-  const justArrived = () => lastArrive.kind === (E.kind ?? 'staff') && lastArrive.key === E.me && performance.now() - lastArrive.t < 5000
-  const door = useRef(justArrived() ? 1 : 0)
-  const doorTarget = useRef(0)
-  const gateL = useRef(null)
-  const gateR = useRef(null)
-  const [riding, setRiding] = useState(false)
-  const ridingRef = useRef(false)
-  const [rideIdx, setRideIdx] = useState(null)
-  const ride = useRef(null)
-  const rideFloor = useRef(null)
-  const body = useRef(null)
-
-  useFrame(({ clock }, dt) => {
-    if (!cabXZ.current && anchor.current) {
-      anchor.current.getWorldPosition(tmp.a)
-      cabXZ.current = [tmp.a.x, tmp.a.z]
-    }
-    // 문이 닫히는 동안: 캐릭터를 이 칸 가운데에 붙잡아 둠
-    if (ridingRef.current && !ride.current) {
-      const p = stopPos(meIndex)
-      holdAt(p[0], p[1] - STAND_FIX, p[2])
-    }
-    // (11/26) 문 닫힘 ~ 도착까지: 카메라를 칸 안(문 쪽 위, 0.75m)으로 당겨 둠 — 닫힌 철문(칸 끝 1.4m)보다 안쪽
-    //   칸 밖 2.6m에 있으면 층 사이를 지나는 동안 승강로 벽·창살 문이 화면을 가림. 도착하면 새 칸이 다시 2.6m로 되돌림
-    //   칸이 움직이는 동안은 카메라 중심을 캐릭터에 바로 맞춤(transition 없이): 공용 카메라의 부드러운 따라가기는 위아래로
-    //   빠르게 움직이면 몇 m씩 늦어서 카메라가 아래층에 남아 바닥판·바깥 장지문을 비췄음 (11/26 측정: 최대 6m 뒤처짐)
-    if (ridingRef.current && rideCam.current != null && controls?.rotateTo) {
-      const moving = !!ride.current
-      controls.minDistance = Math.min(controls.minDistance, 0.6)
-      if (moving && player.current) {
-        player.current.getWorldPosition(tmp.a)
-        controls.moveTo(tmp.a.x, tmp.a.y + 0.6, tmp.a.z, false)
-      }
-      controls.rotateTo(rideCam.current, 1.05, !moving)
-      controls.dollyTo(0.75, !moving)
-    }
-    // 타고 가는 중: 칸이 위·아래로 움직이고 캐릭터를 칸 바닥에 맞춰 같이 옮김
-    const r = ride.current
-    if (r) {
-      const t = Math.min(1, (performance.now() - r.t0) / r.dur)
-      const e = t * t * (3 - 2 * t)
-      const y = r.y0 + (r.y1 - r.y0) * e
-      if (body.current) body.current.position.y = y - r.y0 + Math.sin(t * 40) * 0.01
-      useGameStore.setState({ inputLocked: true })
-      holdAt(r.x, y - STAND_FIX, r.z)
-      let nearest = 0
-      E.stops.forEach((st, i) => {
-        if (Math.abs(st.pos[1] - y) < Math.abs(E.stops[nearest].pos[1] - y)) nearest = i
-      })
-      if (nearest !== rideFloor.current) {
-        rideFloor.current = nearest
-        setRideIdx(nearest)
-      }
-      if (t >= 1) {
-        lastArrive.kind = E.kind ?? 'staff'
-        lastArrive.key = r.stop.key
-        lastArrive.t = performance.now()
-        holdAt(r.x, r.y1 - STAND_FIX, r.z)
-        ride.current = null
-        if (body.current) body.current.position.y = 0
-        ridingRef.current = false
-        rideNow.kind = null
-        rideNow.from = null
-        setRiding(false)
-        setRideIdx(null)
-        setSel(meIndex)
-        rideFloor.current = null
-        doorTarget.current = 0
-        setTimeout(() => {
-          if (!useGameStore.getState().openPanel) useGameStore.setState({ inputLocked: false })
-        }, 200)
-      }
-    }
-    // 나무 레버: 고른 층 각도로 부드럽게 돌아감
-    if (lever.current) lever.current.rotation.z += (leverAngle(sel) - lever.current.rotation.z) * Math.min(1, dt * 6)
-    // 접이식 철문: 목표값 쪽으로 천천히 (1초쯤)
-    door.current += Math.sign(doorTarget.current - door.current) * Math.min(Math.abs(doorTarget.current - door.current), dt * 1.2)
-    const k = 0.12 + door.current * 0.88
-    if (gateL.current) gateL.current.scale.x = k
-    if (gateR.current) gateR.current.scale.x = k
-    const t = clock.elapsedTime
-    if (t < next.current) return
-    next.current = t + 0.15
-    if (!player.current?.parent) player.current = findPlayer(scene)
-    if (!player.current || !anchor.current) return
-    anchor.current.getWorldPosition(tmp.a)
-    player.current.getWorldPosition(tmp.b)
-    const otherRiding = rideNow.kind === (E.kind ?? 'staff') && rideNow.from !== E.me
-    if (body.current) body.current.visible = !otherRiding
-    // 타고 가는 동안 출발한 칸은 안내창을 계속 띄움 (캐릭터 이동이 한 프레임 늦어 잠깐 칸 밖으로 판정되던 것)
-    const inside = !otherRiding && (ridingRef.current || Math.abs(tmp.b.x - tmp.a.x) < w / 2 + 0.3 && Math.abs(tmp.b.z - tmp.a.z) < d / 2 + 0.3 && Math.abs(tmp.b.y - tmp.a.y) < 2.2)
-    if (inside !== near) {
-      setNear(inside)
-      // (11/26) 칸에 들어서면(도착 포함) 카메라를 열린 문 쪽 바깥에서 칸 안을 들여다보는 자리로 돌림
-      //   칸 폭이 2.8m라 뒤에서 따라오는 카메라(3~5m)는 승강로·벽 속으로 빠짐. 돌린 뒤에는 마우스로 자유롭게
-      if (inside && controls?.rotateTo) {
-        const open = tmp.b.set(0, 0, 1).applyQuaternion(anchor.current.getWorldQuaternion(tmpQ))
-        controls.rotateTo(Math.atan2(open.x, open.z), 1.2, true)
-        controls.dollyTo(2.6, true)
-      }
-      if (inside && justArrived()) {
-        door.current = 1
-        doorTarget.current = 1
-        setTimeout(() => (doorTarget.current = 0), 900)
-      }
-    }
-  })
-
-  useEffect(() => {
-    if (!justArrived()) return undefined
-    door.current = 1
-    doorTarget.current = 1
-    const t = setTimeout(() => (doorTarget.current = 0), 700)
-    return () => clearTimeout(t)
-  }, [])
-
-  const go = (to) => {
-    if (ridingRef.current || to === meIndex || to < 0 || to >= n) return
-    if (!useWarps.getState().exact) {
-      useUiStore.getState().toast('엘리베이터는 아직 운행 준비 중이에요. 옆 계단을 이용해 주세요.', 'info')
-      return
-    }
-    const steps = Math.abs(to - meIndex)
-    const from = stopPos(meIndex)
-    const dest = stopPos(to)
-    setSel(to) // 레버가 그 층 쪽으로 돌아감
-    if (anchor.current) {
-      const open = new THREE.Vector3(0, 0, 1).applyQuaternion(anchor.current.getWorldQuaternion(tmpQ))
-      rideCam.current = Math.atan2(open.x, open.z)
-    }
-    setRiding(true)
-    ridingRef.current = true
-    rideNow.kind = E.kind ?? 'staff'
-    rideNow.from = E.me
-    useGameStore.setState({ inputLocked: true })
-    doorTarget.current = 1 // 문 닫힘 (1초쯤)
-    setTimeout(() => {
-      ride.current = { y0: from[1], y1: dest[1], x: dest[0], z: dest[2], t0: performance.now(), dur: Math.max(2000, steps * 1500), stop: E.stops[to] }
-    }, 1100)
-  }
-
-  // 숫자 키(1~5, 숫자패드 포함)로 바로 출발. 채팅 입력 중에는 무시
-  useEffect(() => {
-    if (!near) return undefined
-    const down = (event) => {
-      if (event.repeat || isTyping(event.target) || useGameStore.getState().openPanel) return
-      const m = /^(?:Digit|Numpad)(\d)$/.exec(event.code)
-      const key = m ? m[1] : event.code === 'KeyB' ? 'B' : null
-      if (!key) return
-      const to = E.stops.findIndex((s) => s.key === key)
-      if (to < 0) return
-      event.preventDefault()
-      go(to)
-    }
-    window.addEventListener('keydown', down)
-    return () => window.removeEventListener('keydown', down)
-  })
-
-  const size = useThree((s) => s.size)
-  const target = E.stops[sel]
-  const kbd = (k) => <kbd style={{ padding: '0 5px', borderRadius: 4, background: '#e8c35a', color: '#111', fontSize: 11, fontWeight: 700 }}>{k}</kbd>
-  return (
-    <group ref={body}>
-      <group ref={anchor} position={[0, 0.2, 0]} />
-      {/* 바닥판 + 천장 + 세 면 나무판 벽 + 열린 쪽 접이식 철문 */}
-      <Box p={[0, 0.05, 0]} s={[w, 0.1, d]} c="#3b2a1c" />
-      <Box p={[0, h - 0.1, 0]} s={[w, 0.2, d]} c="#2a1a0e" />
-      {[
-        [0, -d / 2, w, 0],
-        [-w / 2, 0, d, Math.PI / 2],
-        [w / 2, 0, d, -Math.PI / 2],
-      ].map(([x, z, len, r], i) => (
-        <group key={i} position={[x, 0, z]} rotation={[0, r, 0]}>
-          {/* 벽은 칸 안쪽에서만 보임(FrontSide, 앞면 = 안쪽): 칸이 좁아 카메라가 벽 밖에 있어도 벽 너머로 캐릭터가 보이게 */}
-          <mesh position={[0, h / 2, 0.01]}>
-            <planeGeometry args={[len, h - 0.2]} />
-            <meshStandardMaterial map={planks} side={THREE.FrontSide} roughness={0.85} />
-          </mesh>
-          {/* 허리 높이 나무 손잡이 띠 */}
-          <Box p={[0, 1.0, 0.05]} s={[len - 0.1, 0.1, 0.08]} c="#6b4423" />
-        </group>
-      ))}
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <Box p={[s * (w / 2 - 0.05), h / 2, d / 2]} s={[0.12, h, 0.12]} c="#5a3a1e" />
-          {/* 접이식 철문 한 짝: 바깥 기둥에 붙어 가운데로 늘어남 (scale.x) */}
-          <group ref={s < 0 ? gateL : gateR} position={[s * (w / 2 - 0.1), 0, d / 2 - 0.03]} scale={[0.12, 1, 1]}>
-            <mesh position={[-s * (w / 4 - 0.05), h / 2 - 0.1, 0]}>
-              <planeGeometry args={[w / 2 - 0.1, h - 0.4]} />
-              <meshStandardMaterial map={cage} transparent alphaTest={0.4} side={THREE.DoubleSide} metalness={0.6} roughness={0.35} color="#e8c35a" />
-            </mesh>
-            <Box p={[-s * (w / 2 - 0.12), h / 2 - 0.1, 0]} s={[0.05, h - 0.4, 0.05]} m={BRASS} />
-          </group>
-        </group>
-      ))}
-      <Box p={[0, h + 0.05, d / 2]} s={[w + 0.2, 0.15, 0.15]} c="#5a3a1e" />
-      {/* 층 표시: 문 위 이 칸의 층 + 칸 안 뒷벽 큰 숫자판(가는 층, 출발하면 빨갛게) */}
-      <mesh position={[0, h + 0.6, d / 2 + 0.06]}>
-        <planeGeometry args={[1.3, 0.8]} />
-        <GlowMaterial glow={0.9} map={floorTexture(here?.key ?? '1', false)} side={THREE.DoubleSide} />
-      </mesh>
-      <Box p={[0, h + 0.6, d / 2 + 0.02]} s={[1.45, 0.95, 0.04]} m={BRASS} />
-      <mesh position={[0, h - 0.75, -d / 2 + 0.08]}>
-        <planeGeometry args={[1.1, 0.75]} />
-        <GlowMaterial glow={1.0} map={floorTexture(target?.key ?? '1', riding)} />
-      </mesh>
-      <Box p={[0, h - 0.75, -d / 2 + 0.05]} s={[1.25, 0.9, 0.04]} m={BRASS} />
-      {/* 레버(영화 클로즈업): 오른쪽 안 벽 붉은 옻칠 판 위 반원 청동 판 — 둥근 홈을 따라 짧은 놋쇠 팔이 돌고 끝에 나무 원통 손잡이.
-          위로 올리면 위층, 내리면 아래층. 반원 바깥 둘레에 층 글자판 */}
-      <group position={[w / 2 - 0.12, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
-        <Box p={[LEVER_PIVOT[0] + 0.15, LEVER_PIVOT[1], -0.01]} s={[1.3, 1.5, 0.03]} c="#7a2416" />
-        <group position={[LEVER_PIVOT[0], LEVER_PIVOT[1], 0.02]}>
-          {E.stops.map((s, i) => {
-            const a = leverAngle(i)
-            return (
-              <mesh key={s.key} position={[Math.cos(a) * 0.8, Math.sin(a) * 0.8, 0.01]}>
-                <planeGeometry args={[0.22, 0.15]} />
-                <GlowMaterial glow={0.8} map={floorTexture(s.key, i === sel)} />
-              </mesh>
-            )
-          })}
-          {/* 반원 청동 판 (문 쪽으로 볼록) + 안쪽 둥근 홈 + 구멍 3개 */}
-          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.02]} material={LEVER_BRONZE}>
-            <cylinderGeometry args={[0.62, 0.62, 0.05, 24, 1, false, 0, Math.PI]} />
-          </mesh>
-          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.05]} material={LEVER_HOLE}>
-            <cylinderGeometry args={[0.42, 0.42, 0.02, 24, 1, false, 0, Math.PI]} />
-          </mesh>
-          {[-0.75, 0, 0.75].map((a) => (
-            <Ball key={a} p={[Math.cos(a) * 0.53, Math.sin(a) * 0.53, 0.05]} rad={0.035} m={LEVER_HOLE} />
-          ))}
-          <Box p={[-0.04, 0, 0.03]} s={[0.12, 1.3, 0.08]} m={LEVER_BRONZE} />
-          <Ball p={[0, 0, 0.07]} rad={0.06} m={BRASS} />
-          <group ref={lever} rotation={[0, 0, leverAngle(meIndex)]}>
-            {/* 놋쇠 팔 */}
-            <Box p={[LEVER_LEN / 2, 0, 0.09]} s={[LEVER_LEN, 0.07, 0.03]} m={BRASS} />
-            {/* 나무 원통 손잡이 (팔 끝, 팔 방향으로 누운 원통 + 끝 구멍) */}
-            <mesh position={[LEVER_LEN + 0.06, 0, 0.13]} rotation={[0, 0, -Math.PI / 2]} material={LEVER_WOOD}>
-              <cylinderGeometry args={[0.075, 0.085, 0.24, 14]} />
-            </mesh>
-            <Ball p={[LEVER_LEN + 0.19, 0, 0.13]} rad={0.025} m={LEVER_HOLE} />
-          </group>
-        </group>
-      </group>
-      {near && (
-        <Html calculatePosition={() => [0, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
-          {/* 왼쪽 조작키 안내 아래에 둠 (오른쪽 아래는 미니맵이 가림) */}
-          <div style={{ position: 'absolute', left: 0, top: 0, width: size.width, height: size.height, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '210px 0 0 16px', boxSizing: 'border-box', pointerEvents: 'none' }}>
-            <div style={{ width: 230, padding: '12px 14px', borderRadius: 14, background: 'rgba(24,14,8,0.86)', border: '2px solid #b8913c', color: '#fff', fontSize: 14, lineHeight: 1.5, pointerEvents: 'auto' }}>
-              <div style={{ fontWeight: 800, fontSize: 15, color: '#f2c94c', marginBottom: 6 }}>{E.kind === 'guest' ? '손님용 엘리베이터' : '직원용 엘리베이터'}</div>
-              {/* 층 목록: 위층이 위. 누르면 바로 출발 */}
-              <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: 3, marginBottom: 8 }}>
-                {E.stops.map((s, i) => {
-                  const isHere = i === meIndex
-                  const isSel = riding ? i === sel : isHere
-                  return (
-                    <button
-                      key={s.key}
-                      type="button"
-                      disabled={riding || isHere}
-                      onClick={(e) => {
-                        e.currentTarget.blur()
-                        go(i)
-                      }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, border: 'none', textAlign: 'left', color: '#fff', cursor: riding || isHere ? 'default' : 'pointer', background: isSel ? (riding ? '#a24a36' : '#b8913c') : 'rgba(255,255,255,0.08)', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: isSel ? 800 : 500 }}
-                    >
-                      {kbd(s.key)}
-                      <span style={{ width: 28, fontSize: 16, fontWeight: 900 }}>{floorName(s.key)}</span>
-                      <span style={{ fontSize: 12, flex: 1 }}>{s.label}</span>
-                      {isHere && <span style={{ fontSize: 11, opacity: 0.85 }}>지금</span>}
-                    </button>
-                  )
-                })}
-              </div>
-              {riding ? (
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#f2c94c', textAlign: 'center' }}>
-                  {rideIdx == null ? '문이 닫혀요…' : `${sel > meIndex ? '▲' : '▼'} ${floorName(E.stops[rideIdx].key)}`}
-                </div>
-              ) : (
-                <div style={{ fontSize: 13 }}>숫자 키 {kbd('1')}~{kbd(String(E.stops[n - 1].key))} 또는 층을 누르면 바로 출발해요</div>
-              )}
-            </div>
-          </div>
-        </Html>
-      )}
-    </group>
-  )
-}
 
 // ── 온천장 아래층 외벽 (지대 남쪽 벼랑에 붙임) ─────
 // 지민이 보낸 사진처럼 온천장이 물가에서부터 솟은 붉은 건물로 보이게: 붉은 벽 2층 + 불 켜진 창 + 초록 처마 + 물가 돌 띠
@@ -1324,7 +964,8 @@ export function JmYuLowerFacade({ item }) {
   const [w, h] = item.size
   const winTex = windowStripTexture('lattice')
   const eave = useMemo(() => hipRoofGeometry(w + 0.8, 2.2, 0.55, 0.06), [w])
-  const plants = useMemo(() => range(Math.round(w / 1.6)).map((i) => ({ p: [-w / 2 + 0.8 + i * 1.6, h + 0.35, 0.55], s: [0.5 + srand(i) * 0.3, 0.45, 0.4] })), [w, h])
+  const gap = item.gap ?? 0 // (11/27) 가운데 비울 폭: 다리가 닿는 자리에는 화분 줄을 두지 않음
+  const plants = useMemo(() => range(Math.round(w / 1.6)).map((i) => ({ p: [-w / 2 + 0.8 + i * 1.6, h + 0.35, 0.55], s: [0.5 + srand(i) * 0.3, 0.45, 0.4] })).filter((pl) => Math.abs(pl.p[0]) > gap / 2 + 0.3), [w, h, gap])
   return (
     <group>
       <Box p={[0, h / 2, 0]} s={[w, h, 0.6]} c="#8a7f6e" />
@@ -1380,7 +1021,8 @@ export function JmYuLowerFacade({ item }) {
       {/* 벽을 타고 꺾이는 흰 관 */}
       {[[-w / 2 + 2.2, 0, 4.4], [-2, 2.4, 7], [w / 2 - 8.5, 0.8, 5]].map(([x, z0, len], i) => (
         <group key={`pp${i}`}>
-          <Cyl p={[x, (z0 + h) / 2 + 0.3, 0.5]} rad={0.13} h={h - z0 + 0.6} c="#d6d1c6" />
+          {/* (11/27) 관 위 끝을 벽 꼭대기(h) 바로 아래에서 끝냄 — 예전엔 마당 위로 0.6m 튀어나와 다리 끝에 짧은 기둥처럼 보였음 */}
+          <Cyl p={[x, (z0 + h - 0.05) / 2, 0.5]} rad={0.13} h={h - 0.05 - z0} c="#d6d1c6" />
           <Cyl p={[x + len / 2, z0 + 0.3, 0.5]} rad={0.13} h={len} c="#d6d1c6" r={[0, 0, Math.PI / 2]} />
           <Ball p={[x, z0 + 0.3, 0.5]} rad={0.17} c="#bdb7aa" />
           <Ball p={[x + len, z0 + 0.3, 0.5]} rad={0.17} c="#bdb7aa" />
@@ -1388,7 +1030,9 @@ export function JmYuLowerFacade({ item }) {
         </group>
       ))}
       {/* 지대 끝 위 화분 줄 (사진의 층마다 초록 덤불) */}
-      <Box p={[0, h + 0.1, 0.55]} s={[w, 0.2, 0.6]} c="#5a3d2a" />
+      {gap > 0
+        ? [-1, 1].map((sx) => <Box key={`pb${sx}`} p={[sx * (w / 4 + gap / 4), h + 0.1, 0.55]} s={[w / 2 - gap / 2, 0.2, 0.6]} c="#5a3d2a" />)
+        : <Box p={[0, h + 0.1, 0.55]} s={[w, 0.2, 0.6]} c="#5a3d2a" />}
       <Instances geometry={GEO.sphere} material={mat('#3f6b3a', { flat: true })} items={plants} />
     </group>
   )
@@ -1817,30 +1461,36 @@ function ValveWheel({ p, r = 0.5, rot = [0, 0, 0] }) {
 }
 // ── 계단 난간 (11/26 지민 요청) — 계단 옆 나무 기둥 + 경사 손잡이 + 가운데 가로대 ──
 // 소품 기준: 로컬 +z가 올라가는 쪽, z -L/2(높이 0) → +L/2(높이 rise). 충돌 벽은 생성기에서 collider로 따로
-const RAIL_WOOD = mat('#6b4428', { roughness: 0.8 })
-const RAIL_CAP = mat('#4a2e1c', { roughness: 0.7 })
+// (11/27 지민 결정: 난간 가안) 붉은 칠 여관 난간 — 주홍 기둥 + 위(굵게)·아래 두 줄 손잡이 + 두 기둥마다 금 공 장식 (1층 홀·다리 난간과 같은 결)
+const RAIL_RED = mat('#a9543a', { roughness: 0.6 })
+const RAIL_DARK = mat('#7d3d2a', { roughness: 0.7 })
+const RAIL_GOLD = mat('#c9a24a', { metalness: 0.45, roughness: 0.4 })
 export function JmStairRail({ item }) {
   const L = item.size[2]
   const rise = item.rail?.rise ?? 0
   const H = 0.95
   const parts = useMemo(() => {
-    const n = Math.max(2, Math.round(L / 1.6) + 1)
-    const posts = range(n).map((i) => {
+    const n = Math.max(2, Math.round(L / 1.2) + 1)
+    const posts = []
+    const balls = []
+    range(n).forEach((i) => {
       const t = i / (n - 1)
       const z = -L / 2 + 0.08 + t * (L - 0.16)
       const y0 = rise * t
-      return { p: [0, y0 + H / 2, z], s: [0.12, H, 0.12] }
+      posts.push({ p: [0, y0 + H / 2, z], s: [0.13, H, 0.13] })
+      if (i % 2 === 0 || i === n - 1) balls.push({ p: [0, y0 + H + 0.1, z], s: [0.09, 0.09, 0.09] })
     })
     const slope = Math.atan2(rise, L)
     const len = Math.hypot(L, rise)
-    return { posts, slope, len }
+    return { posts, balls, slope, len }
   }, [L, rise])
   return (
     <group>
-      <Instances geometry={GEO.box} material={RAIL_WOOD} items={parts.posts} />
-      {/* 손잡이 + 가운데 가로대 (경사 따라) */}
-      <Box p={[0, rise / 2 + H, 0]} s={[0.16, 0.08, parts.len + 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_CAP} />
-      <Box p={[0, rise / 2 + H * 0.5, 0]} s={[0.06, 0.06, parts.len - 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_WOOD} />
+      <Instances geometry={GEO.box} material={RAIL_RED} items={parts.posts} />
+      <Instances geometry={GEO.sphere} material={RAIL_GOLD} items={parts.balls} />
+      {/* 위 손잡이(굵게) + 아래 가로대 (경사 따라) */}
+      <Box p={[0, rise / 2 + H, 0]} s={[0.18, 0.1, parts.len + 0.12]} r={[-parts.slope, 0, 0]} m={RAIL_RED} />
+      <Box p={[0, rise / 2 + H * 0.45, 0]} s={[0.08, 0.07, parts.len - 0.1]} r={[-parts.slope, 0, 0]} m={RAIL_DARK} />
     </group>
   )
 }

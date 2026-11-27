@@ -34,7 +34,8 @@ const LUMI_CAPSULE = [0.5, 0.35]
 const LUMI_BODY_DATA = { ecctrl: { excludeRay: true } }
 
 // [3. 개발 > 프론트엔드] +z 가장자리 벽에 구멍을 내는 땅: southGroundExtension + opensBoundary가 붙은 바닥(혜진 구역 경성거리 북쪽 땅)
-const boundaryOpenings = [southGroundExtension, ...layout.roads.filter((item) => item.opensBoundary)].filter(Boolean)
+// [지민 11/27] 그림 없는 바닥 소품(opensBoundary)도 포함 — 애니 구역 湯灯駅 가는 물 밑 바닥 jm_sea_walk_w
+const boundaryOpenings = [southGroundExtension, ...layout.roads.filter((item) => item.opensBoundary), ...layout.props.filter((item) => item.opensBoundary)].filter(Boolean)
 function southWallSegments(left, right, southEdge) {
   let segments = [[left, right]]
   for (const item of boundaryOpenings) {
@@ -44,6 +45,20 @@ function southWallSegments(left, right, southEdge) {
     const west = x - w / 2 + 0.5
     const east = x + w / 2 - 0.5
     segments = segments.flatMap(([a, b]) => [[a, Math.min(b, west)], [Math.max(a, east), b]]).filter(([a, b]) => a < b)
+  }
+  return segments
+}
+// [지민 11/27] -x(서쪽) 가장자리 벽도 같은 방식: opensBoundary 바닥이 서쪽 벽에 걸치는 z 구간만 비움
+//   (애니 구역 湯灯駅이 맵 서쪽 바다 위로 나가 있어서 선로 옆 물 밑 바닥 소품 jm_sea_walk_w가 벽을 넘어감. 그 바닥 둘레 벽은 jm_seaLine.jsx가 세움)
+function westWallSegments(north, south, westEdge) {
+  let segments = [[north, south]]
+  for (const item of boundaryOpenings) {
+    const [x, z] = item.position
+    const [w, , d] = item.size
+    if (x - w / 2 >= westEdge || x + w / 2 <= westEdge) continue
+    const a0 = z - d / 2 + 0.5
+    const b0 = z + d / 2 - 0.5
+    segments = segments.flatMap(([a, b]) => [[a, Math.min(b, a0)], [Math.max(a, b0), b]]).filter(([a, b]) => a < b)
   }
   return segments
 }
@@ -74,7 +89,9 @@ export default function Colliders() {
         {southWallSegments(cx - halfW, cx + halfW, cz + halfD).map(([from, to]) => (
           <CuboidCollider key={from} args={[(to - from) / 2, wallY, t]} position={[(from + to) / 2, wallY, cz + halfD + t]} />
         ))}
-        <CuboidCollider args={[t, wallY, halfD]} position={[cx - halfW - t, wallY, cz]} />
+        {westWallSegments(cz - halfD, cz + halfD, cx - halfW).map(([from, to]) => (
+          <CuboidCollider key={`w${from}`} args={[t, wallY, (to - from) / 2]} position={[cx - halfW - t, wallY, (from + to) / 2]} />
+        ))}
         <CuboidCollider args={[t, wallY, halfD]} position={[cx + halfW + t, wallY, cz]} />
       </RigidBody>
 

@@ -8,6 +8,8 @@ import PlaceMarkers from './Map/PlaceMarkers.jsx'
 import CourseMarker from './Map/CourseMarker.jsx'
 import Colliders from './Map/Colliders.jsx'
 import { Elevators } from './Map/Terrain.jsx'
+import { JmGuestLifts } from './Map/styles/jm_guestLift.jsx' // [지민] 애니 구역 온천장 손님용 엘리베이터 (병관님 Elevators와 같은 방식, 11/27)
+import { JmSeaTramColliders } from './Map/styles/jm_seaLine.jsx' // [지민] 湯灯駅에 선 바다 전차 바닥·벽 충돌 (문 열렸을 때만, 11/27)
 import PastelSky from './Map/PastelSky.jsx'
 import Player, { KEYBOARD_MAP } from './Player/Player.jsx'
 import FirstPersonCamera from './Player/FirstPersonCamera.jsx'
@@ -44,8 +46,9 @@ import { WarpZones } from './Map/styles/bk_warpZones.jsx' // [병관] 구역 워
 
 // 3D 화면 전체: 캔버스, 하늘, 조명, 물리, 캐릭터/카메라, 맵, 상호작용 지점
 // 두 가지 모드: 둘러보기(맵 전체) ↔ 플레이(캐릭터 조종). 버튼으로 전환.
-export default function Scene() {
-  const [playing, setPlaying] = useState(!FREE_CAMERA)
+// locked(11/27 지민): 로그인 전 — 캐릭터 없이 맵 전체 보기만 (모드 전환 버튼·설정창도 숨김). 로그인하면 바로 플레이
+export default function Scene({ locked = false }) {
+  const [playing, setPlaying] = useState(!FREE_CAMERA && !locked)
   const dateIntro = useGameStore((s) => s.openPanel?.type === DATE_INTRO_PANEL)
   // 그래픽 품질은 설정창(⚙)과 왼쪽 '고화질' 체크박스가 같은 값을 씀 (기본: 낮음)
   const highDetail = useSettings((state) => state.quality === 'high')
@@ -72,6 +75,18 @@ export default function Scene() {
   }
 
   const firstPerson = CAMERA_VIEW === 'first'
+
+  // [지민] 로그인하면 캐릭터 생성, 로그아웃하면 다시 맵 전체 보기 (그때는 열려 있던 창·근처 표시도 정리)
+  useEffect(() => {
+    if (!locked) {
+      if (!FREE_CAMERA) setPlaying(true)
+      return
+    }
+    const { close, setNearby } = useGameStore.getState()
+    close()
+    setNearby(null)
+    setPlaying(false)
+  }, [locked])
 
   return (
     <KeyboardControls map={KEYBOARD_MAP}>
@@ -103,6 +118,8 @@ export default function Scene() {
             <Physics debug={PHYSICS_DEBUG}>
               <Colliders />
               <Elevators playerRef={playerRef} />
+              <JmGuestLifts playerRef={playerRef} />
+              <JmSeaTramColliders />
               {playing && (
                 <>
                   <group visible={!dateIntro}>
@@ -124,8 +141,8 @@ export default function Scene() {
           <ShaderWarmup trigger={`${playing}-${highDetail}`} camera={gameCamera} />
         </Canvas>
 
-        <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />
-        <SettingsPanel />
+        {!locked && <HelpPanel playing={playing} onStart={startPlay} onStop={stopPlay} />}
+        {!locked && <SettingsPanel />}
         {playing && <ChatBox />}
       </div>
     </KeyboardControls>

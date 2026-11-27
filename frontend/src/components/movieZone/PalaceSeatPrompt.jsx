@@ -13,7 +13,10 @@ export default function PalaceSeatPrompt() {
   const locked = useGameStore(state => state.inputLocked)
   const tourOpen = usePalaceTour(state => state.open)
   const specialPanel = useSpecialAccess(state => state.panel)
-  const available = !modal && !locked && !tourOpen && !specialPanel && Boolean(nearby || seated)
+  // [지민 11/27] quietWhileMoving 탈것(애니 구역 바다 전차 등)은 달리는 동안 「정차하면 내릴 수 있어요」·E를 숨김
+  //   (E 글자가 붙어 있어 "E로 내릴 수 있다"로 읽혔음). 정차하면 다시 「…에서 내리기」가 떠요. 0.3초마다 다시 그려서 바로 바뀜
+  const quiet = Boolean(seated?.vehicle?.quietWhileMoving && !seated.vehicle.stopped)
+  const available = !modal && !locked && !tourOpen && !specialPanel && !quiet && Boolean(nearby || seated)
   // 전차·기차에 타고 있으면 정차 여부가 계속 바뀌니 0.3초마다 문구를 새로 그려요
   const [, setTick] = useState(0)
   useEffect(() => {

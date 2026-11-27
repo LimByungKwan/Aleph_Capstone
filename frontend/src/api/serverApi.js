@@ -23,6 +23,10 @@ function readCharacters() {
     return {}
   }
 }
+/** 이 브라우저에 저장된 캐릭터 id들 { userId: characterId } — 로그인 직후 서버 답을 기다리지 않고 바로 세울 때 씀 (GameRoot.jsx, 11/27) */
+export function cachedCharacterIds() {
+  return readCharacters()
+}
 function cacheCharacter(userId, id) {
   try {
     window.localStorage.setItem(CHARACTER_KEY, JSON.stringify({ ...readCharacters(), [userId]: id }))

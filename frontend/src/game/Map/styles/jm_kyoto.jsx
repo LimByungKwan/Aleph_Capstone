@@ -799,6 +799,7 @@ export function JmToriiTunnel({ item }) {
 
 // ── 건널목 (노면전차 선로를 가로지르는 골목) ─────────
 // size [폭(골목), 높이, 깊이]. 양쪽 경보기 기둥 + 번갈아 깜빡이는 빨간 불 + 올라간 차단봉
+// item.gap: 선로 가운데 ~ 기둥 거리 (기본 1.3 = 노면전차. 레일바이크 철길은 2.1 — 바이크 폭 1.6이라 1.3이면 지붕 기둥에 닿음)
 const SIGNAL_ON = new THREE.MeshStandardMaterial({ color: '#ff2a1a', emissive: '#ff2a1a', emissiveIntensity: 1.6 })
 const SIGNAL_OFF = new THREE.MeshStandardMaterial({ color: '#4a1210', emissive: '#000000' })
 export function JmCrossing({ item }) {
@@ -813,7 +814,7 @@ export function JmCrossing({ item }) {
   return (
     <group>
       {[-1, 1].map((side) => (
-        <group key={side} position={[(side * w) / 2, 0, side * 1.3]} rotation={[0, side > 0 ? Math.PI : 0, 0]}>
+        <group key={side} position={[(side * w) / 2, 0, side * (item.gap ?? 1.3)]} rotation={[0, side > 0 ? Math.PI : 0, 0]}>
           <Cyl p={[0, h / 2, 0]} rad={0.07} h={h} c="#f1f1ee" />
           {range(5).map((k) => (
             <Cyl key={k} p={[0, 0.3 + k * 0.5, 0]} rad={0.075} h={0.25} c="#1d1d1d" />
