@@ -12,9 +12,9 @@ import { GWANGHWAMUN, PALACE_ORIGIN_Z } from './hj/gyeongbokLayout.js'
 // - 미니맵의 워프 아이콘을 누르면 "이 지역으로 이동하겠습니까?" → 이동 (bk_warpZones.jsx가 캐릭터를 옮김)
 // 위치는 구역 입구 바로 안쪽의 평평한 빈 땅 (미리보기에서 바닥 높이를 재서 고름). 숫자만 바꾸면 옮길 수 있어요
 
-// 광화문 안쪽 동쪽 마당. 흥례문 담장 끝 너머라 도착 후 카메라 뒤에도 공간이 있습니다.
+// 흥례문 안쪽 동편 통로. 원판과 안내판이 담장 지붕에 겹치지 않게 띄웁니다.
 const [palaceX, palaceZ] = layout.props.find(({ id }) => id === 'HJ/haewol_palace')?.position ?? [0, 71]
-const hjWarpPosition = [palaceX + 18, 0.17, palaceZ + GWANGHWAMUN.az - PALACE_ORIGIN_Z + 5.2]
+const hjWarpPosition = [palaceX + 18, 0.17, palaceZ + GWANGHWAMUN.az - PALACE_ORIGIN_Z + 8.6]
 
 export const WARPS = [
   { id: 'warp_bk', zone: 'BK', name: '데이트 코스', icon: '💕', color: '#f472b6', position: [51, 0.02, 0] },

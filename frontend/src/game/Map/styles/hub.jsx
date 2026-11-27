@@ -7,6 +7,7 @@ import { GEO, mat } from './kit.jsx'
 import { getSignTexture, getTiledTexture, TILE_METERS } from './textures.js'
 import { HUB_GARDEN_BORDER, HUB_GARDEN_STONE } from '../../data/hubGardenLayout.js'
 import { NIGHT_UNIFORM, colorize, nightGlow, piece } from './dateCourse.jsx'
+import { getHubMapTexture } from './bk_hubMapTexture.js'
 
 // 중앙 광장(hub.json) 전용 스타일: 나침반 바닥 무늬, 시계탑, 나무 둘레 벤치, 방향 표지판, 안내 지도판,
 // 퍼걸러 쉼터, 푸드트럭, 버스킹 무대.
@@ -245,13 +246,17 @@ export function HubLoungeChair({ item }) {
 // ════════════════════════════════════════════
 // 나침반 바닥 무늬: 광장 가운데 큰 원. 네 구역 방향으로 구역 색 화살표 (북=JM, 동=BK, 남=HJ, 서=SG)
 // ════════════════════════════════════════════
-let compassTexture = null
-function getCompassTexture() {
-  if (compassTexture) return compassTexture
+let compassTextures = null
+function getCompassTextures() {
+  if (compassTextures) return compassTextures
   const S = 1024
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = S
   const ctx = canvas.getContext('2d')
+  const ledCanvas = canvas.cloneNode()
+  const led = ledCanvas.getContext('2d')
+  led.fillStyle = '#000000'
+  led.fillRect(0, 0, S, S)
   const c = S / 2
   const ring = (r, color, width) => {
     ctx.strokeStyle = color
@@ -297,18 +302,27 @@ function getCompassTexture() {
     ctx.restore()
     // 구역 이름: 시계탑(가운데)을 기준으로 회전 → 시계탑 쪽에서 바깥(그 구역 방향)을 바라보면 바로 읽힘 (글자 위쪽이 바깥을 향함)
     const r = c - 150
-    ctx.save()
-    ctx.translate(c + Math.cos(a) * r, c + Math.sin(a) * r)
-    ctx.rotate(a + Math.PI / 2)
-    ctx.fillStyle = '#5b4636'
-    ctx.font = 'bold 54px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.lineWidth = 8
-    ctx.strokeStyle = 'rgba(251,243,230,0.85)'
-    ctx.strokeText(ZONE[key].area, 0, 0)
-    ctx.fillText(ZONE[key].area, 0, 0)
-    ctx.restore()
+    const { area, color } = ZONE[key]
+    for (const ink of [ctx, led]) {
+      ink.save()
+      ink.translate(c + Math.cos(a) * r, c + Math.sin(a) * r)
+      ink.rotate(a + Math.PI / 2)
+      ink.font = 'bold 54px sans-serif'
+      ink.textAlign = 'center'
+      ink.textBaseline = 'middle'
+      if (ink === ctx) {
+        ink.fillStyle = '#5b4636'
+        ink.lineWidth = 8
+        ink.strokeStyle = 'rgba(251,243,230,0.85)'
+        ink.strokeText(area, 0, 0)
+      } else {
+        ink.fillStyle = color
+        ink.shadowColor = `${color}55`
+        ink.shadowBlur = 6
+      }
+      ink.fillText(area, 0, 0)
+      ink.restore()
+    }
   }
   // 대각선 작은 화살
   for (let i = 0; i < 4; i++) {
@@ -341,10 +355,14 @@ function getCompassTexture() {
     ctx.fillStyle = i % 3 === 0 ? '#72664c2d' : '#fff9db4a'
     ctx.fillRect(x, y, 1 + grain() * 2, 1 + grain() * 2)
   }
-  compassTexture = new THREE.CanvasTexture(canvas)
-  compassTexture.colorSpace = THREE.SRGBColorSpace
-  compassTexture.anisotropy = 4
-  return compassTexture
+  const [map, emissiveMap] = [canvas, ledCanvas].map((source) => {
+    const texture = new THREE.CanvasTexture(source)
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = 4
+    return texture
+  })
+  compassTextures = { map, emissiveMap }
+  return compassTextures
 }
 const COMPASS_GEO = new THREE.CircleGeometry(0.5, 64).rotateX(-Math.PI / 2)
 let compassMat = null
@@ -352,7 +370,14 @@ let compassMat = null
 export function HubCompass({ item }) {
   const [w] = item.size
   if (!compassMat) {
-    compassMat = new THREE.MeshStandardMaterial({ map: getCompassTexture(), roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2 })
+    compassMat = nightGlow(new THREE.MeshStandardMaterial({
+      ...getCompassTextures(),
+      emissive: '#ffffff',
+      emissiveIntensity: 0,
+      roughness: 0.9,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+    }), 0.62)
   }
   return <mesh geometry={COMPASS_GEO} material={compassMat} position={[0, 0.14, 0]} scale={[w, 1, w]} receiveShadow userData={{ noShadow: true }} />
 }
@@ -546,74 +571,9 @@ function signMaterial(text, bg, fg = '#3b3633', aspect = BOARD.len / BOARD.h) {
 // ════════════════════════════════════════════
 // 안내 지도판: 지붕 달린 게시판 + 미니 지도(광장 가운데, 네 구역, 현재 위치)
 // ════════════════════════════════════════════
-let mapTexture = null
-function getMapTexture() {
-  if (mapTexture) return mapTexture
-  const W = 512
-  const H = 340
-  const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = '#fffaf0'
-  ctx.fillRect(0, 0, W, H)
-  ctx.fillStyle = '#3b3633'
-  ctx.font = 'bold 30px sans-serif'
-  ctx.textAlign = 'left'
-  ctx.fillText('SceneWalk 안내 지도', 20, 42)
-  const cx = 300
-  const cy = 190
-  const u = 46
-  // 길
-  ctx.fillStyle = '#d6cfc4'
-  ctx.fillRect(cx - 8, cy - u * 2.6, 16, u * 5.2)
-  ctx.fillRect(cx - u * 2.6, cy - 8, u * 5.2, 16)
-  const box = (x, y, w, h, color, label) => {
-    ctx.fillStyle = color
-    ctx.fillRect(x, y, w, h)
-    ctx.fillStyle = '#3b3633'
-    ctx.textAlign = 'center'
-    // 칸 폭에 맞게 글자 크기 줄임
-    let size = 20
-    do {
-      ctx.font = `bold ${size}px sans-serif`
-      size -= 1
-    } while (ctx.measureText(label).width > w - 6 && size > 10)
-    ctx.fillText(label, x + w / 2, y + h / 2 + size * 0.35)
-  }
-  box(cx - u * 0.85, cy - u * 2.75, u * 1.7, u * 1.4, ZONE.JM.color, ZONE.JM.area)
-  box(cx + u * 1.35, cy - u * 0.7, u * 1.4, u * 1.4, ZONE.BK.color, ZONE.BK.area)
-  box(cx - u * 0.85, cy + u * 1.35, u * 1.7, u * 1.4, ZONE.HJ.color, ZONE.HJ.area)
-  box(cx - u * 2.75, cy - u * 0.7, u * 1.4, u * 1.4, ZONE.SG.color, ZONE.SG.area)
-  ctx.fillStyle = '#e9e1d4'
-  ctx.fillRect(cx - u * 0.6, cy - u * 0.6, u * 1.2, u * 1.2)
-  ctx.fillStyle = '#ff5c8a'
-  ctx.beginPath()
-  ctx.arc(cx, cy + u * 0.3, 9, 0, Math.PI * 2)
-  ctx.fill()
-  // 범례
-  ctx.textAlign = 'left'
-  ctx.font = '18px sans-serif'
-  const rows = ['JM', 'BK', 'HJ', 'SG'].map((key) => [key, ZONE[key].area])
-  rows.forEach(([key, label], i) => {
-    ctx.fillStyle = ZONE[key].color
-    ctx.fillRect(20, 82 + i * 36, 22, 22)
-    ctx.fillStyle = '#3b3633'
-    ctx.fillText(label, 52, 100 + i * 36)
-  })
-  ctx.fillStyle = '#ff5c8a'
-  ctx.beginPath()
-  ctx.arc(31, 245, 9, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = '#3b3633'
-  ctx.fillText('현재 위치', 52, 251)
-  mapTexture = new THREE.CanvasTexture(canvas)
-  mapTexture.colorSpace = THREE.SRGBColorSpace
-  return mapTexture
-}
 let mapMat = null
 
-export function HubMapBoard() {
+export function HubMapBoard({ item }) {
   const geometry = cached('mapBoard', () =>
     merge([
       ...[-1.35, 1.35].map((x) => piece('box', [x, 1.25, 0], [0.12, 2.5, 0.12], C.woodDark)),
@@ -624,11 +584,15 @@ export function HubMapBoard() {
       piece('box', [0, 0.45, 0.06], [2.4, 0.08, 0.2], C.wood),
     ]),
   )
-  if (!mapMat) mapMat = nightGlow(new THREE.MeshStandardMaterial({ map: getMapTexture(), emissive: '#ffffff', emissiveMap: getMapTexture(), emissiveIntensity: 0.12 }), 0.75)
+  if (!mapMat) {
+    const map = getHubMapTexture(item.position)
+    mapMat = nightGlow(new THREE.MeshStandardMaterial({ map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.12 }), 0.75)
+  }
   return (
     <group>
       <mesh geometry={geometry} material={HUB_MAT} castShadow />
       <mesh geometry={GEO.plane} material={mapMat} position={[0, 1.55, 0.02]} scale={[2.4, 1.6, 1]} />
+      <mesh geometry={GEO.plane} material={mapMat} position={[0, 1.55, -0.08]} rotation={[0, Math.PI, 0]} scale={[2.4, 1.6, 1]} />
     </group>
   )
 }

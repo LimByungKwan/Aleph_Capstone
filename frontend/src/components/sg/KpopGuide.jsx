@@ -15,7 +15,7 @@ import { spotWorld } from '../../game/Map/styles/sg_spots.js'
 // - 판정: 캐릭터가 sg_kpop.json의 사각형(origin이 중심, size가 가로·세로) 안에 있는지
 // - 병관님 튜토리얼이 끝난(off) 뒤에만 표시 → 띠가 두 개 겹치지 않음
 // - 체험 하나를 열거나 닫기를 누르면 localStorage에 기억 → 저절로는 다시 안 나옴
-// - 줄을 누르면 그 체험 앞으로 워프 (다시 보고 싶으면 더보기 → 전체 지도, 시계탑)
+// - 줄을 누르면 그 체험 앞으로 워프 (전체 지도는 더보기 또는 광장 안내판에서 열 수 있음)
 //   (워프존 켜기·로그인 없이: 데이트 미션 워프와 같은 useWarps.goto, 도착점은 각 체험의 E키 감지 지점 = sg_spots.js)
 
 const KEY = 'scenewalk.sg.kpopGuide'

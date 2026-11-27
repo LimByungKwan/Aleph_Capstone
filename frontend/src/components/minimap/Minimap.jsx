@@ -362,6 +362,10 @@ export function MinimapCanvas({ zoom, onPickWarp, wide = false }) {
 
       // 정적 지도 (구역·길·건물)
       const [bx, by] = toScreen(base.minX, base.minZ)
+      if (bx > 0) {
+        ctx.fillStyle = base.westColor
+        ctx.fillRect(0, 0, bx + 1, height)
+      }
       ctx.drawImage(base.canvas, bx, by, base.worldW * scale, base.worldH * scale)
 
       // 주요 장소만 작게 점으로 표시합니다. 다른 건물은 직접 가리키면 이름을 볼 수 있어요.

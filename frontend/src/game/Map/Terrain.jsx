@@ -5,7 +5,8 @@ import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
 import { buildDeck, buildHill, buildPlatform, buildStairs, ringPieces, terrainHeightAt, TOWER, towerColliderPieces } from './terrain.js'
 import { Cyl, GEO, Instances, mat, texMat } from './styles/kit.jsx'
-import { getTiledTexture } from './styles/textures.js'
+import { getTiledTexture, TILE_METERS } from './styles/textures.js'
+import { meadowBlend } from './meadowBlend.js'
 import { DeckGate, TowerDecor, towerDecorColliders } from './styles/dateCourse.jsx'
 import { registerLift, sendLift, useLiftCall } from './styles/bk_liftSync.js'
 import { LiftCallHud } from './styles/bk_liftCall.jsx'
@@ -14,6 +15,19 @@ import { LiftCallHud } from './styles/bk_liftCall.jsx'
 // 화면용(<Terrain />), 충돌용(<TerrainColliders />), 움직이는 엘리베이터(<Elevators />)가 같은 계산 결과를 써요.
 
 const HILL_MATERIAL = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 })
+let meadowMaterial
+
+function getMeadowMaterial() {
+  if (!meadowMaterial) {
+    const { center = [0, 0], size } = layout.ground
+    const tile = TILE_METERS.grass
+    const grass = getTiledTexture('grass', 1 / tile, 1 / tile)
+    grass.offset.set((size[0] / 2 - center[0]) / tile, (size[1] / 2 + center[1]) / tile)
+    meadowMaterial = new THREE.MeshStandardMaterial({ map: grass, vertexColors: true, roughness: 1 })
+    meadowMaterial.onBeforeCompile = meadowBlend(size, center)
+  }
+  return meadowMaterial
+}
 const WOOD = mat('#c08a5a', { flat: true })
 const WOOD_DARK = mat('#8b5e3c')
 const STAIR_STONE = mat('#d8cfc6', { flat: true })
@@ -68,7 +82,8 @@ function PlatformMesh({ platform }) {
 
 function HillMesh({ hill }) {
   const { geometry } = buildHill(hill)
-  return <mesh geometry={geometry} material={HILL_MATERIAL} receiveShadow name={hill.id} />
+  const material = hill.surface === 'meadow' ? getMeadowMaterial() : HILL_MATERIAL
+  return <mesh geometry={geometry} material={material} receiveShadow name={hill.id} />
 }
 
 function DeckMesh({ deck }) {

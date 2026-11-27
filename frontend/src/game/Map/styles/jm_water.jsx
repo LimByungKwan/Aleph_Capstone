@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { findPlayer } from '../../Player/findPlayer.js'
+import { sampleOceanBoundary } from './jm_seaGeometry.js'
 
 // 애니 구역(JM) 물 — 담당: 지민
 // 11/25: 물(수로·개울·호수·강)을 맵 바다(혜진 구역 hjSea, hj/HjHarbor.jsx)와 똑같이 보이게 (지민 요청: "지금은 리얼하지 않아")
@@ -530,24 +531,9 @@ function oceanColor(d, sand, c) {
   }
   return c.set(stops.at(-1)[1])
 }
-function densify(pts, step = 3) {
-  // 점 줄을 부드러운 닫힌 곡선으로 + 각 점이 열린 쪽인지
-  const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal')
-  const n = Math.max(64, Math.round(curve.getLength() / step)) // 열린 쪽은 멀리까지 이어져 길이가 길어도 계산량이 견딜 만큼
-  const out = []
-  for (let i = 0; i < n; i++) {
-    const t = i / n
-    const p = curve.getPointAt(t)
-    // 원래 점 몇 번째 구간인지 → 그 구간의 open
-    const seg = Math.min(pts.length - 1, Math.floor(curve.getUtoTmapping(t) * pts.length))
-    const f = pts[seg][2]
-    out.push([p.x, p.z, f === 'L' ? 'L' : f ? 'O' : 'B'])
-  }
-  return out
-}
 function oceanGeometry(O) {
   const sand = O.sand ?? 8
-  const poly = densify(O.pts, 4)
+  const poly = sampleOceanBoundary(O.pts, 4)
   const N = poly.length
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity
   for (const [x, z] of poly) {

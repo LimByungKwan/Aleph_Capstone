@@ -2,14 +2,16 @@
 import { Euler, Vector3 } from 'three'
 import { layout, southGroundExtension, zones } from '../../data/mapData.js'
 import { HUB_GARDEN_BORDER, HUB_GARDEN_STONE } from '../../data/hubGardenLayout.js'
-import { coastRows } from '../coastColors.js'
-import { beachBounds, coastPoint, COAST_SEGMENTS } from '../seabed.js'
+import { BEACH_BOARDWALK, BEACH_PARASOLS, beachBounds } from '../seabed.js'
 import { buildDeck, TOWER } from '../terrain.js'
 import { CHANNELS, COURTS, HALLS, PONDS, WALKS } from './hj/gyeongbokgungLayout.js'
 import { STREET, STREET_ALLEYS, STREET_BUILDINGS, streetFootprint } from './hj/gyeongseongLayout.js'
 import * as palace from './hj/gyeongbokLayout.js'
 import * as park from './hj/themeParkLayout.js'
-import { mapPropBuildings, mountainFeatures, mountainMap, palaceMap, palaceSite, palaceSites, parkMap, parkRides } from './bk_minimapSections.js'
+import { kpopBeachMap, kpopDomeMap, mapPropBuildings, mountainFeatures, mountainMap, palaceMap, palaceSite, palaceSites, parkMap, parkRides } from './bk_minimapSections.js'
+import { DOME, domeBasePoints } from './sg_domeShape.js'
+import { buildSeaLinePath } from './jm_seaGeometry.js'
+import { drawMinimapCoast, MAP_OCEAN } from './bk_minimapCoast.js'
 
 const TAU = Math.PI * 2
 export const MAP_GRASS = '#a8bb90'
@@ -24,38 +26,26 @@ const ROAD_COLORS = {
   asphalt: '#8b8d86', brick: '#d9aa93', gardenPath: '#eee2c3',
   grass: '#a0b486', stone: '#d9d7cb', paver: '#e3d2b7', tile: '#e9dabb',
 }
+const KPOP_ROOFS = {
+  agencyLobby: '#756985', artistLounge: '#76978a', soundStudio: '#668f98',
+  popupStore: '#a08ac2', bdayCafe: '#d29bad', practiceRoom: '#8d8dbb',
+  videoShop: '#aa7795', coinKaraoke: '#6999ad', photoStudio: '#83a8ba',
+}
 
-function drawLand(ctx, groundBounds) {
+function drawLand(ctx, groundBounds, bounds) {
   const [x0, z0, x1, z1] = groundBounds
+  const [left, top, right, bottom] = bounds
   const meadow = ctx.createLinearGradient(x0, z0, x1, z1)
   meadow.addColorStop(0, '#c1ceaa')
   meadow.addColorStop(1, MAP_GRASS)
   ctx.fillStyle = meadow
-  ctx.fillRect(x0, z0, x1 - x0, z1 - z0)
+  ctx.fillRect(left, top, right - left, bottom - top)
 
-  const [west, , north] = beachBounds
-  const firstX = coastPoint(0).x
-  const samples = Array.from({ length: COAST_SEGMENTS + 1 }, (_, i) => ({
-    x: west + coastPoint(i).x - firstX,
-    rows: coastRows(i),
-  }))
-  // 해안 전체에 일자 띠를 칠하는 대신 실제 물가를 따라 모래와 물을 나눕니다.
-  const bands = [[0, 4, '#ead4a7'], [4, 5, '#e3f1db'], [5, 7, '#91bdc0'], [7, 8, WATER]]
-  for (const [start, end, color] of bands) {
-    ctx.beginPath()
-    samples.forEach(({ x, rows }, i) => {
-      const z = north + rows[start][0] - 40
-      if (i === 0) ctx.moveTo(x, z)
-      else ctx.lineTo(x, z)
-    })
-    for (let i = samples.length - 1; i >= 0; i--) {
-      const { x, rows } = samples[i]
-      ctx.lineTo(x, north + rows[end][0] - 40)
-    }
-    ctx.closePath()
-    ctx.fillStyle = color
-    ctx.fill()
-  }
+  const eastFade = ctx.createLinearGradient(x1 - 32, 0, x1, 0)
+  eastFade.addColorStop(0, `${MAP_GRASS}00`)
+  eastFade.addColorStop(1, MAP_GRASS)
+  ctx.fillStyle = eastFade
+  ctx.fillRect(x1 - 32, top, right - x1 + 32, bottom - top)
 }
 
 function drawZones(ctx) {
@@ -113,6 +103,19 @@ function line(ctx, points, width, color) {
   ctx.stroke()
 }
 
+function drawSeaLine(ctx, { points, station, portal }) {
+  ctx.save()
+  ctx.lineCap = 'round'
+  line(ctx, points, 5.8, '#385464')
+  line(ctx, points, 3.6, '#ffedcb')
+  ctx.lineCap = 'butt'
+  ctx.setLineDash([0.72, 3.8])
+  line(ctx, points, 2.45, '#647177')
+  ctx.restore()
+  ellipse(ctx, ...station, 3.8, 3.8, '#fff5dc', '#385464')
+  ellipse(ctx, ...portal, 3.2, 3.2, '#385464', '#ffedcb')
+}
+
 function roof(ctx, w, d, color, gabled) {
   box(ctx, 0.65, 0.9, w, d, '#32443838')
   box(ctx, 0, 0, w, d, color, ROOF_EDGE)
@@ -120,6 +123,37 @@ function roof(ctx, w, d, color, gabled) {
   ctx.fillStyle = '#ffffff38'
   ctx.fillRect(-w / 2, -d / 2, w, gabled ? d / 2 : 0.65)
   if (gabled) line(ctx, [[-w / 2, 0], [w / 2, 0]], 0.38, '#664d4877')
+}
+
+function drawKpopDome(ctx, { item }) {
+  drawItem(ctx, item, () => {
+    // 실제 돔 외곽만 표시해 관중석 아래의 보행로와 건물도 함께 볼 수 있게 합니다.
+    const points = domeBasePoints(0.9, { skipGate: true }).map(({ x, z }) => [x, z])
+    const outline = [[DOME.maxX, DOME.gateHalf], ...points, [DOME.maxX, -DOME.gateHalf]]
+    line(ctx, outline, 2.9, '#536886')
+    line(ctx, outline, 1.65, '#a7c4da')
+  })
+}
+
+function drawKpopBeach(ctx, { item }) {
+  drawItem(ctx, item, () => {
+    const { fromX, toX, z, depth } = BEACH_BOARDWALK
+    box(ctx, (fromX + toX) / 2, z, toX - fromX, depth, DECK, '#8b6c53')
+    line(ctx, [[fromX, z - depth * .3], [toX, z - depth * .3]], 0.3, '#f0cfae')
+    for (const [x, sandZ, color] of BEACH_PARASOLS) {
+      for (const dx of [-.9, .9]) box(ctx, x + dx, sandZ + 1.05, 0.7, 1.9, '#fff0d5')
+      ellipse(ctx, x, sandZ, 1.58, 1.58, color, '#fff1cf')
+      line(ctx, [[x - 1.1, sandZ - 1.1], [x + 1.1, sandZ + 1.1]], 0.4, '#fff1cf')
+    }
+  })
+}
+
+function drawKpopStage(ctx, w, d) {
+  roof(ctx, w, d, '#726283', false)
+  box(ctx, 0, d / 2 - (d - 1) / 2, w - 1.6, d - 2, '#a58fc0')
+  box(ctx, 0, -d / 2 + 1.1, Math.min(14, w - 4), 1.15, '#594468')
+  line(ctx, [[-w / 2 + .6, d / 2 - .55], [w / 2 - .6, d / 2 - .55]], 0.55, '#f0b1d8')
+  for (const x of [-w / 2 + .85, w / 2 - .85]) box(ctx, x, d / 2 - .8, 1.35, 1.35, '#514867')
 }
 
 const PALACE_ROOF = '#546f69'
@@ -337,11 +371,20 @@ function drawLandscape(ctx, item) {
 
 function drawProps(ctx) {
   for (const item of layout.props) {
+    if (item.zone === 'SG' && item.style === 'festivalCart') {
+      drawItem(ctx, item, (w, d) => {
+        box(ctx, 0, 0, w, d, item.signs?.[0]?.bg ?? '#ae887b', '#795e64')
+        line(ctx, [[-w / 2, d * .33], [w / 2, d * .33]], 0.48, '#fff1da')
+      })
+    }
+    if (item.zone === 'SG' && item.style === 'bench') {
+      drawItem(ctx, item, (w, d) => box(ctx, 0, 0, w, d, '#936d55'))
+    }
     if (item.style === 'landscape') drawLandscape(ctx, item)
     if (item.style === 'roundPlaza') {
       drawItem(ctx, item, (w) => ellipse(ctx, 0, 0, w / 2, w / 2, PATH, '#b7a077'))
     }
-    if (item.style === 'jmCanal' || item.style === 'jmLake') {
+    if (!item.hideWater && (item.style === 'jmCanal' || item.style === 'jmLake')) {
       drawItem(ctx, item, (w, d) => {
         if (item.style === 'jmLake') ellipse(ctx, 0, 0, w * 0.44, d * 0.42, WATER, WATER_EDGE)
         else box(ctx, 0, 0, w, d, WATER, WATER_EDGE)
@@ -413,6 +456,22 @@ function drawLandmarks(ctx) {
   }
   for (const item of [...layout.buildings, ...mapPropBuildings].sort((a, b) => (a.elevation ?? 0) - (b.elevation ?? 0))) {
     drawItem(ctx, item, (w, d) => {
+      if (item.zone === 'SG') {
+        if (item.style === 'stage') {
+          drawKpopStage(ctx, w, d)
+          return
+        }
+        const color = KPOP_ROOFS[item.style]
+        if (color) {
+          roof(ctx, w, d, color, false)
+          if (item.signs?.[0]?.awning) box(ctx, 0, d / 2 - .45, w - .7, .9, item.signs[0].awning)
+          return
+        }
+        if (item.style === 'auditionSet' || item.style === 'auditionGate') {
+          box(ctx, 0, 0, w, d, '#b4a4ca', '#705c91')
+          return
+        }
+      }
       const gabled = /hanok|machiya|ryokan|pavilion|jmYutoya|jmEatery/i.test(item.style)
       const color = /pavilion|glass|greenhouse/i.test(item.style) ? '#6f9390' : item.roofColor ?? ROOF
       roof(ctx, w, d, color, gabled)
@@ -446,12 +505,38 @@ const hjBounds = [palaceMap, parkMap, mountainMap].filter(Boolean).map(({ bounds
 hjBounds.push(...layout.roads.filter(({ zone, opensBoundary }) => zone === 'HJ' && opensBoundary).map(itemBounds))
 if (southBounds) hjBounds.push(southBounds)
 const jmExpansion = layout.props.filter(({ style }) => /^(jmFloor|jmYutoya|jmGrandBridge)$/.test(style))
+const [beachWest, beachEast, beachNorth, beachSouth] = beachBounds
+const kpopBounds = [kpopDomeMap?.bounds, [beachWest, beachNorth, beachEast, beachSouth]].filter(Boolean)
+const westOcean = layout.props.find(({ style }) => style === 'jmOcean')
+const westHarbor = layout.props.find(({ id }) => id === 'HJ/north_sea_fill')
+const hasWestCoast = Boolean(westOcean && westHarbor)
 export function minimapZoneBounds(zone) {
   const bounds = boundsAt(zone.origin, zone.size)
   if (zone.zoneId === 'HJ') return mergeBounds([bounds, ...hjBounds])
   if (zone.zoneId === 'JM') return mergeBounds([bounds, ...jmExpansion.map(itemBounds)])
-  if (zone.zoneId === 'SG') return mergeBounds([bounds, beachBounds])
+  if (zone.zoneId === 'SG') return mergeBounds([bounds, ...kpopBounds])
   return bounds
+}
+
+function seaLineMap({ line: data, position, rotationDeg }) {
+  const path = buildSeaLinePath(data)
+  const yaw = (rotationDeg ?? 0) * Math.PI / 180
+  const sin = Math.sin(yaw)
+  const cos = Math.cos(yaw)
+  const project = (distance) => {
+    const { x, z } = path.at(distance, {})
+    return [position[0] + x * cos + z * sin, position[1] - x * sin + z * cos]
+  }
+  const count = Math.ceil((path.total - path.trackStart) / 2)
+  const points = Array.from({ length: count + 1 }, (_, i) => (
+    project(path.trackStart + (path.total - path.trackStart) * i / count)
+  ))
+  return {
+    points,
+    station: project(path.sStation),
+    portal: project(path.sMouth),
+    bounds: mergeBounds(points.map((point) => boundsAt(point, [10, 10]))),
+  }
 }
 
 let baseMap
@@ -459,19 +544,27 @@ export function getMinimapBase() {
   if (baseMap) return baseMap
   const ground = boundsAt(layout.ground.center ?? [0, 0], layout.ground.size)
   const playable = zones.map(minimapZoneBounds)
-  const playableBounds = mergeBounds(playable)
-  // 남북으로 긴 지형 전체를 내려다보는 대신 실제 테마 구역과 해변을 원 안에 맞춥니다.
+  const zoneBounds = mergeBounds(playable)
+  const seaLines = layout.props.filter(({ style, line }) => style === 'jmSeaLine' && line?.pts.length >= 2).map(seaLineMap)
+  const playableBounds = mergeBounds([zoneBounds, ...seaLines.map(({ bounds }) => bounds)])
+  // 테마 구역과 해변, 바다 위 실제 선로 범위를 원 안에 맞춥니다.
   const centerX = (playableBounds[0] + playableBounds[2]) / 2
   const centerZ = (playableBounds[1] + playableBounds[3]) / 2
-  const allRadius = Math.max(...playable.map(([left, north, right, south]) =>
-    Math.hypot(Math.max(centerX - left, right - centerX), Math.max(centerZ - north, south - centerZ)),
-  ))
-  const bounds = [ground, ...playable]
-  const minX = Math.min(...bounds.map(([x]) => x)) - 4
-  const minZ = Math.min(...bounds.map(([, z]) => z)) - 4
+  const allRadius = Math.max(
+    ...playable.map(([left, north, right, south]) =>
+      Math.hypot(Math.max(centerX - left, right - centerX), Math.max(centerZ - north, south - centerZ)),
+    ),
+    ...seaLines.flatMap(({ points }) => points.map(([x, z]) => Math.hypot(x - centerX, z - centerZ) + 5)),
+  )
+  const bounds = [ground, playableBounds]
+  // 선로만 화면에 꼭 맞추고, 그 바깥 바다도 타일에 남겨 확대하거나 옮길 때 맥락을 보여 줍니다.
+  const westMargin = seaLines.length ? 96 : 4
+  const minX = Math.min(...bounds.map(([x]) => x)) - westMargin
+  const verticalMargin = hasWestCoast ? 96 : 4
+  const minZ = Math.min(...bounds.map(([, z]) => z)) - verticalMargin
   const worldW = Math.max(...bounds.map(([, , x]) => x)) + 4 - minX
-  const worldH = Math.max(...bounds.map(([, , , z]) => z)) + 4 - minZ
-  const resolution = Math.min(4, 1600 / Math.max(worldW, worldH))
+  const worldH = Math.max(...bounds.map(([, , , z]) => z)) + verticalMargin - minZ
+  const resolution = Math.min(4, 2000 / Math.max(worldW, worldH))
   const canvas = document.createElement('canvas')
   canvas.width = Math.ceil(worldW * resolution)
   canvas.height = Math.ceil(worldH * resolution)
@@ -480,10 +573,14 @@ export function getMinimapBase() {
   ctx.translate(-minX, -minZ)
   ctx.lineJoin = 'round'
   const roads = [...layout.roads].sort((a, b) => a.size[1] - b.size[1])
-  drawLand(ctx, ground)
+  const canvasBounds = [minX, minZ, minX + worldW, minZ + worldH]
+  drawLand(ctx, ground, canvasBounds)
+  if (hasWestCoast) drawMinimapCoast(ctx, { ocean: westOcean, harbor: westHarbor, bounds: canvasBounds })
   drawZones(ctx)
+  if (kpopDomeMap) drawKpopDome(ctx, kpopDomeMap)
+  if (kpopBeachMap) drawKpopBeach(ctx, kpopBeachMap)
   drawSouth(ctx)
-  for (const item of layout.props.filter(({ style }) => style === 'hjSea')) {
+  for (const item of layout.props.filter((prop) => prop.style === 'hjSea' && (!hasWestCoast || prop !== westHarbor))) {
     drawItem(ctx, item, (w, d) => box(ctx, 0, 0, w, d, WATER, WATER_EDGE))
   }
   for (const item of jmExpansion.filter(({ style }) => style === 'jmFloor')) {
@@ -501,8 +598,10 @@ export function getMinimapBase() {
   }
   drawProps(ctx)
   drawWalkways(ctx)
+  for (const seaLine of seaLines) drawSeaLine(ctx, seaLine)
   drawLandmarks(ctx)
 
-  baseMap = { canvas, minX, minZ, worldW, worldH, centerX, centerZ, allRadius, playableBounds }
+  const westColor = hasWestCoast ? MAP_OCEAN : MAP_GRASS
+  baseMap = { canvas, minX, minZ, worldW, worldH, centerX, centerZ, allRadius, playableBounds, zoneBounds, westColor }
   return baseMap
 }
