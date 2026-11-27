@@ -3,6 +3,7 @@ import { WebSocketServer } from 'ws'
 import { createTarotRooms } from './bk_tarotRooms.js'
 import { createPhotoRooms } from './bk_photoRooms.js'
 import { createLifts } from './bk_lifts.js'
+import { createJmLifts } from './jm_lifts.js'
 import { createEpisodeRooms } from './bk_episodeRooms.js'
 import { createHjWorld } from './hj_world.js'
 
@@ -122,6 +123,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
   const lifts = createLifts({ broadcast, send, options: options.lift })
   const episodes = createEpisodeRooms({ send, findPeer, inviteMs: options.episode?.inviteMs })
   const hj = createHjWorld({ broadcast, send }) // [혜진] 경복궁·경성 문·앉기·탈것·시계 동기화 (hj_world.js)
+  const jmLifts = createJmLifts({ broadcast, send, options: options.jmLift }) // [지민] 애니 구역 온천장 엘리베이터 (jm_lifts.js)
 
   // [지민] 관리자가 정한 시간대·계절 → 접속한 모든 사람에게 같은 값 (메모리에만 둠: 서버가 다시 켜지면 각자 기본값)
   const world = { timeOfDay: null, season: null }
@@ -229,11 +231,12 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
         broadcast({ t: 'join', peer: publicPeer(peer) }, ws)
         lifts.welcome(ws) // [병관] 지금 엘리베이터 상태
         hj.welcome(ws) // [혜진] 지금 문·앉은 자리 상태 + 서버 시각
+        jmLifts.welcome(ws) // [지민] 지금 온천장 엘리베이터 상태
         send(ws, { t: 'world', world }) // [지민] 관리자가 정한 시간대·계절
         return
       }
       if (!peer.ready) return
-      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg) || hj.handle(ws, peer, msg)) return
+      if (tarot.handle(ws, peer, msg) || photo.handle(ws, peer, msg) || lifts.handle(ws, peer, msg) || episodes.handle(ws, peer, msg) || hj.handle(ws, peer, msg) || jmLifts.handle(ws, peer, msg)) return
 
       if (msg.t === 'bye') return ws.close(1000, 'bye')
       if (msg.t === 'chat') {
@@ -317,6 +320,7 @@ export function attachRealtime(httpServer, { supabase, allowedOrigins = [], opti
       tarot.close()
       photo.close()
       lifts.close()
+      jmLifts.close()
       for (const ws of peers.keys()) ws.terminate()
       wss.close()
     },

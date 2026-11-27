@@ -60,6 +60,16 @@ export function sendHj(msg) {
   if (typeof msg?.t === 'string' && msg.t.startsWith('hj.')) sendRaw(msg)
 }
 
+// [지민] 'jm.' 메시지는 애니 구역 동기화로 넘김 (온천장 엘리베이터: game/Map/styles/jm_guestLift.jsx · server/src/jm_lifts.js)
+const jmListeners = new Set()
+export function onJmMessage(fn) {
+  jmListeners.add(fn)
+  return () => jmListeners.delete(fn)
+}
+export function sendJm(msg) {
+  if (typeof msg?.t === 'string' && msg.t.startsWith('jm.')) sendRaw(msg)
+}
+
 const setPeers = (fn) => useRealtimeStore.setState((s) => ({ peers: fn(s.peers) }))
 
 function handle(msg) {
@@ -95,6 +105,8 @@ function handle(msg) {
     tarotListeners.forEach((fn) => fn(msg))
   } else if (typeof msg.t === 'string' && msg.t.startsWith('hj.')) {
     hjListeners.forEach((fn) => fn(msg))
+  } else if (typeof msg.t === 'string' && msg.t.startsWith('jm.')) {
+    jmListeners.forEach((fn) => fn(msg))
   } else if (msg.t === 'state') {
     const selfId = useRealtimeStore.getState().selfId
     const now = Date.now()

@@ -8,6 +8,8 @@ import { Ball, Box } from './kit.jsx'
 import { GlowMaterial } from './jm_landmarks.jsx'
 import { BRASS, cageTexture, elevPlankTexture, floorTexture, LEVER_BRONZE, LEVER_HOLE, LEVER_WOOD } from './jm_spirit.jsx'
 import { useGameStore } from '../../../store/gameStore.js'
+import { onJmMessage, sendJm, useRealtimeStore } from '../../multiplayer/realtimeStore.js'
+import { JM_LIFT, jmLiftMoveSec } from '@shared/jm_liftTiming.js'
 
 // ── (11/27) 유야(온천장) 손님용 엘리베이터: 칸 하나가 실제로 오르내림 ─────────────
 // 병관님 전망대 엘리베이터(Map/Terrain.jsx Elevator)와 같은 방식:
@@ -18,11 +20,12 @@ import { useGameStore } from '../../../store/gameStore.js'
 //   바닥판을 뚫고 지나가며 몸이 밀림 · 카메라가 아래층에 남아 바닥을 비춤 · 도착 칸과 출발 칸이 겹쳐 보임 · 입력 잠금이 풀리지 않음 등
 // 바닥판의 승강로 구멍과 칸 자리는 생성 스크립트(gen-jm-kyoto.mjs YU_GUEST)가 만듦. 칸이 없는 층의 구멍은 층 문 충돌이 막음
 // 물리는 <Physics> 안에서만 만들 수 있어서 Scene.jsx에서 그림 (JSON의 jmElevator 소품은 위치·층 정보만 줌)
-// 혼자 화면 기준 (다른 사람 화면과 칸 위치를 맞추지는 않음)
+// 멀티(11/27): 접속 중이면 층 고르기·부르기를 서버(server/src/jm_lifts.js)에 보내고, 서버가 모두에게 보낸 운행 신호로만 움직임
+//   → 다른 사람이 타고 올라가도 내 화면에서 같은 칸이 같은 시간에 움직임 (다른 사람 몸은 그 사람이 보내는 위치로 칸 안에 보임)
+//   운행 시간 계산은 서버와 같은 shared/jm_liftTiming.js. 접속이 안 돼 있으면 이 화면 혼자 움직임
 
-const LIFT_SPEED = 3 // m/s 평균
-const DOOR = 1.1 // 문이 다 열리거나 닫히는 시간(초)
-const PAUSE = 0.7 // 문 닫힌 뒤 출발까지, 도착 뒤 문 열리기까지(초)
+const DOOR = JM_LIFT.door // 문이 다 열리거나 닫히는 시간(초)
+const PAUSE = JM_LIFT.pause // 문 닫힌 뒤 출발까지, 도착 뒤 문 열리기까지(초)
 const LEVER_PIVOT = [-0.2, 1.45]
 const LEVER_LEN = 0.5
 const LEVER_SWING = 1.0
@@ -71,21 +74,50 @@ function GuestLift({ item, playerRef }) {
   const cage = useMemo(() => cageTexture(), [])
   const planks = useMemo(() => elevPlankTexture(), [])
 
-  const initial = () => ({ at: 0, y: levels[0], door: 1, phase: 'open', timer: 0, trip: null, rideOffset: null, camMode: null })
+  const initial = () => ({ at: 0, y: levels[0], door: 1, phase: 'open', timer: 0, trip: null, pending: null, rideOffset: null, camMode: null })
   const state = useRef(initial())
   // 화면 안내(HUD): 바뀔 때만 다시 그림
   const [ui, setUi] = useState({ mode: null, level: -1, cur: 0, to: 0 })
   const uiRef = useRef(ui)
 
   const leverAngle = (i) => (n > 1 ? -LEVER_SWING + (2 * LEVER_SWING * i) / (n - 1) : 0)
-  const tripLen = (from, to) => Math.max(1.5, Math.abs(levels[to] - levels[from]) / LIFT_SPEED)
+  const tripLen = (from, to) => jmLiftMoveSec(levels, from, to)
+  // 층 고르기·부르기: 접속 중이면 서버가 정해서 모두에게 알림(운행 중이면 서버가 도착 후 이어서), 아니면 이 화면에서 바로
   const go = (to) => {
     const s = state.current
-    if (s.trip || to < 0 || to >= n || to === s.at) return
-    s.trip = { from: s.at, to, start: performance.now() }
+    if (to < 0 || to >= n) return
+    if (useRealtimeStore.getState().status === 'online') {
+      sendJm({ t: 'jm.lift.go', id: item.id, to, levels })
+      return
+    }
+    if (s.trip) {
+      if (s.trip.to !== to) s.pending = to
+      return
+    }
+    if (to !== s.at) s.trip = { from: s.at, to, start: performance.now() }
   }
   const goRef = useRef(go)
   goRef.current = go
+
+  // 서버 알림: 운행 시작(모두에게) / 지금 상태(접속·재접속 직후)
+  useEffect(
+    () =>
+      onJmMessage((msg) => {
+        if (msg.id !== item.id) return
+        const s = state.current
+        const valid = (i) => Number.isInteger(i) && i >= 0 && i < n
+        if (msg.t === 'jm.lift.trip' && valid(msg.from) && valid(msg.to)) {
+          s.trip = { from: msg.from, to: msg.to, start: performance.now() - (Number(msg.elapsed) || 0) }
+          s.pending = null
+        } else if (msg.t === 'jm.lift.state' && valid(msg.at)) {
+          s.pending = null
+          if (msg.trip && valid(msg.trip.from) && valid(msg.trip.to)) s.trip = { from: msg.trip.from, to: msg.trip.to, start: performance.now() - (Number(msg.trip.elapsed) || 0) }
+          else if (!s.trip && s.at !== msg.at) s.trip = { from: s.at, to: msg.at, start: performance.now() } // 혼자 움직였던 칸 → 서버 층으로 운행해서 맞춤 (순간 이동하면 타 있던 사람이 승강로로 떨어짐)
+        }
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [item.id, n],
+  )
 
   useFrame((_, delta) => {
     const body = bodyRef.current
@@ -126,6 +158,10 @@ function GuestLift({ item, playerRef }) {
       else {
         Object.assign(s, { phase: 'open', at: to, door: 1, y: levels[to], timer: 0 })
         s.trip = null
+        // 혼자 모드: 운행 중에 다른 층에서 불렀으면 이어서 (접속 중이면 서버가 이어서 보냄)
+        const next = s.pending
+        s.pending = null
+        if (next != null && next !== s.at && useRealtimeStore.getState().status !== 'online') s.trip = { from: s.at, to: next, start: performance.now() }
       }
     } else {
       Object.assign(s, { phase: 'open', door: Math.min(1, s.door + dt / DOOR), y: levels[s.at] })
