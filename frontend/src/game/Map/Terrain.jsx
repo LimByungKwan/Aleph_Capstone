@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider } from '@react-three/rapier'
+import { CuboidCollider, CylinderCollider, RigidBody, TrimeshCollider, useBeforePhysicsStep, useRapier } from '@react-three/rapier'
 import * as THREE from 'three'
 import { layout } from '../data/mapData.js'
+import { PLAYER_CAPSULE_HALF_HEIGHT, PLAYER_CAPSULE_RADIUS } from '../config.js'
 import { buildDeck, buildHill, buildPlatform, buildStairs, ringPieces, terrainHeightAt, TOWER, towerColliderPieces } from './terrain.js'
 import { Cyl, GEO, Instances, mat, texMat } from './styles/kit.jsx'
 import { getTiledTexture, TILE_METERS } from './styles/textures.js'
@@ -259,9 +260,12 @@ function BoxSet({ name, boxes, position, rotation }) {
 // 멀티: 운행 시작 신호를 서버가 모두에게 보내고(bk_liftSync.js · server/src/bk_lifts.js), 각 화면은 "시작 후 몇 초"로
 //   단계를 계산 → 다른 사람이 타고 올라가도 내 화면에서 같은 엘리베이터가 같은 시간에 문 닫고 움직임
 const LIFT_AVG_SPEED = 4.5 // m/s (평균 속도, 가운데에서는 이보다 빠르고 출발·도착은 느림)
-const LIFT_BOARD_WAIT = 0.6 // 발판에 올라선 뒤 문이 닫히기 시작할 때까지(초)
 const LIFT_DOOR_TIME = 1.1 // 문이 다 열리거나 닫히는 데 걸리는 시간(초)
 const LIFT_PAUSE = 1 // 문 닫힌 뒤 출발까지, 도착 뒤 문 열리기까지(초)
+const LIFT_PASSABLE = 0.85
+const LIFT_HALF_THICKNESS = 0.15
+const RIDER_HALF_HEIGHT = PLAYER_CAPSULE_HALF_HEIGHT + PLAYER_CAPSULE_RADIUS
+const ZERO_VELOCITY = { x: 0, y: 0, z: 0 }
 // 타워 id → 엘리베이터 상태 { at, y, door, phase } (화면 쪽 LiftDoor가 읽음)
 //   at: 지금 서 있는(또는 마지막으로 선) 층 0/1, door: 그 층 문이 열린 정도 0~1
 const liftStates = new Map()
@@ -340,9 +344,19 @@ export function Elevators({ playerRef }) {
   return layout.terrain.filter((item) => item.type === 'tower').map((tower) => <Elevator key={tower.id} tower={tower} playerRef={playerRef} />)
 }
 
+function releaseRider(ride, dynamicType) {
+  const body = ride.current?.body
+  ride.current = null
+  if (!body?.isValid()) return
+  body.setBodyType(dynamicType, true)
+  body.setLinvel(ZERO_VELOCITY, true)
+}
+
 function Elevator({ tower, playerRef }) {
   const T = TOWER
+  const { rapier } = useRapier()
   const bodyRef = useRef(null)
+  const ride = useRef(null)
   const [cx, cz] = tower.position
   const baseY = towerBaseY(tower)
   const levels = [0.3, T.deckFloor] // 발판 윗면 높이 (타워 바닥 기준): 아래층, 전망대
@@ -353,8 +367,11 @@ function Elevator({ tower, playerRef }) {
   const doorEnabled = useRef([null, null])
   useLayoutEffect(() => {
     liftStates.set(tower.id, state.current)
-    return () => liftStates.delete(tower.id)
-  }, [tower.id])
+    return () => {
+      liftStates.delete(tower.id)
+      releaseRider(ride, rapier.RigidBodyType.Dynamic)
+    }
+  }, [rapier, tower.id])
   // 문 자리 충돌 박스 (1층 = 각도 0, 전망층 = 각도 π). 문이 닫혀 있을 때만 켬
   const doorBoxes = useMemo(() => {
     const width = 2 * T.shaftRadius * Math.sin(T.liftDoorHalf)
@@ -395,30 +412,46 @@ function Elevator({ tower, playerRef }) {
     [tower.id],
   )
 
-  useFrame((_, delta) => {
+  useBeforePhysicsStep((world) => {
     const body = bodyRef.current
     if (!body) return
     const s = state.current
     // 개발 중 코드가 새로고침 없이 바뀌면(HMR) 예전 모양의 상태가 남아 문이 멈출 수 있음 → 처음 상태로
     if (s.phase === undefined || s.boarded === undefined) Object.assign(s, initial())
-    const dt = Math.min(delta, 0.05)
-    const prevY = s.y
-    const player = playerRef?.current
+    const wasBoarded = s.boarded
+    const dt = world.timestep
+    const now = performance.now()
+    const rider = playerRef?.current?.body
+    const p = rider?.translation()
+    const liftCenter = body.translation().y
+    const liftTop = liftCenter + LIFT_HALF_THICKNESS
+    const carried = ride.current
+    // 워프로 나가거나 캐릭터가 교체되면 이전 발판 위치로 끌어오지 않습니다.
+    if (carried && (carried.body !== rider
+      || Math.hypot(p.x - carried.x, p.z - carried.z) > 0.12
+      || Math.abs(p.y - liftTop - carried.offset) > 0.2)) {
+      releaseRider(ride, rapier.RigidBodyType.Dynamic)
+    }
     let onLift = false
     let nearLevel = -1 // 엘리베이터 문 앞에 서 있는 층 (버튼용)
-    if (player) {
-      const p = player.currPos
+    if (p) {
       const dist = Math.hypot(p.x - cx, p.z - cz)
-      const feet = p.y - baseY
-      onLift = dist < T.liftRadius && feet > s.y - 0.2 && feet < s.y + 1.8
+      const relativeY = p.y - baseY
+      onLift = Boolean(ride.current) || (dist < T.liftRadius && p.y > liftTop - 0.2 && p.y < liftTop + 1.8)
       levels.forEach((lv, i) => {
-        if (dist < T.shaftRadius + 2.5 && feet > lv - 0.5 && feet < lv + 2.5) nearLevel = i
+        if (dist < T.shaftRadius + 2.5 && relativeY > lv - 0.5 && relativeY < lv + 2.5) nearLevel = i
       })
     }
 
     if (s.trip) {
       // 운행 중: 시작한 지 몇 초인지로 단계·높이·문 열림을 계산 (모든 화면이 같은 값)
-      const e = (performance.now() - s.trip.start) / 1000
+      const elapsed = Math.max(0, (now - s.trip.start) / 1000)
+      const last = s.trip.elapsed
+      // 렌더 프레임이 밀려도 여러 물리 스텝이 한 높이로 건너뛰지 않게 합니다.
+      const e = last == null || elapsed - last > 1
+        ? elapsed
+        : last + dt * THREE.MathUtils.clamp(1 + (elapsed - last - dt) * 3, 0.5, 1.5)
+      s.trip.elapsed = e
       const { from, to } = s.trip
       if (e < D) Object.assign(s, { phase: 'closing', at: from, door: Math.max(0, 1 - e / D), y: levels[from] })
       else if (e < D + P) Object.assign(s, { phase: 'depart', at: from, door: 0, y: levels[from], timer: e - D })
@@ -450,7 +483,7 @@ function Elevator({ tower, playerRef }) {
     }
 
     // 화면 버튼 상태
-    const seconds = s.boarding ? Math.max(0, Math.ceil((s.boarding.end - performance.now()) / 1000)) : 0
+    const seconds = s.boarding ? Math.max(0, Math.ceil((s.boarding.end - now) / 1000)) : 0
     let mode = null
     if (onLift && !s.trip) mode = 'rider' // 발판 위: 카운트다운 + [바로 출발] (막 도착했으면 [출발])
     else if (nearLevel !== -1 && nearLevel === s.at && (s.boarding || s.phase === 'closing')) mode = 'hold' // 문 앞, 곧 떠남 → [열림]
@@ -478,27 +511,35 @@ function Elevator({ tower, playerRef }) {
       })
     }
 
-    body.setNextKinematicTranslation({ x: cx, y: baseY + s.y - 0.15, z: cz })
+    const top = baseY + s.y
+    const platformMoving = Math.abs(liftTop - top) > 0.00001
+    if (platformMoving) {
+      body.setNextKinematicTranslation({ x: cx, y: top - LIFT_HALF_THICKNESS, z: cz })
+    }
 
-    // 캐릭터 태우기: 캐릭터는 바닥 위에 스프링처럼 떠 있어서(ecctrl) 발판이 가속·감속하면 통통 튐
-    // → 출발 직전 서 있던 높이를 기억해 두고, 움직이는 동안은 그 높이·발판 속도로 같이 옮김
-    const rider = player?.body
-    if (rider) {
-      const top = baseY + s.y
-      if (s.phase === 'depart' && onLift) s.rideOffset = player.currPos.y - top
-      if (s.phase === 'open' || s.phase === 'opening') s.rideOffset = null
-      const carrying = (s.phase === 'moving' || (s.phase === 'arrive' && s.timer < 0.35)) && onLift && s.rideOffset != null
-      if (carrying) {
-        const pos = rider.translation()
-        const vel = rider.linvel()
-        rider.setTranslation({ x: pos.x, y: top + s.rideOffset, z: pos.z }, true)
-        rider.setLinvel({ x: vel.x, y: s.phase === 'moving' && dt > 0 ? (s.y - prevY) / dt : 0, z: vel.z }, true)
+    const holding = s.phase === 'depart' || s.phase === 'moving' || s.phase === 'arrive'
+      || (s.phase === 'opening' && s.door < LIFT_PASSABLE)
+    // 탭 복귀 등으로 도착 단계까지 건너뛰면 마지막 높이도 함께 적용합니다.
+    const departing = s.phase === 'depart' || (wasBoarded && platformMoving)
+    if (departing && onLift && !ride.current && rider?.isDynamic()) {
+      const offset = THREE.MathUtils.clamp(p.y - liftTop, RIDER_HALF_HEIGHT, RIDER_HALF_HEIGHT + 0.2)
+      ride.current = { body: rider, x: p.x, z: p.z, offset }
+      rider.setLinvel(ZERO_VELOCITY, true)
+      rider.setBodyType(rapier.RigidBodyType.KinematicPositionBased, true)
+    }
+    if (ride.current) {
+      // 발판과 캐릭터를 같은 물리 스텝으로 보간해 이동하고, 문이 열릴 때 조작을 돌려줍니다.
+      if (holding || platformMoving) {
+        const { body: passenger, x, z, offset } = ride.current
+        passenger.setNextKinematicTranslation({ x, y: top + offset, z })
+      } else {
+        releaseRider(ride, rapier.RigidBodyType.Dynamic)
       }
     }
 
     // 문 충돌: 문이 거의 다 열렸을 때만 끄고, 닫히기 시작하면 바로 켬
     doorColliders.current.forEach((collider, level) => {
-      const enabled = doorAmount(s, level) < 0.85 || s.phase === 'closing'
+      const enabled = doorAmount(s, level) < LIFT_PASSABLE || s.phase === 'closing'
       if (collider && doorEnabled.current[level] !== enabled) {
         collider.setEnabled(enabled)
         doorEnabled.current[level] = enabled
@@ -508,8 +549,8 @@ function Elevator({ tower, playerRef }) {
 
   return (
     <>
-      <RigidBody ref={bodyRef} type="kinematicPosition" colliders={false} position={[cx, baseY + levels[0] - 0.15, cz]} name={`lift-${tower.id}`}>
-        <CylinderCollider args={[0.15, T.liftRadius]} />
+      <RigidBody ref={bodyRef} type="kinematicPosition" colliders={false} position={[cx, baseY + levels[0] - LIFT_HALF_THICKNESS, cz]} name={`lift-${tower.id}`}>
+        <CylinderCollider args={[LIFT_HALF_THICKNESS, T.liftRadius]} />
         <Cyl p={[0, 0, 0]} rad={T.liftRadius} h={0.3} m={CORAL} geo={GEO.cyl48} receiveShadow />
         <Cyl p={[0, 0.16, 0]} rad={T.liftRadius - 0.3} h={0.02} m={mat('#ffe4e6')} geo={GEO.cyl48} />
       </RigidBody>

@@ -91,12 +91,13 @@ function AnimatedCharacter({ character, playerRef, palaceSeat }) {
     const player = playerRef.current
     if (!current || !player) return
     const dt = Math.min(delta, .05)
-    const moving = !useGameStore.getState().inputLocked && player.isOnGround
+    const riding = player.body?.isKinematic()
+    const moving = !riding && !useGameStore.getState().inputLocked && player.isOnGround
     speed.current = MathUtils.damp(speed.current, moving ? player.moveSpeed : 0, 12, dt)
     const velocity = speed.current
     const walk = MathUtils.smoothstep(velocity, .08, .65)
     const run = MathUtils.smoothstep(velocity, PLAYER_WALK_SPEED + .15, PLAYER_RUN_SPEED - .5)
-    const inAir = !player.isOnGround
+    const inAir = !riding && !player.isOnGround
     if (inAir && !airborne.current) current.Jump.reset().play()
     airborne.current = inAir
     let target = inAir

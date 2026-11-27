@@ -59,7 +59,7 @@ export default function MultiplayerPresence({ playerRef }) {
     const r = Math.atan2(forward.x, forward.z)
     const v = player.currLinVel
     const s = v ? Math.hypot(v.x, v.z) : 0
-    const g = player.isOnGround
+    const g = Boolean(player.body?.isKinematic()) || player.isOnGround
     const waving = isWavingInPhoto()
     const prev = last.current
     const changed =
