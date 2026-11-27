@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { memo, useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { useSeason } from '../../seasons.js'
@@ -129,7 +129,10 @@ export function withMerge(Style) {
     )
   }
   Merged.displayName = `Merged(${Style.displayName || Style.name})`
-  return Merged
+  // (11/27) memo: 위(장면)가 다시 그려질 때마다 합치기를 처음부터 다시 했음 — 로그인 순간 애니 구역 건물 전부를 지웠다 다시 합쳐서
+  //   입장이 늦어진 주원인 중 하나(프로파일: convertBufferAttribute·mergeAttributes·destroyGeometry).
+  //   받는 값(item)은 맵 데이터의 같은 객체라서, 값이 그대로면 다시 그리지도 합치지도 않음. 계절이 바뀌면 useSeason으로 다시 합침
+  return memo(Merged)
 }
 
 // 스타일 묶음에 한꺼번에 씌우기 (skip 목록의 스타일은 그대로)

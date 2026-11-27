@@ -130,3 +130,234 @@ form.auth-account {
   width: 100%;
   min-height: 44px;
 }
+
+/* [지민] 맵 위 로그인 창 (jm_EntryScreen.jsx GateOverlay) — 로딩 뒤에 뜨는 보통 로그인 카드
+   색·글꼴은 게임 UI(혜진님 ui.css)·로딩 화면과 같은 종이색 + 분홍→테라코타 + 명조 제목
+   z-index: 게임 UI(.ui-root 16777280 — 미니맵·스탬프북)보다 위, 병관님 로딩 화면(.ld, 16777300)보다 아래
+   → "입장하는 중…" 동안 미니맵이 카드 위로 겹쳐 보이지 않음 (11/27 지민 발견), 로딩이 걷히면 그 자리에 보임 */
+.jm-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 16777290;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow-y: auto;
+  /* 맵은 비치되 카드 글씨가 묻히지 않게 전체를 살짝 어둡게 (흐림 효과는 느린 노트북에서 무거워서 안 씀) */
+  background: rgba(28, 24, 20, 0.38);
+  color: #2c2a29;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+}
+.jm-gate,
+.jm-gate * {
+  box-sizing: border-box;
+}
+.jm-gate__card {
+  width: min(400px, 100%);
+  margin: 16px 0;
+  padding: 22px 24px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  background: #fffdf8;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.jm-gate__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(200, 109, 81, 0.15);
+}
+.jm-gate__brand {
+  font-family: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.jm-gate__brand span {
+  color: #c86d51;
+}
+
+/* 서버 상태: 깨우는 중(종이색 띠 + 테라코타 회전) → 준비 완료(로그인 버튼과 같은 분홍→테라코타 띠 + 흰 체크) */
+.jm-gate__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 8px;
+  border: 1px solid rgba(200, 109, 81, 0.2);
+  border-radius: 999px;
+  background: #f7efe8;
+  color: #7a736d;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.jm-gate__status.is-ready {
+  border-color: transparent;
+  background: linear-gradient(90deg, #ff8fb8, #c86d51);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(200, 109, 81, 0.3);
+}
+.jm-gate__status.is-cheer {
+  animation: jm-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both, jm-ring 1.2s 0.4s ease-out 2;
+}
+.jm-gate__check {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  color: #c86d51;
+  font-size: 10px;
+  font-weight: 900;
+}
+.jm-gate__spinner {
+  width: 12px;
+  height: 12px;
+  margin: 0 2px;
+  border: 2px solid rgba(200, 109, 81, 0.2);
+  border-top-color: #c86d51;
+  border-radius: 50%;
+  animation: jm-spin 0.9s linear infinite;
+}
+@keyframes jm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes jm-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes jm-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 143, 184, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(255, 143, 184, 0);
+  }
+}
+
+/* 카드 안 글씨: 제목 크게, 설명은 한 줄, 칸 이름은 진하게 */
+.jm-gate .auth-title {
+  margin: 0 0 4px;
+  font-family: var(--ui-serif);
+  font-size: 24px;
+  color: #2c2a29;
+}
+.jm-gate .ui-sub {
+  margin: 0;
+  color: #5f5751;
+  font-size: 14px;
+}
+.jm-gate form {
+  margin-top: 18px;
+}
+.jm-gate .ui-field label {
+  color: #2c2a29;
+  font-size: 14px;
+}
+.jm-gate .ui-field input {
+  min-height: 46px;
+  font-size: 16px; /* 휴대폰에서 칸을 누르면 화면이 확대되지 않는 크기 */
+}
+.jm-gate .auth-submit {
+  min-height: 48px;
+  font-size: 16px;
+  font-weight: 800;
+}
+/* 로그인 버튼: 준비 완료 띠·로딩 막대와 같은 분홍→테라코타 */
+.jm-gate .auth-submit:not([disabled]) {
+  border: none;
+  background: linear-gradient(90deg, #ff8fb8, #c86d51);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(200, 109, 81, 0.3);
+}
+/* 아직 못 누를 때(빈칸)는 회색 + 진한 글씨 → 글자가 읽힘 */
+.jm-gate .auth-submit[disabled] {
+  border-color: #e6ddd6;
+  background: #eee7e1;
+  color: #8a7f78;
+  opacity: 1;
+}
+.jm-gate .auth-alt {
+  min-height: 44px;
+  font-size: 14px;
+}
+.jm-gate__entering {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 18px 0 8px;
+  text-align: center;
+}
+.jm-gate__entering .auth-title {
+  margin: 6px 0 0;
+}
+.jm-gate__spinner--big {
+  width: 34px;
+  height: 34px;
+  border-width: 3px;
+}
+.jm-gate__note {
+  margin: 14px 0 0;
+  color: #6b625b;
+  font-size: 12px;
+  text-align: center;
+}
+@media (max-width: 420px) {
+  .jm-gate__card {
+    padding: 20px 18px 18px;
+  }
+}
+
+/* 게임 코드를 받는 동안의 화면(MapLoadingLook)에 이어서 병관님 로딩 화면이 뜰 때: 카드가 다시 올라오지 않게 (LoadingScreen.jsx is-continued) */
+.ld.is-continued .ld__card {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jm-gate__status.is-cheer,
+  .jm-gate__spinner {
+    animation: none;
+  }
+}
+
+/* [지민] 회원가입 버튼 글자 옆 말풍선 "가입 코드 필요" (괄호 대신) — 왼쪽 꼬리가 버튼 글자를 가리킴 */
+.auth-alt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.auth-bubble {
+  position: relative;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #2c2a29;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.auth-bubble::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -4px;
+  border: 4px solid transparent;
+  border-left: 0;
+  border-right-color: #2c2a29;
+  transform: translateY(-50%);
+}

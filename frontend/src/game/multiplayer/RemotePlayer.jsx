@@ -29,6 +29,10 @@ const FOLLOW = 12 // 클수록 빨리 따라감
 const TELEPORT = 8 // m 이상 차이 나면 바로 이동
 const CLIPS = ['Idle', 'Walk', 'Run', 'Jump']
 const CAPSULE_ARGS = [PLAYER_CAPSULE_HALF_HEIGHT, PLAYER_CAPSULE_RADIUS]
+// [지민 11/27] 서로 깊이 겹쳐 있으면(시작 지점에 서 있는 사람 위로 내가 생겨남 등) 밀지 않고 통과
+//   밀면 겹친 만큼 계속 튕겨서 캐릭터가 덜덜 떨었음. 어깨가 닿는 정도(거리 ≈ 지름)의 부딪힘은 그대로 밂
+const OVERLAP_PASS = PLAYER_CAPSULE_RADIUS * 1.2 // 중심 사이 수평 거리가 이보다 가까우면 통과 (지름의 60%)
+const OVERLAP_HEIGHT = PLAYER_CAPSULE_HALF_HEIGHT * 2 + PLAYER_CAPSULE_RADIUS
 const CONTACT_PREDICTION = 0.2 // 마주 달릴 때 다음 물리 스텝의 접촉을 미리 계산
 const REMOTE_BODY_DATA = { ecctrl: { excludeRay: true } } // 지면 및 차량 바퀴 레이캐스트에서 제외
 
@@ -155,7 +159,12 @@ export default function RemotePlayer({ id, name, characterId, playerRef }) {
     if (first !== remote && second !== remote) return null
     // 원격 캐릭터는 내 캐릭터에만 물리 힘을 가함 (탈것 등에는 영향 없음).
     const other = first === remote ? second : first
-    return other === playerRef.current?.body.handle ? rapier.SolverFlags.COMPUTE_IMPULSE : rapier.SolverFlags.EMPTY
+    const player = playerRef.current?.body
+    if (other !== player?.handle) return rapier.SolverFlags.EMPTY
+    const a = body.current.translation()
+    const b = player.translation()
+    const deep = Math.hypot(a.x - b.x, a.z - b.z) < OVERLAP_PASS && Math.abs(a.y - b.y) < OVERLAP_HEIGHT
+    return deep ? rapier.SolverFlags.EMPTY : rapier.SolverFlags.COMPUTE_IMPULSE
   })
 
   useBeforePhysicsStep((world) => {

@@ -9,6 +9,8 @@ import {
   useSessionStore,
   wakeServer,
 } from '../../api/session.js'
+import { usePreload } from './jm_preload.js'
+import { GateOverlay, MapLoadingLook } from './jm_EntryScreen.jsx'
 import '../movieZone/ui.css'
 import '../movieZone/ui-components.css'
 import './auth.css'
@@ -18,6 +20,23 @@ import './auth.css'
 //   회원가입은 가입 코드가 있어야 함. 맵 안에서는 다시 로그인이 필요할 때만 창으로 뜸 (LoginModal)
 // 맵 위에 떠 있어도 입력칸에 친 W·A·S·D·E가 캐릭터 조작으로 새지 않게 키 이벤트를 창 안에서 멈춤
 export default function LoginPage({ title = '', reason = '', onClose = null }) {
+  return (
+    <div className="ui-page auth-page">
+      <main className="auth-card ui-card">
+        {onClose && (
+          <button type="button" className="auth-close" aria-label="닫기" onClick={onClose}>
+            ×
+          </button>
+        )}
+        <p className="auth-brand">SceneWalk AI</p>
+        <LoginForm title={title} reason={reason} onClose={onClose} />
+      </main>
+    </div>
+  )
+}
+
+// 로그인·회원가입 입력 부분 (창 틀 없이) — 맵 위 로그인 창(LoginPage)과 첫 화면(EntryScreen)이 같이 씀
+function LoginForm({ title = '', reason = '', onClose = null }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [form, setForm] = useState({ email: '', password: '', name: '', signupCode: '' })
   const [busy, setBusy] = useState(false)
@@ -53,20 +72,12 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
   }
 
   const isSignup = mode === 'signup'
+  const serverReady = usePreload((s) => s.server === 'ready' || s.server === 'off')
   return (
-    <div className="ui-page auth-page">
-      <main className="auth-card ui-card">
-        {onClose && (
-          <button type="button" className="auth-close" aria-label="닫기" onClick={onClose}>
-            ×
-          </button>
-        )}
-        <p className="auth-brand">SceneWalk AI</p>
+    <>
         {/* 제목: 왜 창이 떴는지(스탬프 찍기 등)를 먼저 말함. 회원가입으로 바꾸면 가입용 문장 */}
-        <h1 className="auth-title">{isSignup ? '회원가입하고 시작해요' : title || '로그인하고 들어가요'}</h1>
-        <p className="ui-sub">
-          {isSignup ? '안내받은 가입 코드와 이메일·비밀번호로 가입할 수 있어요.' : reason || 'SceneWalk는 회원만 이용할 수 있어요. 처음이라면 안내받은 가입 코드로 회원가입해 주세요.'}
-        </p>
+        <h1 className="auth-title" id="auth-heading">{isSignup ? '회원가입' : title || '로그인'}</h1>
+        <p className="ui-sub">{isSignup ? '팀에게 받은 가입 코드가 있어야 가입할 수 있어요.' : reason || 'SceneWalk는 회원만 이용할 수 있어요.'}</p>
 
         <form onSubmit={submit} noValidate>
           <div className="ui-field">
@@ -114,7 +125,7 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
           )}
 
           <button type="submit" className="ui-btn ui-btn--primary auth-submit" disabled={busy || !form.email || !form.password || (isSignup && !form.signupCode.trim())}>
-            {busy ? '잠시만요… (서버가 깨어나는 중이면 1분쯤 걸려요)' : isSignup ? '가입하고 시작하기' : '로그인'}
+            {busy ? (serverReady ? '잠시만요…' : '서버가 깨어나면 바로 이어서 진행돼요…') : isSignup ? '가입하고 시작하기' : '로그인'}
           </button>
         </form>
 
@@ -130,23 +141,36 @@ export default function LoginPage({ title = '', reason = '', onClose = null }) {
             setError('')
           }}
         >
-          {isSignup ? '로그인하기' : '회원가입하기'}
+          {isSignup ? (
+            '로그인하기'
+          ) : (
+            <>
+              회원가입하기
+              {/* 말풍선: 가입 코드가 있어야 한다는 걸 버튼에 붙여서 보여 줌 */}
+              <span className="auth-bubble">가입 코드 필요</span>
+            </>
+          )}
         </button>
         {onClose && (
           <button type="button" className="auth-switch" onClick={onClose}>
             닫기
           </button>
         )}
-      </main>
-    </div>
+    </>
   )
 }
 
-// [지민] 로그인 전 첫 화면 (App.jsx가 맵 대신 보여 줌). 닫기 버튼 없음
+// [지민] 로그인 전: 로딩이 끝나면 캐릭터 없는 맵 전체 위에 뜨는 로그인 창 (App.jsx). 닫기 버튼 없음
 //   다른 기기 로그인으로 끊겨서 돌아온 경우 등은 그 이유(loginPrompt)를 제목·설명으로 보여 줌
-export function LoginGate() {
+//   entering: 로그인은 끝났고 캐릭터·첫 화면을 준비하는 중 → 입력 칸 대신 "입장하는 중…"
+export function LoginGate({ entering = false }) {
   const prompt = useSessionStore((s) => s.loginPrompt)
-  return <LoginPage title={prompt?.title} reason={prompt?.reason} />
+  return <GateOverlay entering={entering}>{entering ? null : <LoginForm title={prompt?.title} reason={prompt?.reason} />}</GateOverlay>
+}
+
+// 게임 코드(약 7MB)를 받는 동안 (App.jsx의 Suspense 자리) — 병관님 로딩 화면과 같은 모양
+export function MapLoading() {
+  return <MapLoadingLook />
 }
 
 // 맵 위에 뜨는 로그인 창 (openLogin()으로 열림)
